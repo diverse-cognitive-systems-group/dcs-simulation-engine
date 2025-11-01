@@ -19,18 +19,12 @@ jobs:
           python-version: "3.10.13"
           cache: "poetry"  # caches based on poetry.lock
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          poetry-version: "2.1.4"
+      - name: Install Poetry with pipx
+        run: pipx install "poetry==2.1.4"
 
-      # Poetry doesn't add itself to PATH automatically
-      # so we do it manually here
-      - name: Ensure Poetry on PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
+      # install dependencies with no interaction
       - name: Install dependencies (incl. dev)
-        run: poetry install --with dev
+        run: poetry install --with dev --no-interaction
 
       # ---- Formatting (Black) ----
       - name: Black (check only)
