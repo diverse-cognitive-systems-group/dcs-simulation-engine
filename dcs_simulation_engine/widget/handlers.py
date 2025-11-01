@@ -207,11 +207,11 @@ def on_send(
 
     Args:
         msg: The user's input text from the textbox.
-        history: Current Chatbot history as (user, assistant) pairs.
+        chat: Current Chatbot history.
         state: gr.State dictionary containing the active simulation and queue.
 
     Returns:
-        Tuple[List[ChatPair], str]: Updated Chatbot history and an empty string
+        Tuple[List[Message], str]: Updated Chatbot history and an empty string
         to clear the input textbox.
 
     Notes:

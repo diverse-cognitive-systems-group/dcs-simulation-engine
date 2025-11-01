@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from loguru import logger
 
-from dcs_simulation_engine.core.run_manager import SimulationManager
+from dcs_simulation_engine.core.run_manager import RunManager
 
 
 class SimRegistry:
@@ -28,10 +28,10 @@ class SimRegistry:
 
     def __init__(self) -> None:
         """Initialize the registry."""
-        self._store: Dict[str, SimulationManager] = {}
+        self._store: Dict[str, RunManager] = {}
 
-    def create_from_yaml(self, path: str) -> tuple[str, SimulationManager]:
-        """Create and store a SimulationManager from a YAML file.
+    def create_from_yaml(self, path: str) -> tuple[str, RunManager]:
+        """Create and store a RunManager from a YAML file.
 
         Args:
             path (str): Filesystem path to the simulation YAML.
@@ -40,13 +40,13 @@ class SimRegistry:
             tuple[str, SimulationManager]: The generated sim ID and the instance.
         """
         logger.debug(f"Loading simulation from {path}")
-        sim: SimulationManager = SimulationManager.from_yaml(path)
+        sim: RunManager = RunManager.from_yaml(path)
         sim_id = uuid4().hex
         self._store[sim_id] = sim
         return sim_id, sim
 
-    def get(self, sim_id: str) -> Optional[SimulationManager]:
-        """Retrieve a SimulationManager by ID.
+    def get(self, sim_id: str) -> Optional[RunManager]:
+        """Retrieve a RunManager by ID.
 
         Args:
             sim_id (str): Identifier assigned at creation.
