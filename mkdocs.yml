@@ -16,6 +16,6 @@ plugins:
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
 nav:
   - Home: index.md
-  - Core Codebase: core_reference.md
+  - Codebase: core_reference.md
   - API (ReDoc): "http://127.0.0.1:8000/redoc"
   - API (Swagger UI): "http://127.0.0.1:8000/docs"
