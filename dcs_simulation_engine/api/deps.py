@@ -10,7 +10,9 @@ from dcs_simulation_engine.api.services.registry import SimRegistry, get_registr
 from dcs_simulation_engine.core.run_manager import RunManager
 
 
-def get_manager(sim_id: str, registry: SimRegistry = Depends(get_registry)) -> "RunManager":
+def get_manager(
+    sim_id: str, registry: SimRegistry = Depends(get_registry)
+) -> RunManager:
     """Resolve a RunManager from the registry.
 
     Args:
