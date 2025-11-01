@@ -97,7 +97,7 @@ def test_invalid_user_input(run: RunManager) -> None:
             "content": "You enter a new space. In this space there is a table with a glass tank on it.",
         }
     ]
-    run.state["message_draft"] = {"role": "user", "content": "I break the game."}
+    run.state["event_draft"] = {"role": "user", "content": "I break the game."}
     # invoke must be called with cfg so graph thread_id is set and interrupts work
     res1 = run.graph.cgraph.invoke(run.state, cfg)
     logger.debug(f"First invalid user input response: {res1}")
@@ -105,7 +105,7 @@ def test_invalid_user_input(run: RunManager) -> None:
     assert res1["retries"]["user"] == 1
     assert res1["__interrupt__"]
     # user still inputs breaking input
-    revised = res1["message_draft"]["content"]
+    revised = res1["event_draft"]["content"]
     # interupts are resolved by passing through Command
     res2 = run.graph.cgraph.invoke(Command(resume=revised), config=cfg)
     logger.debug(f"Second invalid user input response: {res2}")
@@ -128,7 +128,7 @@ def test_invalid_system_input(run: RunManager) -> None:
     run.state["lifecycle"] = "UPDATE"
     run.state["retry_limits"]["ai"] = 2
     run.state["retries"]["ai"] = 1
-    run.state["message_draft"] = {"type": "ai", "content": "I turn invisible."}
+    run.state["event_draft"] = {"type": "ai", "content": "I turn invisible."}
     res1 = run.graph.cgraph.invoke(run.state, config=cfg)
     logger.debug(f"First invalid system input response: {res1}")
     assert res1["retries"]["ai"] == 2
@@ -144,9 +144,12 @@ def test_valid_user_input(run: RunManager) -> None:
     assert run.state is not None
     conf = {"configurable": {"thread_id": "test-thread"}}
     run.state["lifecycle"] = "UPDATE"
-    run.state["events"] = [AIMessage("You enter a new space. In this space there is a table with a glass tank on it.")]
+    run.state["events"] = [
+        AIMessage(
+            "You enter a new space. In this space there is a table with a glass tank on it."
+        )
     ]
-    run.state["message_draft"] = {"role": "user", "content": "I look around."}
+    run.state["event_draft"] = {"role": "user", "content": "I look around."}
     res = run.graph.cgraph.invoke(run.state, config=conf)
     logger.debug(f"Valid user input response: {res}")
     # output should include a user and system turn

@@ -1,4 +1,5 @@
-# DI Simulation Engine 
+# Diverse Cognitive Systems (DCS) Simulation Engine 
+
 
 *A scenario-based simulation engine for diverse forms of cognitive systems to play, learn and measure their goal inference capabilities.*
 
