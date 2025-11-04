@@ -11,6 +11,7 @@ Example:
 from __future__ import annotations
 
 import argparse
+import sys
 
 from loguru import logger
 
@@ -50,6 +51,13 @@ def parse_args() -> argparse.Namespace:
         default="explore",
         help="Name of the game to launch (default: explore).",
     )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Show info logs (-v) or debug (-vv) to console",
+    )
     return parser.parse_args()
 
 
@@ -64,6 +72,17 @@ def main() -> None:
         logger.warning(
             f"Failed to load log config at '{args.log_config}'; \
                 using default logger. ({e})"
+        )
+
+    # --- configure console side channel based on -v
+    if args.verbose > 0:
+        # logger.remove()  # remove all existing sinks (including default stderr)
+        # re-add file log via configure_logger already called
+        level = "DEBUG" if args.verbose > 1 else "INFO"
+        logger.add(
+            sys.stderr,
+            level=level,
+            format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>",
         )
 
     app = None

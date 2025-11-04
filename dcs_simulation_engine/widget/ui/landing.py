@@ -7,7 +7,8 @@ from dcs_simulation_engine.core.game_config import GameConfig
 
 class LandingUI(NamedTuple):
     container: gr.Group
-    play_btn: gr.Button
+    gated_play_btn: gr.Button
+    ungated_play_btn: gr.Button
     token_box: Optional[gr.Textbox] # None for ungated
     token_error_box: Optional[gr.Markdown] # None for ungated
     generate_token_btn: Optional[gr.Button] # None for ungated
@@ -40,7 +41,7 @@ def build_gated() -> LandingUI:
         with gr.Row():
             with gr.Column(scale=1): ...
             with gr.Column(scale=0, min_width=220):
-                play_btn = gr.Button("Play", variant="primary")
+                gated_play_btn = gr.Button("Play", variant="primary")
             with gr.Column(scale=1): ...
 
         _spacer(8)
@@ -57,7 +58,8 @@ def build_gated() -> LandingUI:
 
     return LandingUI(
         container=group,
-        play_btn=play_btn,
+        gated_play_btn=gated_play_btn,
+        ungated_play_btn=None,
         token_box=token_box,
         token_error_box=token_error_box,
         generate_token_btn=gen,
@@ -70,11 +72,11 @@ def build_ungated() -> LandingUI:
         with gr.Row():
             with gr.Column(scale=1): ...
             with gr.Column(scale=0, min_width=220):
-                play_btn = gr.Button("Play", variant="primary")
+                ungated_play_btn = gr.Button("Play", variant="primary")
             with gr.Column(scale=1): ...
 
         _spacer(12)
-    return LandingUI(container=group, play_btn=play_btn, token_box=None, token_error_box=None, generate_token_btn=None)
+    return LandingUI(container=group, gated_play_btn=None, ungated_play_btn=ungated_play_btn, token_box=None, token_error_box=None, generate_token_btn=None)
 
 def build_landing(access_gated: bool) -> LandingUI:
     return build_gated() if access_gated else build_ungated()

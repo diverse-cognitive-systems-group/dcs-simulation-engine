@@ -26,7 +26,6 @@ def main() -> None:
     parser.add_argument("--pc-choice", type=str, default=None)
     parser.add_argument("--npc-choice", type=str, default=None)
 
-    # new
     parser.add_argument(
         "-v",
         "--verbose",

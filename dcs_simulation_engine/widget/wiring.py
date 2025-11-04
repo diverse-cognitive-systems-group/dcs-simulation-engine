@@ -1,6 +1,6 @@
 """Wiring of event handlers to widget components."""
 import gradio as gr
-from dcs_simulation_engine.widget.handlers import on_play, on_generate_token, on_consent_back, on_consent_submit, on_token_continue
+from dcs_simulation_engine.widget.handlers import on_play, on_generate_token, on_consent_back, on_consent_submit, on_token_continue, on_send, poll_fn
 from dcs_simulation_engine.widget.state import AppState
 from dcs_simulation_engine.widget.ui.theme_toggle import ThemeToggleUI
 from dcs_simulation_engine.widget.ui.landing import LandingUI
@@ -24,11 +24,19 @@ def wire_handlers(state: AppState, toggle: ThemeToggleUI, landing: LandingUI, co
     )
     
     # Wire landing page handlers
-    landing.play_btn.click(
-        fn=on_play,
-        inputs=[state, landing.token_box],
-        outputs=[state, landing.token_box, landing.token_error_box],
-    )
+    if landing.gated_play_btn:
+        landing.gated_play_btn.click(
+            fn=on_play,
+            inputs=[state, landing.token_box],
+            outputs=[state, landing.token_box, landing.token_error_box, chat.container, landing.container],
+        )
+
+    if landing.ungated_play_btn:
+        landing.ungated_play_btn.click(
+            fn=on_play,
+            inputs=[state],
+            outputs=[state, landing.container, chat.container],
+        )
 
     # Wire generate token button if it exists (gated only)
     if landing.generate_token_btn:
@@ -57,7 +65,21 @@ def wire_handlers(state: AppState, toggle: ThemeToggleUI, landing: LandingUI, co
         )
 
     # Wire chat page handlers
-    # send_btn.click(on_send, [user_box, chat, state], [chat, user_box])
-    # user_box.submit(on_send, [user_box, chat, state], [chat, user_box])
-    # # include `timer` in outputs and return a `gr.update(every=None)` to stop
-    # timer.tick(poll_fn, inputs=[chat, state], outputs=[chat, state, timer])
+    chat.send_btn.click(
+        # wire send button
+        fn=on_send, 
+        inputs=[chat.user_box, chat.events, state], 
+        outputs=[chat.events, chat.user_box]
+    )
+
+    chat.user_box.submit(
+        # wire enter key in user input box
+        fn=on_send, 
+        inputs=[chat.user_box, chat.events, state],
+        outputs=[chat.events, chat.user_box])
+    
+    chat.timer.tick(
+        # wire polling time for new events/messages (and to start)
+        fn=poll_fn, 
+        inputs=[chat.events, state], 
+        outputs=[chat.events, state, chat.timer])

@@ -18,6 +18,7 @@ from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from loguru import logger
 
+from dcs_simulation_engine.widget.ui.chat import build_chat
 from dcs_simulation_engine.widget.ui.header import build_header
 from dcs_simulation_engine.widget.ui.theme_toggle import build_theme_toggle
 from dcs_simulation_engine.widget.ui.landing import build_landing
@@ -47,6 +48,7 @@ def build_app(game_name: str = "explore") -> gr.Blocks:
 
     with gr.Blocks(title="DCS Simulation Engine", theme=Soft()) as app:
         state = gr.State(AppState())
+        state.value["run"] = None
         state.value["access_gated"] = access_gated
         state.value["game_name"] = game_config.name
         state.value["game_description"] = game_config.description
@@ -58,8 +60,9 @@ def build_app(game_name: str = "explore") -> gr.Blocks:
         consent = None
         if access_gated:
             consent = build_consent(game_config.access_settings.consent_form)
+        
         # once passed landing (and consent if needed), show main chat interface
-        chat = None
+        chat = build_chat()
 
         wire_handlers(state, toggle, landing, consent, chat)
 
