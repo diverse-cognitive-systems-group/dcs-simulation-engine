@@ -28,14 +28,14 @@ def wire_handlers(state: AppState, toggle: ThemeToggleUI, landing: LandingUI, co
         landing.gated_play_btn.click(
             fn=on_play,
             inputs=[state, landing.token_box],
-            outputs=[state, landing.token_box, landing.token_error_box, chat.container, landing.container],
+            outputs=[state, landing.container, chat.container, chat.user_box, chat.send_btn, chat.loader, landing.token_box, landing.token_error_box],
         )
 
     if landing.ungated_play_btn:
         landing.ungated_play_btn.click(
             fn=on_play,
             inputs=[state],
-            outputs=[state, landing.container, chat.container],
+            outputs=[state, landing.container, chat.container, chat.user_box, chat.send_btn, chat.loader],
         )
 
     # Wire generate token button if it exists (gated only)
@@ -69,17 +69,17 @@ def wire_handlers(state: AppState, toggle: ThemeToggleUI, landing: LandingUI, co
         # wire send button
         fn=on_send, 
         inputs=[chat.user_box, chat.events, state], 
-        outputs=[chat.events, chat.user_box]
+        outputs=[chat.events, chat.user_box, state]
     )
 
     chat.user_box.submit(
         # wire enter key in user input box
         fn=on_send, 
         inputs=[chat.user_box, chat.events, state],
-        outputs=[chat.events, chat.user_box])
+        outputs=[chat.events, chat.user_box, state])
     
     chat.timer.tick(
         # wire polling time for new events/messages (and to start)
         fn=poll_fn, 
         inputs=[chat.events, state], 
-        outputs=[chat.events, state, chat.timer])
+        outputs=[chat.events, state, chat.timer, chat.user_box, chat.send_btn, chat.loader])

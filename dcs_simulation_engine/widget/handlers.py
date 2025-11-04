@@ -19,6 +19,8 @@ from dcs_simulation_engine.widget.state import AppState
 from dcs_simulation_engine.widget.ui.landing import LandingUI
 from dcs_simulation_engine.widget.ui.consent import ConsentUI
 
+# TODO: if two message of the same role are sent back to back can I show them separately?
+
 # Messages are "events" in the simulator
 Event = Dict[str, str]
 
@@ -30,7 +32,7 @@ def _format_special(msg: dict[str, str]) -> str:
         return f"⚠️ {c}"
     if t == "error":
         return f"❌ {c}"
-    return f"----\n{c}\n----"
+    return f"----<br>{c}<br>----"
 
 def _make_input_provider(state: AppState) -> Callable[[], str]:
     """Create a blocking input provider that feeds user messages from a Queue.
@@ -105,21 +107,33 @@ def on_play(state: AppState, token_value: Optional[str] = None) -> Tuple[AppStat
         state["last_seen"] = 0  # for polling new events
         state["last_special_seen"] = None
         _ensure_play_running(state)
-        updated_chat_container = gr.update(visible=True)
         updated_landing_container = gr.update(visible=False)
+        updated_chat_container = gr.update(visible=True)
+        state["is_user_turn"] = False  # disable user input until engine responds
+        logger.debug("Setting is_user_turn to False")
+        updated_user_box = gr.update(interactive=False)
+        updated_send_btn = gr.update(interactive=False)
+        updated_loader = gr.update(visible=True, value="⏳ *Setting up simulation and loading opening scene (this may take a moment)...*")
+        
         # if using a token, also update token box
         if token_value:
             updated_token_error_box = gr.update(visible=False, value="")
             updated_token_box = gr.update(value="")
-            return state, updated_token_box, updated_token_error_box, updated_landing_container, updated_chat_container
-        return state, updated_landing_container, updated_chat_container
+            return state, updated_landing_container, updated_chat_container, updated_user_box, updated_send_btn, updated_loader, updated_token_box, updated_token_error_box
+
+        return state, updated_landing_container, updated_chat_container, updated_user_box, updated_send_btn, updated_loader
     except PermissionError as e:
         logger.warning(f"PermissionError in on_play: {e}")
         if state["access_gated"]:
             state["permission_error"] = str(e)
-            token_error_box_update = gr.update(visible=True)
-            token_box_update = gr.update(value="")
-            return state, token_box_update, token_error_box_update
+            updated_landing_container = gr.update()
+            updated_chat_container = gr.update()
+            updated_user_box = gr.update()
+            updated_send_btn = gr.update()
+            updated_loader = gr.update()
+            updated_token_box = gr.update(value="")
+            updated_token_error_box = gr.update(visible=True)
+            return state, updated_landing_container, updated_chat_container, updated_user_box, updated_send_btn, updated_loader, updated_token_box, updated_token_error_box
         else:
             raise
     except Exception as e:
@@ -154,6 +168,7 @@ def on_consent_submit(state: AppState, field_names: List[str], *field_values: Li
     """
     # TODO: validate consent fields and if not valid return error message text below
     consent_data = dict(zip(field_names, field_values))
+    consent_data['consent_signed'] = True
     logger.debug(f"on_consent_submit called with field_values: {consent_data}")
     # create player with consent data, issue access token
     from dcs_simulation_engine.helpers import database_helpers as dbh
@@ -165,7 +180,7 @@ def on_consent_submit(state: AppState, field_names: List[str], *field_values: Li
         logger.debug(f"Created player {player_id} with access key.")
         updated_form_group = gr.update(visible=False)
         updated_token_group = gr.update(visible=True)
-        updated_token_text = gr.update(placeholder=access_key)
+        updated_token_text = gr.update(value=access_key)
         return state, updated_form_group, updated_token_group, updated_token_text
     except Exception as e:
         logger.error(f"Error creating player in on_consent_submit: {e}", exc_info=True)
@@ -186,51 +201,76 @@ def on_token_continue(state: AppState):
     return state, updated_landing, updated_token_group, updated_consent, updated_token_text
 
 def poll_fn(
-    chat: List[Event], state: Dict[str, Any]
+    event_chat: List[Event], state: Dict[str, Any]
 ) -> Tuple[List[Event], Dict[str, Any]]:
     """Poll for new events (messages are called events in the simulator) from the simulation engine to update the chat history."""
     run: Optional[RunManager] = state.get("run")
     if run is None or run.state is None or "last_seen" not in state:
-        return chat, state, gr.update()
+        return event_chat, state, gr.update(), gr.update(), gr.update(), gr.update()
     if run.exited:
         # don't poll for new events if the run is stopped
+        updated_timer = gr.update(active=False)
+        updated_user_box = gr.update(interactive=False)
+        updated_send_btn = gr.update(interactive=False)
+        updated_loader = gr.update(visible=False)
         return (
-            chat
+            event_chat
             + [
                 {
                     "role": "assistant",
-                    "content": "The simulation has ended.",
+                    "content": f"The simulation has ended. Reason: {run.exit_reason}",
                 }
             ],
             state,
-            gr.update(active=False, interactive=False),
+            updated_timer,
+            updated_user_box,
+            updated_send_btn,
+            updated_loader,
         )
-    
-    # append any new special user message if exists
+
+    # display any new special user message if exists
     special = run.state["special_user_message"]
     if isinstance(special, dict):
         key = (str(special.get("type") or "info").lower(), str(special.get("content") or ""))
         if key[1] and key != state.get("last_special_seen"):  # non-empty content and not yet shown
-            chat.append({"role": "assistant", "content": _format_special(special)})
+            event_chat.append({"role": "assistant", "content": _format_special(special)})
             state["last_special_seen"] = key
+            state["is_user_turn"] = True  # after special message, it's user's turn
+            logger.debug("Setting is_user_turn to True after special message")
 
-    # append new events since last seen
+    # display new event content since last seen
     events = run.state.get("events", [])
-    # logger.debug(f"poll_fn sees {len(msgs)} messages, last_seen={state['last_seen']}")
+    # logger.debug(f"poll_fn sees {len(events)} events, last_seen={state['last_seen']}")
     for e in events[state.get("last_seen") :]:
-        logger.debug(f"poll_fn appending event: {e} to chat: {chat}")
-        if isinstance(e, AIMessage):
-            role = "assistant"
-        elif isinstance(e, HumanMessage):
-            role = "user"
-        else:
-            role = "assistant"  # fallback
-
-        chat.append({"role": role, "content": e.content})
+        if not isinstance(e, HumanMessage):
+            logger.debug(f"poll_fn appending: {e} to event_chat")
+            event_chat.append({"role": "assistant", "content": e.content})
+            state["is_user_turn"] = True  # after AI message, it's user's turn
+            logger.debug("Setting is_user_turn to True after AI message")
+        # else skip adding human messages since they are added to chat immediately on send
 
     state["last_seen"] = len(events)
     updated_timer = gr.update() # keep ticking
-    return chat, state, updated_timer
+
+    # if last event is from user, keep input disabled, else re-enable it
+    if len(events) == 0:
+        logger.debug("No events yet; keeping user input disabled.")
+        state["is_user_turn"] = False
+        updated_user_box = gr.update(interactive=False)
+        updated_send_btn = gr.update(interactive=False)
+        updated_loader = gr.update(visible=True, value="⏳ *Setting up simulation and loading opening scene (this may take a moment)...*")
+    if state["is_user_turn"]:
+        # logger.debug("User's turn; enabling user input.")
+        updated_user_box = gr.update(interactive=True)
+        updated_send_btn = gr.update(interactive=True)
+        updated_loader = gr.update(visible=False)
+    else:
+        # logger.debug("Not user's turn; disabling user input.")
+        updated_user_box = gr.update(interactive=False)
+        updated_send_btn = gr.update(interactive=False)
+        updated_loader = gr.update(visible=True, value="⏳ *Thinking...*")
+
+    return event_chat, state, updated_timer, updated_user_box, updated_send_btn, updated_loader
 
 def on_send(
     event: str, events: List[Event], state: Dict[str, Any]
@@ -273,6 +313,10 @@ def on_send(
             "",
         )
 
+    # disable user input until engine responds
+    app_state["is_user_turn"] = False
+    logger.debug("Setting is_user_turn to False")
+    
     # Ensure the play loop is alive (idempotent)
     _ensure_play_running(app_state)
 
@@ -286,4 +330,5 @@ def on_send(
     # Show user message immediately    
     events = events + [{"role": "user", "content": event}]
 
-    return events, ""
+    updated_user_box = gr.update(value="")
+    return events, updated_user_box, app_state

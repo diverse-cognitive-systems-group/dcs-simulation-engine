@@ -128,11 +128,10 @@ def build_consent(consent_config: Dict[str, Any]) -> ConsentUI:
             interactive=False,
             lines=1,
             show_label=True,
-            placeholder="(will be set by your handler)"
         )
         _spacer(8)
         with gr.Row():
-            token_continue_btn = gr.Button("Continue", variant="primary")
+            token_continue_btn = gr.Button("I have saved my token", variant="primary")
 
     return ConsentUI(
         form_group=form_group,
