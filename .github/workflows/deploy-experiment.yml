@@ -1,0 +1,14 @@
+
+
+# Manual trigger with inputs
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       game:
+#         description: "Which game should the widget load?"
+#         required: true
+#         default: "Explore"
+#       port:
+#         description: "Port to run the widget on"
+#         required: false
+#         default: "8080"

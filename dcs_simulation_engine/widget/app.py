@@ -6,96 +6,101 @@ simulation's characters (A/B) and graph, similar to the CLI UI.
 
 from __future__ import annotations
 
-import time
-from typing import Tuple
-
 import gradio as gr
 from gradio.themes import Soft
-
-from dcs_simulation_engine.widget.state import AppState
+from loguru import logger
 
 from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
-from loguru import logger
-
+from dcs_simulation_engine.widget.session_state import SessionState
 from dcs_simulation_engine.widget.ui.chat import build_chat
-from dcs_simulation_engine.widget.ui.header import build_header
-from dcs_simulation_engine.widget.ui.theme_toggle import build_theme_toggle
-from dcs_simulation_engine.widget.ui.landing import build_landing
 from dcs_simulation_engine.widget.ui.consent import build_consent
+from dcs_simulation_engine.widget.ui.header import build_header
+from dcs_simulation_engine.widget.ui.landing import build_landing
+from dcs_simulation_engine.widget.ui.theme_toggle import build_theme_toggle
 from dcs_simulation_engine.widget.wiring import wire_handlers
 
+MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 
-def build_app(game_name: str = "explore") -> gr.Blocks:
+
+def _cleanup(state: gr.State) -> None:
+    """Clean up resources associated with a session."""
+    logger.debug("Cleaning up session resources")
+    session_state: SessionState = state.value
+    if "run" not in session_state:
+        logger.debug("No 'run' in session state to clean up")
+        return
+    try:
+        logger.debug("Exiting simulation...")
+        session_state["run"].exit(reason="session deleted")
+    except Exception:
+        logger.exception("Failed to cleanly exit simulation on delete")
+    finally:
+        logger.debug("Session cleanup complete.")
+
+
+def build_app(
+    game_name: str = "explore",
+    banner: str | None = None,
+    show_npc_selector: bool = False,
+    show_pc_selector: bool = False,
+) -> gr.Blocks:
     """Build the Gradio UI for running simulations."""
     logger.info(f"Building Gradio app for game '{game_name}'")
 
-    # try loading game config based on provided game
     try:
+        logger.debug(f"Loading game config for game '{game_name}'")
         game_config_path = get_game_config(game_name)
         game_config = GameConfig.from_yaml(game_config_path)
     except Exception as e:
         gr.Error(f"Failed to load game config: {e}")
-        raise e
-    
-    # try to determine access mode from game config
-    try: 
+        raise e  # terminate build
+
+    try:
+        logger.debug("Determining if access gate is required from game config")
         access_gated = not bool(game_config.is_player_allowed(player_id=None))
         logger.debug(f"Access gate required: {access_gated}")
     except Exception as e:
         gr.Error(f"Failed to determine access mode from game config: {e}")
-        raise e
+        raise e  # terminate build
 
-    with gr.Blocks(title="DCS Simulation Engine", theme=Soft()) as app:
-        state = gr.State(AppState())
-        state.value["run"] = None
-        state.value["access_gated"] = access_gated
-        state.value["game_name"] = game_config.name
-        state.value["game_description"] = game_config.description
+    app = gr.Blocks(title="DCS Simulation Engine", theme=Soft())
+    with app:
+        state = gr.State(
+            value=SessionState(
+                access_gated=access_gated,
+                game_name=game_config.name,
+                game_description=game_config.description,
+                is_user_turn=False,
+                last_seen=0,
+            ),
+            time_to_live=MAX_TTL_SECONDS,
+            delete_callback=_cleanup,  # function to call when state is deleted
+        )
 
-        build_header(game_config)
+        build_header(game_config, banner)
         toggle = build_theme_toggle()
         # gated or un-gated landing page based on game_config access settings
-        landing = build_landing(access_gated)
+        landing = build_landing(access_gated, show_npc_selector, show_pc_selector)
         consent = None
         if access_gated:
+            if game_config.access_settings.consent_form is None:
+                raise ValueError(
+                    "Game config requires access gating but no form provided"
+                )
             consent = build_consent(game_config.access_settings.consent_form)
-        
+
         # once passed landing (and consent if needed), show main chat interface
         chat = build_chat()
 
-        wire_handlers(state, toggle, landing, consent, chat)
+        wire_handlers(state, toggle, landing, chat, consent)
+
+        def on_unload(req: gr.Request) -> None:
+            """Handle per-user client disconnect resources (temp dirs, etc)."""
+            logger.debug(f"User disconnected: {req.session_hash}")
+            _cleanup(state)
+
+        # unload runs when the session ends (tab close, refresh, hard nav away)
+        app.unload(on_unload)
 
     return app
-
-
-def _enter_play(
-    state: AppState,
-) -> Tuple[AppState, gr.update, gr.update, gr.update]:
-    state["access_token"] = None
-
-    # hide gates, show main
-    return (
-        state,
-        gr.update(visible=False),  # gate
-        gr.update(visible=True),  # main
-    )
-
-def _create_access_token() -> str:
-    """Create a new access token."""
-    # display consent form
-
-def _get_player_id_from_token(
-    token: str, state: AppState
-) -> Tuple[AppState, gr.update, gr.update, gr.update, gr.update]:
-    state["access_token"] = token
-
-    # TODO: try to get player_id from access token
-
-    # hide gates, show main
-    return (
-        state,
-        gr.update(visible=False),  # gate
-        gr.update(visible=True),  # main
-        gr.update(value=""),  # clear gate message
-    )

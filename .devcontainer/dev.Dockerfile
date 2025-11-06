@@ -20,15 +20,8 @@ WORKDIR /app
 # Cache-friendly deps layer
 COPY pyproject.toml poetry.lock* ./
 
-# Build-time flag: include dev deps when true
-ARG INSTALL_DEV=false
-RUN if [ "$INSTALL_DEV" = "true" ]; then \
-    poetry install --no-root --with dev; \
-    else \
-    poetry install --no-root --only main; \
-    fi
+# Install deps - include dev deps for devcontainer
+RUN poetry install --no-root --with dev
 
 # App code
 COPY . .
-
-# No default CMD/ENTRYPOINT — set per service in compose

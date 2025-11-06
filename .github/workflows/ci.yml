@@ -25,19 +25,11 @@ jobs:
       - name: Install dependencies (incl. dev)
         run: poetry install --with dev --no-interaction
 
-      # ---- Formatting (Black) ----
-      - name: Black (check only)
-        run: poetry run black --check --diff .
+      - name: Lint
+        run: make lint
 
-      # # ---- Linting (Ruff) ----
-      # - name: Ruff (lint)
-      #   run: poetry run ruff check .
+      - name: Test
+        run: make test
 
-      # # ---- Type checks (Mypy) ----
-      # - name: Mypy
-      #   run: poetry run mypy .
-      # TODO: pre v002 fix mypy issues and re-enable
-
-      # # ---- Tests (Pytest) ----
-      # - name: Run pytest (exclude slow tests)
-      #   run: poetry run pytest -vv -m "not slow and not manual and not external"
+      - name: Build docs
+        run: make docs

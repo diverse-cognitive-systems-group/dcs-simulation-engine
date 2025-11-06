@@ -17,6 +17,7 @@ Notes:
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -50,6 +51,19 @@ def parse_args() -> argparse.Namespace:
         default="configs/logger-api.config.yml",
         help="Path to Loguru logger configuration file",
     )
+    parser.add_argument(
+        "--banner",
+        type=str,
+        default=None,
+        help="Custom banner HTML to display in the API docs",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase console verbosity: -v for INFO, -vv for DEBUG.",
+    )
     return parser.parse_args()
 
 
@@ -64,6 +78,15 @@ def main() -> None:
         logger.error(f"Failed to configure logger: {e}")
         return
 
+    # --- configure console side channel based on -v
+    if args.verbose > 0:
+        level = "DEBUG" if args.verbose > 1 else "INFO"
+        logger.add(
+            sys.stderr,
+            level=level,
+            format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>",
+        )
+
     if args.reload and args.workers != 1:
         logger.warning("--reload implies a single worker; forcing workers=1")
         args.workers = 1
@@ -72,9 +95,11 @@ def main() -> None:
     os.environ.setdefault("PYTHONPATH", str(Path(".").resolve()))
 
     logger.info(
-        f"Starting API at http://{args.host}:{args.port} "
+        f"Starting API ({args.host}:{args.port}) visit /docs or /redoc "
         f"(reload={args.reload}, workers={args.workers})"
     )
+
+    # TODO: how can I pass banner to show at the top of the docs UI? (eg demo, etc.)
 
     uvicorn.run(
         "dcs_simulation_engine.api.main:app",

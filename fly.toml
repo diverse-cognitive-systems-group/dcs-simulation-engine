@@ -1,0 +1,25 @@
+# fly.toml app configuration file generated for simulation-engine-demo on 2025-11-05T11:14:13-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'simulation-engine-demo'
+primary_region = 'dfw'
+
+[build]
+
+[processes]
+  web = 'poetry run python -m scripts.run_widget --game Explore --port 8080 --host 0.0.0.0'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['web']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

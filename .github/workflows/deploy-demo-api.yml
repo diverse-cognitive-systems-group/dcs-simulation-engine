@@ -1,0 +1,16 @@
+name: Deploy Widget Demo
+
+# Manual trigger only, no extra inputs
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    name: Deploy demos
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only

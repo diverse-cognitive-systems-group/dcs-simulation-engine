@@ -1,42 +1,83 @@
 """Consent form UI components."""
+
 from __future__ import annotations
-from typing import Dict, List, NamedTuple, Optional, Any
+
+from typing import Any, Dict, List, NamedTuple, Tuple
+
 import gradio as gr
 
+
 class ConsentUI(NamedTuple):
+    """Holds references to consent form UI components."""
+
     form_group: gr.Group
-    fields: Dict[str, gr.components.Component]
+    fields: Dict[str, gr.Component]
     submit_btn: gr.Button
-    back_btn: Optional[gr.Button]
+    back_btn: gr.Button
     token_group: gr.Group
     token_text: gr.Textbox
     token_continue_btn: gr.Button
 
+
 # --- helpers ---------------------------------------------------------------
 
-def _spacer(h=16):
+
+def _spacer(h: int = 16) -> None:
+    """Insert vertical space of height h pixels."""
     gr.HTML(f"<div style='height:{h}px'></div>")
+
 
 # Map your config answer_type -> Gradio component factory
 _COMPONENTS = {
-    "text": lambda q: gr.Textbox(label=q.get("prompt", ""), placeholder=q.get("placeholder", ""), lines=1, show_label=True),
-    "textarea": lambda q: gr.Textbox(label=q.get("prompt", ""), placeholder=q.get("placeholder", ""), lines=4, show_label=True),
+    "text": lambda q: gr.Textbox(
+        label=q.get("prompt", ""),
+        placeholder=q.get("placeholder", ""),
+        lines=1,
+        show_label=True,
+    ),
+    "textarea": lambda q: gr.Textbox(
+        label=q.get("prompt", ""),
+        placeholder=q.get("placeholder", ""),
+        lines=4,
+        show_label=True,
+    ),
     "bool": lambda q: gr.Checkbox(label=q.get("prompt", "")),
-    "email": lambda q: gr.Textbox(label=q.get("prompt", ""), placeholder="name@example.com", lines=1, show_label=True),
-    "phone": lambda q: gr.Textbox(label=q.get("prompt", ""), placeholder="+1 555 123 4567", lines=1, show_label=True),
+    "email": lambda q: gr.Textbox(
+        label=q.get("prompt", ""),
+        placeholder="name@example.com",
+        lines=1,
+        show_label=True,
+    ),
+    "phone": lambda q: gr.Textbox(
+        label=q.get("prompt", ""),
+        placeholder="+1 555 123 4567",
+        lines=1,
+        show_label=True,
+    ),
     "number": lambda q: gr.Number(label=q.get("prompt", "")),
-    "select": lambda q: gr.Dropdown(label=q.get("prompt", ""), choices=q.get("options", []), multiselect=False),
-    "multiselect": lambda q: gr.Dropdown(label=q.get("prompt", ""), choices=q.get("options", []), multiselect=True),
-    "radio": lambda q: gr.Radio(label=q.get("prompt", ""), choices=q.get("options", [])),
-    "checkboxes": lambda q: gr.CheckboxGroup(label=q.get("prompt", ""), choices=q.get("options", [])),
+    "select": lambda q: gr.Dropdown(
+        label=q.get("prompt", ""), choices=q.get("options", []), multiselect=False
+    ),
+    "multiselect": lambda q: gr.Dropdown(
+        label=q.get("prompt", ""), choices=q.get("options", []), multiselect=True
+    ),
+    "radio": lambda q: gr.Radio(
+        label=q.get("prompt", ""), choices=q.get("options", [])
+    ),
+    "checkboxes": lambda q: gr.CheckboxGroup(
+        label=q.get("prompt", ""), choices=q.get("options", [])
+    ),
 }
+
 
 def _make_component(question: Dict[str, Any]) -> gr.components.Component:
     t = (question.get("answer_type") or "text").lower()
     factory = _COMPONENTS.get(t, _COMPONENTS["text"])
     return factory(question)
 
-def _required_ok(val) -> bool:
+
+def _required_ok(val: Any) -> bool:
+    """Check if a required field value is non-empty."""
     if val is None:
         return False
     if isinstance(val, str):
@@ -45,18 +86,27 @@ def _required_ok(val) -> bool:
         return len(val) > 0
     return True
 
+
 def _validate_email(val: str) -> bool:
-    if not val: return True  # handled by required
+    """Check if the email is valid."""
+    if not val:
+        return True  # handled by required
     return "@" in val and "." in val.split("@")[-1]
 
+
 def _validate_phone(val: str) -> bool:
-    if not val: return True
+    """Check if the phone number is valid (at least 10 digits)."""
+    if not val:
+        return True
     digits = [c for c in val if c.isdigit()]
     return len(digits) >= 10
 
-# Exposed fn you can wire to .click
-def collect_consent_answers(consent_spec: Dict[str, Any], *values):
-    """
+
+def collect_consent_answers(
+    consent_spec: Dict[str, Any], *values: Any
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """Collect and validate consent form answers.
+
     Returns (ok, message, answers_dict). If not ok, message is an error string.
     Expected order of *values matches build_consent(...).fields ordering.
     """
@@ -64,8 +114,12 @@ def collect_consent_answers(consent_spec: Dict[str, Any], *values):
     answers = {}
     errors = []
 
-    for (q, v) in zip(questions, values):
-        qid = q.get("id") or q.get("name") or q.get("prompt", "q").lower().replace(" ", "_")
+    for q, v in zip(questions, values):
+        qid = (
+            q.get("id")
+            or q.get("name")
+            or q.get("prompt", "q").lower().replace(" ", "_")
+        )
         required = bool(q.get("required", False))
         atype = (q.get("answer_type") or "text").lower()
 
@@ -83,10 +137,14 @@ def collect_consent_answers(consent_spec: Dict[str, Any], *values):
 
     return True, "✅ Thanks! Consent recorded.", answers
 
+
 # --- builder ---------------------------------------------------------------
 
+
 def build_consent(consent_config: Dict[str, Any]) -> ConsentUI:
-    """Builds two exclusive views:
+    """Builds consent form UI components.
+
+    Builds two exclusive views:
       1) Consent form (hidden by default)
       2) One-time token display (hidden by default)
 
@@ -108,7 +166,7 @@ def build_consent(consent_config: Dict[str, Any]) -> ConsentUI:
         _spacer(8)
 
         # Dynamic questions
-        fields: Dict[str, gr.components.Component] = {}
+        fields: Dict[str, gr.Component] = {}
         for q in consent_config.get("questions", []):
             comp = _make_component(q)
             fields[q.get("id") or q.get("name") or q.get("prompt", "q")] = comp

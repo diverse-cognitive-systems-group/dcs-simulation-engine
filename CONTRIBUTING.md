@@ -4,28 +4,65 @@ Fork the repo and submit a PR with your changes.
 
 *(No specific format is required for PRs at this point...as long as its reasonable/understandble and focuses on the core development areas needed (discussed below) it will be considered.)*
 
-TODO: include how to run a new experiment (run_widget, run_api, etc), add a new character sheet, etc.
+## Creating new characters
 
-## Contributing to Character Sheets Database
+To create a new character, follow these steps:
+1. Add the character definition to the `database_seeds/characters.json` file. Use existing character entries as examples.
+2. ...
 
-## Contributing to Core Simulation Engine Codebase (including AI, models, graphs, prompts, etc.)
+## Creating new experiments/games
 
-## Directory Structure
+To create a new game/experiment configuration:
 
-TODO - add dir structure when codebase is more stable
-```sh
-# START: EXPLAINER FILES/FOLDERS
-├── CONTRIBUTING.md # 🎯 you are here
-├── README.md # entry point for the repo
-├── LICENSE.md # available to use by anyone for anything
-├── docs # docs for the codebase (TODO: currently just scaffolded)
-├── images # for images in README or other top-level .md files
-# END: EXPLAINER FILES/FOLDERS
+1. Create a new yaml file in the `games` directory, e.g. `games/new-game-name.yml`.
+2. Define the game parameters, characters, and settings in the yaml file using the existing game files as guides or the GameConfig class definition.
+3. ...
+4. (optional) Launch your new game using ....
+
+## Contributing to Core Codebase
+
+To update the simulation engine itself 
+
+### Launch game
+
+*Note: Our demo deployments use Fly.io for hosting the demo Gradio widget and demo API. We update these using github actions when we push to main branch.*
+
+After testing locally, you can launch your game using your local machine with Gradio public link sharing or deploy to GCP.
+
+#### Pre-pilot test using Gradio public link on your local machine:
+
+If you are just sharing with a few folks for pilot testing you can launch the widget locally with Gradio's share option like this. It will output a temporary public link you can share with others to access your local instance.
+
+```bash
+python scripts/run_widget.py --game Explore --share
 ```
 
-## Contributing Instructions
+#### Launching an experiment (using Fly.io):
 
-### 1) Fork the repo
+1. Setup 
+
+```bash
+# either use the gui or command line, here is command line way
+
+# install if you don't have it already
+brew install flyctl
+# signup or login
+fly auth signup
+fly auth login
+
+# initialize fly app (only need to do this once)
+fly launch --no-deploy
+
+# deploy to fly
+fly deploy
+
+# view deployed app in browser
+fly apps open
+```
+
+## General Contributing Workflow
+
+### 1) Fork the repo (or clone if you have write access)
 [Here are some instructions](https://docs.github.com/en/get-started/quickstart/fork-a-repo) on how to do that if you are unfamiliar
 
 ### 2) Start docker daemon
@@ -57,17 +94,17 @@ OR you can run unit tests like this
 
 Note: if dev.Dockerfile include --no-root you may need to install local package "poetry install" to make dcs_simulation_engine avaiable in tests
 
-#### Run Tests
+#### Example runs
 
 ```sh
-# runs all unit tests
-poetry run pytest tests/unit_tests
-
-# runs a specific unit test for a module/file
-poetry run pytest tests/test_utils
+# runs a pytest (stops at first failure, shows print statements)
+poetry run pytest tests/test_utils.py -x -s
 
 # runs a specific unit test within a module/file
 poetry run pytest tests/test_utils::test_specific_thing
+
+# runs the cli help to see available commands
+poetry run python scripts/run_cli.py --help
 ```
 
 ![pytest usage](images/pytest_usage.png)

@@ -29,7 +29,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs mkdocs-material "mkdocstrings[python]"
       - name: Build
-        run: mkdocs build --strict
+        run: make docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

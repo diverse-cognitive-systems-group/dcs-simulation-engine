@@ -1,68 +1,27 @@
-###
-# Builder: export Poetry deps -> install into a venv (no dev deps)
-###
-FROM python:3.10.13-slim AS builder
-
-ARG POETRY_VERSION=2.1.4
-
-# Build tools only for wheel builds in this stage
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl ca-certificates git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Poetry just for export
-RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
-
-WORKDIR /app
-
-# Only dep files first for cache-friendly builds
-COPY pyproject.toml poetry.lock* ./
-
-# Export main (prod) deps and install into venv
-RUN poetry export --only main --format requirements.txt --output /tmp/requirements.txt --without-hashes
-RUN python -m venv /venv \
-    && /venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
-
-###
-# Runtime: minimal image with only the venv + app code
-###
+# syntax=docker/dockerfile:1
 FROM python:3.10.13-slim
 
-# Create non-root user
-RUN useradd -m appuser
+# Install git + optional SSH client for GitHub/Bitbucket, plus minimal build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git openssh-client ca-certificates curl build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy venv from builder
-COPY --from=builder /venv /venv
-ENV PATH="/venv/bin:${PATH}" \
+# Keep it minimal; no compilers unless your deps need them.
+ENV POETRY_VIRTUALENVS_CREATE=false \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Pin Poetry to stable 2.1.x
+RUN pip install --no-cache-dir "poetry==2.1.4"
+
 WORKDIR /app
+
+# Cache-friendly deps layer
+COPY pyproject.toml poetry.lock* ./
+
+# App code
 COPY . .
 
-# Cloud Run/GKE friendly defaults
-ENV PORT=8080 \
-    APP_TARGET=api \
-    GAME=Explore
-
-# Tiny entrypoint that chooses which script to run based on env
-# Supports either scripts/ or script/ folder names.
-RUN printf '%s\n' '#!/usr/bin/env bash' \
-    'set -euo pipefail' \
-    'script_path() {' \
-    '  if [[ -f "scripts/$1" ]]; then echo "scripts/$1"; elif [[ -f "script/$1" ]]; then echo "script/$1"; else echo "$1"; fi' \
-    '}' \
-    'case "${APP_TARGET}" in' \
-    '  widget)' \
-    '    exec python "$(script_path run_widget.py)" --game "${GAME}"' \
-    '    ;;' \
-    '  api|*)' \
-    '    exec python "$(script_path run_api.py)"' \
-    '    ;;' \
-    'esac' > /entrypoint.sh \
-    && chmod +x /entrypoint.sh
-
-USER appuser
-EXPOSE 8080
-ENTRYPOINT ["/entrypoint.sh"]
+# Install dependencies and project
+RUN poetry install --only main --no-interaction --no-ansi

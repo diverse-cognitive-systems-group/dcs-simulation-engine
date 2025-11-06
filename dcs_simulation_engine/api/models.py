@@ -1,145 +1,146 @@
-"""Pydantic models (request/response schemas) for the API.
-
-Defines the schema used by FastAPI to validate requests and shape
-responses. These models also drive the generated OpenAPI spec.
-
-Notes/Assumptions:
-    - Keep API contracts stable; changes affect clients and OpenAPI docs.
-    - Prefer explicit fields and examples to improve docs quality.
-"""
+"""Pydantic models (request/response schemas) for the API."""
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-
-class LoadSimulationRequest(BaseModel):
-    """Request body to load a simulation from a YAML definition.
-
-    Attributes:
-        simulation_path (str): Path to the YAML file describing the simulation.
-    """
-
-    simulation_path: str = Field(..., example="./sims/demo.yaml")
+# ---------------------------
+# Run creation & discovery
+# ---------------------------
 
 
-class LoadSimulationResponse(BaseModel):
-    """Response body after loading a simulation.
+class CreateRunRequest(BaseModel):
+    """Create a new run using a game config reference."""
 
-    Attributes:
-        sim_id (str): Unique ID of the simulation in the registry.
-        graph_name (Optional[str]): Name of the compiled simulation graph, if available.
-        simulation_name (Optional[str]): Human-friendly simulation name.
-        characters (List[Dict[str, Any]]): Summary of characters.
-    """
+    game: str = Field(
+        ..., description="Game name or path resolvable by get_game_config"
+    )
+    source: str = Field("api", description="Origin tag used in run naming")
+    pc_choice: Optional[str] = Field(
+        None, description="Player character HID (optional)"
+    )
+    npc_choice: Optional[str] = Field(None, description="NPC HID (optional)")
+    access_key: Optional[str] = Field(
+        None, description="Access key used to resolve player_id"
+    )
+    player_id: Optional[str] = Field(
+        None, description="Explicit Player ID (overrides access_key)"
+    )
 
-    sim_id: str
-    graph_name: Optional[str] = None
-    simulation_name: Optional[str] = None
-    characters: List[Dict[str, Any]] = []
+
+class CharacterSummary(BaseModel):
+    """Lightweight character summary for UI."""
+
+    hid: str
+    short_description: Optional[str] = None
+    long_description: Optional[str] = None
 
 
-class CompileResponse(BaseModel):
-    """Response after compiling a simulation graph.
+class RunMeta(BaseModel):
+    """Common run metadata that changes over time."""
 
-    Attributes:
-        compiled (bool): True if compilation succeeded.
-    """
+    name: str = Field(..., description="Run identifier (RunManager.name)")
+    turns: int = Field(..., description="Total turns so far")
+    runtime_seconds: int = Field(..., description="Wall time in seconds")
+    runtime_string: str = Field(..., description="HH:MM:SS")
+    exited: bool = Field(..., description="True if the run has exited")
+    exit_reason: str = Field("", description="Reason if exited")
+    saved: bool = Field(..., description="True if run data has been persisted")
+    output_path: Optional[str] = Field(None, description="Filesystem/DB path if saved")
 
-    compiled: bool = True
+
+class CreateRunResponse(BaseModel):
+    """Returned after creating a run."""
+
+    run_id: str = Field(..., description="Alias for RunManager.name")
+    game_name: str
+    pc: CharacterSummary
+    npc: CharacterSummary
+    meta: RunMeta
+
+
+# ---------------------------
+# Stepping & state
+# ---------------------------
 
 
 class StepRequest(BaseModel):
-    """Request to advance the simulation one step.
+    """Advance the simulation one step.
 
-    Attributes:
-        user_input (Optional[str]): Optional user input to feed into this step.
+    Accepts either:
+      - a string (user text or slash-command)
+      - a mapping (structured event payload)
     """
 
-    user_input: Optional[str] = Field(
-        None, description="Optional user input for this step"
+    user_input: Optional[Union[str, Dict[str, Any]]] = Field(
+        None, description="Text or mapping to place into state['event_draft']"
     )
-
-
-class Message(BaseModel):
-    """Normalized message in the simulation transcript.
-
-    Attributes:
-        role (str): Role of the message author (e.g., 'system' or character UID).
-        content (str): Message content text.
-    """
-
-    role: str
-    content: str
-
-
-class StepResponse(BaseModel):
-    """Response after advancing the simulation one step.
-
-    Attributes:
-        messages (List[Message]): The most recent messages from the state/result.
-        state (Dict[str, Any]): The current simulation state.
-    """
-
-    messages: List[Message] = []
-    state: Dict[str, Any] = {}
-
-
-class PlayRequest(BaseModel):
-    """Request to run `play()` with a finite list of inputs.
-
-    Attributes:
-        inputs (List[str]): List of inputs to feed sequentially.
-        max_steps (Optional[int]): Optional safety cap for maximum steps.
-    """
-
-    inputs: List[str] = Field(..., description="Finite list of inputs for play()")
-    max_steps: Optional[int] = Field(
-        None, description="Optional safety cap for maximum steps"
-    )
-
-
-class PlayResponse(BaseModel):
-    """Response containing the final state after `play()`.
-
-    Attributes:
-        final_state (Dict[str, Any]): Final simulation state returned by `play()`.
-    """
-
-    final_state: Dict[str, Any]
 
 
 class StateResponse(BaseModel):
-    """Response with current simulation state and timestamps.
-
-    Attributes:
-        state (Dict[str, Any]): Current simulation state.
-        start_timestamp (Optional[str]): Start timestamp (YYYYmmdd-HHMMSS) if available.
-        end_timestamp (Optional[str]): End timestamp (YYYYmmdd-HHMMSS) if available.
-    """
+    """Snapshot of state with run metadata."""
 
     state: Dict[str, Any]
-    start_timestamp: Optional[str] = None
-    end_timestamp: Optional[str] = None
+    meta: RunMeta
+
+
+class StepResponse(StateResponse):
+    """Alias for clarity; same shape as StateResponse."""
+
+    pass
+
+
+# ---------------------------
+# Play (batch inputs)
+# ---------------------------
+
+
+class PlayRequest(BaseModel):
+    """Run play() with a finite list of inputs; server will iterate."""
+
+    inputs: List[str] = Field(..., description="Sequential inputs to feed")
+    max_steps: Optional[int] = Field(None, description="Optional safety cap")
+
+
+class PlayResponse(BaseModel):
+    """Final state after play()."""
+
+    final_state: Dict[str, Any]
+    meta: RunMeta
+
+
+# ---------------------------
+# Save & Exit
+# ---------------------------
 
 
 class SaveRequest(BaseModel):
-    """Request to trigger saving/persisting outputs.
+    """Trigger a save to filesystem or DB."""
 
-    Attributes:
-        output_dir (Optional[str]): Optional directory hint (currently unused).
-    """
-
-    output_dir: Optional[str] = None
+    output_dir: Optional[str] = Field(
+        None,
+        description="Directory or path hint; if file path, that exact path is used",
+    )
 
 
 class SaveResponse(BaseModel):
-    """Response containing file paths of saved outputs.
+    """Details about persisted output."""
 
-    Attributes:
-        files (List[str]): A list of file paths produced by the simulation.
-    """
+    saved: bool = True
+    output_path: Optional[str] = Field(None, description="Where the run was saved")
+    # Back-compat with older clients that expect a list of files
+    files: List[str] = Field(default_factory=list)
 
-    files: List[str] = []
+
+# ---------------------------
+# Misc
+# ---------------------------
+
+
+class Message(BaseModel):
+    """Optional normalized transcript message (unused by RunManager)."""
+
+    role: str
+    content: str

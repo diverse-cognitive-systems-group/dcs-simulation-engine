@@ -14,66 +14,67 @@ from __future__ import annotations
 from typing import Dict, Optional
 from uuid import uuid4
 
-from loguru import logger
-
 from dcs_simulation_engine.core.run_manager import RunManager
 
 
-class SimRegistry:
-    """In-memory registry of SimulationManager instances.
+class RunRegistry:
+    """In-memory registry of RunManager instances.
 
     Attributes:
-        _store (Dict[str, SimulationManager]): Internal map of id -> manager.
+        _store (Dict[str, RunManager]): Internal map of id -> manager.
     """
 
     def __init__(self) -> None:
         """Initialize the registry."""
         self._store: Dict[str, RunManager] = {}
 
-    def create_from_yaml(self, path: str) -> tuple[str, RunManager]:
-        """Create and store a RunManager from a YAML file.
-
-        Args:
-            path (str): Filesystem path to the simulation YAML.
+    def create(self) -> tuple[str, RunManager]:
+        """Create and store a new RunManager instance.
 
         Returns:
-            tuple[str, SimulationManager]: The generated sim ID and the instance.
+            tuple[str, RunManager]: The generated run ID and the instance.
         """
-        logger.debug(f"Loading simulation from {path}")
-        sim: RunManager = RunManager.from_yaml(path)
-        sim_id = uuid4().hex
-        self._store[sim_id] = sim
-        return sim_id, sim
+        run = RunManager.create(
+            game=game,
+            source="api",
+            pc_choice=payload.pc_choice,
+            npc_choice=payload.npc_choice,
+            access_key=payload.access_key,
+            player_id=payload.player_id,
+        )
+        run_id = uuid4().hex
+        self._store[run_id] = run
+        return run_id, run
 
-    def get(self, sim_id: str) -> Optional[RunManager]:
+    def get(self, run_id: str) -> Optional[RunManager]:
         """Retrieve a RunManager by ID.
 
         Args:
-            sim_id (str): Identifier assigned at creation.
+            run_id (str): Identifier assigned at creation.
 
         Returns:
-            Optional[SimulationManager]: The found manager or None.
+            Optional[RunManager]: The found manager or None.
         """
-        return self._store.get(sim_id)
+        return self._store.get(run_id)
 
-    def remove(self, sim_id: str) -> None:
-        """Remove a SimulationManager by ID.
+    def remove(self, run_id: str) -> None:
+        """Remove a RunManager by ID.
 
         Args:
-            sim_id (str): Identifier assigned at creation.
+            run_id (str): Identifier assigned at creation.
         """
-        self._store.pop(sim_id, None)
+        self._store.pop(run_id, None)
 
 
 # Notes:
 # - Single global registry instance for simplicity; swap for DI container if needed.
-_registry = SimRegistry()
+_registry = RunRegistry()
 
 
-def get_registry() -> SimRegistry:
+def get_registry() -> RunRegistry:
     """FastAPI dependency provider for the global registry.
 
     Returns:
-        SimRegistry: The singleton registry instance.
+        RunRegistry: The singleton registry instance.
     """
     return _registry

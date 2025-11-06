@@ -1,14 +1,20 @@
 """Header UI for the DCS Simulation Engine widget."""
+
 from typing import NamedTuple
+
 import gradio as gr
 
 from dcs_simulation_engine.core.game_config import GameConfig
 
-class HeaderUI(NamedTuple):
-    pass # no fields
 
-def build_header(game_config: GameConfig) -> HeaderUI:
-    gr.HTML('<div style="text-align:center" id="banner">🚧 <b>W.I.P.</b> This app is a work in progress. 🚧</div>')
+class HeaderUI(NamedTuple):
+    pass  # no fields
+
+
+def build_header(game_config: GameConfig, banner: str | None = None) -> HeaderUI:
+    """Build the header UI component."""
+    if banner:
+        gr.HTML(f'<div style="text-align:center" id="banner">🚧{banner}🚧</div>')
     gr.Markdown(
         f"""
         <div style='text-align:center'>
