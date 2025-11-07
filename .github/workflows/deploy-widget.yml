@@ -15,14 +15,6 @@ on:
             description: "Banner message"
             required: false
             default: "<b>DEMO</b> This is a low fidelity demo."
-        show_npc_selector:
-            description: "Show the non-player character (NPC) selector in the widget?"
-            required: false
-            default: "true"
-        show_pc_selector:
-            description: "Show the player character (PC) selector in the widget?"
-            required: false
-            default: "true"
         port:
             description: "Port to run the interface on"
             required: false
@@ -34,10 +26,8 @@ jobs:
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       PRIMARY_REGION: dfw
-      GAME_NAME: ${{ github.event.inputs.game_name }}
+      GAME: ${{ github.event.inputs.game_name }}
       BANNER: ${{ github.event.inputs.banner }}
-      SHOW_NPC_SELECTOR: ${{ github.event.inputs.show_npc_selector }}
-      SHOW_PC_SELECTOR: ${{ github.event.inputs.show_pc_selector }}
       PORT: ${{ github.event.inputs.port }}
     steps:
       - uses: actions/checkout@v3
@@ -52,7 +42,7 @@ jobs:
           [build]
 
           [processes]
-            web = 'poetry run python -m scripts.run_widget --source "simulation-widget-${{ github.event.inputs.experiment_id }}" --game-name ${{ env.GAME_NAME }} --port ${{ env.PORT }} --host 0.0.0.0 --banner "$${{ env.BANNER }}" --show-npc-selector ${{ env.SHOW_NPC_SELECTOR }} --show-pc-selector ${{ env.SHOW_PC_SELECTOR }}'
+            web = 'poetry run python -m scripts.run_widget --source "simulation-widget-${{ github.event.inputs.experiment_id }}" --game ${{ env.GAME }} --port ${{ env.PORT }} --host 0.0.0.0 --banner "$${{ env.BANNER }}"
 
           [http_service]
             internal_port = ${{ env.PORT }}
