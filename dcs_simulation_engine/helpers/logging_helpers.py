@@ -15,7 +15,10 @@ def configure_logger(source: str) -> None:
     logger.add(
         sink=sys.stderr,
         level="ERROR",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}",
+        format=(
+            "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} "
+            "| {file.name}:{line} | {message}"
+        ),
     )
 
     # File handler — DEBUG+, rotated daily, keep 7 days, zipped
@@ -27,7 +30,10 @@ def configure_logger(source: str) -> None:
     logger.add(
         sink=str(log_path),
         level="DEBUG",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}",
+        format=(
+            "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} "
+            "| {file.name}:{line} | {message}"
+        ),
         rotation="00:00",
         retention="7 days",
         compression="zip",
