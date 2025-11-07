@@ -26,6 +26,8 @@ MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 #  pii in write only pii collection with player id and other non-pii form info in
 # read/write players/runs collections
 
+# TODO: remove theme toggle (no added value at this point)
+
 
 def _cleanup(state: gr.State) -> None:
     """Clean up resources associated with a session."""
