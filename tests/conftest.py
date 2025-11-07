@@ -24,6 +24,8 @@ import dcs_simulation_engine.helpers.database_helpers as dbh
 
 LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"
 
+# TODO: clean up this file (AND ALL TESTS)
+
 
 def _setup_logging() -> None:
     """Add a file sink to the default pytest console logging."""
@@ -59,7 +61,11 @@ def _setup_logging() -> None:
 
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook to add a file sink to default pytest logging."""
+    # Ensure import-time logging is set up
     _setup_logging()
+
+    # Ensure imports that call get_db() during collection don't fail
+    os.environ.setdefault("MONGO_URI", "mongodb://localhost:27017/testdb_placeholder")
 
 
 def _write_yaml(path: Path, body: str) -> None:
@@ -131,7 +137,7 @@ def _isolate_db_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     dbname = f"testdb_{uuid.uuid4().hex}"
 
     # Route helpers to a throwaway DB for this test
-    monkeypatch.setenv("MONGODB_URI", f"mongodb://localhost:27017/{dbname}")
+    monkeypatch.setenv("MONGO_URI", f"mongodb://localhost:27017/{dbname}")
     # Optional: set pepper if you want to test HMAC mode
     monkeypatch.setenv("ACCESS_KEY_PEPPER", "")
 

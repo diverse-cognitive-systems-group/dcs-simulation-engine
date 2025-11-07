@@ -8,8 +8,9 @@ from dcs_simulation_engine.core.run_manager import RunManager
 from dcs_simulation_engine.core.simulation_graph import SimulationGraph
 from dcs_simulation_engine.helpers import database_helpers as dbh
 
+# TODO: mock then mark as unit
 
-@pytest.mark.unit
+
 def test_init_from_create(run: RunManager) -> None:
     """Should initialize RunManager."""
     assert run is not None
@@ -22,7 +23,6 @@ def test_init_from_create(run: RunManager) -> None:
     assert isinstance(run.graph, SimulationGraph)
 
 
-@pytest.mark.unit
 def test_save_run_to_database(persistant_run: RunManager) -> None:
     """Should save state on stop."""
     run = persistant_run
