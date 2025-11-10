@@ -17,7 +17,6 @@ from dcs_simulation_engine.widget.ui.chat import build_chat
 from dcs_simulation_engine.widget.ui.consent import build_consent
 from dcs_simulation_engine.widget.ui.header import build_header
 from dcs_simulation_engine.widget.ui.landing import build_landing
-from dcs_simulation_engine.widget.ui.theme_toggle import build_theme_toggle
 from dcs_simulation_engine.widget.wiring import wire_handlers
 
 MAX_TTL_SECONDS = 24 * 3600  # 24 hours
@@ -25,8 +24,6 @@ MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 # TODO: pre-release - update consent submission to use client side encryption and store
 #  pii in write only pii collection with player id and other non-pii form info in
 # read/write players/runs collections
-
-# TODO: remove theme toggle (no added value at this point)
 
 
 def _cleanup(state: gr.State) -> None:
@@ -85,7 +82,7 @@ def build_app(
         )
 
         build_header(game_config, banner)
-        toggle = build_theme_toggle()
+
         # gated or un-gated landing page based on game_config access settings
         landing = build_landing(access_gated, show_npc_selector, show_pc_selector)
         consent = None
@@ -99,7 +96,7 @@ def build_app(
         # once passed landing (and consent if needed), show main chat interface
         chat = build_chat()
 
-        wire_handlers(state, toggle, landing, chat, consent)
+        wire_handlers(state, landing, chat, consent)
 
         def on_unload(req: gr.Request) -> None:
             """Handle per-user client disconnect resources (temp dirs, etc)."""

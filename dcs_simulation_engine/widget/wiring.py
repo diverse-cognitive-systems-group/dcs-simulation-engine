@@ -15,31 +15,15 @@ from dcs_simulation_engine.widget.handlers import (
 from dcs_simulation_engine.widget.ui.chat import ChatUI
 from dcs_simulation_engine.widget.ui.consent import ConsentUI
 from dcs_simulation_engine.widget.ui.landing import LandingUI
-from dcs_simulation_engine.widget.ui.theme_toggle import ThemeToggleUI
 
 
 def wire_handlers(
     state: gr.State,
-    toggle: ThemeToggleUI,
     landing: LandingUI,
     chat: ChatUI,
     consent: ConsentUI | None,  # maybe None if ungated
 ) -> None:
     """Wire event handlers to widget components."""
-    # Wire theme toggle handler
-    toggle.toggle_btn.click(
-        fn=None,
-        js="""
-            () => {
-              const url = new URL(window.location);
-              const cur = url.searchParams.get('__theme') || 'system';
-              const next = cur === 'dark' ? 'light' : 'dark';
-              url.searchParams.set('__theme', next);
-              window.location.replace(url);
-            }
-        """,
-    )
-
     # Wire chat page handlers
     chat.send_btn.click(
         # wire send button
