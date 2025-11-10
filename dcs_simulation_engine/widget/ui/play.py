@@ -22,7 +22,11 @@ def _spacer(h: int = 24) -> None:
 
 
 def build_play(
-    show_pc_selector: bool, show_npc_selector: bool, access_gated: bool
+    show_pc_selector: bool,
+    show_npc_selector: bool,
+    access_gated: bool,
+    valid_pcs: list[str] = [],
+    valid_npcs: list[str] = [],
 ) -> PlayUI:
     """Build ungated landing page UI components."""
     with gr.Group(visible=not access_gated) as group:
@@ -38,8 +42,7 @@ def build_play(
                     pc_dropdown = gr.Dropdown(
                         label="Player Character",
                         info="Choose your character.",
-                        choices=["human-normative"],
-                        value="",
+                        choices=valid_pcs,
                         interactive=True,
                     )
                 with gr.Column(scale=1):
@@ -56,8 +59,7 @@ def build_play(
                     npc_dropdown = gr.Dropdown(
                         label="Non-Player Character",
                         info="Choose the simulator's character.",
-                        choices=[],
-                        value="",
+                        choices=valid_npcs,
                         interactive=True,
                     )
                 with gr.Column(scale=1):

@@ -73,10 +73,13 @@ def build_widget(
         else:
             logger.debug("No access gating required. Prepopulating valid characters.")
             valid_pcs, valid_npcs = game_config.get_valid_characters()
+            logger.debug(
+                f"Found {len(valid_pcs)} valid PCs and {len(valid_npcs)} valid NPCs."
+            )
             if not valid_pcs:
-                logger.warning("No valid PCs found for unauthenticated access.")
+                logger.warning("No valid PCs found for game.")
             if not valid_npcs:
-                logger.warning("No valid NPCs found for unauthenticated access.")
+                logger.warning("No valid NPCs found for game.")
     except Exception as e:
         gr.Error(f"Failed to determine access mode from game config: {e}")
         raise e  # terminate build
@@ -105,20 +108,16 @@ def build_widget(
         chat = build_chat()
 
         gate = build_gate(access_gated)
-        if not (
-            game_config.access_settings and game_config.access_settings.consent_form
-        ):
-            raise ValueError(
-                """Game config requires access gating but has no 
-                access settings or consent form"""
-            )
-        consent = build_consent(access_gated, game_config.access_settings.consent_form)
+        consent_form = game_config.access_settings.consent_form if access_gated else {}
+        consent = build_consent(access_gated, consent_form)
 
         # Build landing page based on config
         play = build_play(
             access_gated=access_gated,
             show_npc_selector=show_npc_selector,
             show_pc_selector=show_pc_selector,
+            valid_pcs=valid_pcs if not access_gated else [],
+            valid_npcs=valid_npcs if not access_gated else [],
         )
 
         # Wire up event handlers

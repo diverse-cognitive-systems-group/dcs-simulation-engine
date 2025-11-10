@@ -27,8 +27,10 @@ def _create_run(state: SessionState, token_value: Optional[str] = None) -> RunMa
     """Create a new RunManager and return it."""
     if "game_config" not in state:
         raise ValueError("App state is missing game_config required to create run.")
+    if "player_id" not in state:
+        state["player_id"] = None
     run = RunManager.create(
-        game=state["game_config"].name, source="widget", access_key=token_value
+        game=state["game_config"].name, source="widget", player_id=state["player_id"]
     )
     return run
 
