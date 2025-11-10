@@ -59,14 +59,14 @@ jobs:
           TOML
       - name: Launch or attach to Fly app
         run: |
-          if fly apps list | grep -q "simulation-widget-${{ github.event.inputs.experiment_id }}"; then
+          if flyctl apps list | grep -q "simulation-widget-${{ github.event.inputs.experiment_id }}"; then
             echo "App exists, skipping creation."
           else
-            fly apps create simulation-widget-${{ github.event.inputs.experiment_id }} --org personal --yes
+            flyctl apps create simulation-widget-${{ github.event.inputs.experiment_id }} --org personal --yes
           fi
       - name: Deploy
         run: |
-          fly deploy \
+          flyctl deploy \
             --remote-only \
             --config fly.generated.toml \
             --ha=false \
