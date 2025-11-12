@@ -14,9 +14,9 @@ from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from dcs_simulation_engine.widget.session_state import SessionState
 from dcs_simulation_engine.widget.ui.chat import build_chat
 from dcs_simulation_engine.widget.ui.consent import build_consent
+from dcs_simulation_engine.widget.ui.game_setup import build_game_setup
 from dcs_simulation_engine.widget.ui.gate import build_gate
 from dcs_simulation_engine.widget.ui.header import build_header
-from dcs_simulation_engine.widget.ui.play import build_play
 from dcs_simulation_engine.widget.wiring import wire_handlers
 
 MAX_TTL_SECONDS = 24 * 3600  # 24 hours
@@ -87,7 +87,7 @@ def build_widget(
     ### BUILD WIDGET ###
 
     widget = gr.Blocks(
-        title="DCS Simulation Engine",
+        title="DCS Simulation Engine", theme=gr.themes.Default(primary_hue="blue")
     )
     with widget:
         state = gr.State(
@@ -105,20 +105,22 @@ def build_widget(
         )
 
         build_header(game_config, banner)
-        chat = build_chat()
-
-        gate = build_gate(access_gated)
-        consent_form = game_config.access_settings.consent_form if access_gated else {}
-        consent = build_consent(access_gated, consent_form)
-
-        # Build landing page based on config
-        play = build_play(
+        # Build game setup page based on config
+        play = build_game_setup(
+            state=state,
             access_gated=access_gated,
             show_npc_selector=show_npc_selector,
             show_pc_selector=show_pc_selector,
             valid_pcs=valid_pcs if not access_gated else [],
             valid_npcs=valid_npcs if not access_gated else [],
         )
+        # Build chat page
+        chat = build_chat(state=state, access_gated=access_gated)
+
+        # Build gates if needed
+        gate = build_gate(access_gated)
+        consent_form = game_config.access_settings.consent_form if access_gated else {}
+        consent = build_consent(access_gated, consent_form)
 
         # Wire up event handlers
         wire_handlers(state, gate, consent, play, chat)

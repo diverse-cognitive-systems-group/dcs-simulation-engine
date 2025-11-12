@@ -14,7 +14,7 @@ on:
         banner:
             description: "Banner message"
             required: false
-            default: "<b>DEMO</b> This is a low fidelity demo."
+            default: "<b>DEMO</b>"
         
 jobs:
   deploy:

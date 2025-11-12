@@ -6,50 +6,39 @@ from dcs_simulation_engine.widget.handlers import (
     on_consent_submit,
     on_gate_continue,
     on_generate_token,
-    on_play,
-    on_send,
     on_token_continue,
+    setup_simulation,
+    show_chat_view,
 )
 from dcs_simulation_engine.widget.ui.chat import ChatUI
 from dcs_simulation_engine.widget.ui.consent import ConsentUI
+from dcs_simulation_engine.widget.ui.game_setup import GameSetupUI
 from dcs_simulation_engine.widget.ui.gate import GateUI
-from dcs_simulation_engine.widget.ui.play import PlayUI
 
 
 def wire_handlers(
     state: gr.State,
     gate: GateUI,
     consent: ConsentUI,
-    play: PlayUI,
+    game_setup: GameSetupUI,
     chat: ChatUI,
 ) -> None:
     """Wire event handlers to widget components."""
-    # Wire chat page handlers
-    chat.send_btn.click(
-        # wire send button
-        fn=on_send,
-        inputs=[state, chat.user_box, chat.events],
-        outputs=[state, chat.user_box, chat.events],
-    )
-    chat.user_box.submit(
-        # wire enter key in user input box
-        fn=on_send,
-        inputs=[state, chat.user_box, chat.events],
-        outputs=[state, chat.user_box, chat.events],
-    )
+    # Note: Chat handlers are wired in ChatUI build function as args of gr.ChatInterface
 
     # Wire play
-    play.play_btn.click(
-        fn=on_play,
+    game_setup.play_btn.click(
+        fn=show_chat_view,
+        inputs=[],
+        outputs=[game_setup.container, chat.container, chat.interface.textbox],
+    ).then(
+        fn=setup_simulation,
         inputs=[state],
-        outputs=[
-            state,
-            play.container,
-            chat.container,
-            chat.user_box,
-            chat.send_btn,
-            chat.loader,
-        ],
+        outputs=[state, chat.interface.chatbot],
+    ).then(
+        fn=lambda: gr.update(visible=True),
+        inputs=[],
+        outputs=[chat.interface.textbox],
     )
 
     # Wire gate page if present
@@ -64,9 +53,9 @@ def wire_handlers(
             outputs=[
                 state,
                 gate.container,
-                play.container,
-                play.pc_dropdown,
-                play.npc_dropdown,
+                game_setup.container,
+                game_setup.pc_dropdown,
+                game_setup.npc_dropdown,
                 gate.token_box,
                 gate.token_error_box,
             ],
@@ -101,6 +90,7 @@ def wire_handlers(
                     consent.token_text,
                     gate.token_error_box,
                 ],
+                # show_progress="full",
             )
             consent.token_continue_btn.click(
                 fn=on_token_continue,

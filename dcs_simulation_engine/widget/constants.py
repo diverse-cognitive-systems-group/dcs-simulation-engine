@@ -1,6 +1,6 @@
 """Constants for the widget package."""
 
-PLAY_MD = """
+GAME_MD = """
 ## Welcome
 
 Thank you for your interest in the simulation engine.

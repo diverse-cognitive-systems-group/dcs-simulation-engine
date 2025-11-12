@@ -6,9 +6,9 @@ Send → enqueue → sim.play consumes → timer polls state → new messages ap
 
 from __future__ import annotations
 
+import time
 from queue import Queue
-from threading import Thread
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import gradio as gr
 from langchain_core.messages import HumanMessage
@@ -16,11 +16,78 @@ from loguru import logger
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
 from dcs_simulation_engine.core.run_manager import RunManager
-from dcs_simulation_engine.core.simulation_graph.state import SpecialUserMessage
 from dcs_simulation_engine.widget.session_state import SessionState
 
 # Messages are "events" in the simulator
 Event = Dict[str, str]
+
+# Tunables
+LONG_RESPONSE_THRESHOLD = 25.0  # seconds before we warn it's taking longer
+RESPONSE_TIMEOUT = 60.0  # hard timeout for a response
+POLL_INTERVAL = 1  # how often we check for completion
+MAX_INPUT_LENGTH = 1000  # max length of user input string in characters
+FRIENDLY_GR_ERROR = (
+    "Yikes! We encountered an error while processing your input."
+    " Its been logged and we're looking into it. Sorry about that."
+)
+
+
+def _wpm_to_cps(wpm: int) -> float:
+    """Convert words-per-minute to characters-per-second.
+
+    Assumes average word length of 5 characters.
+    """
+    return max(1.0, (wpm * 5) / 60.0)
+
+
+def _slow_yield_chars(
+    message: str,
+    wpm: int = 180,  # ~15 cps
+    min_yield_interval: float = 0.03,  # don’t spam UI; yield at most ~33 FPS
+) -> Iterator[str]:
+    cps = _wpm_to_cps(wpm)
+    per_char = 1.0 / cps
+
+    # Natural micro-pauses after punctuation
+    pauses = {
+        ".": 0.35,
+        "!": 0.35,
+        "?": 0.35,
+        ",": 0.12,
+        ";": 0.15,
+        ":": 0.15,
+        "\n": 0.22,
+        "—": 0.10,
+        "…": 0.20,
+    }
+
+    built = []
+    next_yield_at = time.perf_counter()  # throttle UI updates
+
+    for ch in message:
+        built.append(ch)
+        time.sleep(per_char)
+
+        # add extra pause after certain punctuation
+        if ch in pauses:
+            time.sleep(pauses[ch])
+
+        now = time.perf_counter()
+        if now >= next_yield_at:
+            yield "".join(built)
+            next_yield_at = now + min_yield_interval
+
+    # final flush
+    yield "".join(built)
+
+
+def _stream_msg(message: str) -> Iterator[str]:
+    """Streams a message at about reading speed."""
+    for partial in _slow_yield_chars(
+        message,
+        # wpm=random.randint(150, 220),
+    ):
+        yield partial
 
 
 def _create_run(state: SessionState, token_value: Optional[str] = None) -> RunManager:
@@ -29,125 +96,111 @@ def _create_run(state: SessionState, token_value: Optional[str] = None) -> RunMa
         raise ValueError("App state is missing game_config required to create run.")
     if "player_id" not in state:
         state["player_id"] = None
-    run = RunManager.create(
-        game=state["game_config"].name, source="widget", player_id=state["player_id"]
-    )
+    pc_choice = state.get("pc_choice", None)
+    npc_choice = state.get("npc_choice", None)
+    try:
+        run = RunManager.create(
+            game=state["game_config"].name,
+            source="widget",
+            pc_choice=pc_choice,
+            npc_choice=npc_choice,
+            player_id=state["player_id"],
+        )
+    except Exception as e:
+        logger.error(f"Error creating RunManager in _create_run: {e}", exc_info=True)
+        raise gr.Error(FRIENDLY_GR_ERROR)
     return run
 
 
-def _format_special(msg: SpecialUserMessage) -> str:
-    """Format a special user message for gradio."""
-    t = (msg.get("type") or "info").lower()
-    c = msg.get("content") or ""
+def _format(msg_dict: Dict[str, Any]) -> str:
+    """Format dict style message into a markdown formatted string for gradio display."""
+    if not isinstance(msg_dict, dict):
+        logger.error(
+            f"Received non-dict message in _format: {msg_dict}. Returning str()."
+        )
+        raise gr.Error(FRIENDLY_GR_ERROR)
+    if "type" not in msg_dict or "content" not in msg_dict:
+        logger.warning(
+            f"Received malformed message in _format: {msg_dict}."
+            " Dict must include 'type' and 'content' keys."
+        )
+        raise gr.Error(FRIENDLY_GR_ERROR)
+    t = (msg_dict.get("type") or "info").lower()
+    c = msg_dict.get("content") or ""
+    if not c:
+        logger.warning("Received empty content in _format.")
     if t == "warning":
         return f"⚠️ {c}"
-    if t == "error":
+    elif t == "error":
         return f"❌ {c}"
-    return f"----<br>{c}<br>----"
+    elif t == "info":
+        return f"*{c}*"
+    elif t == "system" or t == "assistant" or t == "ai":
+        return c
+    else:
+        logger.warning(f"Unknown message type '{t}' in _format; returning raw content.")
+        return c
 
 
-def _make_input_provider(state: SessionState) -> Callable[[], str]:
-    """Create a blocking input provider that feeds user messages from a Queue.
-
-    The returned callable mirrors your CLI `input_provider`: it blocks until a
-    user message is available, then returns that message to `RunManager.play()`.
-
-    Args:
-        state: App state containing the active simulation and the message queue.
-
-    Returns:
-        Callable that takes no arguments and returns the next user message.
-
-    Raises:
-        ValueError: If the simulation state was not initialized properly.
-    """
-    if "queue" not in state:
-        raise ValueError("App state is missing the event queue.")
-    if "run" not in state:
-        raise ValueError("App state is missing the active simulation run.")
-    q: Queue[str] = state["queue"]
-    run: RunManager = state["run"]
-
-    def input_provider() -> str:
-        """A blocking input provider for the simulation's play loop.
-
-        It just reads from the queue.
-        """
-        if run.state is None:
-            raise ValueError("Simulation state was not initialized properly.")
-        events = run.state.get("events", [])
-        logger.debug(f"input_provider sees {len(events)} events: {events}")
-        return q.get()  # return an item (event) from the queue
-
-    return input_provider
+def show_chat_view() -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    """Handle showing the chat view and hiding the game setup view."""
+    update_game_setup = gr.update(visible=False)
+    update_chat = gr.update(visible=True)
+    updated_chatinterface = gr.update(visible=False)  # disable textbox initially
+    return update_game_setup, update_chat, updated_chatinterface
 
 
-def _ensure_play_running(state: SessionState) -> None:
-    """Start the simulation's play loop in a background daemon thread if needed.
-
-    Spawns a single thread that calls `sim.play(input_provider=...)`. The play loop
-    will block on the input provider until `on_send` pushes messages into the queue.
-
-    Args:
-        state: App state. Must contain "sim" and "queue". On success, adds
-            "_play_thread" to the state if it didn't exist or had stopped.
-    """
-    existing: Optional[Thread] = state.get("_play_thread")
-    if existing and existing.is_alive():
-        return
-
-    logger.debug("Starting simulation play loop in background thread.")
-    run = state.get("run", None)
-    if not run:
-        raise ValueError("Cannot start play loop: no active simulation run found.")
-
-    ip = _make_input_provider(state)
-
-    thread = Thread(target=lambda: run.play(input_provider=ip), daemon=True)
-    thread.start()
-    state["_play_thread"] = thread
-
-
-def on_play(
+def setup_simulation(
     state: SessionState,
-) -> Tuple[
-    SessionState,
-    Dict[str, Any],  # play container - hide
-    Dict[str, Any],  # chat container - show
-    Dict[str, Any],  # user input box update
-    Dict[str, Any],  # send button update
-    Dict[str, Any],  # loader update
-]:
+) -> Tuple[SessionState, Dict[str, Any]]:
     """Handle clicking the Play button on the ungated landing page.
 
     - tries calling RunManager.create and updates state with run
     """
-    logger.debug("on_play called")
     try:
+        logger.debug("Creating simulation run.")
         run = _create_run(state)
         state["run"] = run
-        state["queue"] = Queue()
-        _ensure_play_running(state)
-        updated_play_container = gr.update(visible=False)
-        updated_chat_container = gr.update(visible=True)
-        updated_user_box = gr.update(interactive=False)
-        updated_send_btn = gr.update(interactive=False)
-        updated_loader = gr.update(
-            visible=True,
-            value="""⏳ *Setting up simulation and loading 
-            opening scene (this may take a moment)...*""",
-        )
-        return (
-            state,
-            updated_play_container,
-            updated_chat_container,
-            updated_user_box,
-            updated_send_btn,
-            updated_loader,
-        )
+        state["queue"] = Queue()  # TODO: remove if not needed
+        logger.debug("Stepping simulation to get opener.")
+        run.step()  # simulator takes first step to initialize
+        initial_history = []
+        special = run.state.get("special_user_message", None)
+        if special:
+            logger.debug("Found special user message on setup.")
+            formatted_response_partial = _format(
+                {
+                    "type": special.get("type", ""),
+                    "content": special.get("content", ""),
+                }
+            )
+            initial_history.append(
+                {"role": "assistant", "content": formatted_response_partial}
+            )
+        if run.state.get("events", []):
+            logger.debug("Found events on setup.")
+            for e in run.state["events"]:
+                if not isinstance(e, HumanMessage):
+                    formatted_response_partial = _format(
+                        {
+                            "type": "ai",
+                            "content": e.content,
+                        }
+                    )  # type: ignore
+                    initial_history.append(
+                        {"role": "assistant", "content": formatted_response_partial}
+                    )
+        # initial_history = [
+        #     {"role": "assistant", "content": "changed initial msg"},
+        # ]
+        updated_chatbot_value = gr.update(value=initial_history)
+        return state, updated_chatbot_value
     except Exception as e:
         logger.error(f"Error while handling on_play_ungated: {e}", exc_info=True)
-        raise
+        raise gr.Error(
+            """Yikes! We encountered an error starting the simulation.
+            Its been logged and we're looking into it. Sorry about that."""
+        )
 
 
 def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
@@ -237,20 +290,22 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
 
 def on_generate_token(
     state: SessionState,
-) -> Tuple[SessionState, Dict[str, Any], Dict[str, Any]]:
+) -> Tuple[
+    SessionState, Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]
+]:
     """Handle clicking the Generate New Access Token button on the landing page.
 
     Takes landing container and consent container and sets
     visibility to show consent form and not landing.
     """
     logger.debug("on_generate_token called")
-    updated_landing = gr.update(visible=False)
+    updated_gate = gr.update(visible=False)
     updated_consent = gr.update(visible=True)
     updated_token_box = gr.update(value="")  # clear token box
     updated_token_error_box = gr.update(visible=False, value="")  # clear error box
     return (
         state,
-        updated_landing,
+        updated_gate,
         updated_consent,
         updated_token_box,
         updated_token_error_box,
@@ -274,8 +329,6 @@ def on_consent_submit(
         "consent_form_data": dict(zip(field_names, field_values)),
     }
     # create player with consent data, issue access token
-    from dcs_simulation_engine.helpers import database_helpers as dbh
-
     try:
         player_id, access_key = dbh.create_player(
             player_data=user_data, issue_access_key=True
@@ -294,7 +347,10 @@ def on_consent_submit(
         )
     except Exception as e:
         logger.error(f"Error creating player in on_consent_submit: {e}", exc_info=True)
-        raise
+        raise gr.Error(
+            """Yikes! We encountered an error while processing your consent form.
+            Its been logged and we're looking into it. Sorry about that."""
+        )
 
 
 def on_token_continue(
@@ -324,138 +380,119 @@ def on_token_continue(
     )
 
 
-def poll_fn(state: SessionState, events_chat: List[Event]) -> Tuple[
-    SessionState,
-    List[Event],
-    Dict[str, Any],  # timer update
-    Dict[str, Any],  # user_box update
-    Dict[str, Any],  # send_btn update
-    Dict[str, Any],  # loader update
-]:
-    """Poll for new events to update the chat history."""
-    run = state.get("run", None)
-    if run is None or run.state is None or "last_seen" not in state:
-        # no active run, nothing to poll
-        updated_events_chat = events_chat
-        updated_timer = gr.update()
-        updated_user_box = gr.update()
-        updated_send_btn = gr.update()
-        updated_loader = gr.update()
-    elif run.exited:
-        # don't poll for new events if the run is stopped
-        end_event = {
-            "role": "assistant",
-            "content": f"The simulation has ended. Reason: {run.exit_reason}",
-        }
-        updated_events_chat = events_chat + [end_event]
-        updated_timer = gr.update(active=False)
-        updated_user_box = gr.update(interactive=False)
-        updated_send_btn = gr.update(interactive=False)
-        updated_loader = gr.update(visible=False)
-    else:
-        # DISPLAY - new new special user messages (if exists)
-        special = run.state["special_user_message"]
-        if isinstance(special, dict):
-            key = (
-                str(special.get("type") or "info").lower(),
-                str(special.get("content") or ""),
-            )
-            if key[1] and key != state.get(
-                "last_special_seen"
-            ):  # non-empty content and not yet shown
-                events_chat.append(
-                    {"role": "assistant", "content": _format_special(special)}
-                )
-                state["last_special_seen"] = key
-                state["is_user_turn"] = True  # after special message, it's user's turn
-                logger.debug("Setting is_user_turn to True after special message")
-
-        # DISPLAY - new event content since last seen (if any)
-        events = run.state["events"]
-        for e in events[state.get("last_seen") :]:
-            if not isinstance(e, HumanMessage):
-                logger.debug(f"poll_fn appending: {e} to events")
-                events_chat.append({"role": "assistant", "content": e.content})  # type: ignore
-                state["is_user_turn"] = True  # after AI message, it's user's turn
-                logger.debug("Setting is_user_turn to True after AI message")
-
-        updated_events_chat = events_chat
-        state["last_seen"] = len(events)
-        updated_timer = gr.update()  # keep ticking
-
-        # if last event is from user, keep input disabled, else re-enable it
-        if len(events) == 0:
-            # logger.debug("No events yet; keeping user input disabled.")
-            state["is_user_turn"] = False
-            updated_user_box = gr.update(interactive=False)
-            updated_send_btn = gr.update(interactive=False)
-            updated_loader = gr.update(
-                visible=True,
-                value="""⏳ *Setting up simulation and loading 
-                opening scene (this may take a moment)...*""",
-            )
-        if state.get("is_user_turn", False):
-            # logger.debug("User's turn; enabling user input.")
-            updated_user_box = gr.update(interactive=True)
-            updated_send_btn = gr.update(interactive=True)
-            updated_loader = gr.update(visible=False)
-        else:
-            # logger.debug("Not user's turn; disabling user input.")
-            updated_user_box = gr.update(interactive=False)
-            updated_send_btn = gr.update(interactive=False)
-            updated_loader = gr.update(visible=True, value="⏳ *Thinking...*")
-    return (
-        state,
-        updated_events_chat,
-        updated_timer,
-        updated_user_box,
-        updated_send_btn,
-        updated_loader,
+def process_new_user_message(
+    new_user_message: str,
+    history: List[Event],
+    state: SessionState,
+    # ) -> Generator[str, None, Tuple[str, SessionState]]:
+) -> Iterator[str]:
+    """Handle a user message sent from the chat interface."""
+    logger.debug(
+        f"on_new_user_message called with new_user_message: {new_user_message}"
     )
-
-
-def on_send(
-    state: SessionState, event: str, events: List[Event]
-) -> Tuple[SessionState, Dict[str, Any], List[Event]]:
-    """Handle a user event/message: enqueue it and return the latest engine reply.
-
-    Behavior mirrors the CLI:
-    1) Puts the user message into the queue consumed by the input provider.
-    2) Waits for the engine to append a new message to `run.state["events"]`.
-    3) Appends the (user, ai) pair to the Gradio Chatbot history.
-    """
-    logger.debug(f"on_send called with event: {event}")
 
     run = state.get("run", None)
 
     if not run:
-        raise ValueError("on_send called but no active simulation run found in state.")
+        logger.error(
+            "on_new_user_message called but no active simulation run found in state."
+        )
+        raise gr.Error(FRIENDLY_GR_ERROR)
 
     if run.exited:
-        logger.debug(f"on_send found run.exited True; not enqueuing event: {event}")
-        end_event = {
-            "role": "assistant",
-            "content": f"The simulation has ended. Reason: {run.exit_reason}",
-        }
-        updated_user_box = gr.update(interactive=False)
-        updated_events = events + [end_event]
+        logger.debug(
+            "on_new_user_message found run.exited True; not enqueuing user message"
+        )
+        formatted_response = _format(
+            {
+                "type": "info",
+                "content": f"The simulation has ended. Reason: {run.exit_reason}",
+            }
+        )
+        yield formatted_response
     else:
-        # disable user input until engine responds
-        state["is_user_turn"] = False
-        logger.debug("Setting is_user_turn to False")
+        # Block until the simulator returns or response time thresholds are met
+        try:
+            # TODO: presently this blocks, we want it to yield messages as they
+            # become available from the simulator instead (step refactor needed)
+            run.step(new_user_message)  # returns an updated state
 
-        # Ensure the play loop is alive (idempotent)
-        _ensure_play_running(state)
+            # simulator may have exited after step()
+            if run.exited:
+                logger.debug(
+                    "on_new_user_message found run.exited True after step();"
+                    " not streaming response"
+                )
+                formatted_response = _format(
+                    {
+                        "type": "info",
+                        "content": f"Simulation exited. Reason: {run.exit_reason}",
+                    }
+                )
+                yield formatted_response
+            # Display any special user message first
+            if run.state["special_user_message"]:
+                special = run.state["special_user_message"]
+                if isinstance(special, dict):
+                    key = (
+                        str(special.get("type") or "").lower(),
+                        str(special.get("content") or ""),
+                    )
+                    # non-empty content and not yet shown
+                    if key[1] and key != state.get("last_special_seen"):
+                        formatted_response = _format(
+                            {
+                                "type": key[0],
+                                "content": key[1],
+                            }
+                        )
+                state["last_special_seen"] = key
+                yield formatted_response
+            # Display the any new AI messages from events
+            events = run.state["events"]
+            if "last_seen" not in state:
+                state["last_seen"] = 0
+            for e in events[state["last_seen"] :]:
+                if not isinstance(e, HumanMessage):
+                    formatted_response = _format(
+                        {
+                            "type": "ai",
+                            "content": e.content,
+                        }
+                    )  # type: ignore
+            state["last_seen"] = len(events)
+            yield from _stream_msg(formatted_response)  # stream simulator reply
+        except Exception:
+            logger.exception("Simulator step raised an exception.")
+            formatted_response = _format(
+                {
+                    "type": "error",
+                    "content": (
+                        "Yikes! We couldn't generate response."
+                        " We're looking into it. Sorry about that."
+                    ),
+                }
+            )
+            yield formatted_response
+            logger.error("Generator done yielding response (error).")
+            raise gr.Error(FRIENDLY_GR_ERROR)
+    logger.debug("Generator done yielding response.")
 
-        # Enqueue user message for the input provider
-        if "queue" not in state:
-            raise ValueError("App state is missing the event queue.")
 
-        logger.debug(f"Enqueuing event: {event}")
-        state["queue"].put(event)
+def validate_user_input(user_input: str) -> Optional[Dict[str, str]]:
+    """Validate user input before sending to the simulation.
 
-        # Show user message immediately
-        updated_events = events + [{"role": "user", "content": event}]
-        updated_user_box = gr.update(value="", interactive=False)
-
-    return state, updated_user_box, updated_events
+    A function that takes in the inputs and can optionally return
+    a gr.validate() object for each input.
+    """
+    if not user_input.strip():
+        return gr.validate(
+            False,
+            "Input cannot be empty.",
+        )
+    if len(user_input) > MAX_INPUT_LENGTH:
+        return gr.validate(
+            False,
+            f"Input is too long. Please limit input to {MAX_INPUT_LENGTH} characters.",
+        )
+    return None

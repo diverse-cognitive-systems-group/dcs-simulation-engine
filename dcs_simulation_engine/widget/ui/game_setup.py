@@ -1,14 +1,15 @@
-"""Play page UI components."""
+"""Game setup page UI components."""
 
 from typing import NamedTuple, Optional
 
 import gradio as gr
 
-from dcs_simulation_engine.widget.constants import PLAY_MD
+from dcs_simulation_engine.widget.constants import GAME_MD
+from dcs_simulation_engine.widget.helpers import _spacer
 
 
-class PlayUI(NamedTuple):
-    """Play page UI components."""
+class GameSetupUI(NamedTuple):
+    """Game setup page UI components."""
 
     container: gr.Group
     pc_dropdown: Optional[gr.Dropdown]
@@ -16,22 +17,18 @@ class PlayUI(NamedTuple):
     play_btn: gr.Button
 
 
-def _spacer(h: int = 24) -> None:
-    """Create a vertical spacer of given height."""
-    gr.HTML(f"<div style='height:{h}px'></div>")
-
-
-def build_play(
+def build_game_setup(
+    state: gr.State,
+    access_gated: bool,
     show_pc_selector: bool,
     show_npc_selector: bool,
-    access_gated: bool,
     valid_pcs: list[str] = [],
     valid_npcs: list[str] = [],
-) -> PlayUI:
-    """Build ungated landing page UI components."""
+) -> GameSetupUI:
+    """Build ungated game page UI components."""
     with gr.Group(visible=not access_gated) as group:
         _spacer(8)
-        gr.Markdown(PLAY_MD)
+        gr.Markdown(GAME_MD)
 
         # pc input (centered)
         with gr.Group(visible=show_pc_selector):
@@ -78,7 +75,7 @@ def build_play(
 
         _spacer(8)
 
-    return PlayUI(
+    return GameSetupUI(
         container=group,
         play_btn=play_btn,
         pc_dropdown=pc_dropdown,

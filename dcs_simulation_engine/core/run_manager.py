@@ -309,6 +309,9 @@ class RunManager(BaseModel):
         """
         # logger.debug(f"RunManager step called with user_input: {user_input!r}")
 
+        if self.start_ts is None:
+            self.start_ts = datetime.now()
+
         self._ensure_stopping_conditions()  # sets self.stopped if needed
 
         if self.state is None:

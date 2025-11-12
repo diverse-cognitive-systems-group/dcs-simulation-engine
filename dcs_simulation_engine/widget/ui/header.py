@@ -16,7 +16,7 @@ class HeaderUI(NamedTuple):
 def build_header(game_config: GameConfig, banner: str | None = None) -> HeaderUI:
     """Build the header UI component."""
     if banner:
-        gr.HTML(f'<div style="text-align:center" id="banner">🚧 {banner} 🚧</div>')
+        gr.HTML(f'<div style="text-align:center" id="banner">{banner} </div>')
     gr.Markdown(
         f"""
         <div style='text-align:center'>
