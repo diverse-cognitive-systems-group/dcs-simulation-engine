@@ -1,15 +1,5 @@
 """Constants for the widget package."""
 
-GAME_MD = """
-## Welcome
-
-Thank you for your interest in the simulation engine.
-
-### Instructions
-
-Click "Play" when you're ready to begin.
-"""
-
 GATE_MD = """
 ## Welcome
 

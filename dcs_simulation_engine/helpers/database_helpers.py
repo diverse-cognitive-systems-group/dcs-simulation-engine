@@ -440,6 +440,7 @@ def list_characters_where(
     query: Mapping[str, Any],
     collection: str,
     player_id: Optional[Union[str, Any]] = None,
+    # TODO: add optional what keys to return...all or a list? default to just hid
 ) -> List[str]:
     """Returns distinct character HIDs using a Mongo query dict.
 

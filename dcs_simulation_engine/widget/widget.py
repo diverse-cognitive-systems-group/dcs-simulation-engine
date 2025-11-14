@@ -24,8 +24,6 @@ MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 def build_widget(
     game_name: str = "explore",
     banner: str | None = None,
-    show_npc_selector: bool = True,
-    show_pc_selector: bool = True,
 ) -> gr.Blocks:
     """Build the Gradio UI for running simulations."""
     logger.info(f"Building Gradio widget for game '{game_name}'")
@@ -55,7 +53,9 @@ def build_widget(
                 )
         else:
             logger.debug("No access gating required. Prepopulating valid characters.")
-            valid_pcs, valid_npcs = game_config.get_valid_characters()
+            valid_pcs, valid_npcs = game_config.get_valid_characters(
+                return_formatted=True
+            )
             logger.debug(
                 f"Found {len(valid_pcs)} valid PCs and {len(valid_npcs)} valid NPCs."
             )
@@ -114,10 +114,7 @@ def build_widget(
         build_header(game_config, banner)
         # Build game setup page based on config
         game_setup = build_game_setup(
-            state=state,
             access_gated=access_gated,
-            show_npc_selector=show_npc_selector,
-            show_pc_selector=show_pc_selector,
             valid_pcs=valid_pcs if not access_gated else [],
             valid_npcs=valid_npcs if not access_gated else [],
         )

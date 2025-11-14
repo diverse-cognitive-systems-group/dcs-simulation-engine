@@ -127,19 +127,3 @@ def wire_handlers(
         outputs=[],
         js="window.location.reload()",  # reload the entire app to avoid data leakage
     )
-    # form.token_continue_btn.click(
-    #     fn=lambda: [
-    #         gr.update(visible=True),  # show gate
-    #         gr.update(visible=False),  # hide consent form
-    #         gr.update(visible=False),  # hide token group
-    #         # IMPORTANT: clear token display to avoid leaking tokens
-    #         gr.update(placeholder=""),  # clear token display
-    #     ],
-    #     inputs=[],
-    #     outputs=[
-    #         gate.container,
-    #         form.form_group,
-    #         form.token_group,
-    #         form.token_text,
-    #     ],
-    # )
