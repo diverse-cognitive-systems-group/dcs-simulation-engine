@@ -36,7 +36,8 @@ from dcs_simulation_engine.utils.file import safe_timestamp, unique_fpath
 
 # TODO: if character choices has no qa, warn (playing with characters whose
 # represetnational quality has not been assessed by the DCS research group...
-# do you wish to submit these characters for assessment so they can be added to core characters db (link to open a ticket))
+# do you wish to submit these characters for assessment so they can be added
+# to core characters db (link to open a ticket))
 
 
 class RunManager(BaseModel):

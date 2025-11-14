@@ -114,7 +114,8 @@ def get_game_config(game: str, version: str = "latest") -> str:
         v, chosen_path = max(stable_candidates, key=lambda x: x[0])
         chosen = str(chosen_path)
         logger.debug(
-            f"Selected latest stable game config {chosen} for game={game!r}, version={v}"
+            f"Selected latest stable game config {chosen} "
+            f"for game={game!r}, version={v}"
         )
         return chosen
 

@@ -98,7 +98,7 @@ def build_widget(
                 content: "";
                 position: absolute;
                 inset: 0;
-                background: rgba(255, 255, 255, 0.3); /* adjust fog: 0.5–0.8 works well */
+                background: rgba(255, 255, 255, 0.3); /* fog: 0.5–0.8 works well */
                 backdrop-filter: blur(2px);           /* glassy look */
                 pointer-events: all;
             }
