@@ -61,6 +61,24 @@ class SimulationGraph:
         self.name = name
         self.cgraph = cgraph  # runtime-only; not intended for serialization
 
+    def stream(
+        self,
+        user_input: str,
+        long_running,
+        timeout: Optional[float] = None,
+        cancel_event: Optional[threading.Event] = None,
+    ):
+        """Custom wrapper around cgraph.stream that adds control features.
+
+        Allow early stopping via:
+        - validation failure (is_valid == False)
+        - timeout (seconds)
+        - external cancel_event (e.g. UI cancel button)
+        - (and warns if long_running is True)
+        """
+        # TODO: write me & add typedefs
+        pass
+
     def invoke(
         self,
         state: StateSchema,
@@ -150,6 +168,8 @@ class SimulationGraph:
         Returns a new SimulationGraph instance with `cgraph` set.
         """
         logger.info("Compiling simulation graph...")
+
+        # TODO: make sure any user configured nodes (parent graph) include subgraph call somewhere. start, end and subgraph are all required.
 
         builder = StateGraph(
             # defines the shared mutable state that all nodes in the graph can read
