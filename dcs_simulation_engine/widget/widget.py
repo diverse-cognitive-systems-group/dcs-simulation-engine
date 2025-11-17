@@ -115,6 +115,8 @@ def build_widget(
         # Build game setup page based on config
         game_setup = build_game_setup(
             access_gated=access_gated,
+            game_name=game_config.name,
+            game_description=game_config.description,
             valid_pcs=valid_pcs if not access_gated else [],
             valid_npcs=valid_npcs if not access_gated else [],
         )
