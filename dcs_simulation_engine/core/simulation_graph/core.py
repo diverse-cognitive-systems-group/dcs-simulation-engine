@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
-from typing import Any, Callable, Dict, Hashable, List
+from typing import Any, Callable, Dict, Hashable, List, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import PromptTemplate
@@ -31,8 +32,8 @@ from . import builtins
 from .conditions import predicate
 from .config import ConditionalItem, ConditionalTo, ElseOnly, GraphConfig, IfThen, Node
 from .state import (
+    SimulationGraphState,
     StateAdapter,
-    StateSchema,
     make_state,
 )
 
@@ -63,8 +64,11 @@ class SimulationGraph:
 
     def stream(
         self,
-        user_input: str,
-        long_running,
+        state: SimulationGraphState,
+        context: ContextSchema,
+        config: RunnableConfig,
+        *,
+        long_running: Optional[float] = None,
         timeout: Optional[float] = None,
         cancel_event: Optional[threading.Event] = None,
     ):
@@ -77,18 +81,32 @@ class SimulationGraph:
         - (and warns if long_running is True)
         """
         # TODO: write me & add typedefs
+        # self.cgraph.stream(
+        #     input=state,
+        #     context=context,
+        #     config=config,
+        #     # Streams the updates to the state after each step of the graph. If multiple updates are made in the same step (e.g., multiple nodes are run), those updates are streamed separately.
+        #     # stream_mode="updates",
+        #     # print_mode = "updates",
+        #     # output_keys = None,
+        #     # interrupt_before = None,
+        #     # interrupt_after = None,
+        #     # durability = None,
+        #     # subgraphs= True,
+        #     # debug = False
+        # )
         pass
 
     def invoke(
         self,
-        state: StateSchema,
+        state: SimulationGraphState,
         context: ContextSchema,
         config: RunnableConfig,
-    ) -> StateSchema:
+    ) -> SimulationGraphState:
         """Custom wrapper around cgraph.invoke.
 
-        All simulation graphs use the same StateSchema input/output shape.
-        All take new inputs as message_draft and return updated StateSchema.
+        All simulation graphs use the same SimulationGraphState input/output shape.
+        All take new inputs as message_draft and return updated SimulationGraphState.
 
         - Validates input and output types.
         - Helps enforce custom simulation invocation semantics.
@@ -143,7 +161,7 @@ class SimulationGraph:
             new_state = StateAdapter.validate_python(new_state)
         except ValidationError as e:
             logger.error(
-                f"Invalid output StateSchema from SimulationGraph: {new_state}\n"
+                f"Invalid output SimulationGraphState from SimulationGraph: {new_state}\n"
                 f"Error: {e}"
             )
             raise
@@ -169,19 +187,19 @@ class SimulationGraph:
         """
         logger.info("Compiling simulation graph...")
 
-        # TODO: make sure any user configured nodes (parent graph) include subgraph call somewhere. start, end and subgraph are all required.
+        # TODO: make sure config contains a __SIMULATION_SUBGRAPH__ node
 
         builder = StateGraph(
             # defines the shared mutable state that all nodes in the graph can read
             # from or write to.
-            state_schema=StateSchema,
+            state_schema=SimulationGraphState,
             # defines immutable runtime context (like configuration, environment, user
             # info, etc). Available for reference but not meant to change.
             context_schema=ContextSchema,
             # # defines what data can be passed into the graph (entry input)
-            # input_schema=StateSchema,
+            # input_schema=SimulationGraphState,
             # # defines what the graph returns when finished (final structured output)
-            # output_schema=StateSchema,
+            # output_schema=SimulationGraphState,
         )
         node_fns: Dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {}
 
@@ -251,8 +269,8 @@ class SimulationGraph:
 
     @staticmethod
     def _make_node_fn(
-        node: Node, temp_state: StateSchema, temp_context: ContextSchema
-    ) -> Callable[[StateSchema], StateSchema]:
+        node: Node, temp_state: SimulationGraphState, temp_context: ContextSchema
+    ) -> Callable[[SimulationGraphState], SimulationGraphState]:
         """Create a node runner.
 
         IMPORTANT!! temp_state is used to validate Jinja templates ONLY.
@@ -260,7 +278,7 @@ class SimulationGraph:
 
         - Validates Jinja templates at build time (not first run).
         - Enforces the presence of an "Output Format: {}" in system_templates.
-        - Returns a callable that accepts a full StateSchema and returns an updated one.
+        - Returns a callable that accepts a full SimulationGraphState and returns an updated one.
         """
         # ----- Validate Jinja Fields  -----
 
@@ -268,7 +286,7 @@ class SimulationGraph:
         ORDERED_OBJS = [("node", node), ("node.config", getattr(node, "config", None))]
 
         # FIXME: fix this...doesn't seem to be catching template render errors
-        # ...eg if StateSchema doesn't have that field.
+        # ...eg if SimulationGraphState doesn't have that field.
 
         for owner, obj in ORDERED_OBJS:
             if obj is None:
@@ -326,11 +344,11 @@ class SimulationGraph:
             )
 
         def node_fn(
-            state: StateSchema, runtime: Runtime[ContextSchema]
+            state: SimulationGraphState, runtime: Runtime[ContextSchema]
         ) -> dict[str, Any]:
             """Execute a single node.
 
-            Each node takes a full StateSchema and returns an updated one.
+            Each node takes a full SimulationGraphState and returns an updated one.
             """
             logger.debug(f"{node.name} IN")
             state_updates: dict[str, Any] = {}
@@ -469,10 +487,10 @@ class SimulationGraph:
     @classmethod
     def _build_router_from_clauses(
         cls, clauses: List[ConditionalItem]
-    ) -> Callable[[StateSchema], str]:
+    ) -> Callable[[SimulationGraphState], str]:
         """Build a router function from conditional clauses."""
 
-        def router(state: StateSchema) -> str:
+        def router(state: SimulationGraphState) -> str:
             for c in clauses:
                 if isinstance(c, IfThen):
                     if predicate(c.if_, state):

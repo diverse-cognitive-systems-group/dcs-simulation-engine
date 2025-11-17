@@ -13,8 +13,8 @@ from typing_extensions import (
 )
 
 
-def make_state(overrides: dict[str, Any] | None = None) -> StateSchema:
-    """Create a StateSchema with sensible defaults and optional overrides."""
+def make_state(overrides: dict[str, Any] | None = None) -> SimulationGraphState:
+    """Create a SimulationGraphState with sensible defaults and optional overrides."""
     overrides = dict(overrides or {})
 
     # Other defaults + warnings
@@ -23,13 +23,14 @@ def make_state(overrides: dict[str, Any] | None = None) -> StateSchema:
     if "retry_limits" not in overrides:
         logger.debug("No retry_limits provided; defaulting to {'user': 3, 'ai': 3}.")
 
-    base: StateSchema = {
-        "events": [],
+    base: SimulationGraphState = {
         "lifecycle": "INIT",
         "exit_reason": "",
-        "special_user_message": None,
-        "event_draft": None,
-        "invalid_reason": None,
+        "history": [],
+        "user_input": "",
+        "user_validation_message": None,
+        "response_message": None,
+        "final_message": None,
         "retries": {"user": 0, "ai": 0},
         "retry_limits": {"user": 3, "ai": 3},
         "forms": None,
@@ -55,24 +56,12 @@ def make_state(overrides: dict[str, Any] | None = None) -> StateSchema:
         for k in unknown:
             overrides.pop(k, None)
 
-    state = cast(StateSchema, {**base, **overrides})
+    state = cast(SimulationGraphState, {**base, **overrides})
     try:
-        return cast(StateSchema, StateAdapter.validate_python(state))
+        return cast(SimulationGraphState, StateAdapter.validate_python(state))
     except ValidationError as e:
-        logger.error("Invalid StateSchema: %s", e)
+        logger.error("Invalid SimulationState: %s", e)
         raise
-
-
-class Retries(TypedDict):
-    """Retry limits for players.
-
-    Note: using user and ai makes it easier to use
-    built-in openrouter and langgraph message functionalities
-
-    """
-
-    user: int  # player (pc)
-    ai: int  # simulator (npc)
 
 
 class SpecialUserMessage(TypedDict):
@@ -96,7 +85,29 @@ class FormQuestion(TypedDict):
     answer: str
 
 
-class StateSchema(TypedDict, total=True):
+MessageType = Literal["info", "error", "ai", "user"]
+
+
+class SimulationMessage(TypedDict):
+    """Simulation message structure."""
+
+    type: MessageType
+    content: str
+
+
+class Retries(TypedDict):
+    """Retry limits for players.
+
+    Note: using user and ai makes it easier to use
+    built-in openrouter and langgraph message functionalities
+
+    """
+
+    user: int  # player (pc)
+    ai: int  # simulator (npc)
+
+
+class SimulationGraphState(TypedDict, total=True):
     """Schema for the shared simulation state.
 
     A few langgraph functionality notes:
@@ -107,17 +118,23 @@ class StateSchema(TypedDict, total=True):
 
     """
 
-    events: Annotated[list[BaseMessage], add_messages]
+    # Lifecycle management
     lifecycle: Literal["INIT", "ENTER", "UPDATE", "EXIT", "COMPLETE"]
     exit_reason: str
-
-    # ie. instructional messages, etc that are not part of the main message flow
-    special_user_message: Optional[SpecialUserMessage]
-    event_draft: Optional[dict[str, Any]]
-    invalid_reason: Optional[str]
     retries: Retries
-    retry_limits: Retries  # TODO: move to context
+    retry_limits: Retries
+
+    # Message management
+    history: Annotated[list[BaseMessage], add_messages]
+    user_input: str
+
+    user_validation_message: Optional[SimulationMessage]
+    response_message: Optional[SimulationMessage]
+    final_message: Optional[SimulationMessage]
+
+    # Data collection management
     forms: Optional[dict[str, Form]]
 
 
-StateAdapter = TypeAdapter(StateSchema)
+# Used for validation and parsing
+StateAdapter = TypeAdapter(SimulationGraphState)

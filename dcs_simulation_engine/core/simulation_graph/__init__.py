@@ -2,11 +2,11 @@
 
 from .config import GraphConfig
 from .core import SimulationGraph
-from .state import StateSchema, make_state
+from .state import SimulationGraphState, make_state
 
 __all__ = [
     "SimulationGraph",
-    "StateSchema",
+    "SimulationGraphState",
     "GraphConfig",
     "make_state",
 ]

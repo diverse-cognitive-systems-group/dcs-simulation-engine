@@ -12,13 +12,13 @@ from loguru import logger
 from dcs_simulation_engine.core.simulation_graph import (
     GraphConfig,
     SimulationGraph,
-    StateSchema,
+    SimulationGraphState,
 )
 
 # @pytest.mark.unit
 # def test_schema_fields_sync() -> None:
-#     """Ensure StateSchema and NodeOutputSchema have the same fields."""
-#     state_fields = set(StateSchema.__annotations__.keys())
+#     """Ensure SimulationGraphState and NodeOutputSchema have the same fields."""
+#     state_fields = set(SimulationGraphState.__annotations__.keys())
 #     node_output_fields = set(SimulationGraph.NodeOutputSchema.__annotations__.keys())
 #     assert state_fields == node_output_fields
 
@@ -326,7 +326,7 @@ def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
 
-    state: StateSchema = {
+    state: SimulationGraphState = {
         "messages": [],
         "agent_artifacts": {},
         "pc": {"name": "JANIE"},
@@ -385,7 +385,7 @@ def test_jinja_works_with_dynamic_input(write_yaml: Callable[[str, str], Path]) 
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
 
-    state: StateSchema = {
+    state: SimulationGraphState = {
         "messages": [],
         "agent_artifacts": {},
         "pc": {"name": "JANIE"},

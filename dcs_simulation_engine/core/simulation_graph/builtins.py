@@ -10,7 +10,7 @@ from tomlkit import key
 from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
 from dcs_simulation_engine.core.simulation_graph.state import (
     Retries,
-    StateSchema,
+    SimulationGraphState,
 )
 
 JSONType = Union[
@@ -52,7 +52,7 @@ def _render_any(value: JSONType, render_kwargs: dict[str, Any]) -> JSONType:
 
 
 def update_state(
-    state: StateSchema, context: ContextSchema, state_updates: dict[str, Any]
+    state: SimulationGraphState, context: ContextSchema, state_updates: dict[str, Any]
 ) -> dict[str, Any]:
     """Builtin update_state node function.
 
@@ -70,7 +70,9 @@ def update_state(
     return state_updates
 
 
-def raise_error(state: StateSchema, context: ContextSchema, message: str) -> None:
+def raise_error(
+    state: SimulationGraphState, context: ContextSchema, message: str
+) -> None:
     """Builtin error node function.
 
     Takes an error message string and raises an error.
@@ -88,7 +90,7 @@ def raise_error(state: StateSchema, context: ContextSchema, message: str) -> Non
 
 
 def command_filter(
-    state: StateSchema, context: ContextSchema, command_handlers: dict
+    state: SimulationGraphState, context: ContextSchema, command_handlers: dict
 ) -> dict[str, Any]:
     """Builtin command filter node function."""
     # Check state.event_draft for command pattern (e.g., "/help" or "\help")
@@ -133,7 +135,9 @@ def command_filter(
 
 
 def retry(
-    state: StateSchema, context: ContextSchema, retry_message: Optional[str] = None
+    state: SimulationGraphState,
+    context: ContextSchema,
+    retry_message: Optional[str] = None,
 ) -> dict[str, Any]:
     """Retry node function.
 
@@ -199,7 +203,9 @@ def retry(
     }
 
 
-def form(state: StateSchema, context: ContextSchema, form_name: str) -> dict[str, Any]:
+def form(
+    state: SimulationGraphState, context: ContextSchema, form_name: str
+) -> dict[str, Any]:
     """Builtin form node function.
 
     Takes a form definition and collects user responses to each question in the form.

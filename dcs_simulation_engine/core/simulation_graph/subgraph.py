@@ -68,43 +68,20 @@ returned.
 
 from __future__ import annotations
 
-from typing import Dict, Literal, Optional, TypedDict
+from typing import Dict, Optional
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
-# ---------------------------------------------------------------------------
-# Types
-# ---------------------------------------------------------------------------
-
-
-MessageType = Literal["info", "error", "assistant", "user"]
-
-
-class SimulationMessage(TypedDict):
-    type: MessageType
-    content: str
+from dcs_simulation_engine.core.simulation_graph.state import (
+    SimulationGraphState,
+    SimulationMessage,
+)
 
 
-class SimulationState(TypedDict, total=False):
-    # Input
-    user_input: str
-
-    # Per-node messages
-    validation_message: SimulationMessage
-    response_message: SimulationMessage
-
-    # Final output message (the only thing the parent really cares about)
-    final_message: SimulationMessage
-
-
-# ---------------------------------------------------------------------------
-# Nodes
-# ---------------------------------------------------------------------------
-
-
-def validate_input(state: SimulationState) -> Dict[str, SimulationMessage]:
+def validate_input(state: SimulationGraphState) -> Dict[str, SimulationMessage]:
     """Validate the user input and return a uniform message payload."""
-    text = state.get("user_input", "")
+    text = state["user_input"]
 
     # Very simple validation rules for now; can be extended later.
     if not text.strip():
@@ -129,7 +106,7 @@ def validate_input(state: SimulationState) -> Dict[str, SimulationMessage]:
     return {"validation_message": msg}
 
 
-def respond(state: SimulationState) -> Dict[str, SimulationMessage]:
+def respond(state: SimulationGraphState) -> Dict[str, SimulationMessage]:
     """Generate an in-character response to the user input.
 
     This runs in parallel with validation, so it should not assume that
@@ -142,7 +119,7 @@ def respond(state: SimulationState) -> Dict[str, SimulationMessage]:
     content = f"In-character reply to: {text!r}"
 
     msg: SimulationMessage = {
-        "type": "assistant",
+        "type": "ai",
         "content": content,
     }
     return {"response_message": msg}
@@ -161,7 +138,7 @@ def finalize(state: SimulationState) -> Dict[str, SimulationMessage]:
            (In practice, the parent wrapper may stop early and synthesize its
            own error; this is just a safety net.)
     """
-    validation_msg: Optional[SimulationMessage] = state.get("validation_message")
+    validation_msg: Optional[SimulationMessage] = state.get("user_validation_message")
     response_msg: Optional[SimulationMessage] = state.get("response_message")
 
     # No validation message at all: this should not normally happen if the graph
@@ -190,13 +167,11 @@ def finalize(state: SimulationState) -> Dict[str, SimulationMessage]:
     return {"final_message": msg}
 
 
-# ---------------------------------------------------------------------------
-# Graph factory
-# ---------------------------------------------------------------------------
-
-
-def build_simulation_subgraph():
+def build_simulation_subgraph() -> CompiledStateGraph:
     """Build and compile the simulation subgraph.
+
+    So it can be used like a node in the parent SimulationGraph
+    we use the same SimulationGraphState type.
 
     Returns a compiled LangGraph app that:
     - takes a SimulationState-like dict as input

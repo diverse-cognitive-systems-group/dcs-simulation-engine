@@ -17,7 +17,7 @@ from dcs_simulation_engine.core.constants import OUTPUT_FPATH
 from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.core.simulation_graph import (
     SimulationGraph,
-    StateSchema,
+    SimulationGraphState,
     make_state,
 )
 from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
@@ -47,7 +47,7 @@ class RunManager(BaseModel):
 
     name: str
     game_config: GameConfig
-    state: StateSchema
+    state: SimulationGraphState
     context: ContextSchema
     config: RunnableConfig
 
@@ -221,7 +221,7 @@ class RunManager(BaseModel):
 
         # Initialize empty state
         try:
-            state: StateSchema = make_state()
+            state: SimulationGraphState = make_state()
             if game_config.graph_config.state_overrides:
                 logger.debug(
                     f"Applying state overrides: "
@@ -243,9 +243,8 @@ class RunManager(BaseModel):
             raise
         logger.debug(f"Initial state created: {state}")
 
-        # Initialize runtime context
-        # Initialize llms and inject them into runtime context at build time
-        # for each node in the graph that requires one.
+        # Initialize runtime context (llms) and inject them into runtime
+        # context at build time
         context = ContextSchema(pc=pc, npc=npc, models={})
         for node in game_config.graph_config.nodes:
             if node.provider:  # only setup nodes with a provider
@@ -268,6 +267,8 @@ class RunManager(BaseModel):
                     raise NotImplementedError(
                         f"Provider not implemented yet: {node.provider}"
                     )
+        # Also initialize simulation subgraph model(s)
+        context["models"]["simulation_subgraph"] = ChatOpenRouter()
 
         # Compile the simulation graph
         try:
