@@ -1,5 +1,8 @@
 """Base game config module."""
 
+# TODO: part of config that queries db using raw dict-like queries is
+# janky and should be replaced with something more robust.
+
 from __future__ import annotations
 
 from typing import Annotated, Any, Dict, List, Literal, Optional
@@ -131,6 +134,8 @@ class CharacterSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     pc: ValiditySelector
     npc: ValiditySelector
+    display_pc_choice_as: Optional[str] = "{hid}"
+    display_npc_choice_as: Optional[str] = "{hid}"
 
 
 VersionStr = Annotated[
@@ -183,8 +188,8 @@ class GameConfig(SerdeMixin, BaseModel):
         self.character_settings.npc.validate_on_server()
 
     def get_valid_characters(
-        self, player_id: Optional[str] = None
-    ) -> tuple[list[str], list[str]]:
+        self, player_id: Optional[str] = None, return_formatted: Optional[bool] = False
+    ) -> tuple[list[str], list[tuple[str, str]]]:
         """Get valid PC/NPC character hids.
 
         For each selector (PC and NPC):
@@ -223,7 +228,62 @@ class GameConfig(SerdeMixin, BaseModel):
         )
 
         # Return deterministic lists (sorted) or randomize upstream as needed
-        return sorted(final_pcs), sorted(final_npcs)
+        sorted_pcs = sorted(final_pcs)
+        sorted_npcs = sorted(final_npcs)
+        if not return_formatted:
+            return sorted_pcs, sorted_npcs
+
+        # Format character choices according to config
+        pc_fmt = getattr(self.character_settings, "display_pc_choice_as", "{hid}")
+        npc_fmt = getattr(self.character_settings, "display_npc_choice_as", "{hid}")
+
+        def format_characters(hids: list[str], fmt: str) -> list[str]:
+            """Format character choices according to fmt string."""
+            formatted: list[str] = []
+
+            for hid in hids:
+                try:
+                    doc = dbh.get_character_from_hid(hid)
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning(f"Failed to load character for hid={hid}: {exc}")
+                    formatted.append(hid)
+                    continue
+
+                if not doc:
+                    formatted.append(hid)
+                    continue
+
+                # Build a formatting context
+                context: dict[str, Any] = {"hid": hid}
+
+                # Support dict-like or pydantic-like objects
+                if isinstance(doc, dict):
+                    context.update(doc)
+                else:
+                    if hasattr(doc, "dict") and callable(getattr(doc, "dict")):
+                        context.update(doc.dict())
+                    else:
+                        # Last resort: use __dict__ if available
+                        context.update(getattr(doc, "__dict__", {}))
+
+                try:
+                    formatted.append(str(fmt).format(**context))
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning(
+                        f"Failed to format character choice for hid={hid} "
+                        f"with fmt={fmt!r}: {exc}"
+                    )
+                    formatted.append(hid)
+
+            return formatted
+
+        formatted_pcs = format_characters(sorted_pcs, pc_fmt)
+        formatted_npcs = format_characters(sorted_npcs, npc_fmt)
+
+        # update this to return a list of tuples with formatted string and hid)
+        return list(zip(formatted_pcs, sorted_pcs)), list(
+            zip(formatted_npcs, sorted_npcs)
+        )
 
     def is_player_allowed(self, player_id: Optional[str]) -> bool:
         """Check access via UNION(valid) − UNION(invalid) over `access_settings.user`.
@@ -236,6 +296,11 @@ class GameConfig(SerdeMixin, BaseModel):
         sel = self.access_settings.user
         valid_map = getattr(sel, "valid", {}) or {}
         invalid_map = getattr(sel, "invalid", {}) or {}
+
+        logger.debug(
+            f"is_player_allowed called with valid_map={valid_map},"
+            f" invalid_map={invalid_map}"
+        )
 
         # If both sides are empty → no restriction → allow anyone.
         if not valid_map and not invalid_map:

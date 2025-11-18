@@ -95,7 +95,7 @@ def stream_msg(message: str) -> Iterator[str]:
 def create_run(state: SessionState, token_value: Optional[str] = None) -> RunManager:
     """Create a new RunManager and return it."""
     if "game_config" not in state:
-        logger.error("App state missing game_config in _create_run.")
+        logger.error("App state missing game_config in create_run.")
         raise gr.Error(USER_FRIENDLY_EXC)
     if "player_id" not in state:
         state["player_id"] = None
@@ -112,7 +112,7 @@ def create_run(state: SessionState, token_value: Optional[str] = None) -> RunMan
             player_id=state["player_id"],
         )
     except Exception as e:
-        logger.error(f"Error creating RunManager in _create_run: {e}", exc_info=True)
+        logger.error(f"Error creating RunManager in create_run: {e}", exc_info=True)
         raise gr.Error(USER_FRIENDLY_EXC)
     return run
 

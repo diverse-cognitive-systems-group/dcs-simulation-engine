@@ -21,7 +21,7 @@ def build_header(game_config: GameConfig, banner: str | None = None) -> HeaderUI
         f"""
         <div style='text-align:center'>
           <h1 style='margin-bottom:0'>{game_config.name.title()}</h1>
-          <p style='margin-top:6px;color:#666'>A DCS Simulation Engine Game</p>
+          <p style='margin-top:6px;color:#666'>Running on DCS Simulation Engine</p>
         </div>
         """
     )

@@ -4,11 +4,7 @@ version: 1.0.0
 authors:
   - DCS
 description: |
-  A game where players engage with a human character and then 
-  report what goal the NPC was trying to communicate. 
-  It is useful for measuring how quickly in a single interaction 
-  with no background a player can understand the intention of 
-  another character as that characters abilities changes.
+  A game where players engage with a human character and then report what goal the NPC was trying to communicate. It is useful for measuring how quickly in a single interaction with no background a player can understand the intention of another character as that characters abilities changes.
 
 ### ACCESS SETTINGS ###
 access_settings:
@@ -16,7 +12,8 @@ access_settings:
     valid:
       players:
         where:
-          consent_signed: true
+          consent_signature.answer:
+            "$exists": true
   new_player_form:
     preamble: |
       # Informed Consent for Research Study Participation
@@ -80,6 +77,8 @@ data_collection_settings:
 
 ### CHARACTER SELELCTION SETTINGS ###
 character_settings:
+  display_pc_choice_as: "{hid} - {short_description}"
+  display_npc_choice_as: "Character details hidden"
   pc:
     valid:
       characters:

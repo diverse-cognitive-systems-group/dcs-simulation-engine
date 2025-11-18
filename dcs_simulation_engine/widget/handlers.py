@@ -124,18 +124,22 @@ def setup_simulation(
 def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
     SessionState,
     Dict[str, Any],  # gate container update
-    Dict[str, Any],  # play container update
-    Dict[str, Any],  # play pc selector update
-    Dict[str, Any],  # play npc selector update
+    Dict[str, Any],  # setup container update
+    Dict[str, Any],  # setup no customization group update
+    Dict[str, Any],  # setup customization group update
+    Dict[str, Any],  # setup pc dropdown group update
+    Dict[str, Any],  # setup npc dropdown group update
+    Dict[str, Any],  # setup pc selector update
+    Dict[str, Any],  # setup npc selector update
     Dict[str, Any],  # token box update
     Dict[str, Any],  # token error box update
 ]:
     """Handle clicking the Continue button on the gate page."""
     logger.debug("on_continue called with token")
     updated_gate_container = gr.update()
-    updated_play_container = gr.update()
-    updated_play_pc_selector = gr.update()
-    updated_play_npc_selector = gr.update()
+    updated_setup_container = gr.update()
+    updated_setup_pc_selector = gr.update()
+    updated_setup_npc_selector = gr.update()
     updated_token_box = gr.update()
     updated_token_error_box = gr.update()
 
@@ -168,10 +172,28 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
             logger.debug("Access token valid.")
             state["player_id"] = player_id
 
+            # make sure player is allowed to play this game
+            if "game_config" not in state:
+                raise ValueError(
+                    """App state is missing game_config
+                                  required to get characters."""
+                )
+
+            if not state["game_config"].is_player_allowed(player_id=player_id):
+                logger.warning(
+                    f"Player {player_id} is not allowed to play"
+                    " this game according to game_config."
+                )
+                raise gr.Error(
+                    "Sorry, your account is not authorized to"
+                    " access this game. If you think this is an error, "
+                    "please let us know."
+                )
+
             updated_gate_container = gr.update(visible=False)
             updated_token_box = gr.update(value="")
             updated_token_error_box = gr.update(visible=False, value="")
-            updated_play_container = gr.update(visible=True)
+            updated_setup_container = gr.update(visible=True)
 
             logger.debug(f"Getting valid characters for game with player: {player_id}")
             if "game_config" not in state:
@@ -179,17 +201,38 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
                     """App state is missing game_config
                                   required to get characters."""
                 )
-            valid_pcs, valid_npcs = state["game_config"].get_valid_characters()
+            valid_pcs, valid_npcs = state["game_config"].get_valid_characters(
+                player_id=player_id, return_formatted=True
+            )
+            logger.debug(
+                f"Updating internal gradio state with"
+                f" {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs."
+            )
             state["valid_pcs"] = valid_pcs
             state["valid_npcs"] = valid_npcs
             if not valid_pcs:
                 logger.warning("No valid PCs found for this player.")
+                raise gr.Error(
+                    "Sorry, no valid player characters available for"
+                    " your account. If you think this is an error, "
+                    "please contact support."
+                )
             if not valid_npcs:
                 logger.warning("No valid NPCs found for this player.")
-            updated_play_pc_selector = gr.update(
+                raise gr.Error(
+                    "Sorry, no valid non-player characters available for"
+                    " your account. If you think this is an error, "
+                    "please contact support."
+                )
+            updated_setup_no_customization_group = gr.update(visible=False)
+            updated_setup_customization_group = gr.update(visible=True)
+            updated_setup_pc_dropdown_group = gr.update(visible=bool(valid_pcs))
+            updated_setup_npc_dropdown_group = gr.update(visible=bool(valid_npcs))
+            updated_setup_pc_selector = gr.update(
                 choices=valid_pcs, value=valid_pcs[0] if valid_pcs else None
             )
-            updated_play_npc_selector = gr.update(
+
+            updated_setup_npc_selector = gr.update(
                 choices=valid_npcs, value=valid_npcs[0] if valid_npcs else None
             )
         except PermissionError as e:
@@ -197,6 +240,14 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
             updated_token_error_box = gr.update(
                 visible=True, value="  Invalid access token"
             )
+        except gr.Error as e:
+            logger.error(
+                "Gradio Error while handling on_continue: {}", e, exc_info=True
+            )
+            if "run" in state:
+                run = state["run"]
+                run.exit(reason="error")
+            raise e  # re-raise gr.Error as is
         except Exception as e:
             logger.error("Error while handling on_continue: {}", e, exc_info=True)
             if "run" in state:
@@ -206,9 +257,13 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
     return (
         state,
         updated_gate_container,
-        updated_play_container,
-        updated_play_pc_selector,
-        updated_play_npc_selector,
+        updated_setup_container,
+        updated_setup_no_customization_group,
+        updated_setup_customization_group,
+        updated_setup_pc_dropdown_group,
+        updated_setup_npc_dropdown_group,
+        updated_setup_pc_selector,
+        updated_setup_npc_selector,
         updated_token_box,
         updated_token_error_box,
     )
