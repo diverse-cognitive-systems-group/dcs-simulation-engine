@@ -196,7 +196,7 @@ def form(
     idx = first_unanswered(0)
 
     # If there is a user draft, use it to answer the current unanswered question
-    answer_draft = state.get("event_draft")
+    answer_draft: dict = state.get("user_input")
     if idx is not None and answer_draft and answer_draft.get("type") == "user":
         answer_content = (answer_draft.get("content") or "").strip()
         if answer_content:
@@ -220,6 +220,6 @@ def form(
     )
 
     return {
-        "special_user_message": {"type": "info", "content": rendered_question},
+        "simulator_output": {"type": "info", "content": rendered_question},
         "forms": {form_name: form},
     }

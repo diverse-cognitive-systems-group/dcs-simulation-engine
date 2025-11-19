@@ -20,7 +20,7 @@ access_settings:
 ### DATA COLLECTION SETTINGS ###
 # Defines what data is collected durring and after game play.
 data_collection_settings:
-  save_runs: false
+  save_runs: true
 
 ### CHARACTER SELECTION SETTINGS ###
 # Defines what characters may be used for the user/player character (PC) and non-player character (NPC) using a MongoDB-style query on collections characters, players or runs.

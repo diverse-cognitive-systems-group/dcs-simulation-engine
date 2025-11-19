@@ -70,6 +70,7 @@ class RunManager(BaseModel):
     saved: bool = Field(default=False)
     exit_reason: str = Field(default="")
     player_id: Optional[str] = Field(default=None)
+    feedback: List[Dict[str, Any]] = Field(default_factory=list)
 
     stopping_conditions: Dict[str, List[str]] = Field(
         # Default stopping conditions to prevent runaway simulations
@@ -345,6 +346,12 @@ class RunManager(BaseModel):
                 logger.warning(
                     f"Feedback received: {parts[1] if len(parts) > 1 else ''}"
                 )
+                self.feedback.append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "content": parts[1] if len(parts) > 1 else "",
+                    }
+                )
                 # update state with special message "feedback received, thank you."
                 self.state["simulator_output"] = {
                     "type": "info",
@@ -411,7 +418,7 @@ class RunManager(BaseModel):
             self.exit_reason = reason
             self.end_ts = datetime.now()
             self.save()
-            logger.info(f"Simulation stopped. Reason: {reason}")
+            logger.info(f"Simulation exited. Reason: {reason}")
         return
 
     def save(self, path: Optional[Union[str, Path]] = None) -> Path:

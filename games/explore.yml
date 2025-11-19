@@ -20,7 +20,7 @@ access_settings:
 ### DATA COLLECTION SETTINGS ###
 # Defines what data is collected durring and after game play.
 data_collection_settings:
-  save_runs: false
+  save_runs: true
 
 ### CHARACTER SELECTION SETTINGS ###
 # Defines what characters may be used for the user/player character (PC) and non-player character (NPC) using a MongoDB-style query on collections characters, players or runs.
@@ -67,7 +67,7 @@ graph_config:
       kwargs:
         command_handlers:
           help:
-            special_user_message:
+            simulator_output:
               type: info
               content: |
                 Describe an action...
@@ -79,11 +79,10 @@ graph_config:
       kind: builtin.update_state # message builtin func takes a message: str and displays writes it to special_user_message so the user can see it without it being part of the message history.
       kwargs:
         state_updates:
-          special_user_message:
+          simulator_output:
             type: info
             content: |
-              # Welcome
-              In this game there is no predefined objective or task. You can just engage freely with the other character. 
+              Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character.
 
               You are playing as: {{ pc.hid }} ({{ pc.short_description }})
               
@@ -93,7 +92,7 @@ graph_config:
       kind: builtin.update_state
       kwargs:
         state_updates:
-          special_user_message:
+          simulator_output:
             type: info
             content: |
               Game exited with reason: {{ exit_reason }}
@@ -101,41 +100,16 @@ graph_config:
       kind: builtin.update_state
       kwargs:
         state_updates:
-          special_user_message:
+          simulator_output:
             type: info
             content: |
               # Game Complete
-              The game has completed after {{ len(events) }} total turns.
-    - name: error_in_checkpoint
-      kind: builtin.raise_error
-      kwargs:
-        message: |
-          An unhandled checkpoint condiftion was reached...
-          - invalid_reason: {{ invalid_reason }}
-          - event_draft: {{ event_draft }}
-          - retries: {{ retries }}
-          - retry_limits: {{ retry_limits }}
+              The game has completed after {{ len(history) }} total turns.
     - name: error_in_lifecycle
       kind: builtin.raise_error # error builtin funct takes a message: str and raises an error with that message.
       kwargs:
         message: |
           An unhandled lifecycle status was reached: {{ lifecycle }}
-    - name: user_max_retry_exit
-      kind: builtin.update_state # update_state builtin func takes state_updates: dict[str, Any] and updates the game state with those values.
-      kwargs:
-        state_updates:
-          lifecycle: EXIT
-          exit_reason: "maximum retries exceeded"
-    - name: retry
-      kind: builtin.retry # retry builtin func takes event_draft, invalid_reason?, increments retries for event_draft.type, gathers a user retry message if type is user, and returns updated message draft with guidance if type is simulator.
-      kwargs:
-        retry_message: |
-          Your previous action was invalid: Please try again.
-          Remaining Retries: {{ retry_limits[event_draft.type] - retries[event_draft.type] }}
-          Previous Action: {{ event_draft.content }}
-          Reason: {{ invalid_reason }}
-    - name: simulation_subgraph
-      kind: builtin.simulation_subgraph
   ### Graph Edges ###
   # Defines the flow between nodes including conditionals and branching. Conditionals on state variables is used to direct flow to a single output node (no parallization is supported).
   # __START__ and __END__ are special Langgraph nodes that indicate the start and end of the graph.
@@ -143,9 +117,8 @@ graph_config:
     - from: __START__
       to: 
         conditional:
-          # sometimes system writes a message to user
-          - if: "state['final_response']"
-            then: __END__ # end graph so special message is displayed
+          - if: "state['simulator_output']"
+            then: __END__
           # on first turn, show welcome message
           - if: "state['lifecycle'] == 'ENTER'"
             then: enter_message
@@ -153,65 +126,25 @@ graph_config:
           - if: "state['lifecycle'] == 'EXIT'"
             then: exit_message
           - if: "state['lifecycle'] == 'UPDATE'"
-            then: command_filter
-          - if: "state['lifecycle'] == 'UPDATE' and state['event_draft']['type'] == 'ai'"
-            then: update
+            then: __SIMULATION_SUBGRAPH__
           - else: error_in_lifecycle
     
     # after welcome message, run update node to setup initial scene
     - from: enter_message
-      to: update
+      to: __SIMULATION_SUBGRAPH__
 
     # after exit message, end the graph
     - from: exit_message
       to: __END__
 
     # after users message has gone through command filter, 
-    # end if special usermessage else continue lifecycle handling
+    # end if simulator output else continue lifecycle handling
     - from: command_filter
       to: 
         conditional:
-          - if: "state['special_user_message']"
-            then: __END__ # end graph so special message is displayed
-          - else: checkpoint # send users draft to checkpoint for validation
-            
-    # after simulator turn, always send to checkpoint for validation
-    - from: update
-      to: checkpoint 
-
-    - from: checkpoint # validate event_draft (either give invalid_reason or add it to events and continue)
-      to:
-        conditional:
-            # if invalid and retries left
-          - if: "state['invalid_reason'] and state['retries'][state['event_draft']['type']] < state['retry_limits'][state['event_draft']['type']]"
-            then: retry
-          # if user invalid and no retries left
-          - if: "state['event_draft']['type'] == 'user' and state['invalid_reason'] and state['retries'][state['event_draft']['type']] >= state['retry_limits'][state['event_draft']['type']]"
-            then: user_max_retry_exit
-          # if simulator turn invalid and no retries left
-          - if: "state['event_draft']['type'] == 'ai' and state['invalid_reason'] and state['retries'][state['event_draft']['type']] >= state['retry_limits'][state['event_draft']['type']]"
-            then: simulator_max_retry_exit
-          # if valid and simulator turn
-          - if: "state['event_draft']['type'] == 'ai'"
-            then: __END__ # simulator created a valid message - end turn
-          # if valid and user message
-          - if: "state['event_draft']['type'] == 'user'"
-            then: update  # user created a valid message - continue to simulator turn
-          - else: error_in_checkpoint
-
-
-    - from: user_max_retry_exit
-      to: exit_message
-
-    - from: simulator_max_retry_exit
-      to: exit_message
-
-    - from: retry
-      to:
-        conditional:
-          - if: "{{ state['event_draft']['type'] == 'user' }}"
+          - if: "state['simulator_output']"
             then: __END__
-          - if: "{{ state['event_draft']['type'] == 'ai' }}"
-            then: update
-          - else: error_in_checkpoint
-
+          - else: __SIMULATION_SUBGRAPH__
+    
+    - from: __SIMULATION_SUBGRAPH__
+      to: __END__

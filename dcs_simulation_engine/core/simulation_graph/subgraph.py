@@ -139,7 +139,7 @@ def validate_input(
         try:
             context = runtime.context
             llm = context["models"]["subgraph_validator"]
-            response = llm.invoke(msgs_for_model)
+            response = llm.invoke(input=msgs_for_model)
             elapsed = time.perf_counter() - start
             if elapsed > LONG_MODEL_WARN_SECONDS:
                 logger.warning(
@@ -391,6 +391,14 @@ def init_subgraph_context() -> Dict[str, Any]:
     Static things like llm instances, etc.
     """
     models: Dict[str, Any] = {}
-    models[VALIDATOR_NAME] = ChatOpenRouter(model=VALIDATOR_MODEL)
-    models[UPDATER_NAME] = ChatOpenRouter(model=UPDATER_MODEL)
+    models[VALIDATOR_NAME] = ChatOpenRouter(
+        model=VALIDATOR_MODEL,
+        timeout=5,  # or httpx.Timeout for more control
+        max_retries=2,  # provider level retries
+    )
+    models[UPDATER_NAME] = ChatOpenRouter(
+        model=UPDATER_MODEL,
+        timeout=5,  # or httpx.Timeout for more control
+        max_retries=2,  # provider level retries
+    )
     return models

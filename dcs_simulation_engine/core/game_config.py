@@ -281,9 +281,10 @@ class GameConfig(SerdeMixin, BaseModel):
         formatted_npcs = format_characters(sorted_npcs, npc_fmt)
 
         # update this to return a list of tuples with formatted string and hid)
-        return list(zip(formatted_pcs, sorted_pcs)), list(
+        res = list(zip(formatted_pcs, sorted_pcs)), list(
             zip(formatted_npcs, sorted_npcs)
         )
+        return res
 
     def is_player_allowed(self, player_id: Optional[str]) -> bool:
         """Check access via UNION(valid) − UNION(invalid) over `access_settings.user`.

@@ -261,7 +261,7 @@ class SimulationGraph:
                     # External cancel
                     if cancel_event is not None and cancel_event.is_set():
                         logger.info(
-                            "SimulationGraph '%s' yielding cancel event.",
+                            "SimulationGraph YIELDING cancel and STOPPING.",
                             self.name,
                         )
                         yield {
@@ -273,7 +273,8 @@ class SimulationGraph:
                     # Timeout
                     if timeout is not None and (now - start) > timeout:
                         logger.warning(
-                            "SimulationGraph yielding timeout event after %.2fs",
+                            "SimulationGraph YIELDING timeout error"
+                            " and STOPPING (after %.2fs)",
                             now - start,
                         )
                         yield {
@@ -283,7 +284,7 @@ class SimulationGraph:
                         }
                         return  # stop whole stream
 
-                    # Validation failure (assumes subgraph writes `validator_response`)
+                    # Check events from validation nodes and stop graph run if error
                     validator_response = (
                         node_update.get("validator_response")
                         if isinstance(node_update, dict)
@@ -295,37 +296,70 @@ class SimulationGraph:
                     )
                     if is_validator_node and is_error and validator_response:
                         current_state["validator_response"] = validator_response
+                        # descrement user retry budget
+                        if "user_retry_budget" not in current_state:
+                            logger.error(
+                                "Validator node cannot decrement user_retry_budget:"
+                                " field missing from state."
+                            )
+                        else:
+                            current_state["user_retry_budget"] -= 1
                         content = validator_response.get("content")
                         logger.info(
-                            "SimulationGraph stopping early due to"
-                            f" validation error. Yielding: {validator_response}"
+                            "SimulationGraph YIELDING validation" " error and STOPPING."
                         )
+                        if current_state.get("user_retry_budget", 0) <= 0:
+                            content += (
+                                " User retry budget exhausted; "
+                                "no further retries allowed."
+                            )
+                            current_state["exit_reason"] = "user retry budget exhausted"
+                            current_state["lifecycle"] = "EXIT"
                         yield {
                             "type": "error",
                             "content": content,
                         }
                         return  # stop whole stream
+
+                    # Check for any nodes that yield "simulator_output" messages
+                    sim_output = (
+                        node_update.get("simulator_output")
+                        if isinstance(node_update, dict)
+                        else None
+                    )
+                    # we already listen to all the nodes inside the subgraph,
+                    # so can skip the whole subgraph output
+                    if (
+                        sim_output is not None
+                        and node_name != "__SIMULATION_SUBGRAPH__"
+                    ):
+                        logger.debug(
+                            f"SimulationGraph YIELDING update"
+                            f" from node {node_name}"
+                            # f"`type` field: {sim_output}",
+                        )
+                        yield {
+                            "type": sim_output["type"],
+                            "content": sim_output["content"],
+                        }
                     else:
                         logger.debug(
-                            f"SimulationGraph stream NOT YIELDING update"
+                            f"SimulationGraph NOT YIELDING update"
                             f" from node {node_name}"
-                            f"`type` field: {node_updates}",
+                            # f"`type` field: {node_updates}",
                         )
             # All durring run updates, yeilded above,
             # now we yeild the final output of the turn
             display_state_snapshot(current_state)
 
             user_input = current_state.get("user_input")
-            if user_input is not None:
-                yield {"type": user_input["type"], "content": user_input["content"]}
-            else:
+            if user_input is None:
                 logger.warning("Final state has no 'user_input' to yield.")
 
             sim_output = current_state.get("simulator_output")
-            if sim_output is not None:
-                yield {"type": sim_output["type"], "content": sim_output["content"]}
-            else:
+            if sim_output is None:
                 logger.warning("Final state has no 'simulator_output' to yield.")
+            # else: we already yielded all simulator_output messages during the run.
         finally:
             duration = time.monotonic() - start
             logger.debug("SimulationGraph run complete.")

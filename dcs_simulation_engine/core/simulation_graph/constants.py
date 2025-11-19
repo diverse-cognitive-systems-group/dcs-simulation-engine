@@ -7,11 +7,18 @@ LONG_INVOKE_WARN_SECONDS = 25.0
 LONG_MODEL_WARN_SECONDS = 15.0
 MAX_USER_INPUT_LENGTH = 350  # characters (a few sentences)
 
-VALIDATOR_MODEL = "openai/gpt-5-mini"
+FINALIZER_NAME = "subgraph_finalizer"
+
 VALIDATOR_NAME = "subgraph_validator"
+VALIDATOR_MODEL = "openai/gpt-5-mini"
+VALIDATOR_TIMEOUT_SECONDS = 10
+VALIDATOR_MAX_RETRIES = 2
+
 UPDATER_MODEL = "openai/gpt-5-mini"
 UPDATER_NAME = "subgraph_updater"
-FINALIZER_NAME = "subgraph_finalizer"
+UPDATER_TIMEOUT_SECONDS = 10
+UPDATER_MAX_RETRIES = 2
+
 
 UPDATER_SYSTEM_TEMPLATE: str = """
 You are the scene-advancer. The user controls their own character. You play only the simulator's character (NPC). You must not speak or act for the user's character.

@@ -6,6 +6,8 @@ Send → enqueue → sim.play consumes → timer polls state → new messages ap
 
 from __future__ import annotations
 
+import random
+from datetime import datetime
 from typing import Any, Dict, Iterator, List, Tuple
 
 import gradio as gr
@@ -13,6 +15,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from loguru import logger
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
+from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.widget.constants import (
     MAX_INPUT_LENGTH,
     USER_FRIENDLY_EXC,
@@ -59,8 +62,13 @@ def handle_chat_feedback(data: gr.LikeData, state: SessionState) -> None:
         f"🚩 Player ({run.player_id}) flagged a message as"
         f" '{data.liked}' in run '{run.name}': {data.value}"
     )
-    logger.debug("Flag data saved to logs/flags")
-    # TODO: consider log to db? other storage?
+    data_dict = {
+        "liked": data.liked,
+        "value": data.value,
+        "index": data.index,
+    }
+    run.feedback.append({"timestamp": datetime.now().isoformat(), "data": data_dict})
+    logger.debug("Flag data saved")
 
 
 def setup_simulation(
@@ -79,32 +87,33 @@ def setup_simulation(
         run = create_run(state)
         state["run"] = run
         logger.debug("Stepping simulation to get opener.")
-        # FIXME: I don't see processing/seconds at the bottom since this change. Idk why.
-        for _ in run.step():
-            pass  # consume all updates to init starting state
         initial_history = []
-        if run.state.get("history", []):
-            logger.debug("Found history on setup.")
-            for e in run.state["history"]:
-                if isinstance(e, AIMessage):
-                    formatted_response_partial = format(
-                        {
-                            "type": "ai",
-                            "content": e.content,
-                        }
-                    )  # type: ignore
-                    initial_history.append(
-                        {"role": "assistant", "content": formatted_response_partial}
-                    )
-                elif isinstance(e, HumanMessage):
-                    initial_history.append(
-                        {"role": "user", "content": e.content}
-                    )  # type: ignore
-                else:
-                    logger.warning(
-                        f"Unknown message type in history during setup: {type(e)}"
-                    )
+        for e in run.step():
+            if isinstance(e, AIMessage):
+                formatted_response_partial = format(
+                    {
+                        "type": "ai",
+                        "content": e.content,
+                    }
+                )  # type: ignore
+                initial_history.append(
+                    {"role": "assistant", "content": formatted_response_partial}
+                )
+            elif isinstance(e, HumanMessage):
+                initial_history.append(
+                    {"role": "user", "content": e.content}
+                )  # type: ignore
+            elif isinstance(e, dict) and "type" in e and "content" in e:
+                formatted_response = format(e)
+                initial_history.append(
+                    {"role": "assistant", "content": formatted_response}
+                )
+            else:
+                logger.warning(
+                    f"Unknown message type in history during setup: {type(e)}"
+                )
         state["initial_history"] = initial_history
+        logger.debug(f"Initial history length: {len(initial_history)}")
         updated_chatbot_value = initial_history
         return state, updated_chatbot_value
     except Exception as e:
@@ -195,7 +204,9 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
                     """App state is missing game_config
                                   required to get characters."""
                 )
-            valid_pcs, valid_npcs = state["game_config"].get_valid_characters(
+
+            game_config: GameConfig = state["game_config"]
+            valid_pcs, valid_npcs = game_config.get_valid_characters(
                 player_id=player_id, return_formatted=True
             )
             logger.debug(
@@ -203,6 +214,7 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
                 f" {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs."
             )
             state["valid_pcs"] = valid_pcs
+            # FIXME: fix return type issue
             state["valid_npcs"] = valid_npcs
             if not valid_pcs:
                 logger.warning("No valid PCs found for this player.")
@@ -223,11 +235,21 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
             updated_setup_pc_dropdown_group = gr.update(visible=bool(valid_pcs))
             updated_setup_npc_dropdown_group = gr.update(visible=bool(valid_npcs))
             updated_setup_pc_selector = gr.update(
-                choices=valid_pcs, value=valid_pcs[0] if valid_pcs else None
+                choices=valid_pcs,
+                value=(
+                    valid_pcs[random.randint(0, len(valid_pcs) - 1)]
+                    if valid_pcs
+                    else None
+                ),
             )
 
             updated_setup_npc_selector = gr.update(
-                choices=valid_npcs, value=valid_npcs[0] if valid_npcs else None
+                choices=valid_npcs,
+                value=(
+                    valid_npcs[random.randint(0, len(valid_npcs) - 1)]
+                    if valid_npcs
+                    else None
+                ),
             )
         except PermissionError as e:
             logger.warning(f"PermissionError in on_continue: {e}")
