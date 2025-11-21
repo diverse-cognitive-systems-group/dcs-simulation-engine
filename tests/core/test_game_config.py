@@ -63,6 +63,7 @@ def test_regex_and_ne(
 
     # make sure human-normative is included in valid PCs
     valid_pcs, _ = cfg.get_valid_characters()
+    valid_pcs = [value for _, value in valid_pcs]
     logger.debug(f"Valid PCs: {valid_pcs}")
     assert "human-normative" in valid_pcs
 
@@ -145,6 +146,8 @@ def test_get_valid_chars_with_valid_minus_invalid(
     assert doc["game_config"]["name"] == "Test Game"
 
     pcs, npcs = cfg.get_valid_characters(player_id=player_id)
+    pcs = [value for _, value in pcs]
+    npcs = [value for _, value in npcs]
     logger.debug(f"Valid PCs: {pcs}, Valid NPCs: {npcs}")
 
     # get all characters from db then remove invalids to compare
@@ -212,6 +215,8 @@ def test_get_valid_chars_older_than(
     )
 
     pcs, npcs = cfg.get_valid_characters(player_id=player_id)
+    pcs = [value for _, value in pcs]
+    npcs = [value for _, value in npcs]
     logger.debug(f"Valid PCs: {pcs}, Valid NPCs: {npcs}")
 
     # get all characters from db then remove invalids to compare
