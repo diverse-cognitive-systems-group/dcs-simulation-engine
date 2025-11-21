@@ -414,7 +414,7 @@ class RunManager(BaseModel):
 
                 stream = self.graph.stream(
                     state=self.state,  # dynamic state
-                    context=self.context,  # static runtime ctx (n/pc, api connections, etc
+                    context=self.context,  # static runtime ctx (n/pc, api conns, etc
                     config=self.config,  # runnable config
                 )
                 for event in stream:
