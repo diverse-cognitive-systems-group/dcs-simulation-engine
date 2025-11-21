@@ -1,17 +1,72 @@
-### METADATA ###
 name: Foresight
 version: 1.0.0
 authors: ["DCS"]
 description: |
   A game where players have to predict the next action of another character based on their experiential knowledge of that character. This is useful for measuring how quickly and accurately players learn to model other cognitive systems that are different from their own.
 
-### ACCESS SETTINGS ###
 access_settings:
   user:
     valid:
-      players: {} # requires consent/signed
+      players:
+        where:
+          consent_signature.answer:
+            "$exists": true
+  new_player_form:
+    preamble: |
+      # Informed Consent for Research Study Participation
 
-### DATA COLLECTION SETTINGS ###
+      You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one’s ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
+
+      Identifiable information is only collected for voluntary follow-up; it is otherwise anonymous. Any identifiable information will be coded. The risks involved are no greater than those involved in daily activities. You will receive one SONA credit for this study.    
+
+      We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact the following people:      
+
+      - Dr. Bruce Walker: bruce.walker@psych.gatech.edu  
+      - McKinnley Workman: mworkman9@gatech.edu  
+      - Kalia McManus: Kalia.McManus@gatech.edu  
+      
+      If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
+    questions:
+      - key: full_name
+        type: text
+        placeholder: Jane Doe
+        label: Full Name
+        info: The name you'd like us to associate with your responses.
+        required: true
+        pii: true
+      - key: email
+        type: email
+        label: Email address
+        required: true
+        pii: true
+      - key: phone_number
+        type: phone
+        label: Phone number
+        required: true
+        pii: true
+      - key: prior_experience
+        type: textarea
+        label: Explain any prior experience or expertise you have had working with non-standard humans or other cognitive agents?
+        info: This includes personal or professional experience engaging with neurodivergent individuals or with humans or others who have atypical or unique cognitive abilities. For example, animal trainers, microbiologists working with yeast, special education teachers, biologists studying dophin behavior, etc.
+        pii: false
+      - key: additional_comments
+        type: textarea
+        label: Any additional comments or questions?
+        required: false
+        info: Optional feedback for the research team. Please do not include any identifiable information here.
+      - key: consent_to_followup
+        label: Follow-ups
+        type: checkboxes
+        options: 
+          - I consent to being contacted for a voluntary follow-up regarding this study.
+        required: false
+      - key: consent_signature
+        label: Consent Signature
+        type: checkboxes
+        options:
+          - I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature.
+        required: true
+
 data_collection_settings:
   save_runs: true
 
@@ -22,62 +77,123 @@ character_settings:
   npc:
     valid:
       characters: {}
+    invalid: # invalid if the npc has been used by this player in this game before
+      runs:
+        where:
+          player_id: player_id
+          game_config.name: "Foresight"
+
+subgraph_customizations:
+  additional_validator_rules: |
+    - ALLOW PREDICTIONS: The user's input IS ALLOWED to include a prediction about what the other character's response will be. For example, "I wave my hand and predict they will wave back."
+  additional_updater_rules: |
+    - IGNORE PREDICTIONS:
+    The user's input MAY include a prediction about what the simulator character's response will be. IGNORE ANY PREDICTIONS ENTIRELY. DO NOT ADJUDICATE THEM OR RESPOND TO THEM IN ANY WAY. ONLY RESPONSE TO THE USERS ACTION.
+
 graph_config:
   name: foresight_graph
   description: A PC engages with a NPC in as many scenes and actions as desired. When the PC feels confident, it uses the '/predict' command to submit a prediction about the NPCs next action. We collect data about the prediction accuracy over time.
+  state_overrides:
+    forms:
+      completion_form:
+        questions:
+          - key: additional_notes
+            text: |
+              Do you have any additional notes or other feedback? Any predictions you made that were particularly interesting or challenging? Please describe in a few sentences.
+            answer: ''
   nodes:
-    - name: check_predict
-      kind: builtin.command_filter
+    - name: command_filter
+      kind: builtin.command_filter 
       kwargs:
         command_handlers:
-          haystack: message_draft.content
-          regex: [/\/predict/i, /\\predict/i]
+          help:
+            simulator_output:
+              type: info
+              content: |
+                Describe an action...(and optionally include a prediction about what the other character's response will be).
+                - Eg. If your character can see and move you might say "I look around the room and walk to the door."
+                - Eg. If you want to include a prediction you might say "I look around the room and walk to the door, and I predict they will follow me."
+
+                User '/complete' to end the game and submit your predictions.
+
+                Here is are reminder of your character's abilities:
+                {{ pc.abilities }}
+          complete:
+            lifecycle: COMPLETE
+    - name: enter_message
+      kind: builtin.update_state
+      kwargs:
+        state_updates:
+          simulator_output:
+            type: info
+            content: |
+              Welcome, in this game, you take on the role of a character whose aim is to understand the other character well enough to be able to predict their actions before they make them. Engage with the other character using your abilities and if/when you feel like you know the character well enough to predict their response well, state your prediction.
+
+              For example, you might say "I wave my hand." Or "I wave my hand and predict they will wave back."
+
+              Your character ({{ pc.short_description }}) has the following abilities:
+              {{ pc.abilities }}
+          lifecycle: UPDATE
+    - name: exit_message
+      kind: builtin.update_state
+      kwargs:
+        state_updates:
+          simulator_output:
+            type: info
+            content: |
+              Game exited with reason: {{ exit_reason }}
+    - name: complete_message
+      kind: builtin.update_state
+      kwargs:
+        state_updates:
+          simulator_output:
+            type: info
+            content: |
+              Game Completed after {{ len(history) }} turns.
+    # form builtin loops through each question in the form and displays it to the user to collect responses asking after submissions and before final save if they want to edit any responses.
+    - name: completion_form
+      kind: builtin.form 
+      kwargs:
+        form_name: completion_form
+    - name: error_in_lifecycle
+      kind: builtin.raise_error # error builtin funct takes a message: str and raises an error with that message.
+      kwargs:
+        message: |
+          An unhandled lifecycle status was reached: {{ lifecycle }}
   edges:
     - from: __START__
+      to: 
+        conditional:
+          - if: "state['simulator_output']"
+            then: __END__
+          - if: "state['lifecycle'] == 'ENTER'"
+            then: enter_message
+          - if: "state['lifecycle'] == 'EXIT'"
+            then: exit_message
+          - if: "state['lifecycle'] == 'COMPLETE'"
+            then: completion_form
+          - if: "state['lifecycle'] == 'UPDATE'"
+            then: command_filter
+          - else: error_in_lifecycle
+    
+    - from: enter_message
+      to: __SIMULATION_SUBGRAPH__
+
+    - from: exit_message
       to: __END__
-    # - from: __START__
-    #   to: 
-    #     conditional:
-    #       - if: "((lifecycle_status == 'ENTER'))"
-    #         then: builtin.message # runs the message function with default message for game state
-    #       - if: "((lifecycle_status == 'EXIT'))"
-    #         then: exit_message
-    #       - if: "((lifecycle_status == 'COMPLETE'))"
-    #         then: complete_message
-    #       - if: "((lifecycle_status == 'HELP'))"
-    #         then: help_message
-    #       - if: "((lifecycle_status == 'UPDATE'))"
-    #         then: check_predict
-          
-    # - from: enter_message
-    #   to: check_predict
 
-    # - from: check_predict
-    #   to:
-    #     conditional:
-    #       - if: "${is_command} == true"
-    #         then: __END__
-    #       - else: checkpoint
+    - from: command_filter
+      to: 
+        conditional:
+          - if: "state['simulator_output']"
+            then: __END__
+          - if: "state['lifecycle'] == 'COMPLETE'"
+            then: completion_form
+          - else: __SIMULATION_SUBGRAPH__
 
-    # - from: exit_message
-    #   to: __END__
-
-    # - from: complete_message
-    #   to: __END__
-
-    # - from: help_message
-    #   to: __END__
-
-    # - from: checkpoint
-    #   to:
-    #     conditional:
-    #       - if: "${valid} == false and ${retries} < ${retry_limits[message_draft.role]}"
-    #         then: builtin.retry
-    #       - elif: "${valid} == false and ${retries} > ${retry_limits[message_draft.role]}"
-    #         then: exit_message
-    #       - elif: "${valid} == true and ${message_draft.role} == 'npc'"
-    #         then: __END__
-    #       - else: update
-
-    # - from: update
-    #   to: checkpoint
+    - from: completion_form
+      to:
+        conditional:
+          - if: "state['lifecycle'] == 'EXIT'"
+            then: exit_message
+          - else: __END__

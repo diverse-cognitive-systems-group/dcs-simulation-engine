@@ -4,12 +4,68 @@ authors:
   - DCS
 description: |
   A game where players engage with a character over multiple interactions and report on their understanding of the character including their goal types/bounds and structure. It is useful for studying how well a player can understand the bounds of another characters goals.
-
 access_settings:
   user:
     valid:
-      players: {}
+      players:
+        where:
+          consent_signature.answer:
+            "$exists": true
+  new_player_form:
+    preamble: |
+      # Informed Consent for Research Study Participation
 
+      You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one’s ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
+
+      Identifiable information is only collected for voluntary follow-up; it is otherwise anonymous. Any identifiable information will be coded. The risks involved are no greater than those involved in daily activities. You will receive one SONA credit for this study.    
+
+      We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact the following people:      
+
+      - Dr. Bruce Walker: bruce.walker@psych.gatech.edu  
+      - McKinnley Workman: mworkman9@gatech.edu  
+      - Kalia McManus: Kalia.McManus@gatech.edu  
+      
+      If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
+    questions:
+      - key: full_name
+        type: text
+        placeholder: Jane Doe
+        label: Full Name
+        info: The name you'd like us to associate with your responses.
+        required: true
+        pii: true
+      - key: email
+        type: email
+        label: Email address
+        required: true
+        pii: true
+      - key: phone_number
+        type: phone
+        label: Phone number
+        required: true
+        pii: true
+      - key: prior_experience
+        type: textarea
+        label: Explain any prior experience or expertise you have had working with non-standard humans or other cognitive agents?
+        info: This includes personal or professional experience engaging with neurodivergent individuals or with humans or others who have atypical or unique cognitive abilities. For example, animal trainers, microbiologists working with yeast, special education teachers, biologists studying dophin behavior, etc.
+        pii: false
+      - key: additional_comments
+        type: textarea
+        label: Any additional comments or questions?
+        required: false
+        info: Optional feedback for the research team. Please do not include any identifiable information here.
+      - key: consent_to_followup
+        label: Follow-ups
+        type: checkboxes
+        options: 
+          - I consent to being contacted for a voluntary follow-up regarding this study.
+        required: false
+      - key: consent_signature
+        label: Consent Signature
+        type: checkboxes
+        options:
+          - I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature.
+        required: true
 data_collection_settings:
   save_runs: true
 
@@ -18,159 +74,29 @@ character_settings:
   pc:
     valid:
       characters: {}
-      # characters: { "where": { "$or": [ { "hid": "human-normative" }, { "common_descriptors": { "$regex": /human/i } } ] } }
+        # where:
+        #   "$or":
+        #     - { "hid": "human-normative" }
+        #     - { "common_descriptors": { "$regex": /human/i } }
   npc:
     valid:
-      characters: {}
-      # characters: { "where": { "$ne": { "hid": "human-normative" } } }
+      characters:
+        where:
+          "$ne": 
+            hid: "human-normative" 
     invalid:
-      runs: {}
-      # runs: { "where": { "player_id": player_id, "game_config.name": "Goal Horizon" } }
+      runs:
+        where:
+          player_id: "player_id"
+          lifecycle_status: "COMPLETE"
+          "game_config.name": "Goal Horizon"
+          "context.npc.hid":
+            "$exists": true
 
 graph_config:      
   name: goal_horizon_graph
   description: A graph for interacting with a character to understand a characters goals over multiple interactions.
-  nodes:
-    # - name: start_message
-    #   kind: builtin.message
-    # - name: exit_message
-    #   kind: builtin.message
-    # - name: complete_message
-    #   kind: builtin.message
-    # - name: help_message
-    #   kind: builtin.message
-    - name: checkpoint
-      kind: custom
-      provider: openrouter
-      model: deepseek/deepseek-chat-v3-0324
-      system_template: |
-        Your task is to validate whether the character's next action is valid according to the following rubric:
-
-          1.	Feasibility Rule: The action must be physically and logically possible according to the game world and character abilities. Reject if its not feasible.
-          2.	In-Character Rule: The action must be consistent with the character’s abilities. Reject if it’s out of character, uses abilities the character doesn't have.
-          3.	Relevance Rule: The action must be on-topic and make sense in context.
-          4.	Explicit Action or Sensing: The player must clearly describe what the character does or which sense they use (sight, hearing, smell, etc.).
-          5.	No Meta or Vague Actions: Reject vague or omniscient actions such as “I figure out where I am” or “I learn everything about the room.” Actions must be concrete and specific.
-          6.	No Adversarial Inputs: Reject harmful, disruptive, or game-breaking actions.
-          7.  Actions shouldn't be overly complex: Reject long, complex, multi-step actions. Actions are intended to represent a single step in a turn taking exchange.
-          8.  End Game Condition: If the action indicates the PC is leaving or ending the interaction or has tried more than 2 times to create a correct action set "end_game" to true.
-
-        ----
-
-        {% if message_draft.role == 'pc' %}
-        PC Abilities:
-        {{pc.abilities}}
-        {% elif message_draft.role == 'npc' %}
-        NPC Abilities:
-        {{npc.abilities}}
-        {% endif %}
-
-        The actions taken so far are:
-        {{messages}}
-
-        Output format: {
-            "valid": bool,                   # is the proposed action valid?
-            "reason": str?                   # if invalid, provide reason
-          }
-    # - name: update
-    #   kind: custom
-    #   provider: openrouter
-    #   model: openai/gpt-oss-20b:free
-    #   system_template: |
-
-    #     {% if len(messages) == 0 %}
-    #       You are to set up an interaction between two characters: USER and UCS.
-
-    #       Write a 1 sentence opener describing a real-life setting where the characters USER and UCS might naturally end up near each other based on their chracter profiles. Do not initiate contact. Just set the scene that could lead to a natural interaction.
-
-    #       •	Do NOT reveal or hint what type characters are (species, form, etc.).
-    #       •	Do NOT reveal or interpret abilities, intentions, or emotions—only describe visible actions or words.
-    #       •	Use ONLY the abilities listed for each character—do not invent new ones.
-    #       •	Do NOT include any references to stages, plays, or performances.
-        
-    #       PC's Abilities:
-    #       {{pc.abilities}}
-
-    #       NPC's Abilities:
-    #       {{npc.abilities}}
-
-    #     {% else %}
-    #       Role-play as the character NPC in a scene with the PC:
-    #       •	Stay fully in character as NPC.
-    #       •	Only describe actions or expressions possible using the abilities listed for NPC below.
-    #       •	If an action or form of communication is not on the list, you must not use it (e.g., no speech if non-verbal).
-    #       •	Do NOT invent new abilities.
-    #       •	Do NOT describe the PC or act for them — wait for their input.
-    #       •	Do NOT reveal or hint at NPC’s type, abilities, goals, or thoughts.
-    #       •	Silence or stillness is allowed if no valid ability applies.
-
-    #       NPC's Abilities:
-    #       {{npc.abilities}}
-    #     {% endif %}}
-        
-    #     Interaction actions so far:
-    #     {{messages}}  
-    # - name: end_form
-    #   kind: builtin.form
-    #   config:
-    #     title: End of Interaction Survey
-    #     description: Please fill out this survey about your understanding of the NPC's goals to complete the game.
-    #     fields:
-    #       - name: goal_types
-    #         kind: text
-    #         label: What do you believe are the primary goal types of the NPC?
-    #         required: true
-    #       - name: goal_bounds
-    #         kind: text
-    #         label: What do you believe are the bounds or limits of the NPC's goals?
-    #         required: true
-    #       - name: goal_structure
-    #         kind: text
-    #         label: How would you describe the structure or hierarchy of the NPC's goals?
-    #         required: true
+  nodes: []
   edges:
     - from: __START__
       to: __END__
-  # # TODO: verify end_form flow
-  #   - from: __START__
-  #     to: 
-  #       conditional:
-  #         - if: "((lifecycle_status == 'ENTER'))"
-  #           then: start_message
-  #         - if: "((lifecycle_status == 'EXIT'))"
-  #           then: exit_message
-  #         - if: "((lifecycle_status == 'COMPLETE'))"
-  #           then: complete_message
-  #         - if: "((lifecycle_status == 'HELP'))"
-  #           then: help_message
-  #         - if: "((lifecycle_status == 'UPDATE'))"
-  #           then: checkpoint
-          
-  #   - from: start_message
-  #     to: checkpoint
-
-  #   - from: exit_message
-  #     to: __END__
-
-  #   - from: complete_message
-  #     to: end_form
-
-  #   - from: end_form
-  #     to: __END__
-
-  #   - from: help_message
-  #     to: __END__
-
-  #   - from: checkpoint
-  #     to:
-  #       conditional:
-  #         - if: "${valid} == false and ${retries} < ${retry_limits[message_draft.role]}"
-  #           then: builtin.retry
-  #         - elif: "${valid} == false and ${retries} > ${retry_limits[message_draft.role]}"
-  #           then: exit_message
-  #         - elif: "${valid} == true and ${message_draft.role} == 'npc'"
-  #           then: __END__
-  #         - else: update
-
-  #   - from: update
-  #     to: checkpoint

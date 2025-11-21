@@ -8,6 +8,41 @@ from rich.console import Console
 from dcs_simulation_engine.cli.configuration import load_theme
 from dcs_simulation_engine.core.run_manager import RunManager
 
+# TODO: consider adding game setup intro like the ascii art banner,
+# game name, description, pc, npc, etc.
+
+
+def _render_step(
+    run: RunManager,
+    console: Console,
+    theme: dict[str, str],
+    user_input: str,
+) -> None:
+    """Run one simulation step and render all resulting events."""
+    for event in run.step(user_input):
+        etype = event.get("type")
+        content = event.get("content")
+
+        if etype in {"ai", "assistant", "simulator", "system"}:
+            console.print()
+            console.print(content, style=theme["simulation-response"])
+
+        elif etype == "info":
+            console.print()
+            console.print(content, style=theme["info"])
+
+        elif etype == "warning":
+            console.print()
+            console.print(content, style=theme["warning"])
+
+        elif etype == "error":
+            console.print()
+            console.print(content, style=theme["error"])
+
+        # optional: lifecycle termination
+        if event.get("lifecycle") == "EXIT":
+            break
+
 
 def run_cli(
     game: str,
@@ -37,36 +72,26 @@ def run_cli(
         logger.exception(f"Failed to setup simulation with error: {e}")
         raise
 
-    last_seen = 0
-
-    def rich_input_provider() -> str:
-        nonlocal last_seen
-        if run.state is None:
-            raise ValueError("Simulation state was not initialized properly.")
-
-        sp = run.state.get("special_user_message")
-        if sp:
-            console.print()  # blank line
-            console.print(sp["content"], style=theme["info"])
-            run.state["special_user_message"] = None
-
-        if run.state["lifecycle"] == "EXIT":
-            return ""
-
-        events = run.state["events"]
-        if len(events) > last_seen and events[-1].type == "ai":
-            last_msg = events[-1]
-            console.print()  # blank line
-            console.print(f"{last_msg.content}", style=theme["simulation-response"])
-            last_seen = len(events)
-
-        console.print()  # blank line
-        # Style the prompt via print + input (keeps YAML-driven styles)
-        console.print("what do you do next? ", style=theme["user-prompt"], end=" ")
-        return console.input().strip()
-
     console.rule("Game Started", style=theme["intro"])
-    # TODO: consider adding ... while simulation engine turns are running
-    run.play(input_provider=rich_input_provider)
-    reason = run.exit_reason
-    console.rule(f"Game Exited (reason: {reason})", style=theme["outtro"])
+
+    # system takes the first turn (empty user input)
+    _render_step(run=run, console=console, theme=theme, user_input="")
+
+    if run.state.get("lifecycle") == "EXIT":
+        console.rule(f"Game Exited (reason: {run.exit_reason})", style=theme["outtro"])
+        return
+
+    while True:
+        console.print()
+        console.print("what do you do next?", style=theme["user-prompt"], end=" ")
+        user_input = console.input().strip()
+
+        if not user_input:  # user wants to exit
+            break
+
+        _render_step(run=run, console=console, theme=theme, user_input=user_input)
+
+        if run.state.get("lifecycle") == "EXIT":
+            break
+
+    console.rule(f"Game Exited (reason: {run.exit_reason})", style=theme["outtro"])

@@ -67,23 +67,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--banner",
         type=str,
-        default="<b>DEMO</b>",
+        default="<b>LIVE EXPERIMENT</b>",
         help="Optional markdown banner to show at the top of the widget.",
     )
     parser.add_argument(
         "--share",
         action="store_true",
         help="Create a public Gradio link.",
-    )
-    parser.add_argument(
-        "--hide-npc-selector",
-        action="store_true",
-        help="Hide the non-player character (NPC) selector in the widget.",
-    )
-    parser.add_argument(
-        "--hide-pc-selector",
-        action="store_true",
-        help="Hide the player character (PC) selector in the widget.",
     )
     parser.add_argument(
         "--source",
@@ -103,8 +93,6 @@ def run(args: argparse.Namespace) -> int:
         app = build_widget(
             game_name=args.game,
             banner=args.banner,
-            show_npc_selector=not args.hide_npc_selector,
-            show_pc_selector=not args.hide_pc_selector,
             # source=args.source,
         )
 

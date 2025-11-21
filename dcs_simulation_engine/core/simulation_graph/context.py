@@ -16,6 +16,8 @@ class ContextSchema(TypedDict, total=True):
     npc: dict[str, Any]
     # retry_limits: dict[str, int]
     models: dict[str, BaseChatModel]
+    additional_validator_rules: str | None
+    additional_updater_rules: str | None
 
 
 def make_context() -> ContextSchema:

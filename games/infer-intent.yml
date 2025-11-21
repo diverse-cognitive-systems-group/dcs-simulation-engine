@@ -1,22 +1,16 @@
-### METADATA ###
 name: Infer Intent
 version: 1.0.0
 authors:
   - DCS
 description: |
-  A game where players engage with a human character and then 
-  report what goal the NPC was trying to communicate. 
-  It is useful for measuring how quickly in a single interaction 
-  with no background a player can understand the intention of 
-  another character as that characters abilities changes.
-
-### ACCESS SETTINGS ###
+  A game where players engage with a human character and then report what goal the NPC was trying to communicate. It is useful for measuring how quickly in a single interaction with no background a player can understand the intention of another character as that characters abilities changes.
 access_settings:
   user:
     valid:
       players:
         where:
-          consent_signed: true
+          consent_signature.answer:
+            "$exists": true
   new_player_form:
     preamble: |
       # Informed Consent for Research Study Participation
@@ -72,48 +66,40 @@ access_settings:
         options:
           - I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature.
         required: true
-      
-
-### DATA COLLECTION SETTINGS ###
 data_collection_settings:
   save_runs: true
-
-### CHARACTER SELELCTION SETTINGS ###
 character_settings:
+  display_pc_choice_as: "{hid} - {short_description}"
+  display_npc_choice_as: "Character details hidden"
   pc:
     valid:
       characters:
         where:
-          common_descriptors:
-            "$regex": "human-?like"
-            "$options": "i"
+          hid: "human-normative"
   npc:
     valid:
       characters:
-        where:
+        where: # character hid isn't human-normative
           hid:
             "$ne": "human-normative"
-        # characters: { 'where': { $ne : { hid: 'human-normative' } } } # valid if the npc is not human normative
-    # invalid:
-    #   runs:
-    #     where:
-    #       player_id: player_id
-    #       game_config.name: "Infer Intent"
-        # runs: { 'where': { player_id: player_id, game_config.name: 'Infer Intent' } } # and the player has not played this game before
+    invalid: # invalid where this player has already played this game with this character
+      runs:
+        where:
+          player_id: player_id
+          game_config.name: "Infer Intent"
+          context.npc.hid: context.npc.hid
 
-### ADDITIONAL STOPPING CRITERIA ###
+        
 stopping_conditions:
   turns: [">=30"]
-
-### GAME FLOW/GRAPH SETTINGS ###
+subgraph_customizations:
+  additional_updater_rules: |
+    - Goal Aligned Response: The simulator character's response should be in-line with a specific goal or intention that s/he/it/they are trying to communicate with the user character.
 graph_config:
   name: inter-intent-graph
-  description: A game flow graph that sets up and continues a scene where the system character is using their abilities to communicate a goal/intention. When the player thinks 
-  # state variables that you'd like set for this game graph
+  description: A game flow graph that sets up and continues a scene where the system character is using their abilities to communicate a goal/intention. When the player thinks they understand the goal they can use the "guess" command to end the game and submit their inference. 
   state_overrides:
-    retry_limits:
-      user: 3
-      ai: 2
+    user_retry_budget: 3
     forms:
       completion_form:
         questions:
@@ -125,7 +111,6 @@ graph_config:
             text: |
               Do you have any other feedback about this experience?
             answer: ''
-  ### GRAPH NODES ###
   nodes:
     # command builtin func takes command to match "eg. help" and a message to display and/or states updates. It checks for a match in event_draft.content
     - name: command_filter
@@ -133,13 +118,26 @@ graph_config:
       kwargs:
         command_handlers:
           help:
-            special_user_message:
+            simulator_output:
               type: info
               content: |
-                Describe an action...
-                - Eg. If your character can see and move you might say "I look around the room and walk to the door."
+                ##### Objective
+                Your task in this simulation is use your abilities to interact with another character and figure the the intention or goal they are trying to communicate. When you feel like you understand their goal, type "/guess" to end the interaction and submit your inference.
+                
+                ##### Rules
+                Describe an action that makes sense in the context of the scene and uses your character's abilities.
+                - For example, if your character can see and move in a human-like way, you might say "I look around the room and walk to the door."
 
-                Here is are reminder of your character's abilities:
+                ##### Commands
+                Type '/help' to see this message again.
+                Type '/guess' when you think you understand the NPC's goal to end the interaction and submit your inference.
+                Type '/exit' or '/quit' to leave the game without submitting an inference.
+                Type '/abilities' to see your character's abilities.
+          abilities:
+            simulator_output:
+              type: info
+              content: |
+                ##### User Character Abilities
                 {{ pc.abilities }}
           guess:
             lifecycle: COMPLETE
@@ -147,21 +145,20 @@ graph_config:
       kind: builtin.update_state
       kwargs:
         state_updates:
-          special_user_message:
+          simulator_output:
             type: info
             content: |
-              # Welcome
-              In this game there is no predefined objective or task. You can just engage freely with the other character. 
+              Welcome, in this game, you take on the role of a character whose aim is to use your abilities to interact with another character and figure the the intention or goal they are trying to communicate. When you feel like you understand their goal, type "/guess" to end the interaction and submit your inference.
 
-              You are playing as: {{ pc.hid }} ({{ pc.short_description }})
-              
-              The simulator is playing as: {{ npc.hid }} ({{ npc.short_description }})
+              Your character is: {{ pc.short_description }} {% if pc.hid != "human-normative" %}\nAbilities:\n{{ pc.abilities }}{% endif %}
+
+              For help at any time, type "/help"
           lifecycle: UPDATE
     - name: exit_message
       kind: builtin.update_state
       kwargs:
         state_updates:
-          special_user_message:
+          simulator_output:
             type: info
             content: |
               Game exited with reason: {{ exit_reason }}
@@ -169,277 +166,54 @@ graph_config:
       kind: builtin.update_state
       kwargs:
         state_updates:
-          special_user_message:
+          simulator_output:
             type: info
             content: |
-              # Game Complete
-              The game has completed after {{ len(events) }} total turns.
+              Game Completed after {{ len(history) }} turns.
     # form builtin loops through each question in the form and displays it to the user to collect responses asking after submissions and before final save if they want to edit any responses.
     - name: completion_form
       kind: builtin.form 
       kwargs:
         form_name: completion_form
-    - name: error_in_checkpoint
-      kind: builtin.raise_error
-      kwargs:
-        message: |
-          An unhandled checkpoint condiftion was reached...
-          - invalid_reason: {{ invalid_reason }}
-          - event_draft: {{ event_draft }}
-          - retries: {{ retries }}
-          - retry_limits: {{ retry_limits }}
     - name: error_in_lifecycle
       kind: builtin.raise_error # error builtin funct takes a message: str and raises an error with that message.
       kwargs:
         message: |
           An unhandled lifecycle status was reached: {{ lifecycle }}
-    - name: user_max_retry_exit
-      kind: builtin.update_state # update_state builtin func takes state_updates: dict[str, Any] and updates the game state with those values.
-      kwargs:
-        state_updates:
-          lifecycle: EXIT
-          exit_reason: "maximum retries exceeded"
-    - name: simulator_max_retry_exit
-      kind: builtin.update_state # update_state builtin func takes state_updates: dict[str, Any] and updates the game state with those values.
-      kwargs:
-        state_updates:
-          lifecycle: EXIT
-          exit_reason: "simulator could not produce valid response within retry limit"
-    - name: retry
-      kind: builtin.retry # retry builtin func takes event_draft, invalid_reason?, increments retries for event_draft.type, gathers a user retry message if type is user, and returns updated message draft with guidance if type is simulator.
-      kwargs:
-        retry_message: |
-          Your previous action was invalid: Please try again.
-          Remaining Retries: {{ retry_limits[event_draft.type] - retries[event_draft.type] }}
-          Previous Action: {{ event_draft.content }}
-          Reason: {{ invalid_reason }}
-    - name: checkpoint
-      kind: custom
-      provider: openrouter
-      # model: openai/gpt-5 # works but slow ~20s
-      model: openai/gpt-5-mini
-      system_template: |
-        You are a validator that decides whether the `{{ event_draft.type }}`'s proposed response is valid.
-
-        {% if events|length == 0 %}
-        FIRST TURN:
-        1. MUST be an opening scene.
-        2. MUST begin with: **"You enter a new space. In this space"**
-        3. MUST be 2-3 sentences setting a shared scene where both characters could plausibly be present based on their descriptions and abilities.
-
-        {% elif event_draft.type == "user" %}
-        USER RESPONSE:
-        1. MUST describe plausible observable actions based on their character's abilities. Repeating actions, leaving/returning to the scene or trying multiple times is allowed. For example, 
-          - if the user's character can see, "I look around ..." is valid. 
-          - if the user's character cannot hear, "I listen for ..." is invalid.
-          - "Help me calculate this..." is invalid because it does not describe an observable action.
-          - Internal states or conclusions like “I figure out…”, “I realize…” are never valid because they do not describe observable actions.
-        2. MUST NOT decide outcomes of their actions. For example,
-          - “I look at the man. He looks back at me.” is invalid because it decides the man's reaction.
-          - "I reach over tapping the table to try and get his attention." is valid because doesn't decide if the action is successful.
-        4. MAY USE ANY OBJECT that could be present (EVEN IF NOT YET MENTIONED!!!). For example,
-          - If the scene is a kitchen, and the user's character has hands, they may say "I pick up a knife from the counter" even if knives were not previously mentioned.
-          - However, they may NOT use or reference objects that are implausible in the context like a rocket launcher in a chemistry lab.
-        5. MAY leave the scene, walk away, etc. as long as they are within the character abilities.
-
-        {% elif event_draft.type == "ai" %}
-        SIMULATOR RESPONSE:
-        0. Adjudicate the user's last action: 
-        Assume success if its within the user character abilities. Report the result of that action in the world. For example, if the user can see and they say "I look around for a light switch", the scene advancement should include something like: "You see a light switch on the wall." If the user's last action was leaving the scene, you may narrate the world and/or simulator character's reaction to that if any.
-        1. Sense-bounded narration:
-        Only narrate what the user's character could presently perceive through their available senses. For example, if the user's character can see, you may narrate visual details of the scene. If the user's character cannot hear, do not narrate sounds.
-        2. Perception-bounded NPC behavior: 
-        Simulator characters only react to things they have the ability to detect. If the user does something the user cannot perceive, do not response as if they perceived it; instead narrate what the simulator character is doing/sensing. For example:
-          - If the user waves silently and the NPC is blind: do not wave back; instead, output something the blind NPC is doing or sensing at that moment.
-          - If the user speaks and the NPC can hear: the NPC may respond verbally or behaviourally to the speech as appropriate.
-          - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC’s plausible next action.
-        3. No new user actions / no user internals:
-        Do not invent new actions for the user or narrate their thoughts/feelings. Only reflect outcomes of the action they actually took.
-        4. Continuity and feasibility
-        All narration must remain physically/logically continuous within each characters abilities in context.
-        5. Single observable step:
-        Advance the scene by one concrete, externally observable outcome (world or simulator character action) at a time. Do not jump ahead multiple steps or narrate future effects.
-        6. No unexpressed internals:
-        Do not narrate internal states (beliefs/motives/emotions) of any agent unless they are externally expressed through observable behaviour like speech or action. For example, stating an external observable like "exploring a room..." is valid, but "feeling anxious..." or "using mechanosensation..." is invalid unless the character expresses it through action like speaking.
-        {% endif %}
-
-        ----
-        {% if event_draft.type == 'user' %}
-        User/player character Abilities:
-        {{ pc.abilities }}
-        
-        {% elif event_draft.type == 'ai' %}
-        Simulator/non-player character Abilities:
-        {{ npc.abilities }}
-        
-        {% endif %}
-        ----
-
-        Actions so far: {% if events|length == 0 %} None {% else %}{{ events }}{% endif %}
-
-        Next Proposed action:
-        {{ event_draft }}
-
-        Output format: {
-            "invalid_reason": str?    # if invalid, provide reason, otherwise omit
-            "events": [{            # if valid, copy the Next Proposed Action, otherwise omit
-                "type": str?,         
-                "content": str?        
-              }],
-          }
-    - name: update
-      kind: custom
-      provider: openrouter
-      # model: deepseek/deepseek-chat-v3-0324 # faster but required retries too much
-      model: openai/gpt-5-mini
-      system_template: |
-        You are the scene-advancer. The user controls their own character. You play only the simulator's character (NPC). You must not speak or act for the user's character.
-        - User's character is: {{ pc.short_description }} ({{ pc._short_description }})
-        - User character abilities: {{ pc.abilities }}
-
-        - Simulator's character is: {{ npc.short_description }} ({{ npc._short_description }})
-        - Simulator character (your character) description: {{ npc.long_description }}
-        - Simulator character (your character) abilities: {{ npc.abilities }}
-        ----
-        When advancing the scene:
-
-        0. Adjudicate the user's last action: 
-        Assume success if its within the user character abilities. Report the result of that action in the world. For example, if the user can see and they say "I look around for a light switch", the scene advancement should include something like: "You see a light switch on the wall."
-
-        1. Sense-bounded narration:
-        Only narrate what the user's character could presently perceive through their available senses.
-
-        2. Perception-bounded NPC behavior: 
-        Simulator characters only react to things they have the ability to detect. If the user does something the user cannot perceive, do not response as if they perceived it; instead narrate what the simulator character is doing/sensing. For example:
-          - If the user waves silently and the NPC is blind: do not wave back; instead, output something the blind NPC is doing or sensing at that moment.
-          - If the user speaks and the NPC can hear: the NPC may respond verbally or behaviourally to the speech as appropriate.
-          - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC’s plausible next action.
-          
-        3. No new user actions / no user internals:
-        Do not invent new actions for the user or narrate their thoguhts/feelings. Only reflect outcomes of the action they actually took.
-
-        4. Continuity and feasibility
-        All narration must remain physically/logically continuous within each characters abilities in context.
-
-        5. Single observable step:
-        Advance the scene by one concrete, externally observable outcome (world or simulator character action) at a time. Do not jump ahead multiple steps or narrate future effects.
-
-        6. No unexpressed internals:
-        Do not narrate internal states (beliefs/motives/emotions) of any agent unless they are externally expressed through observable behaviour like speech or action.
-        {% if not events %}
-        Describe a 1-2 sentence opening scene where both characters could plausibly be present, setting the stage for a potential interaction. It should start with "You enter a new space. In this space...".
-        For example:
-        - If the user's character has the ability to perceive textual/keyboard input, you could set up a computer/typing scene like "You enter a new space. In this space, you sit in front of a keyboard and screen with a chat-like interface open."
-        
-        Start the opening scene now.
-        {% else %}
-        Your job is to advance the scene one step in response to the user's last action.
-
-        Provide a response to the last user action now.
-        {% endif %}
-
-        Actions so far: 
-        
-        {% if events|length == 0 %} None {% else %} {{ events }}{% endif %}
-        {% if invalid_reason %}
-        {{ invalid_reason }}
-        
-        Provide a response to the last user action and ensure it follows the rules.
-        {% endif %}
-        Write ONLY the scene output in the following JSON format — no meta-text, no explanations, no reasoning, no restatement of rules.
-        Output format: {
-          "event_draft": {
-            "type": "ai",
-            "content": str # a description of how the scene advances including any next actions taken by your NPC - no reasoning, explanations, or extra text.
-          }
-          "invalid_reason": null,          # don't change this field
-        }
-  
-  ### GRAPH EDGES ###     
   edges:
     - from: __START__
       to: 
         conditional:
-          # sometimes system writes a message to user
-          - if: "state['special_user_message']"
-            then: __END__ # end graph so special message is displayed
-          # on first turn, show welcome message
+          - if: "state['simulator_output']"
+            then: __END__
           - if: "state['lifecycle'] == 'ENTER'"
             then: enter_message
-          # on exit lifecycle, show exit message
           - if: "state['lifecycle'] == 'EXIT'"
             then: exit_message
-          # if complete
           - if: "state['lifecycle'] == 'COMPLETE'"
             then: completion_form
-          - if: "state['lifecycle'] == 'UPDATE' and state['event_draft']['type'] == 'user'"
+          - if: "state['lifecycle'] == 'UPDATE'"
             then: command_filter
-          - if: "state['lifecycle'] == 'UPDATE' and state['event_draft']['type'] == 'ai'"
-            then: update
           - else: error_in_lifecycle
     
-    # after welcome message, run update node to setup initial scene
     - from: enter_message
-      to: update
+      to: __SIMULATION_SUBGRAPH__
 
-    # after exit message, end the graph
     - from: exit_message
       to: __END__
 
-    # after users message has gone through command filter, 
-    # end if special usermessage else continue lifecycle handling
     - from: command_filter
       to: 
         conditional:
-          # if command filter set special message, end graph to show it
-          - if: "state['special_user_message']"
-            then: __END__ # end graph so special message is displayed
-          # if lifecycle is complete, go to completion form
+          - if: "state['simulator_output']"
+            then: __END__
           - if: "state['lifecycle'] == 'COMPLETE'"
             then: completion_form
-          # else its probably a regular user message, continue lifecycle
-          - else: checkpoint # send users draft to checkpoint for validation
+          - else: __SIMULATION_SUBGRAPH__
 
     - from: completion_form
-      to: __END__
-
-    # after simulator turn, always send to checkpoint for validation
-    - from: update
-      to: checkpoint 
-
-    - from: checkpoint # validate event_draft (either give invalid_reason or add it to events and continue)
       to:
         conditional:
-            # if invalid and retries left
-          - if: "state['invalid_reason'] and state['retries'][state['event_draft']['type']] < state['retry_limits'][state['event_draft']['type']]"
-            then: retry
-          # if user invalid and no retries left
-          - if: "state['event_draft']['type'] == 'user' and state['invalid_reason'] and state['retries'][state['event_draft']['type']] >= state['retry_limits'][state['event_draft']['type']]"
-            then: user_max_retry_exit
-          # if simulator turn invalid and no retries left
-          - if: "state['event_draft']['type'] == 'ai' and state['invalid_reason'] and state['retries'][state['event_draft']['type']] >= state['retry_limits'][state['event_draft']['type']]"
-            then: simulator_max_retry_exit
-          # if valid and simulator turn
-          - if: "state['event_draft']['type'] == 'ai'"
-            then: __END__ # simulator created a valid message - end turn
-          # if valid and user message
-          - if: "state['event_draft']['type'] == 'user'"
-            then: update  # user created a valid message - continue to simulator turn
-          - else: error_in_checkpoint
-
-
-    - from: user_max_retry_exit
-      to: exit_message
-
-    - from: simulator_max_retry_exit
-      to: exit_message
-
-    - from: retry
-      to:
-        conditional:
-          - if: "{{ state['event_draft']['type'] == 'user' }}"
-            then: __END__
-          - if: "{{ state['event_draft']['type'] == 'ai' }}"
-            then: update
-          - else: error_in_checkpoint
-
+          - if: "state['lifecycle'] == 'EXIT'"
+            then: exit_message
+          - else: __END__

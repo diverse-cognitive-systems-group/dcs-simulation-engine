@@ -1,14 +1,10 @@
 """Constants for the widget package."""
 
-GAME_MD = """
-## Welcome
-
-Thank you for your interest in the simulation engine.
-
-### Instructions
-
-Click "Play" when you're ready to begin.
-"""
+# Tunables
+LONG_RESPONSE_THRESHOLD = 25.0  # seconds before we warn it's taking longer
+RESPONSE_TIMEOUT = 60.0  # hard timeout for a response
+POLL_INTERVAL = 1  # how often we check for completion
+MAX_INPUT_LENGTH = 1000  # max length of user input string in characters
 
 GATE_MD = """
 ## Welcome

@@ -42,7 +42,7 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
         )
 
         chatbot = gr.Chatbot(
-            placeholder="""<strong>Loading simulation environment..</strong>
+            placeholder="""<strong>Loading simulation environment.</strong>
             <br>This might take a minute...☕""",
             type="messages",
             show_copy_all_button=True,
@@ -51,7 +51,8 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
         chatinterface = gr.ChatInterface(
             fn=process_new_user_chat_message,  # takes message, history
             additional_inputs=[state],  # add state to inputs via wiring
-            # additional_outputs=[state],  # add state to outputs via wiring
+            # TODO: add additional outputs that freeze group on exception
+            # additional_outputs=[group],  # add state to outputs via wiring
             multimodal=False,  # only text input
             type="messages",  # pass history (list of dics - openai-style role/content
             chatbot=chatbot,

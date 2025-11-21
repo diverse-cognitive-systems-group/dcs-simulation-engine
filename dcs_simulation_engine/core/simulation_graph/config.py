@@ -218,7 +218,9 @@ class GraphConfig(SerdeMixin, BaseModel):
 
     name: Optional[str] = Field(default="graph-config")
     description: Optional[str] = Field(default=None)
-    state_overrides: Optional[dict[str, Any]] = Field(default=None)
+    # State overrides
+    # TODO: if supplied make sure they conform to expected SimulationGraphState schema
+    state_overrides: Dict[str, Any] = Field(default_factory=dict)
     nodes: List[Node] = Field(default_factory=list)
     edges: List[Edge] = Field(default_factory=list)
 

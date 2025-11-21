@@ -73,6 +73,10 @@ def wire_handlers(
             state,
             gate.container,
             game_setup.container,
+            game_setup.no_customization_group,
+            game_setup.customization_group,
+            game_setup.pc_dropdown_group,
+            game_setup.npc_dropdown_group,
             game_setup.pc_dropdown,
             game_setup.npc_dropdown,
             gate.token_box,
@@ -127,19 +131,3 @@ def wire_handlers(
         outputs=[],
         js="window.location.reload()",  # reload the entire app to avoid data leakage
     )
-    # form.token_continue_btn.click(
-    #     fn=lambda: [
-    #         gr.update(visible=True),  # show gate
-    #         gr.update(visible=False),  # hide consent form
-    #         gr.update(visible=False),  # hide token group
-    #         # IMPORTANT: clear token display to avoid leaking tokens
-    #         gr.update(placeholder=""),  # clear token display
-    #     ],
-    #     inputs=[],
-    #     outputs=[
-    #         gate.container,
-    #         form.form_group,
-    #         form.token_group,
-    #         form.token_text,
-    #     ],
-    # )
