@@ -135,11 +135,11 @@ def format(msg_dict: Dict[str, Any]) -> str:
     if not c:
         logger.warning("Received empty content in format.")
     if t == "warning":
-        return f"#### Special Warning Message\n<em>{c}</em>"
+        return f"#### Warning Message\n<em>{c}</em>"
     elif t == "error":
-        return f"#### Special Error Message\n<em>{c}</em>"
+        return f"#### Error Message\n<em>{c}</em>"
     elif t == "info":
-        return f"#### Special Informational Message\n<em>{c}</em>"
+        return f"{c}"
     elif t == "system" or t == "assistant" or t == "ai":
         return c
     else:

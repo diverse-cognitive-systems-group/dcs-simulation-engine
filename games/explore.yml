@@ -63,11 +63,31 @@ graph_config:
             simulator_output:
               type: info
               content: |
-                Describe an action...
-                - Eg. If your character can see and move you might say "I look around the room and walk to the door."
+                ##### Objective
+                There is no predefined objective or task in this game. You can just engage freely with the other character.
 
-                Here is are reminder of your character's abilities:
+                ##### Rules
+                The only rules in this simulation are to stay within your character's abilities and make sure your inputs describe actions your character takes.
+                - For example, if your character is non-verbal, you can type actions like "I gesture towards the door" or "I point at the object".
+
+                ##### Commands
+                Type '/help' to see this message again.
+                Type '/feedback' followed by your comments to submit feedback about the game. (Eg. '/feedback This reply doesn't make sense because...')
+                Type '/guess' when you think you understand the NPC's goal to end the interaction and submit your inference.
+                Type '/exit' or '/quit' to leave the game without submitting an inference.
+                Type '/abilities' to see your character's abilities.
+          abilities:
+            simulator_output:
+              type: info
+              content: |
+                **User Character:** {{ pc.hid }} ({{ pc.short_description }})
+                **Simulator Character:** {{ npc.hid }} ({{ npc.short_description }})
+
+                ##### User Character Abilities
                 {{ pc.abilities }}
+
+                ##### Simulator Character Abilities
+                {{ npc.abilities }}
     - name: enter_message
       kind: builtin.update_state # message builtin func takes a message: str and displays writes it to special_user_message so the user can see it without it being part of the message history.
       kwargs:
@@ -75,11 +95,12 @@ graph_config:
           simulator_output:
             type: info
             content: |
-              Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character.
+              *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*
 
-              You are playing as: {{ pc.hid }} ({{ pc.short_description }})
-              
-              The simulator is playing as: {{ npc.hid }} ({{ npc.short_description }})
+              - You are playing as: {{ pc.hid }} ({{ pc.short_description }})
+              - The simulator is playing as: {{ npc.hid }} ({{ npc.short_description }})
+
+              **Remember** if you need help at any time, just type '/help'.
           lifecycle: UPDATE
     - name: exit_message
       kind: builtin.update_state

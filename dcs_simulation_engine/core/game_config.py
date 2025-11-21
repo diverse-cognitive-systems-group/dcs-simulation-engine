@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Dict, List, Literal, Optional
+from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
 from pydantic import (
@@ -198,8 +198,8 @@ class GameConfig(SerdeMixin, BaseModel):
         self.character_settings.npc.validate_on_server()
 
     def get_valid_characters(
-        self, player_id: Optional[str] = None, return_formatted: Optional[bool] = False
-    ) -> tuple[list[str], list[tuple[str, str]]]:
+        self, player_id: Optional[str] = None
+    ) -> Tuple[List[tuple[str, str]], List[tuple[str, str]]]:
         """Get valid PC/NPC character hids.
 
         For each selector (PC and NPC):
@@ -208,6 +208,8 @@ class GameConfig(SerdeMixin, BaseModel):
         •	Final = V - I (set difference)
 
         For each selector: UNION(valid-where) - UNION(invalid-where)
+
+        If format=True returns pc, npc as lists of (display_string, hid) tuples.
         """
 
         def fetch_union(where_map: Optional[dict[str, Any]]) -> set[str]:
@@ -240,8 +242,6 @@ class GameConfig(SerdeMixin, BaseModel):
         # Return deterministic lists (sorted) or randomize upstream as needed
         sorted_pcs = sorted(final_pcs)
         sorted_npcs = sorted(final_npcs)
-        if not return_formatted:
-            return sorted_pcs, sorted_npcs
 
         # Format character choices according to config
         pc_fmt = getattr(self.character_settings, "display_pc_choice_as", "{hid}")
@@ -294,6 +294,10 @@ class GameConfig(SerdeMixin, BaseModel):
         res = list(zip(formatted_pcs, sorted_pcs)), list(
             zip(formatted_npcs, sorted_npcs)
         )
+        # logger.debug(
+        #     f"Returning formatted character choices: {type(res[0])}, {type(res[1])}"
+        #     f"Example: PC={res[0]}, NPC={res[1]}"
+        # )
         return res
 
     def is_player_allowed(self, player_id: Optional[str]) -> bool:

@@ -42,7 +42,7 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
         )
 
         chatbot = gr.Chatbot(
-            placeholder="""<strong>Loading simulation environment..</strong>
+            placeholder="""<strong>Loading simulation environment.</strong>
             <br>This might take a minute...☕""",
             type="messages",
             show_copy_all_button=True,

@@ -30,23 +30,7 @@ from dcs_simulation_engine.helpers import database_helpers as dbh
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from dcs_simulation_engine.utils.chat import ChatOpenRouter
 from dcs_simulation_engine.utils.file import safe_timestamp, unique_fpath
-from dcs_simulation_engine.utils.misc import make_human_readable_values
-
-# TODO: pre-release - add safety/validation heuristic for overly complex inputs like
-# really long actions....length heuristic using tokens or character threshold
-# TODO: pre-release - what prevents user from inputting two things
-# really fast and flooding the system??
-
-# TODO: pre-release - add step(long_running and timeout and interrupt) support
-# to exit step (also consider yield results as generator??
-
-# TODO: if character choices has no qa, warn (playing with characters whose
-# represetnational quality has not been assessed by the DCS research group...
-# do you wish to submit these characters for assessment so they can be added
-# to core characters db (link to open a ticket))
-
-# TODO: add flags to run manager so that they are auto db saved with the run
-# that wrote them
+from dcs_simulation_engine.utils.misc import dict_to_markdown
 
 
 class RunManager(BaseModel):
@@ -198,6 +182,9 @@ class RunManager(BaseModel):
                 player_id=player_id
             )
 
+            valid_pcs = [value for _, value in valid_pcs]
+            valid_npcs = [value for _, value in valid_npcs]
+
             if not valid_pcs:
                 raise ValueError(
                     "No valid player character choices found in game config."
@@ -216,9 +203,9 @@ class RunManager(BaseModel):
                     f"Invalid npc_choice: {npc_choice}. Valid choices: {valid_npcs}"
                 )
             if pc_choice is None:
-                pc_choice = valid_pcs[random.randint(0, len(valid_pcs) - 1)]
+                pc_choice = random.choice(valid_pcs)
             if npc_choice is None:
-                npc_choice = valid_npcs[random.randint(0, len(valid_npcs) - 1)]
+                npc_choice = random.choice(valid_npcs)
 
             if pc_choice is None or npc_choice is None:
                 raise ValueError("pc_choice and npc_choice must be set.")
@@ -255,8 +242,8 @@ class RunManager(BaseModel):
 
         # Initialize runtime context (llms) and inject them into runtime
         # context at build time
-        human_readble_pc = make_human_readable_values(pc)
-        human_readble_npc = make_human_readable_values(npc)
+        human_readble_pc = dict_to_markdown(pc)
+        human_readble_npc = dict_to_markdown(npc)
         context = ContextSchema(
             pc=human_readble_pc,
             npc=human_readble_npc,
@@ -266,6 +253,10 @@ class RunManager(BaseModel):
         )
         for node in game_config.graph_config.nodes:
             if node.provider:  # only setup nodes with a provider
+                if node.model is None:
+                    raise ValueError(
+                        f"Model must be specified for provider {node.provider}"
+                    )
                 if node.additional_kwargs is None:
                     node.additional_kwargs = {}
                 if node.provider == "openrouter":
@@ -347,9 +338,11 @@ class RunManager(BaseModel):
         if self.state is None:
             raise ValueError("Internal state is not initialized.")
 
-        if isinstance(user_input, str) and (
-            user_input.strip().startswith("/") or user_input.strip().startswith("\\")
-        ):
+        is_command = isinstance(user_input, str) and user_input.strip().startswith(
+            ("/", "\\")
+        )
+        is_handled = False
+        if is_command:
             parts = user_input.strip().split(maxsplit=1)
             cmd = parts[0].lower().lstrip("/\\")
 
@@ -359,73 +352,80 @@ class RunManager(BaseModel):
                     "type": "info",
                     "content": f"Simulation exited with reason: {self.exit_reason}",
                 }
+                is_handled = True
 
             elif cmd in ("feedback", "fb"):
-                # TODO: pre-release - implement more robust feedback handling
-                logger.warning(
-                    f"Feedback received: {parts[1] if len(parts) > 1 else ''}"
-                )
-                self.feedback.append(
-                    {
-                        "timestamp": datetime.now().isoformat(),
-                        "content": parts[1] if len(parts) > 1 else "",
-                    }
-                )
-                # update state with special message "feedback received, thank you."
+                fb = parts[1] if len(parts) > 1 else ""
+                logger.warning(f"Feedback received: {fb}")
+                if fb:
+                    self.feedback.append(
+                        {
+                            "timestamp": datetime.now().isoformat(),
+                            "content": fb,
+                        }
+                    )
                 self.state["simulator_output"] = {
                     "type": "info",
-                    "content": "Feedback received, thank you.",
+                    "content": (
+                        "Feedback received, thank you."
+                        if fb
+                        else "No feedback content provided. Type '/feedback <your "
+                        "comments here>' Eg. '/feedback I think the simulator "
+                        "shouldn't do this here'"
+                    ),
                 }
                 yield self.state["simulator_output"]
+                is_handled = True
             else:
                 self.state["user_input"] = {
-                    "type": "command",
+                    "type": "user",
                     "content": user_input,
                 }
                 logger.warning(
-                    f"Run manager doesn't recognize this command: {cmd}. "
-                    "Marking type as command and continuing."
+                    f"Run manager doesn't recognize this command: {cmd}. " "Continuing."
                 )
+                is_handled = False
 
         if self.exited:
             logger.info("Simulation is exited; skipping graph call.")
             return self.state  # type: ignore
 
-        try:
-            # if user input, update message_draft to include it
-            if user_input is not None:
-                if isinstance(user_input, str):
-                    self.state["user_input"] = {
-                        "type": "user",
-                        "content": user_input,
-                    }
-                elif isinstance(user_input, Mapping):
-                    self.state["user_input"] = {
-                        "type": user_input.get("type", "user"),
-                        "content": user_input.get("content", ""),
-                    }
-                else:
-                    raise TypeError(
-                        f"user_input must be str or Mapping, got {type(user_input)}"
+        if not is_command or not is_handled:
+            try:
+                # if user input, update message_draft to include it
+                if user_input is not None:
+                    if isinstance(user_input, str):
+                        self.state["user_input"] = {
+                            "type": "user",
+                            "content": user_input,
+                        }
+                    elif isinstance(user_input, Mapping):
+                        self.state["user_input"] = {
+                            "type": user_input.get("type", "user"),
+                            "content": user_input.get("content", ""),
+                        }
+                    else:
+                        raise TypeError(
+                            f"user_input must be str or Mapping, got {type(user_input)}"
+                        )
+                    logger.debug(
+                        f"Updated state with user_input: {self.state['user_input']}"
                     )
-                logger.debug(
-                    f"Updated state with user_input: {self.state['user_input']}"
-                )
 
-            stream = self.graph.stream(
-                state=self.state,  # dynamic state
-                context=self.context,  # static runtime ctx (n/pc, api connections, etc
-                config=self.config,  # runnable config
-            )
-            for event in stream:
-                logger.info(f"RunManager step yielding event: {event}")
-                if event.get("type") == "final_state":
-                    self.state = SimulationGraphState(**event["state"])
-                else:
-                    yield event
-        except Exception as e:
-            logger.exception(f"Error during graph invocation: {e}")
-            raise
+                stream = self.graph.stream(
+                    state=self.state,  # dynamic state
+                    context=self.context,  # static runtime ctx (n/pc, api connections, etc
+                    config=self.config,  # runnable config
+                )
+                for event in stream:
+                    logger.info(f"RunManager step yielding event: {event}")
+                    if event.get("type") == "final_state":
+                        self.state = SimulationGraphState(**event["state"])
+                    else:
+                        yield event
+            except Exception as e:
+                logger.exception(f"Error during graph invocation: {e}")
+                raise
 
     def exit(self, reason: str) -> None:
         """Mark the simulation as exited."""

@@ -1,5 +1,6 @@
 """Game setup page UI components."""
 
+import random
 from typing import NamedTuple
 
 import gradio as gr
@@ -70,6 +71,9 @@ def build_game_setup(
                                 label="Player Character",
                                 info="Choose the character you will be playing as.",
                                 choices=valid_pcs,
+                                value=(
+                                    random.choice(valid_pcs)[1] if valid_pcs else None
+                                ),
                                 interactive=True,
                             )
                     with gr.Group(visible=bool(valid_npcs)) as npc_dropdown_group:
@@ -81,6 +85,9 @@ def build_game_setup(
                                     "simulator will roleplay."
                                 ),
                                 choices=valid_npcs,
+                                value=(
+                                    random.choice(valid_npcs)[1] if valid_npcs else None
+                                ),
                                 interactive=True,
                             )
                 spacer(8)

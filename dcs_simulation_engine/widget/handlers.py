@@ -6,6 +6,7 @@ Send → enqueue → sim.play consumes → timer polls state → new messages ap
 
 from __future__ import annotations
 
+import random
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Tuple
 
@@ -70,6 +71,8 @@ def handle_chat_feedback(data: gr.LikeData, state: SessionState) -> None:
     logger.debug("Flag data saved")
 
 
+# TODO: loading indicators for this process disappeared....not sure
+# why but it was more user friendly before...look into it.
 def setup_simulation(
     state: SessionState,
     pc_choice: str,
@@ -140,6 +143,10 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
     logger.debug("on_continue called with token")
     updated_gate_container = gr.update()
     updated_setup_container = gr.update()
+    updated_setup_no_customization_group = gr.update()
+    updated_setup_customization_group = gr.update()
+    updated_setup_pc_dropdown_group = gr.update()
+    updated_setup_npc_dropdown_group = gr.update()
     updated_setup_pc_selector = gr.update()
     updated_setup_npc_selector = gr.update()
     updated_token_box = gr.update()
@@ -206,15 +213,14 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
 
             game_config: GameConfig = state["game_config"]
             valid_pcs, valid_npcs = game_config.get_valid_characters(
-                player_id=player_id, return_formatted=True
+                player_id=player_id
             )
             logger.debug(
                 f"Updating internal gradio state with"
                 f" {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs."
             )
-            state["valid_pcs"] = valid_pcs
-            # FIXME: fix return type issue
-            state["valid_npcs"] = valid_npcs
+            state["valid_pcs"]: List[tuple[str, str]] = valid_pcs
+            state["valid_npcs"]: List[tuple[str, str]] = valid_npcs
             if not valid_pcs:
                 logger.warning("No valid PCs found for this player.")
                 raise gr.Error(
@@ -233,8 +239,14 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
             updated_setup_customization_group = gr.update(visible=True)
             updated_setup_pc_dropdown_group = gr.update(visible=bool(valid_pcs))
             updated_setup_npc_dropdown_group = gr.update(visible=bool(valid_npcs))
-            updated_setup_pc_selector = gr.update(choices=valid_pcs)
-            updated_setup_npc_selector = gr.update(choices=valid_npcs)
+            updated_setup_pc_selector = gr.update(
+                choices=valid_pcs,
+                value=(random.choice(valid_pcs)[1] if valid_pcs else None),
+            )
+            updated_setup_npc_selector = gr.update(
+                choices=valid_npcs,
+                value=(random.choice(valid_npcs)[1] if valid_npcs else None),
+            )
         except PermissionError as e:
             logger.warning(f"PermissionError in on_continue: {e}")
             updated_token_error_box = gr.update(
@@ -391,6 +403,7 @@ def process_new_user_chat_message(
                             "content": content,
                         }
                     )
+                    logger.warning(f"DEBUG::: simulator reply: {formatted_response}")
                     yield from stream_msg(formatted_response)  # stream simulator reply
                 elif etype in {"info", "system", "error", "warning"}:
                     formatted_response = format(
@@ -399,6 +412,7 @@ def process_new_user_chat_message(
                             "content": content,
                         }
                     )
+                    logger.warning(f"DEBUG::: simulator reply: {formatted_response}")
                     yield formatted_response  # don't stream system/info messages
                 else:
                     logger.warning(

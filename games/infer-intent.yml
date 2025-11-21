@@ -121,10 +121,23 @@ graph_config:
             simulator_output:
               type: info
               content: |
-                Describe an action...
-                - Eg. If your character can see and move you might say "I look around the room and walk to the door."
+                ##### Objective
+                Your task in this simulation is use your abilities to interact with another character and figure the the intention or goal they are trying to communicate. When you feel like you understand their goal, type "/guess" to end the interaction and submit your inference.
+                
+                ##### Rules
+                Describe an action that makes sense in the context of the scene and uses your character's abilities.
+                - For example, if your character can see and move in a human-like way, you might say "I look around the room and walk to the door."
 
-                Here is are reminder of your character's abilities:
+                ##### Commands
+                Type '/help' to see this message again.
+                Type '/guess' when you think you understand the NPC's goal to end the interaction and submit your inference.
+                Type '/exit' or '/quit' to leave the game without submitting an inference.
+                Type '/abilities' to see your character's abilities.
+          abilities:
+            simulator_output:
+              type: info
+              content: |
+                ##### User Character Abilities
                 {{ pc.abilities }}
           guess:
             lifecycle: COMPLETE
@@ -137,8 +150,9 @@ graph_config:
             content: |
               Welcome, in this game, you take on the role of a character whose aim is to use your abilities to interact with another character and figure the the intention or goal they are trying to communicate. When you feel like you understand their goal, type "/guess" to end the interaction and submit your inference.
 
-              Your character ({{ pc.short_description }}) has the following abilities:
-              {{ pc.abilities }}
+              Your character is: {{ pc.short_description }} {% if pc.hid != "human-normative" %}\nAbilities:\n{{ pc.abilities }}{% endif %}
+
+              For help at any time, type "/help"
           lifecycle: UPDATE
     - name: exit_message
       kind: builtin.update_state
