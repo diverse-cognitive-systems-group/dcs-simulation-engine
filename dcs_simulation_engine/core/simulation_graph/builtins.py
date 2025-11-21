@@ -1,7 +1,7 @@
 """Builtin simulation graph node functions."""
 
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 
 from langchain_core.prompts import PromptTemplate
 from loguru import logger
@@ -9,8 +9,7 @@ from tomlkit import key
 
 from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
 from dcs_simulation_engine.core.simulation_graph.state import (
-    Retries,
-    StateSchema,
+    SimulationGraphState,
 )
 
 JSONType = Union[
@@ -52,7 +51,7 @@ def _render_any(value: JSONType, render_kwargs: dict[str, Any]) -> JSONType:
 
 
 def update_state(
-    state: StateSchema, context: ContextSchema, state_updates: dict[str, Any]
+    state: SimulationGraphState, context: ContextSchema, state_updates: dict[str, Any]
 ) -> dict[str, Any]:
     """Builtin update_state node function.
 
@@ -70,7 +69,9 @@ def update_state(
     return state_updates
 
 
-def raise_error(state: StateSchema, context: ContextSchema, message: str) -> None:
+def raise_error(
+    state: SimulationGraphState, context: ContextSchema, message: str
+) -> None:
     """Builtin error node function.
 
     Takes an error message string and raises an error.
@@ -88,18 +89,20 @@ def raise_error(state: StateSchema, context: ContextSchema, message: str) -> Non
 
 
 def command_filter(
-    state: StateSchema, context: ContextSchema, command_handlers: dict
+    state: SimulationGraphState, context: ContextSchema, command_handlers: dict
 ) -> dict[str, Any]:
     """Builtin command filter node function."""
     # Check state.event_draft for command pattern (e.g., "/help" or "\help")
-    draft = state.get("event_draft")
-    if not draft:
+    user_input = state.get("user_input")
+    if not user_input:
+        logger.warning("Command filter called with no user input.")
         return {}  # no draft, no state updates
 
-    event = draft.get("content") or ""
+    event = user_input.get("content") or ""
     # regex: start of string, slash or backslash, one or more word chars or dash
     m = re.match(r"^[\\/](?P<cmd>[\w-]+)\b", event.strip())
     if not m:
+        logger.warning("No command found in user input for command_filter.")
         return {}  # no command found, no state updates
 
     command = m.group("cmd")
@@ -110,7 +113,7 @@ def command_filter(
     # command_handler is a dict of state updates
     command_handler = command_handlers[command]
     state_updates: dict[str, Any] = {
-        "event_draft": None,  # clear draft by default
+        "user_input": None,  # clear draft by default
     }
     render_kwargs = {
         **state,
@@ -132,74 +135,9 @@ def command_filter(
     return state_updates
 
 
-def retry(
-    state: StateSchema, context: ContextSchema, retry_message: Optional[str] = None
+def form(
+    state: SimulationGraphState, context: ContextSchema, form_name: str
 ) -> dict[str, Any]:
-    """Retry node function.
-
-    - Increments retries for the current actor (user/system).
-    - If actor is user: interrupt and replace draft with revised text.
-    - If actor is system/agent: inject guidance as a system draft.
-    """
-    # REQUIRED — let KeyError happen if missing
-    draft = state["event_draft"]  # Typed required
-    if not draft:
-        raise ValueError("retry node called but event_draft is missing.")
-    mtype = draft["type"]  # Typed required
-    retries: Retries = state["retries"]  # Typed required
-    limits: Retries = state["retry_limits"]  # Typed required
-
-    actor = "user" if mtype == "user" else "system"
-
-    # REQUIRED — no defaulting
-    user_retries = int(retries["user"])
-    system_retries = int(retries["ai"])
-    user_limit = int(limits["user"])
-    system_limit = int(limits["ai"])
-
-    # bump
-    if actor == "user":
-        user_retries += 1
-        remaining = max(user_limit - user_retries, 0)
-    else:
-        system_retries += 1
-        remaining = max(system_limit - system_retries, 0)
-
-    # Jinja guidance
-    if retry_message is None:
-        retry_message = (
-            "Please revise your action. Use /help if you need a rules refresher. "
-            "Previous action: {{event_draft.content}} "
-            "Invalid reason: {{invalid_reason}} "
-            "{{remaining}} retries left."
-        )
-    tmpl = PromptTemplate.from_template(retry_message, template_format="jinja2")
-    guidance = tmpl.format(
-        **{**state, "pc": context["pc"], "npc": context["npc"], "remaining": remaining}
-    )
-
-    logger.debug(
-        f"Retry actor={actor} remaining={remaining} "
-        f"counters(user={user_retries}, system={system_retries})"
-    )
-
-    if actor == "user":
-
-        return {
-            "special_user_message": {"type": "info", "content": guidance},
-            "invalid_reason": None,  # clear invalid reason on retry
-            "retries": {"user": user_retries, "ai": system_retries},
-        }
-
-    # system/agent path
-    return {
-        "event_draft": {"type": "ai", "content": guidance},
-        "invalid_reason": state["invalid_reason"],
-        "retries": {"user": user_retries, "ai": system_retries},
-    }
-
-
-def form(state: StateSchema, context: ContextSchema, form_name: str) -> dict[str, Any]:
     """Builtin form node function.
 
     Takes a form definition and collects user responses to each question in the form.
@@ -223,8 +161,8 @@ def form(state: StateSchema, context: ContextSchema, form_name: str) -> dict[str
 
     idx = first_unanswered(0)
 
-    # If there is a user draft, use it to answer the current unanswered question
-    answer_draft = state.get("event_draft")
+    # If there is a user input, use it to answer the current unanswered question
+    answer_draft: dict = state.get("user_input")
     if idx is not None and answer_draft and answer_draft.get("type") == "user":
         answer_content = (answer_draft.get("content") or "").strip()
         if answer_content:
@@ -234,7 +172,15 @@ def form(state: StateSchema, context: ContextSchema, form_name: str) -> dict[str
 
     # If all questions are now answered, exit
     if idx is None:
-        return {"lifecycle": "EXIT", "forms": {form_name: form}}
+        return {
+            "simulator_output": {
+                "type": "info",
+                "content": "Form Complete.",
+            },
+            "lifecycle": "EXIT",
+            "exit_reason": "Game completed.",
+            "forms": {form_name: form},
+        }
 
     # Otherwise, render and return the next question
     raw_question = questions[idx]["text"]
@@ -248,6 +194,6 @@ def form(state: StateSchema, context: ContextSchema, form_name: str) -> dict[str
     )
 
     return {
-        "special_user_message": {"type": "info", "content": rendered_question},
+        "simulator_output": {"type": "info", "content": rendered_question},
         "forms": {form_name: form},
     }

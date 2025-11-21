@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--banner",
         type=str,
-        default="<b>DEMO</b>",
+        default="<b>LIVE EXPERIMENT</b>",
         help="Optional markdown banner to show at the top of the widget.",
     )
     parser.add_argument(

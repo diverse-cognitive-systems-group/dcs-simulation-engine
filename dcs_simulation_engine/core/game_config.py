@@ -1,11 +1,8 @@
 """Base game config module."""
 
-# TODO: part of config that queries db using raw dict-like queries is
-# janky and should be replaced with something more robust.
-
 from __future__ import annotations
 
-from typing import Annotated, Any, Dict, List, Literal, Optional
+from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
 from pydantic import (
@@ -20,6 +17,12 @@ from pydantic import (
 from dcs_simulation_engine.core.simulation_graph import GraphConfig
 from dcs_simulation_engine.helpers import database_helpers as dbh
 from dcs_simulation_engine.utils.serde import SerdeMixin
+
+# TODO: warn if save_runs is false on a game config
+# that uses player_id, runs, ...queries
+
+# TODO: part of config that queries db using raw dict-like queries is
+# janky and should be replaced with something more robust.
 
 
 class ValiditySelector(BaseModel):
@@ -152,6 +155,13 @@ VersionStr = Annotated[
 ]
 
 
+class SubgraphCustomizations(BaseModel):
+    """Customization options for the simulation subgraph."""
+
+    additional_validator_rules: Optional[str] = None
+    additional_updater_rules: Optional[str] = None
+
+
 class GameConfig(SerdeMixin, BaseModel):
     """Top-level configuration for the game."""
 
@@ -166,9 +176,6 @@ class GameConfig(SerdeMixin, BaseModel):
     # Stopping conditions
     stopping_conditions: Dict[str, Any] = Field(default_factory=dict)
 
-    # State overrides
-    state_overrides: Dict[str, Any] = Field(default_factory=dict)
-
     # Access settings
     access_settings: AccessSettings
 
@@ -178,6 +185,9 @@ class GameConfig(SerdeMixin, BaseModel):
     # Character settings
     character_settings: CharacterSettings
 
+    subgraph_customizations: SubgraphCustomizations = Field(
+        default_factory=SubgraphCustomizations
+    )
     graph_config: GraphConfig
 
     def validate_mongo_queries(self) -> None:
@@ -188,8 +198,8 @@ class GameConfig(SerdeMixin, BaseModel):
         self.character_settings.npc.validate_on_server()
 
     def get_valid_characters(
-        self, player_id: Optional[str] = None, return_formatted: Optional[bool] = False
-    ) -> tuple[list[str], list[tuple[str, str]]]:
+        self, player_id: Optional[str] = None
+    ) -> Tuple[List[tuple[str, str]], List[tuple[str, str]]]:
         """Get valid PC/NPC character hids.
 
         For each selector (PC and NPC):
@@ -198,6 +208,8 @@ class GameConfig(SerdeMixin, BaseModel):
         •	Final = V - I (set difference)
 
         For each selector: UNION(valid-where) - UNION(invalid-where)
+
+        If format=True returns pc, npc as lists of (display_string, hid) tuples.
         """
 
         def fetch_union(where_map: Optional[dict[str, Any]]) -> set[str]:
@@ -230,8 +242,6 @@ class GameConfig(SerdeMixin, BaseModel):
         # Return deterministic lists (sorted) or randomize upstream as needed
         sorted_pcs = sorted(final_pcs)
         sorted_npcs = sorted(final_npcs)
-        if not return_formatted:
-            return sorted_pcs, sorted_npcs
 
         # Format character choices according to config
         pc_fmt = getattr(self.character_settings, "display_pc_choice_as", "{hid}")
@@ -281,9 +291,14 @@ class GameConfig(SerdeMixin, BaseModel):
         formatted_npcs = format_characters(sorted_npcs, npc_fmt)
 
         # update this to return a list of tuples with formatted string and hid)
-        return list(zip(formatted_pcs, sorted_pcs)), list(
+        res = list(zip(formatted_pcs, sorted_pcs)), list(
             zip(formatted_npcs, sorted_npcs)
         )
+        # logger.debug(
+        #     f"Returning formatted character choices: {type(res[0])}, {type(res[1])}"
+        #     f"Example: PC={res[0]}, NPC={res[1]}"
+        # )
+        return res
 
     def is_player_allowed(self, player_id: Optional[str]) -> bool:
         """Check access via UNION(valid) − UNION(invalid) over `access_settings.user`.

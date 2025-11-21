@@ -6,14 +6,20 @@ Send → enqueue → sim.play consumes → timer polls state → new messages ap
 
 from __future__ import annotations
 
+import random
+from datetime import datetime
 from typing import Any, Dict, Iterator, List, Tuple
 
 import gradio as gr
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from loguru import logger
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
-from dcs_simulation_engine.widget.constants import USER_FRIENDLY_EXC
+from dcs_simulation_engine.core.game_config import GameConfig
+from dcs_simulation_engine.widget.constants import (
+    MAX_INPUT_LENGTH,
+    USER_FRIENDLY_EXC,
+)
 from dcs_simulation_engine.widget.helpers import (
     collect_form_answers,
     create_run,
@@ -21,12 +27,6 @@ from dcs_simulation_engine.widget.helpers import (
     stream_msg,
 )
 from dcs_simulation_engine.widget.session_state import SessionState
-
-# Tunables
-LONG_RESPONSE_THRESHOLD = 25.0  # seconds before we warn it's taking longer
-RESPONSE_TIMEOUT = 60.0  # hard timeout for a response
-POLL_INTERVAL = 1  # how often we check for completion
-MAX_INPUT_LENGTH = 1000  # max length of user input string in characters
 
 
 def validate_chat_input(user_input: str) -> Any:
@@ -62,10 +62,17 @@ def handle_chat_feedback(data: gr.LikeData, state: SessionState) -> None:
         f"🚩 Player ({run.player_id}) flagged a message as"
         f" '{data.liked}' in run '{run.name}': {data.value}"
     )
-    logger.debug("Flag data saved to logs/flags")
-    # TODO: consider log to db? other storage?
+    data_dict = {
+        "liked": data.liked,
+        "value": data.value,
+        "index": data.index,
+    }
+    run.feedback.append({"timestamp": datetime.now().isoformat(), "data": data_dict})
+    logger.debug("Flag data saved")
 
 
+# TODO: loading indicators for this process disappeared....not sure
+# why but it was more user friendly before...look into it.
 def setup_simulation(
     state: SessionState,
     pc_choice: str,
@@ -82,36 +89,34 @@ def setup_simulation(
         run = create_run(state)
         state["run"] = run
         logger.debug("Stepping simulation to get opener.")
-        run.step()  # simulator takes first step to initialize
         initial_history = []
-        special = run.state.get("special_user_message", None)
-        if special:
-            logger.debug("Found special user message on setup.")
-            formatted_response_partial = format(
-                {
-                    "type": special.get("type", ""),
-                    "content": special.get("content", ""),
-                }
-            )
-            initial_history.append(
-                {"role": "assistant", "content": formatted_response_partial}
-            )
-        if run.state.get("events", []):
-            logger.debug("Found events on setup.")
-            for e in run.state["events"]:
-                if not isinstance(e, HumanMessage):
-                    formatted_response_partial = format(
-                        {
-                            "type": "ai",
-                            "content": e.content,
-                        }
-                    )  # type: ignore
-                    initial_history.append(
-                        {"role": "assistant", "content": formatted_response_partial}
-                    )
+        for e in run.step():
+            if isinstance(e, AIMessage):
+                formatted_response_partial = format(
+                    {
+                        "type": "ai",
+                        "content": e.content,
+                    }
+                )  # type: ignore
+                initial_history.append(
+                    {"role": "assistant", "content": formatted_response_partial}
+                )
+            elif isinstance(e, HumanMessage):
+                initial_history.append(
+                    {"role": "user", "content": e.content}
+                )  # type: ignore
+            elif isinstance(e, dict) and "type" in e and "content" in e:
+                formatted_response = format(e)
+                initial_history.append(
+                    {"role": "assistant", "content": formatted_response}
+                )
+            else:
+                logger.warning(
+                    f"Unknown message type in history during setup: {type(e)}"
+                )
         state["initial_history"] = initial_history
+        logger.debug(f"Initial history length: {len(initial_history)}")
         updated_chatbot_value = initial_history
-        return state, updated_chatbot_value
         return state, updated_chatbot_value
     except Exception as e:
         logger.error(f"Error while handling on_play_ungated: {e}", exc_info=True)
@@ -138,6 +143,10 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
     logger.debug("on_continue called with token")
     updated_gate_container = gr.update()
     updated_setup_container = gr.update()
+    updated_setup_no_customization_group = gr.update()
+    updated_setup_customization_group = gr.update()
+    updated_setup_pc_dropdown_group = gr.update()
+    updated_setup_npc_dropdown_group = gr.update()
     updated_setup_pc_selector = gr.update()
     updated_setup_npc_selector = gr.update()
     updated_token_box = gr.update()
@@ -201,15 +210,17 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
                     """App state is missing game_config
                                   required to get characters."""
                 )
-            valid_pcs, valid_npcs = state["game_config"].get_valid_characters(
-                player_id=player_id, return_formatted=True
+
+            game_config: GameConfig = state["game_config"]
+            valid_pcs, valid_npcs = game_config.get_valid_characters(
+                player_id=player_id
             )
             logger.debug(
                 f"Updating internal gradio state with"
                 f" {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs."
             )
-            state["valid_pcs"] = valid_pcs
-            state["valid_npcs"] = valid_npcs
+            state["valid_pcs"]: List[tuple[str, str]] = valid_pcs
+            state["valid_npcs"]: List[tuple[str, str]] = valid_npcs
             if not valid_pcs:
                 logger.warning("No valid PCs found for this player.")
                 raise gr.Error(
@@ -229,11 +240,12 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
             updated_setup_pc_dropdown_group = gr.update(visible=bool(valid_pcs))
             updated_setup_npc_dropdown_group = gr.update(visible=bool(valid_npcs))
             updated_setup_pc_selector = gr.update(
-                choices=valid_pcs, value=valid_pcs[0] if valid_pcs else None
+                choices=valid_pcs,
+                value=(random.choice(valid_pcs)[1] if valid_pcs else None),
             )
-
             updated_setup_npc_selector = gr.update(
-                choices=valid_npcs, value=valid_npcs[0] if valid_npcs else None
+                choices=valid_npcs,
+                value=(random.choice(valid_npcs)[1] if valid_npcs else None),
             )
         except PermissionError as e:
             logger.warning(f"PermissionError in on_continue: {e}")
@@ -351,21 +363,7 @@ def process_new_user_chat_message(
         raise gr.Error(USER_FRIENDLY_EXC)
     run = state["run"]
 
-    # If the simulation has already exited just inform the user
-    if run.exited:
-        logger.debug(
-            "on_new_user_message found run.exited True; not enqueuing user message"
-        )
-        formatted_response = format(
-            {
-                "type": "info",
-                "content": f"The simulation has ended. Reason: {run.exit_reason}",
-            }
-        )
-        yield formatted_response
-
     # Add any initial history if not already present
-    # TODO: fix chat history append
     if "initial_history" not in state:
         logger.warning("No initial_history found in state during on_new_user_message.")
     else:
@@ -376,10 +374,6 @@ def process_new_user_chat_message(
 
     # Block until the simulator returns or response time thresholds are met
     try:
-        # TODO: presently this blocks, we want it to yield messages as they
-        # become available from the simulator instead (step refactor needed)
-        run.step(new_user_message)  # returns an updated state
-
         # simulator may have exited after step()
         if run.exited:
             logger.debug(
@@ -389,42 +383,43 @@ def process_new_user_chat_message(
             formatted_response = format(
                 {
                     "type": "info",
-                    "content": f"Simulation exited. Reason: {run.exit_reason}",
+                    "content": (
+                        f"Simulator has exited and will not process "
+                        f"further input. Sorry. (Exit reason: {run.exit_reason})"
+                    ),
                 }
             )
             yield formatted_response
-        # Display any special user message first
-        if run.state["special_user_message"]:
-            special = run.state["special_user_message"]
-            if isinstance(special, dict):
-                key = (
-                    str(special.get("type") or "").lower(),
-                    str(special.get("content") or ""),
-                )
-                # non-empty content and not yet shown
-                if key[1] and key != state.get("last_special_seen"):
+        else:
+            for event in run.step(new_user_message):
+                etype = event.get("type")
+                content = event.get("content")
+
+                # format simulator responses/messages for gradio chat display
+                if etype in {"ai", "assistant"}:
                     formatted_response = format(
                         {
-                            "type": key[0],
-                            "content": key[1],
+                            "type": "ai",
+                            "content": content,
                         }
                     )
-            state["last_special_seen"] = key
-            yield formatted_response
-        # Display the any new AI messages from events
-        events = run.state["events"]
-        if "last_seen" not in state:
-            state["last_seen"] = 0
-        for e in events[state["last_seen"] :]:
-            if not isinstance(e, HumanMessage):
-                formatted_response = format(
-                    {
-                        "type": "ai",
-                        "content": e.content,
-                    }
-                )  # type: ignore
-        state["last_seen"] = len(events)
-        yield from stream_msg(formatted_response)  # stream simulator reply
+                    logger.warning(f"DEBUG::: simulator reply: {formatted_response}")
+                    yield from stream_msg(formatted_response)  # stream simulator reply
+                elif etype in {"info", "system", "error", "warning"}:
+                    formatted_response = format(
+                        {
+                            "type": etype,
+                            "content": content,
+                        }
+                    )
+                    logger.warning(f"DEBUG::: simulator reply: {formatted_response}")
+                    yield formatted_response  # don't stream system/info messages
+                else:
+                    logger.warning(
+                        f"Unknown event type yielded from simulator: {etype}."
+                        " Skipping display."
+                    )
+                    continue
     except Exception:
         logger.exception("Simulator step raised an exception.")
         formatted_response = format(

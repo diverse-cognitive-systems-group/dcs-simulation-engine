@@ -12,13 +12,13 @@ from loguru import logger
 from dcs_simulation_engine.core.simulation_graph import (
     GraphConfig,
     SimulationGraph,
-    StateSchema,
+    SimulationGraphState,
 )
 
 # @pytest.mark.unit
 # def test_schema_fields_sync() -> None:
-#     """Ensure StateSchema and NodeOutputSchema have the same fields."""
-#     state_fields = set(StateSchema.__annotations__.keys())
+#     """Ensure SimulationGraphState and NodeOutputSchema have the same fields."""
+#     state_fields = set(SimulationGraphState.__annotations__.keys())
 #     node_output_fields = set(SimulationGraph.NodeOutputSchema.__annotations__.keys())
 #     assert state_fields == node_output_fields
 
@@ -157,7 +157,13 @@ def test_simple_graph(tmp_path: Path) -> None:
 
     g = graph.cgraph.get_graph()
     node_names = set(g.nodes.keys())
-    assert node_names == {"__start__", "agent1", "agent2", "__end__"}
+    assert node_names == {
+        "__start__",
+        "agent1",
+        "agent2",
+        "__end__",
+        "__SIMULATION_SUBGRAPH__",
+    }
 
 
 @pytest.mark.slow
@@ -259,6 +265,7 @@ def test_conditional_graph(tmp_path: Path) -> None:
         "agentA",
         "agentB",
         "__end__",
+        "__SIMULATION_SUBGRAPH__",
     }
 
 
@@ -326,7 +333,7 @@ def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
 
-    state: StateSchema = {
+    state: SimulationGraphState = {
         "messages": [],
         "agent_artifacts": {},
         "pc": {"name": "JANIE"},
@@ -385,7 +392,7 @@ def test_jinja_works_with_dynamic_input(write_yaml: Callable[[str, str], Path]) 
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
 
-    state: StateSchema = {
+    state: SimulationGraphState = {
         "messages": [],
         "agent_artifacts": {},
         "pc": {"name": "JANIE"},

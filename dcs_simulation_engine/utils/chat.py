@@ -19,6 +19,8 @@ from dcs_simulation_engine.core.constants import OPENROUTER_BASE_URL
 load_dotenv()  # Load environment variables from a .env file if present
 
 
+# TODO: update all llm model wrappers to include long prompt warnings,
+# timouts, retries, etc. Langgraph may already have a good base for this.
 class ChatOpenRouter(ChatOpenAI):
     """A wrapper around ChatOpenAI for OpenRouter.
 

@@ -17,7 +17,7 @@ def test_init_from_create(run: RunManager) -> None:
     assert run.state is not None
     assert run.context["pc"] is not None
     assert run.context["npc"] is not None
-    assert run.state["events"] is not None
+    assert run.state["history"] is not None
 
     assert run.graph is not None
     assert isinstance(run.graph, SimulationGraph)
@@ -53,7 +53,7 @@ def test_first_step(run: RunManager) -> None:
     run.step()  # returns and updates self.state with next state
     print(f"New state: {run.state}")
     assert run.state is not None
-    assert len(run.state["messages"]) == 0
+    assert len(run.state["history"]) == 0
     # TODO: messages conent should contain "SETUP_SCENE"
 
 
@@ -65,7 +65,6 @@ def test_continuation_steps(run: RunManager) -> None:
     """
     # TODO: pre-oss - mock these LLM calls
     logger.warning("This test will make actual LLM calls!")
-    run._ensure_state()
     assert run.state is not None
     run.state.get("messages", []).append(AIMessage("A beautiful day in the park."))  # type: ignore
     print(f"Initial state: {run.state}")

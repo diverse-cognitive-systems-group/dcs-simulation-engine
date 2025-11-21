@@ -53,9 +53,7 @@ def build_widget(
                 )
         else:
             logger.debug("No access gating required. Prepopulating valid characters.")
-            valid_pcs, valid_npcs = game_config.get_valid_characters(
-                return_formatted=True
-            )
+            valid_pcs, valid_npcs = game_config.get_valid_characters()
             logger.info(
                 f"Found {len(valid_pcs)} valid PCs and {len(valid_npcs)} valid NPCs."
             )
@@ -70,7 +68,7 @@ def build_widget(
     ### BUILD WIDGET ###
 
     widget = gr.Blocks(
-        title="DCS Simulation Engine",
+        title="DCS Simulation",
         theme=gr.themes.Default(primary_hue="violet"),
     )
     with widget:

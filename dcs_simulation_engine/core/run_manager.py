@@ -6,7 +6,7 @@ import json
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Union
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
@@ -17,27 +17,20 @@ from dcs_simulation_engine.core.constants import OUTPUT_FPATH
 from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.core.simulation_graph import (
     SimulationGraph,
-    StateSchema,
+    SimulationGraphState,
     make_state,
 )
+from dcs_simulation_engine.core.simulation_graph.constants import (
+    UPDATER_NAME,
+    VALIDATOR_NAME,
+)
 from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
+from dcs_simulation_engine.core.simulation_graph.subgraph import init_subgraph_context
 from dcs_simulation_engine.helpers import database_helpers as dbh
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from dcs_simulation_engine.utils.chat import ChatOpenRouter
 from dcs_simulation_engine.utils.file import safe_timestamp, unique_fpath
-
-# TODO: pre-release - add safety/validation heuristic for overly complex inputs like
-# really long actions....length heuristic using tokens or character threshold
-# TODO: pre-release - what prevents user from inputting two things
-# really fast and flooding the system??
-
-# TODO: pre-release - add step(long_running and timeout and interrupt) support
-# to exit step (also consider yield results as generator??
-
-# TODO: if character choices has no qa, warn (playing with characters whose
-# represetnational quality has not been assessed by the DCS research group...
-# do you wish to submit these characters for assessment so they can be added
-# to core characters db (link to open a ticket))
+from dcs_simulation_engine.utils.misc import dict_to_markdown
 
 
 class RunManager(BaseModel):
@@ -47,7 +40,7 @@ class RunManager(BaseModel):
 
     name: str
     game_config: GameConfig
-    state: StateSchema
+    state: SimulationGraphState
     context: ContextSchema
     config: RunnableConfig
 
@@ -62,6 +55,7 @@ class RunManager(BaseModel):
     saved: bool = Field(default=False)
     exit_reason: str = Field(default="")
     player_id: Optional[str] = Field(default=None)
+    feedback: List[Dict[str, Any]] = Field(default_factory=list)
 
     stopping_conditions: Dict[str, List[str]] = Field(
         # Default stopping conditions to prevent runaway simulations
@@ -111,7 +105,7 @@ class RunManager(BaseModel):
     @computed_field(return_type=int)
     def turns(self) -> int:
         """Get the total number of turns taken."""
-        return len(self.state["events"])
+        return len(self.state["history"]) // 2  # each turn = user + ai
 
     @computed_field(return_type=int)
     def runtime_seconds(self) -> int:
@@ -188,6 +182,9 @@ class RunManager(BaseModel):
                 player_id=player_id
             )
 
+            valid_pcs = [value for _, value in valid_pcs]
+            valid_npcs = [value for _, value in valid_npcs]
+
             if not valid_pcs:
                 raise ValueError(
                     "No valid player character choices found in game config."
@@ -206,9 +203,9 @@ class RunManager(BaseModel):
                     f"Invalid npc_choice: {npc_choice}. Valid choices: {valid_npcs}"
                 )
             if pc_choice is None:
-                pc_choice = valid_pcs[random.randint(0, len(valid_pcs) - 1)]
+                pc_choice = random.choice(valid_pcs)
             if npc_choice is None:
-                npc_choice = valid_npcs[random.randint(0, len(valid_npcs) - 1)]
+                npc_choice = random.choice(valid_npcs)
 
             if pc_choice is None or npc_choice is None:
                 raise ValueError("pc_choice and npc_choice must be set.")
@@ -221,7 +218,7 @@ class RunManager(BaseModel):
 
         # Initialize empty state
         try:
-            state: StateSchema = make_state()
+            state: SimulationGraphState = make_state()
             if game_config.graph_config.state_overrides:
                 logger.debug(
                     f"Applying state overrides: "
@@ -243,12 +240,23 @@ class RunManager(BaseModel):
             raise
         logger.debug(f"Initial state created: {state}")
 
-        # Initialize runtime context
-        # Initialize llms and inject them into runtime context at build time
-        # for each node in the graph that requires one.
-        context = ContextSchema(pc=pc, npc=npc, models={})
+        # Initialize runtime context (llms) and inject them into runtime
+        # context at build time
+        human_readble_pc = dict_to_markdown(pc)
+        human_readble_npc = dict_to_markdown(npc)
+        context = ContextSchema(
+            pc=human_readble_pc,
+            npc=human_readble_npc,
+            models={},
+            additional_validator_rules="",
+            additional_updater_rules="",
+        )
         for node in game_config.graph_config.nodes:
             if node.provider:  # only setup nodes with a provider
+                if node.model is None:
+                    raise ValueError(
+                        f"Model must be specified for provider {node.provider}"
+                    )
                 if node.additional_kwargs is None:
                     node.additional_kwargs = {}
                 if node.provider == "openrouter":
@@ -268,6 +276,20 @@ class RunManager(BaseModel):
                     raise NotImplementedError(
                         f"Provider not implemented yet: {node.provider}"
                     )
+        # if subgraph customizations exist, add them to context
+        if game_config.subgraph_customizations:
+            if game_config.subgraph_customizations.additional_validator_rules:
+                context["additional_validator_rules"] = (
+                    game_config.subgraph_customizations.additional_validator_rules
+                )
+            if game_config.subgraph_customizations.additional_updater_rules:
+                context["additional_updater_rules"] = (
+                    game_config.subgraph_customizations.additional_updater_rules
+                )
+        # add subgraph models
+        subgraph_models = init_subgraph_context()
+        context["models"][VALIDATOR_NAME] = subgraph_models[VALIDATOR_NAME]
+        context["models"][UPDATER_NAME] = subgraph_models[UPDATER_NAME]
 
         # Compile the simulation graph
         try:
@@ -304,17 +326,8 @@ class RunManager(BaseModel):
     def step(
         self,
         user_input: Optional[Union[str, Mapping[str, Any]]] = None,
-    ) -> Dict[str, Any]:
-        """Advance the simulation one turn.
-
-        - If `user_input` is a string starting with '/', interpret as a command:
-            /quit | /stop            -> stop the simulation
-            /save [optional_path]    -> save state to OUTPUT_FPATH or given path
-            /state                   -> return current state (no graph step)
-        - Otherwise, treat as user text, append HumanMessage, and invoke one graph step.
-
-        Returns the updated state (dict).
-        """
+    ) -> Iterator[Any]:
+        """Advance the simulation one step/turn."""
         # logger.debug(f"RunManager step called with user_input: {user_input!r}")
 
         if self.start_ts is None:
@@ -325,110 +338,94 @@ class RunManager(BaseModel):
         if self.state is None:
             raise ValueError("Internal state is not initialized.")
 
-        if isinstance(user_input, str) and (
-            user_input.strip().startswith("/") or user_input.strip().startswith("\\")
-        ):
+        is_command = isinstance(user_input, str) and user_input.strip().startswith(
+            ("/", "\\")
+        )
+        is_handled = False
+        if is_command:
             parts = user_input.strip().split(maxsplit=1)
             cmd = parts[0].lower().lstrip("/\\")
 
             if cmd in ("quit", "stop", "exit"):
                 self.exit(reason="received exit command")
-                return self.state  # type: ignore
+                yield {
+                    "type": "info",
+                    "content": f"Simulation exited with reason: {self.exit_reason}",
+                }
+                is_handled = True
 
             elif cmd in ("feedback", "fb"):
-                # TODO: pre-release - implement more robust feedback handling
-                logger.warning(
-                    f"Feedback received: {parts[1] if len(parts) > 1 else ''}"
-                )
-                # update state with special message "feedback received, thank you."
-                self.state["special_user_message"] = {
+                fb = parts[1] if len(parts) > 1 else ""
+                logger.warning(f"Feedback received: {fb}")
+                if fb:
+                    self.feedback.append(
+                        {
+                            "timestamp": datetime.now().isoformat(),
+                            "content": fb,
+                        }
+                    )
+                self.state["simulator_output"] = {
                     "type": "info",
-                    "content": "Feedback received, thank you.",
+                    "content": (
+                        "Feedback received, thank you."
+                        if fb
+                        else "No feedback content provided. Type '/feedback <your "
+                        "comments here>' Eg. '/feedback I think the simulator "
+                        "shouldn't do this here'"
+                    ),
                 }
-                return self.state  # type: ignore
+                yield self.state["simulator_output"]
+                is_handled = True
             else:
+                self.state["user_input"] = {
+                    "type": "user",
+                    "content": user_input,
+                }
                 logger.warning(
-                    f"Run manager doesn't recognize this command: {cmd}. Continuing."
+                    f"Run manager doesn't recognize this command: {cmd}. " "Continuing."
                 )
+                is_handled = False
 
         if self.exited:
-            logger.info("Simulation is exited; skipping graph invocation.")
+            logger.info("Simulation is exited; skipping graph call.")
             return self.state  # type: ignore
 
-        try:
-            # if user input, update message_draft to include it
-            if user_input is not None:
-                if isinstance(user_input, str):
-                    self.state["event_draft"] = {
-                        "type": "user",
-                        "content": user_input,
-                    }
-                elif isinstance(user_input, Mapping):
-                    self.state["event_draft"] = dict(user_input)
-                    self.state["event_draft"]["type"] = "user"
-                else:
-                    raise TypeError(
-                        f"user_input must be str or Mapping, got {type(user_input)}"
-                    )
-                logger.debug(
-                    f"Updated state with event_draft: {self.state['event_draft']}"
-                )
-            # invoke the graph to get new state
-            new_state = self.graph.invoke(
-                state=self.state,  # dynamic state
-                context=self.context,  # static runtime ctx (n/pc, api connections, etc)
-                config=self.config,  # runnable config
-            )
-            self.state = new_state
-        except Exception as e:
-            logger.exception(f"Error during graph invocation: {e}")
-            raise
-
-        return self.state  # type: ignore
-
-    def play(
-        self,
-        input_provider: Optional[Callable[[], str]] = None,
-    ) -> Dict[str, Any]:
-        """Run an interactive loop until stopped or stopping conditions met.
-
-        - `input_provider` (optional): function returning the next user string.
-          Defaults to built-in `input`.
-        """
-        provider = input_provider or (lambda: input("user: "))
-
-        self.start_ts = datetime.now()
-
-        while not self.exited:
+        if not is_command or not is_handled:
             try:
-                # check simulation state vars/lifecycle for stopping conditions
-                # before calling provider
-                self._ensure_stopping_conditions()
-
-                events = self.state["events"]
-                if not events or len(events) == 0:
+                # if user input, update message_draft to include it
+                if user_input is not None:
+                    if isinstance(user_input, str):
+                        self.state["user_input"] = {
+                            "type": "user",
+                            "content": user_input,
+                        }
+                    elif isinstance(user_input, Mapping):
+                        self.state["user_input"] = {
+                            "type": user_input.get("type", "user"),
+                            "content": user_input.get("content", ""),
+                        }
+                    else:
+                        raise TypeError(
+                            f"user_input must be str or Mapping, got {type(user_input)}"
+                        )
                     logger.debug(
-                        "No events in state; taking initial graph step to setup scene."
+                        f"Updated state with user_input: {self.state['user_input']}"
                     )
-                    user_text = None
-                elif events[-1].type == "ai":
-                    user_text = provider()
-                elif events[-1].type == "user":
-                    user_text = None
-                else:
-                    raise ValueError(
-                        f"Unknown last event type: {events[-1].type}. Cannot continue."
-                    )
-            except (EOFError, KeyboardInterrupt):
-                logger.error("User input was keyboard interrupted.")
-                user_text = "/stop"
-                self.exit(reason="user interrupted")
 
-            self.step(user_text)  # update state with new messages
-            # Note: stopping conditions are checked in step()
-            if self.exited:
-                break
-        return self.state  # type: ignore
+                stream = self.graph.stream(
+                    state=self.state,  # dynamic state
+                    context=self.context,  # static runtime ctx (n/pc, api conns, etc
+                    config=self.config,  # runnable config
+                )
+                for event in stream:
+                    logger.info(f"RunManager step yielding event: {event}")
+                    if event.get("type") == "final_state":
+                        self.state = SimulationGraphState(**event["state"])
+                    else:
+                        yield event
+            except Exception as e:
+                logger.exception(f"Error during graph invocation: {e}")
+                raise
 
     def exit(self, reason: str) -> None:
         """Mark the simulation as exited."""
@@ -440,7 +437,7 @@ class RunManager(BaseModel):
             self.exit_reason = reason
             self.end_ts = datetime.now()
             self.save()
-            logger.info(f"Simulation stopped. Reason: {reason}")
+            logger.info(f"Simulation exited. Reason: {reason}")
         return
 
     def save(self, path: Optional[Union[str, Path]] = None) -> Path:
