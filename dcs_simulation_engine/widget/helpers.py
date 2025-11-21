@@ -82,7 +82,6 @@ def slow_yield_chars(
     yield "".join(built)
 
 
-# TODO: don't know this is necessary....double yield...yucl
 def stream_msg(message: str) -> Iterator[str]:
     """Streams a message at about reading speed."""
     for partial in slow_yield_chars(

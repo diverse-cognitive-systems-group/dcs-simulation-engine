@@ -1,8 +1,5 @@
 """Base game config module."""
 
-# TODO: part of config that queries db using raw dict-like queries is
-# janky and should be replaced with something more robust.
-
 from __future__ import annotations
 
 from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
@@ -23,6 +20,9 @@ from dcs_simulation_engine.utils.serde import SerdeMixin
 
 # TODO: warn if save_runs is false on a game config
 # that uses player_id, runs, ...queries
+
+# TODO: part of config that queries db using raw dict-like queries is
+# janky and should be replaced with something more robust.
 
 
 class ValiditySelector(BaseModel):
