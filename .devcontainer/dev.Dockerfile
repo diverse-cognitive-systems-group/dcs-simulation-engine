@@ -6,6 +6,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git openssh-client ca-certificates curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Install flyctl exactly as per Fly.io docs
+RUN curl -L https://fly.io/install.sh | sh
+
+# Make flyctl available on PATH for all users
+ENV PATH="/root/.fly/bin:${PATH}"
+
 # Keep it minimal; no compilers unless your deps need them.
 ENV POETRY_VIRTUALENVS_CREATE=false \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \

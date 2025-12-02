@@ -13,47 +13,63 @@
 
 ## What is this?
 
-This is a textual scenario-based simulation engine that **simulates diverse forms of cognitive systems** — from neurodivergent humans to systems with basal intelligence, and even simple mechanical homeostatic systems.
+It's both a research framework and a play space.
 
+For researchers, it offers a way to **study interactions between diverse cognitive systems in controlled, designed scenarios with reliablly simulated character responses**--from how neurodivergent humans collaborate on a task, to how AI systems with varying architectures generate communication protocols, to how neurotypical hummans interpret and engage with unfamiliar or radically different beings.
+
+For players, it's a collaborative improv arena where a player character (you) and a simulated character take on a cast of characters with distinct abilities and cognitive profiles. Everything unfolds through language: actions, imagination, and world-building in a style inspired by tabletop roleplaying games.
+
+Under the hood, it’s built to faithfully represent the actions and behavioral patterns of a curated range of real cognitive systems—from neurodivergent humans to simple mechanical homeostatic agents and biological systems with basal intelligence. This foundation supports rich, varied interactions that push participants to adapt and think differently, while giving researchers a structured way to observe and analyze the dynamics that emerge.
+
+And the interface is delightfully simple:
 *It runs on the world’s most powerful graphics chip: your imagination. Its controller? The world’s most powerful cognitive interface: symbolic language.*
 
 ## Why'd we build this?
-Interfacing between different cognitive systems (even within the same species and cultures, such as neurotypical and autistic humans) is often difficult. **We lack reliable benchmarks or metrics for evaluating how well an AI, human, or other cognitive system understands the goals of others outside their own cognitive profiles.** This simulation engine addresses this by modeling interaction scenarios where humans, AI systems, and other agents — with distinct sensory, perceptual, regulatory, and action modalities — engage and attempt to discover what the other cares about and what their goalspace looks like.
+Interfacing between different cognitive systems--even within the same species and cultures--is often difficult. **We lack reliable metrics for evaluating how well an AI, human, or any cognitive system understands the goals and perspectives of minds unlike its own.** 
+
+This tool addresses that gap by modeling configurable interaction scenarios where humans, AI systems, and other characters — each with distinct sensory, perceptual, regulatory, and action modalities — can engage, coordinate, and uncover what the other cares about, how their goalspace is structured, and how to accomplish shared or competing objectives.
+
+There’s also a social reason: divergent humans are, by definition, outliers in the bell curve and often underrepresented in everyday interaction. That makes communicating with fundamentally different minds an underdeveloped skill for many. Many of our simulated characters draw from real divergent humans, making those behavioral patterns more accessible. While the primary purpose of this tool is research, we hope that by including a wide range of real human cognitive profiles, both researchers and users will be encouraged to explore, understand, and learn from minds that are not usually easy to encounter or practice engaging with.
+
+Ultimately, our long-term goal is to build systems that let us "walk up to" any being — of any kind, anywhere in the cosmos — and understand the potential for interaction. We want to recognize what its capacities and abilities are, what it may care about, what forms of communication are possible, what goals we might share, and what we can actually do together. 
+
+This tool is a step toward that larger research objective. It gives us a controlled way to explore how radically different minds might meet, interpret one another, and discover the foundations of engagement.
 
 ## How does it work?
-It does this through back-and-forth textual roleplay (checkout demo [here](https://simulation-widget-demo.fly.dev/)). A participant defines its cognitive profile then, the simulation engine generates a scene, and roleplays another cognitive system. The participant must then infer that system’s goals through real-time hypothesis generation and testing — sometimes by developing new communication protocols or adapting to unfamiliar interfaces and/or non-neurotypical human norms. The goals may range from complex motivations to simple homeostatic needs, such as a cell maintaining its pH within a narrow range. (For more background information, refer to the [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki)).
+The system runs like a turn-based, text-only tabletop RPG. You play a character; the simulator plays another. Each turn, you describe an action, and the engine generates the next world step that includes any actions from simulated character.
 
-After a session, the participant’s performance is evaluated and compared against other participants (including other humans, AI systems, etc.). This produces a metric for how well various types of cognitive systems can reliably infer the goals of other cognitive systems as they diverge from the communication and interaction styles of the participating system.
+Behind the scenes, every simulated response comes from a dedicated model trained to represent diverse cognitive systems. It takes your action, updates the world state, and replies in character, reflecting that system’s sensory limits, goals, and behavioral patterns.
 
-Its primary use cases are 
-1) a playground for self-learning for intrinsically motivated and/or self-modifying systems (eg. autotelic AI) and 
-2) a benchmarking tool for evaluating goal-inference capabilities across different cognitive profiles.
+A configurable game layer sits on top of this core. Researchers define the scenario, what information is hidden or revealed, and how the interaction should flow. Some games, for example, conceal the character’s type so the player must infer it through behavior alone.
+
+In short: you take an action, the engine performs a world step through the simulation model, and the story advances — always in character.
+
+The [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki)) offers more technical background.
 
 ## How can I use it?
 
-### Option 1 - Try the [web demo](https://simulation-widget-demo.fly.dev/) online
-If you want to see how it works or evaluate your own ability to infer the goals of others as they become progressively more different from the "norm", this is a good starting point.
+### Option 1 - Try the [web demo](https://dcs-simulation-demo.fly.dev/) online or join a live game
+Play the lightweight Explore demo at the link above. It has no objectives or data collection — just freeform interaction with any character you choose.
+
+We also host periodic live games listed on the [DCS main github page](https://github.com/diverse-cognitive-systems-group). These games are part of live research studies/experiemnts that we collect data from. You click the link, consent to be a research participant, and play the game online in your browser.
 
 <img src="images/web-demo.png" alt="Web Demo">
 
-### Option 2 - Run using the [API](https://simulation-api-demo.fly.dev/)
-We host an API so you can integrate the simulation engine into your own applications, research, workflows, etc. See the [Codebase Docs](https://fuzzy-tribble.github.io/dcs-simulation-engine/) for more details.
+### Option 2 - Build your own games
+Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
 
-<img src="images/api-demo.png" alt="API Demo">
+```bash
+>> poetry add dcs-simulation-engine
 
-### Option 3 - Run locally
-Alternatively, you can see the see the [Contributing Guide](CONTRIBUTING.md) for instructions on how to setup/run the codebase locally. This option is for users who want to contribute, try different graph architectures, local scenario orchestration models, prompts, etc.
+>> dcs --help
 
-#### Example CLI session
-<img src="images/cli-demo.png" alt="CLI Demo">
+>> dcs create-game --name new-game-name
+```
 
-#### Example Notebook session
-<img src="images/nb-demo.png" alt="Notebook Demo">
+If you want deeper access — customizing or analyzing characters, experimenting with simulation orchestration graphs, or testing different models — check out the [Contributing Guide](CONTRIBUTING.md). It walks you through setting up the full codebase locally and contributing code, features, or documentation.
 
 ## Future Directions
 **Extending the character and scenario space**: The simulation engine currently supports a carefully curated set of characters and scenarios, designed to represent a diverse range of cognitive systems—from basal intelligence and human neurodivergence to temporary disabilities, robotic agents, and even alien-like intelligences. Each has been rigorously quality-checked to ensure their representation is high quality. As new use cases emerge and scenarios grow in complexity, we aim to expand this character and scenario space while maintaining the same high standards of quality and realism.
-
-**Consider Bi-Directional Goal Inference**: Currently, the simulation engine focuses on one-way goal inference, where the participant infers the goals of the simulated character. While this is sufficient for many applications, in the future, we would like to explore if bi-directional goal inference, where both the participant and the simulated character attempt to infer each other's goals could add value.
 
 **Extending beyond narrative interface**: While the simulation engine’s core reasoning remains language-based (as explained in the Wiki), the top-level orchestration agent uses a modular, multi-modal agent graph. This design allows additional agents, models, and I/O interfaces to be integrated seamlessly.
 
@@ -65,7 +81,7 @@ For example, the system might normally generate a line such as “I whistle soft
 - [Contributing Guide](CONTRIBUTING.md) - how to contribute to the project
 - [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) - background information on the project
 - [Codebase Docs](https://fuzzy-tribble.github.io/dcs-simulation-engine/) - documentation for the codebase
-- [Web Demo](https://simulation-engine-widget-demo.fly.io) - try the simulation engine online
-- [API Demo](https://simulation-engine-api-demo.fly.io/redoc) - try the simulation engine API online
+- [Web Demo](https://dcs-simulation-demo.fly.dev/) - try the simulation engine online
+- [API Demo](https://dcs-simulation-demo.fly.io/redoc) - try the simulation engine API online
 - [Analysis Notebooks](analysis_notebooks/) - Jupyter notebooks containing anonymized analysis of simulation sessions
 - [Contact](mailto:mworkman9@gatech.edu) - get in touch with the maintainers for questions, suggestions, etc. using the "Issues" tab on GitHub or email

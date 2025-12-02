@@ -3,23 +3,23 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'simulation-engine-demo'
+app = 'dcs-simulation-exp-pilot483'
 primary_region = 'dfw'
 
 [build]
 
 [processes]
-  web = 'poetry run python -m scripts.run_widget --game Explore --port 8080 --host 0.0.0.0'
+web = 'poetry run python -m scripts.run_widget --game Explore --port 8080 --host 0.0.0.0 --banner exp-pilot483'
 
 [http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['web']
+internal_port = 8080
+force_https = true
+auto_stop_machines = 'stop'
+auto_start_machines = true
+min_machines_running = 0
+processes = ['web']
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
+memory = '1gb'
+cpu_kind = 'shared'
+cpus = 1

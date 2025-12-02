@@ -1,7 +1,5 @@
 # Contributing Guidelines
 
-TODO: pre-release - update this doc
-
 Fork the repo and submit a PR with your changes. 
 
 *(No specific format is required for PRs at this point...as long as its reasonable/understandble and focuses on the core development areas needed (discussed below) it will be considered.)*

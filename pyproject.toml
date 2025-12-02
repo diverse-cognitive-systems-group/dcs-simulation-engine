@@ -1,10 +1,17 @@
 [project]
 name = "dcs-simulation-engine"
 version = "0.1.0"
-description = ""
+description = "A textual environment for simulating diverse cognitive systems."
 authors = [{ name = "mworkman9", email = "mworkman9@gatech.edu" }]
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
+license = "MIT"
+classifiers = [
+  "Programming Language :: Python :: 3.10",
+  "Operating System :: OS Independent",
+]
+license-files = ["LICEN[CS]E*"]
+
 dependencies = [
   "rich (>=14.1.0,<15.0.0)",
   "langgraph (>=0.6.4,<0.7.0)",
@@ -23,6 +30,14 @@ dependencies = [
   "mnemonic (>=0.21,<0.22)",
   "gradio (>=5.49.1,<6.0.0)",
 ]
+
+[project.scripts]
+dcs = "scripts.main:entrypoint"
+dcs-widget = "scripts.run_widget:main"
+
+[project.urls]
+Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
+Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/issues"
 
 [tool.poetry]
 packages = [{ include = "dcs_simulation_engine" }]
