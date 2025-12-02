@@ -3,7 +3,7 @@
 # Diverse Cognitive Systems (DCS) Simulation Engine 
 
 
-*A scenario-based simulation engine for diverse forms of cognitive systems to play, learn and measure their goal inference capabilities.*
+*A textual role-playing simulator for diverse cognitive systems to play and learn.*
 
 [![API Demo](https://img.shields.io/badge/API%20-007ACC)](https://simulation-api-demo.fly.dev:8000)          <!-- blue -->
 [![Web Demo](https://img.shields.io/badge/Demo%20-28A745)](https://simulation-widget-demo.fly.dev/) <!-- green -->
@@ -44,26 +44,34 @@ A configurable game layer sits on top of this core. Researchers define the scena
 
 In short: you take an action, the engine performs a world step through the simulation model, and the story advances — always in character.
 
-The [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki)) offers more technical background.
+The [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) offers more technical background.
 
 ## How can I use it?
 
 ### Option 1 - Try the [web demo](https://dcs-simulation-demo.fly.dev/) online or join a live game
 Play the lightweight Explore demo at the link above. It has no objectives or data collection — just freeform interaction with any character you choose.
 
-We also host periodic live games listed on the [DCS main github page](https://github.com/diverse-cognitive-systems-group). These games are part of live research studies/experiemnts that we collect data from. You click the link, consent to be a research participant, and play the game online in your browser.
+We also host periodic live games that you can participate in by emailing [dcs@psych.gatech.edu](mailto:dcs@psych.gatech.edu).
 
 <img src="images/web-demo.png" alt="Web Demo">
 
-### Option 2 - Build your own games
+### Option 2 - Build your own games (for researchers)
+If you are a researcher or developer, you can build and run your own games locally or deploy them for others to play. 
+
+- Create a fork: Forking the repo and launch dev container. This option allows you to modify the source code directly (models, orchestration, games, launch/deploy options, etc.) and you can contribute back via pull requests.
+
+- Install from PyPI: Install the package from PyPI and create/modify games without changing the source code. This is ideal if you want to play and launch your own games quickly.
+
+- Install from Docker: Run from the docker image without installing anything locally. This is ideal if you want to test or deploy games without modifying the codebase.
+
 Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
 
 ```bash
 >> poetry add dcs-simulation-engine
 
 >> dcs --help
-
 >> dcs create-game --name new-game-name
+>> dcs run-game --name new-game-name
 ```
 
 If you want deeper access — customizing or analyzing characters, experimenting with simulation orchestration graphs, or testing different models — check out the [Contributing Guide](CONTRIBUTING.md). It walks you through setting up the full codebase locally and contributing code, features, or documentation.
@@ -84,4 +92,4 @@ For example, the system might normally generate a line such as “I whistle soft
 - [Web Demo](https://dcs-simulation-demo.fly.dev/) - try the simulation engine online
 - [API Demo](https://dcs-simulation-demo.fly.io/redoc) - try the simulation engine API online
 - [Analysis Notebooks](analysis_notebooks/) - Jupyter notebooks containing anonymized analysis of simulation sessions
-- [Contact](mailto:mworkman9@gatech.edu) - get in touch with the maintainers for questions, suggestions, etc. using the "Issues" tab on GitHub or email
+- [Contact](mailto:dcs@psych.gatech.edu) - get in touch with the maintainers for questions, suggestions, etc. using the "Issues" tab on GitHub or email

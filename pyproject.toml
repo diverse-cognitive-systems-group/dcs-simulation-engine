@@ -2,7 +2,7 @@
 name = "dcs-simulation-engine"
 version = "0.1.0"
 description = "A textual environment for simulating diverse cognitive systems."
-authors = [{ name = "mworkman9", email = "mworkman9@gatech.edu" }]
+authors = [{ name = "dcs", email = "dcs@psych.gatech.edu" }]
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
 license = "MIT"

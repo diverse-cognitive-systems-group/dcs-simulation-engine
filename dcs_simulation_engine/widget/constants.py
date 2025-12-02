@@ -23,7 +23,7 @@ To continue, please enter your access token below.
 - Please keep your token somewhere safe.
 
 *If you need help, have questions, or encounter any issues, please email
-McKinnley Workman at mworkman9@gatech.edu*
+McKinnley Workman at dcs@psych.gatech.edu*
 """
 
 USER_FRIENDLY_EXC = (
