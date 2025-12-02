@@ -32,7 +32,8 @@ dependencies = [
 ]
 
 [project.scripts]
-dcs = "dcs_simulation_engine.scripts:main"
+dcs = "scripts.main:entrypoint"
+dcs-widget = "scripts.run_widget:main"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
@@ -40,9 +41,6 @@ Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engi
 
 [tool.poetry]
 packages = [{ include = "dcs_simulation_engine" }]
-
-[tool.setuptools.package-data]
-dcs_simulation_engine = ["games/**/*", ".env.example"]
 
 [tool.poetry.dependencies]
 poetry = "^2.1.0"
