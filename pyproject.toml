@@ -32,8 +32,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dcs = "scripts.main:entrypoint"
-dcs-widget = "scripts.run_widget:main"
+dcs = "scripts.entrypoint:run"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"

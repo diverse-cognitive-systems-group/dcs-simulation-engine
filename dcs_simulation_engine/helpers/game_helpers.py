@@ -7,6 +7,64 @@ from loguru import logger
 from packaging.version import InvalidVersion, Version  # type: ignore[import-untyped]
 
 
+def list_games(
+    directory: str | Path | None = None,
+) -> list[tuple[str, str | None, Path]]:
+    """Return available game configs as (name, version, path) tuples.
+
+    Parameters
+    ----------
+    directory:
+        Optional directory containing game YAML files.
+        Defaults to the built-in ``games/`` directory in the package.
+
+    Returns:
+    -------
+    list[tuple[str, str | None, Path]]
+        Each tuple contains:
+          - name:    top-level ``name`` field (string)
+          - version: top-level ``version`` field if present, else None
+          - path:    Path to the YAML file
+          - description: top-level ``description`` field if present, else None
+
+    Files that cannot be loaded or that lack a ``name`` field are skipped.
+    """
+    if directory is None:
+        directory = Path(__file__).parent.parent.parent / "games"
+    else:
+        directory = Path(directory).expanduser()
+
+    if not directory.exists() or not directory.is_dir():
+        raise FileNotFoundError(f"Games directory {directory!s} not found or invalid.")
+
+    results: list[tuple[str, str | None, Path]] = []
+
+    for path in directory.glob("*.y*ml"):
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                doc = yaml.safe_load(f) or {}
+        except Exception:
+            logger.warning(f"Failed to parse {path}, skipping.")
+            continue
+
+        raw_name = doc.get("name")
+        if not raw_name:
+            logger.warning(f"Game config {path} missing 'name', skipping.")
+            continue
+        name = str(raw_name).strip()
+
+        raw_version = doc.get("version")
+        version = str(raw_version).strip() if raw_version not in ("", None) else None
+        raw_description = doc.get("description")
+        description = (
+            str(raw_description).strip() if raw_description not in ("", None) else None
+        )
+
+        results.append((name, version, path, description))
+
+    return results
+
+
 def get_game_config(game: str, version: str = "latest") -> str:
     """Return the path to a YAML game config.
 
