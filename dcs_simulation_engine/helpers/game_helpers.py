@@ -7,6 +7,26 @@ from loguru import logger
 from packaging.version import InvalidVersion, Version  # type: ignore[import-untyped]
 
 
+def create_game_from_template(name: str, template: str | Path | None = None) -> Path:
+    """Copy a game into the current working directory from a template game file."""
+    dest = Path.cwd() / f"{name}.yaml"
+    if dest.exists():
+        raise FileExistsError(f"{dest} already exists.")
+
+    if template is None:
+        template_path = Path(get_game_config("Explore"))
+    else:
+        t = Path(template).expanduser()
+        if t.is_file():
+            template_path = t
+        else:
+            template_path = Path(get_game_config(str(template)))
+
+    dest.write_bytes(template_path.read_bytes())
+    logger.info(f"Copied game template {template_path} -> {dest}")
+    return dest
+
+
 def list_games(
     directory: str | Path | None = None,
 ) -> list[tuple[str, str | None, Path]]:

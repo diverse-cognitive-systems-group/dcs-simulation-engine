@@ -90,6 +90,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.theme import Theme
 
+from dcs_simulation_engine.helpers.game_helpers import create_game_from_template
 from dcs_simulation_engine.helpers.game_helpers import list_games as _list_games
 
 cli_theme = Theme(
@@ -225,88 +226,30 @@ def create_game(
     ctx: typer.Context,
     name: Optional[str] = typer.Argument(
         None,
-        help="Name of the game. If omitted, you may be prompted.",
-    ),
-    template: Optional[str] = typer.Option(
-        None,
-        "--template",
-        help="Template to use when generating the game (name or path).",
-    ),
-    outdir: Path = typer.Option(
-        Path("."),
-        "--outdir",
-        help="Output directory (default: project root).",
-        file_okay=False,
-        dir_okay=True,
-        writable=True,
-    ),
-    force: bool = typer.Option(
-        False,
-        "--force",
-        help="Overwrite existing file.",
-    ),
-    non_interactive: bool = typer.Option(
-        False,
-        "--non-interactive",
-        help="Do not prompt; use defaults and flags.",
-    ),
-    description: Optional[str] = typer.Option(
-        None,
-        "--description",
-        help="Pre-fill description.",
-    ),
-    tags: Optional[str] = typer.Option(
-        None,
-        "--tags",
-        help="Pre-fill tags/metadata as a comma-separated list.",
-    ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Show output without writing files.",
+        help="Name of the game. If omitted, you will be prompted.",
     ),
 ) -> None:
-    """Create a new game.yml file."""
-    opts: GlobalOptions = ctx.obj
+    """Create a new game from the default template.
 
-    # Stub: parse tags into list
-    tag_list: List[str] = []
-    if tags:
-        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    Examples:
+      dcs create game my-game
+      dcs create game
+    """
+    if name is None:
+        name = typer.prompt("Game name", default="my-game")
 
-    # If not non-interactive and fields missing, you could prompt here
-    if not non_interactive:
-        if name is None:
-            name = typer.prompt("Game name", default="my-game")
-        if description is None:
-            description = typer.prompt("Description", default="A new DCS game.")
+    created_path = create_game_from_template(name)
 
-    # Stub: just show a summary of what would be created
-    table = Table(
-        title="Game Creation Plan", show_header=True, header_style="bold magenta"
+    echo(
+        ctx,
+        f"Created new game '{name}' from template at: {created_path}",
+        style="success",
     )
-    table.add_column("Field")
-    table.add_column("Value")
-
-    table.add_row("Name", name or "<unset>")
-    table.add_row("Template", template or "<default>")
-    table.add_row("Outdir", str(outdir))
-    table.add_row("Force overwrite", str(force))
-    table.add_row("Non-interactive", str(non_interactive))
-    table.add_row("Description", description or "<none>")
-    table.add_row("Tags", ", ".join(tag_list) if tag_list else "<none>")
-    table.add_row("Dry run", str(dry_run))
-    table.add_row("Global config", str(opts.config) if opts.config else "<none>")
-    table.add_row("Assume yes", str(opts.yes))
-
-    echo(ctx, Panel(table, title="[title]dcs create game[/title]"))
-
-    if dry_run:
-        echo(ctx, "Dry run: no files were written.", style="warning")
-        return
-
-    # TODO: implement actual file generation logic here
-    echo(ctx, "Game file would be generated here.", style="success")
+    echo(
+        ctx,
+        "Game configuration can be modified in file.",
+        style="info",
+    )
 
 
 app.add_typer(create_app, name="create")
@@ -512,7 +455,7 @@ def validate_game(
     )
 
     # Stub: pretend validation passed
-    echo(ctx, "Validation successful. No errors found.", style="success")
+    echo(ctx, "TODO: implement validation logic.", style="error")
 
 
 # ---------------------------------------------------------------------------
