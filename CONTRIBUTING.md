@@ -1,138 +1,72 @@
 # Contributing Guidelines
 
-Fork the repo and submit a PR with your changes. 
+Contributing involves forking the repo (or cloning it if you have write access, such as being part of the DCS group/org) and submitting a PR with your changes.
 
-*(No specific format is required for PRs at this point...as long as its reasonable/understandble and focuses on the core development areas needed (discussed below) it will be considered.)*
+Internally DCS group works on issues, features, etc. according to the [DCS project](https://github.com/orgs/diverse-cognitive-systems-group/projects/1)
 
-## Workflow for Creating New Characters
+*No specific format is required for PRs at this point...as long as its reasonable/understandble and focuses on the core development areas needed (discussed below) it will be considered.*
 
-To create a new character, follow these steps:
-1. Add the character definition to the `database_seeds/characters.json` file. Use existing character entries as examples.
-2. ...
+## Step by Step Contributing Guide
 
-## Workflow for Creating and Releasing New Experiments/Games
-
-To create a new game/experiment configuration:
-
-1. Create a new yaml file in the `games` directory, e.g. `games/new-game-name.yml`.
-2. Define the game parameters, characters, and settings in the yaml file using the existing game files as guides or the GameConfig class definition.
-3. ...
-4. (optional) Launch your new game using ....
-
-## Contributing to Core Codebase
-
-To update the simulation engine itself 
-
-### Launch game
-
-*Note: Our demo deployments use Fly.io for hosting the demo Gradio widget and demo API. We update these using github actions when we push to main branch.*
-
-After testing locally, you can launch your game using your local machine with Gradio public link sharing or deploy to GCP.
-
-#### Pre-pilot test using Gradio public link on your local machine:
-
-If you are just sharing with a few folks for pilot testing you can launch the widget locally with Gradio's share option like this. It will output a temporary public link you can share with others to access your local instance.
-
-```bash
-python scripts/run_widget.py --game Explore --share
-```
-
-#### Launching an experiment (using Fly.io):
-
-1. Setup 
-
-```bash
-# either use the gui or command line, here is command line way
-
-# install if you don't have it already
-brew install flyctl
-# signup or login
-fly auth signup
-fly auth login
-
-# initialize fly app (only need to do this once)
-fly launch --no-deploy
-
-# deploy to fly
-fly deploy
-
-# view deployed app in browser
-fly apps open
-```
-
-## General Contributing Workflow
+First, install VSCode add the [DevContainers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
 
 ### 1) Fork the repo (or clone if you have write access)
-[Here are some instructions](https://docs.github.com/en/get-started/quickstart/fork-a-repo) on how to do that if you are unfamiliar
+DCS group members should clone the repo directly.
 
-### 2) Start docker daemon
-Dev container is configured to run docker so it will throw an error if you try to launch the dev container before starting the docker daemon. To launch either run docker gui or run ```docker info``` in terminal
+You should now see the code on your local machine in VS-code's explorer window.
+
+If you are not sure you can open the Command Palette (Cmd+Shift+P) and type/select "Terminal: Create New Terminal" to open a terminal window. In the terminla window type:
+
+```sh
+pwd && test -d dcs_simulation_engine && echo "✔ Folder structure looks correct" || echo "✖ Folder structure is incorrect"
+```
+*Note: this command will only work on Mac/Linux*
+
+### 2) Add .env file
+Create a .env file in the root of the project. (Just copy the .env.example file and rename it to .env then add your access keys for MongoDB, OpenRouter, etc.)
+
+```sh
+# Command to copy example env file to .env if you'd rather do it from terminal instead of manually in explorer.
+cp .env.example .env
+```
+
+*Make sure you add your access keys (DCS group members can DM group admin for these)*
 
 ### 3) Launch dev container
-From VS-code make sure you have the [DevContainers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension intalled then launch the dev container like this or by clicking the green button in the bottom left of the VS-code window
+From VS-code use Cmd+Shift+P to open the command palette, then type "Reopen in Container" and select that option to open the code in dev container. This will run the .devcontainer dev.Dockerfile to build the container and install all dependencies so we are all working in the same environment. The .devcontainer/devcontainer.json file specifies the vs-code settings for the container like which extensions to install, etc.
+
 ![launch dev container](images/launch_dev_container.png)
 
-At this point all dev dependencies have been installed and you can start running code, tests, making changes, etc.
-
-### 4) Contribute
-Probably wise to start by running unit tests to wrap your head around how things work and are called and unitized. But do whatever suits your fancy.
-
-For example, now your terminal in VS-code will be running in the dev container so you can make sure poetry successfully installed all deps by running ```poetry show``` in the terminal
+At this point you are all set up to start running scripts and/or changing code. To double check everything is working you can try running some unit tests or scripts as described below.
 
 ```sh
-# NOTE: you prob need to run poetry install so that dcs_simulation_engine is aviable in ipython and in tests scripts 
-poetry install
+# run unit tests
+# TODO: update this to run all unit/etc. tests to easily validate env setup for contributors
+poetry run pytest tests/utils/test_file.py 
+
+# run the Explore game using the CLI interface locally
+poetry run python scripts/run_cli.py --game Explore
+# type /quit or /exit to exit the game; /help for help
+
+# run the Explore game using the WIDGET interface locally
+poetry run python scripts/run_widget.py --game Explore
+# open the http://0.0.0.0:8000 in your browser to see the widget UI
+# close the browser window and Ctrl+C in terminal to exit
 ```
 
-![terminal in dev container](images/terminal_in_container.png)
+For more detail on usage of the various scripts see the main [README](README.md) file.
 
-OR you can launch ipython by running ```ipython``` in the terminal
+### 4) Make changes
+Make whatever changes you want to the codebase. Create new branches for your changes and commit your changes with clear commit messages.
 
-![ipython usage](images/ipython_usage.png)
-
-OR you can run unit tests like this
-
-Note: if dev.Dockerfile include --no-root you may need to install local package "poetry install" to make dcs_simulation_engine avaiable in tests
-
-#### Example runs
-
-```sh
-# runs a pytest (stops at first failure, shows print statements)
-poetry run pytest tests/test_utils.py -x -s
-
-# runs a specific unit test within a module/file
-poetry run pytest tests/test_utils::test_specific_thing
-
-# runs the cli help to see available commands
-poetry run python scripts/run_cli.py --help
-```
-
-![pytest usage](images/pytest_usage.png)
-or all tests
-![pytest all unit tests](images/unit_tests.png)
-
-OR you can run any of the scripts by typing copi (tab completion to get the copilot-bla scripts)
-
-![scripts](images/copilot_scripts.png)
-
-Running the `run_cli` script looks like this 
-![run_cli](images/run_cli.png)
-
-
-
-#### Run API
-
-```sh
-uvicorn dcs_simulation_engine.api.main:app --reload
-```
+- Make sure to thoroughly test your changes locally before submitting a PR.
 
 ### 5) Submit PR
-Once you are done making changes and want to submit a PR you can do so by clicking the "create pull request" button in the github UI
+Once you are done making changes and want to submit a PR you can do in the "Source Control" tab in VS-code (or use git commands in terminal or the GitHub web interface if you prefer).
 
+From the Source Control tab in your branch you click the "Create Pull Request" button to open the PR creation page.
 
-# Troublshooting and Additional Gotchas you may run into
-
-- If you are contributing to .ipynb notebooks you need to run `nbstripout --install` so that no nb output is committed
+TODO: add more details on PR process to make it easier on first time contributors.
 
 ⸻
 
