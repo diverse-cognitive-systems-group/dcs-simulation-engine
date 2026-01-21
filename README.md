@@ -67,11 +67,32 @@ If you are a researcher or developer, you can build and run your own games local
 Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
 
 ```bash
+# install via poetry (or use pip if you prefer)
 >> poetry add dcs-simulation-engine
+# make sure its installed
+>> poetry show dcs-simulation-engine
+# and/or use the dcs command line tool
+>> dcs --version
 
+# Show help info
 >> dcs --help
->> dcs create-game --name new-game-name
->> dcs run-game --name new-game-name
+
+# List what games are available
+>> dcs list games
+
+# Run a game locally (add --help to see options)
+>> dcs run
+
+# Create a new game (called my-game)
+>> dcs create game my-game
+# See all options for creating games using the --help flag
+>> dcs create game --help
+
+# Validate your new or modified game
+>> dcs validate my-game
+
+# Deploy your game to a server (make sure to configure deployment settings first)
+>> dcs deploy --game my-game
 ```
 
 If you want deeper access — customizing or analyzing characters, experimenting with simulation orchestration graphs, or testing different models — check out the [Contributing Guide](CONTRIBUTING.md). It walks you through setting up the full codebase locally and contributing code, features, or documentation.

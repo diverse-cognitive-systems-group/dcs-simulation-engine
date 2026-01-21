@@ -8,7 +8,6 @@ Global Options:
     -v, --version       Show version
     -q, --quiet         Suppress non-error output
     -y, --yes           Assume "yes" for all prompts (non-interactive mode)
-    --config <path>     Optional global config file
 
 Commands
 --------
@@ -28,6 +27,16 @@ create game
         --tags <comma-list>      Pre-fill tags/metadata
         --dry-run                Show output without writing files
 
+create player
+    Create a new player profile.
+
+    Usage:
+        dcs create player [name] [options]
+
+Examples:
+            dcs create player Cara tags='["new","beta"]'
+            dcs create player Bob consent_signed=true --no-key
+            dcs create player --id some_id Alice
 
 run
     Start a game locally.
@@ -75,23 +84,39 @@ list games
 
     Usage:
         dcs list games
+
+seed database
+    Seed the database with initial data from seed files.
+
+    Usage:
+        dcs seed database [options]
 """
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import List, Literal, Optional
 
 import typer
+from loguru import logger
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.theme import Theme
 
-from dcs_simulation_engine.helpers.game_helpers import create_game_from_template
+from dcs_simulation_engine.helpers import database_helpers as dbh
+from dcs_simulation_engine.helpers import deploy_helpers as dh
+from dcs_simulation_engine.helpers.game_helpers import (
+    create_game_from_template,
+    parse_kv,
+)
 from dcs_simulation_engine.helpers.game_helpers import list_games as _list_games
+from dcs_simulation_engine.helpers.logging_helpers import configure_logger
+from dcs_simulation_engine.widget.widget import build_widget
 
 cli_theme = Theme(
     {
@@ -112,6 +137,12 @@ LogLevel = Literal["debug", "info", "warning", "error", "critical"]
 EnvName = str
 RegionCode = str
 ImageTag = str
+
+
+def _validate_port(port: int) -> int:
+    if not (1 <= port <= 65535):
+        raise typer.BadParameter("port must be between 1 and 65535")
+    return port
 
 
 def get_version() -> str:
@@ -170,7 +201,7 @@ app = typer.Typer(
     help="DCS CLI entrypoint.",
 )
 
-create_app = typer.Typer(help="Create resources (e.g., games).")
+create_app = typer.Typer(help="Create resources (e.g., games, players, databases).")
 list_app = typer.Typer(help="List resources (e.g., games).")
 
 
@@ -217,7 +248,38 @@ def main(
 
 
 # ---------------------------------------------------------------------------
-# create game
+# list games
+# ---------------------------------------------------------------------------
+
+
+@list_app.command("games")
+def list_games(ctx: typer.Context) -> None:
+    """List games in the current project."""
+    table = Table(
+        title="Games in Project", show_header=True, header_style="bold magenta"
+    )
+    table.add_column("Name")
+    table.add_column("Version")
+    table.add_column("Description")
+
+    # built-in games
+    for name, version, path, description in _list_games():
+        table.add_row(name, version or "—", description or "—")
+
+    # project-local games (if ./games exists)
+    project_games_dir = Path.cwd() / "games"
+    if project_games_dir.exists():
+        for name, version, path, description in _list_games(project_games_dir):
+            table.add_row(name, version or "—", description or "—")
+
+    echo(ctx, Panel(table, title="[title]dcs list games[/title]"))
+
+
+app.add_typer(list_app, name="list")
+
+
+# ---------------------------------------------------------------------------
+# create
 # ---------------------------------------------------------------------------
 
 
@@ -255,6 +317,98 @@ def create_game(
 app.add_typer(create_app, name="create")
 
 
+@create_app.command("player")
+def create_player(
+    ctx: typer.Context,
+    name: Optional[str] = typer.Argument(
+        None,
+        help="Player name. If omitted, you will be prompted.",
+    ),
+    fields: List[str] = typer.Argument(
+        None,
+        help="Extra player fields as key=value (values may be JSON).",
+    ),
+    player_id: Optional[str] = typer.Option(
+        None,
+        "--id",
+        help="Explicit player _id to upsert.",
+    ),
+    no_key: bool = typer.Option(
+        False,
+        "--no-key",
+        help="Do not issue a new access key.",
+    ),
+) -> None:
+    """Create a player and print id + access key."""
+    if name is None:
+        name = typer.prompt("Player name")
+
+    data = parse_kv(fields or [])
+    # Let explicit argument win unless user also passes name=... in fields
+    data.setdefault("name", name)
+
+    created_id, raw_key = dbh.create_player(
+        data,
+        player_id=player_id,
+        issue_access_key=not no_key,
+    )
+
+    # Treat as command output (don’t hide behind --quiet)
+    console.print(f"id={created_id}")
+    console.print(f"access_key={raw_key if raw_key else 'None'}")
+
+
+@create_app.command("database")
+def create_database(
+    ctx: typer.Context,
+    db_name: str = typer.Option(
+        dbh.DEFAULT_DB_NAME,
+        "--db-name",
+        help=f"Database name (default: {dbh.DEFAULT_DB_NAME}).",
+    ),
+    seeds_dir: Optional[Path] = typer.Option(
+        dbh.SEEDS_DIR_DEFAULT,
+        "--seeds-dir",
+        help="Directory containing seed files.",
+    ),
+    force: bool = typer.Option(False, "--force", help="Re-seed even if non-empty."),
+) -> None:
+    """Seed the database with initial data from seed files."""
+    # Best-effort cluster-wide warning (may silently no-op if no privileges)
+    if dbh.warn_if_db_name_exists(db_name) and not force:
+        console.print(
+            f"A database named '{db_name}' already exists on this cluster.",
+            style="warning",
+        )
+
+    result = dbh.init_or_seed_database(
+        db_name=db_name, seeds_dir=seeds_dir, force=force
+    )
+
+    if not result["seeded"] and result.get("reason") == "db_not_empty" and not force:
+        existing = result.get("existing_collections", [])
+        preview = ", ".join(existing[:8]) + (" ..." if len(existing) > 8 else "")
+        auto_yes = bool(getattr(ctx.obj, "yes", False))
+
+        if not auto_yes:
+            ok = typer.confirm(
+                f"Database '{db_name}' has {len(existing)} collection(s): {preview}\n"
+                "Re-seed from files? This will drop/replace seeded collections.",
+                default=False,
+            )
+            if not ok:
+                console.print("Cancelled.", style="warning")
+                raise typer.Exit()
+
+        result = dbh.init_or_seed_database(
+            db_name=db_name, seeds_dir=seeds_dir, force=True
+        )
+
+    console.print(
+        f"Seeded database '{db_name}' from {result['seeds_dir']}.", style="success"
+    )
+
+
 # ---------------------------------------------------------------------------
 # run
 # ---------------------------------------------------------------------------
@@ -263,71 +417,88 @@ app.add_typer(create_app, name="create")
 @app.command("run")
 def run_game(
     ctx: typer.Context,
-    game: Path = typer.Option(
-        Path("game.yml"),
+    game: str = typer.Option(
+        "explore",
         "--game",
-        help="Game to run (defaults to ./game.yml).",
-        dir_okay=False,
-        file_okay=True,
-    ),
-    interface: InterfaceMode = typer.Option(
-        "cli",
-        "--interface",
-        help="Interface mode (cli or ui).",
-        case_sensitive=False,
-    ),
-    port: Optional[int] = typer.Option(
-        None,
-        "--port",
-        help="Port for UI mode.",
+        help="Name of the game to launch (default: explore).",
     ),
     host: str = typer.Option(
-        "127.0.0.1",
+        "0.0.0.0",
         "--host",
-        help="Bind host.",
+        help="Host interface to bind the Gradio server to (default: 0.0.0.0).",
     ),
-    env: Optional[EnvName] = typer.Option(
-        None,
-        "--env",
-        help="Environment profile.",
+    port: int = typer.Option(
+        8080,
+        "--port",
+        callback=lambda v: _validate_port(v),
+        help="Port to run the Gradio server on (default: 8080).",
     ),
-    watch: bool = typer.Option(
+    banner: str = typer.Option(
+        "<b>LIVE EXPERIMENT</b>",
+        "--banner",
+        help="Optional markdown banner to show at the top of the widget.",
+    ),
+    share: bool = typer.Option(
         False,
-        "--watch",
-        help="Hot-reload on changes.",
+        "--share",
+        help="Create a public Gradio link.",
     ),
-    seed: Optional[int] = typer.Option(
-        None,
-        "--seed",
-        help="Random seed.",
-    ),
-    log_level: Optional[LogLevel] = typer.Option(
-        None,
-        "--log-level",
-        help="Logging verbosity (debug, info, warning, error, critical).",
+    verbose: int = typer.Option(
+        0,
+        "-V",
+        "--verbose",
+        count=True,
+        help="Increase console verbosity: -V for INFO, -VV for DEBUG.",
     ),
 ) -> None:
-    """Start a game locally."""
-    # Stub behavior: show run configuration
-    table = Table(
-        title="Run Configuration", show_header=True, header_style="bold magenta"
-    )
-    table.add_column("Field")
-    table.add_column("Value")
+    """Start/run a game locally.
 
-    table.add_row("Game", str(game))
-    table.add_row("Interface", interface)
-    table.add_row("Host", host)
-    table.add_row("Port", str(port) if port is not None else "<auto>")
-    table.add_row("Env", env or "<default>")
-    table.add_row("Watch", str(watch))
-    table.add_row("Seed", str(seed) if seed is not None else "<random>")
-    table.add_row("Log level", log_level or "<default>")
+    Examples:
+      dcs run
+      dcs run --game Explore --banner "<b>DEMO</b>"
+    """
+    # Configure logging
+    try:
+        configure_logger(source="run_game")
+    except Exception as e:
+        logger.warning(f"Failed to configure logger with source 'run_game': {e}")
 
-    echo(ctx, Panel(table, title="[title]dcs run[/title]"))
+    # Console side-channel based on verbosity
+    if verbose > 0:
+        level = "DEBUG" if verbose > 1 else "INFO"
+        logger.add(
+            sys.stderr,
+            level=level,
+            format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>",
+        )
 
-    # TODO: Implement actual game runtime logic here
-    echo(ctx, "Game runtime would start here.", style="success")
+    app = None
+    try:
+        logger.debug("Building Gradio widget...")
+        app = build_widget(
+            game_name=game,
+            banner=banner,
+            # source=source,  # enable when supported
+        )
+
+        logger.info(f"Launching Gradio widget ({host}:{port})...")
+        app.launch(
+            server_name=host,
+            server_port=port,
+            share=share,
+        )
+    except KeyboardInterrupt:
+        logger.info("Received interrupt. Shutting down...")
+        raise typer.Exit(code=130)
+    except Exception:
+        logger.exception("Failed while building, launching, or running the widget")
+        raise typer.Exit(code=1)
+    finally:
+        if app is not None:
+            try:
+                app.close()
+            except Exception:
+                logger.debug("Suppressing exception during app.close()", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -338,94 +509,100 @@ def run_game(
 @app.command("deploy")
 def deploy_game(
     ctx: typer.Context,
-    config: Path = typer.Option(
-        Path("fly.toml"),
-        "--config",
-        help="Path to fly.toml (default: ./fly.toml).",
-        dir_okay=False,
-        file_okay=True,
-    ),
-    game: Optional[Path] = typer.Option(
-        None,
+    game: str = typer.Option(
+        ...,
         "--game",
-        help="Game to bundle/deploy.",
-        dir_okay=False,
-        file_okay=True,
+        help="Game name to deploy. This creates a public/live game/experiment.",
     ),
-    env: Optional[EnvName] = typer.Option(
-        None,
-        "--env",
-        help="Environment or deployment profile.",
+    version: str = typer.Option(
+        "latest",
+        "--version",
+        help="Version selector (currently informational; kept for parity).",
     ),
-    region: Optional[RegionCode] = typer.Option(
-        None,
-        "--region",
-        help="Deployment region override.",
+    fly_toml: Path = typer.Option(
+        Path("fly.toml"),
+        "--fly-toml",
+        help="Path to fly.toml.",
     ),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        help="Show deploy steps without executing.",
-    ),
-    no_build: bool = typer.Option(
-        False,
-        "--no-build",
-        help="Skip build step.",
-    ),
-    build_only: bool = typer.Option(
-        False,
-        "--build-only",
-        help="Build but do not deploy.",
-    ),
-    tag: Optional[ImageTag] = typer.Option(
+    tag: Optional[str] = typer.Option(
         None,
         "--tag",
-        help="Image or version tag.",
+        help="Short tag to distinguish app instances (letters/numbers/dashes).",
+    ),
+    env_file: Path = typer.Option(
+        Path(".env"),
+        "--env-file",
+        help="Path to .env file to load and forward (excluding FLY_API_TOKEN).",
+    ),
+    region: Optional[str] = typer.Option(
+        None,
+        "--region",
+        help="Override primary_region in fly.toml (optional).",
+    ),
+    base_app_name: str = typer.Option(
+        dh.DEFAULT_BASE_APP_NAME,
+        "--base-app-name",
+        help="Base Fly app name used when --tag is not provided.",
+    ),
+    with_db: bool = typer.Option(
+        False,
+        "--with-db",
+        help="Deploy with a new DB (not implemented).",
     ),
 ) -> None:
-    """Deploy a game using fly.toml."""
-    steps: List[str] = []
+    """Deploy a game publicly using Fly.io servers.
 
-    if not no_build:
-        steps.append("Build image")
-    else:
-        steps.append("Skip build (no-build)")
+    Updates fly.toml and runs flyctl deploy
+    """
+    if with_db:
+        raise typer.BadParameter("--with-db is not implemented yet.")
 
-    if not build_only:
-        steps.append("Push image")
-        steps.append("Deploy to Fly.io")
-    else:
-        steps.append("Build only; no deploy")
+    try:
+        dh.check_flyctl()
+        loaded = dh.load_env(env_file=env_file)
+    except Exception as e:
+        logger.error(str(e))
+        raise typer.Exit(code=1)
 
-    table = Table(title="Deploy Plan", show_header=True, header_style="bold magenta")
-    table.add_column("Field")
-    table.add_column("Value")
+    try:
+        tag_norm = dh.validate_tag(tag) if tag else None
+        app_name = dh.compute_app_name(base_app_name=base_app_name, tag=tag_norm)
+        cmd = dh.build_process_command(
+            "widget",
+            game=game,
+            version=version,
+            tag=tag_norm,
+        )
 
-    table.add_row("Config", str(config))
-    table.add_row("Game", str(game) if game else "<auto-detect>")
-    table.add_row("Env", env or "<default>")
-    table.add_row("Region", region or "<provider default>")
-    table.add_row("Tag", tag or "<auto>")
-    table.add_row("Dry run", str(dry_run))
-    table.add_row("No build", str(no_build))
-    table.add_row("Build only", str(build_only))
+        config_path = fly_toml
+        original = dh.load_toml(config_path)
 
-    echo(ctx, Panel(table, title="[title]dcs deploy[/title]"))
+        updated = dh.update_app_and_region(original, app_name=app_name, region=region)
+        updated = dh.update_process_cmd(updated, cmd)
+        config_path.write_text(updated)
 
-    steps_table = Table(show_header=True, header_style="bold cyan", title="Steps")
-    steps_table.add_column("#", justify="right")
-    steps_table.add_column("Action")
+        logger.info("Updated fly.toml app=%r process=%s", app_name, cmd)
+        dh.ensure_app_exists(app_name)
 
-    for i, step in enumerate(steps, start=1):
-        steps_table.add_row(str(i), step)
+        visible_env_keys = [
+            k for k in loaded.dotenv_vars.keys() if k != "FLY_API_TOKEN"
+        ]
+        logger.info(
+            "Forwarding .env keys to Fly (excluding FLY_API_TOKEN):",
+            f" {', '.join(visible_env_keys) or '(none)'}",
+            ", ".join(visible_env_keys) or "(none)",
+        )
 
-    echo(ctx, steps_table)
-    if dry_run:
-        echo(ctx, "Dry run: deployment not executed.", style="warning")
-        return
+        deploy_cmd = dh.build_deploy_cmd(config_path, app_name, loaded.dotenv_vars)
+        logger.info("Deploying with: %s", " ".join(deploy_cmd))
+        subprocess.run(deploy_cmd, check=True)
 
-    # TODO: Implement actual deployment logic here
-    echo(ctx, "Deployment pipeline would execute here.", style="success")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"flyctl failed with exit code {e.returncode}")
+        raise typer.Exit(code=e.returncode)
+    except Exception as e:
+        logger.exception(f"Deploy failed: {e}")
+        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
@@ -456,38 +633,6 @@ def validate_game(
 
     # Stub: pretend validation passed
     echo(ctx, "TODO: implement validation logic.", style="error")
-
-
-# ---------------------------------------------------------------------------
-# list games
-# ---------------------------------------------------------------------------
-
-
-@list_app.command("games")
-def list_games(ctx: typer.Context) -> None:
-    """List games in the current project."""
-    table = Table(
-        title="Games in Project", show_header=True, header_style="bold magenta"
-    )
-    table.add_column("Name")
-    table.add_column("Version")
-    table.add_column("Description")
-    table.add_column("Path")
-
-    # built-in games
-    for name, version, path, description in _list_games():
-        table.add_row(name, version or "—", description or "—", str(path))
-
-    # project-local games (if ./games exists)
-    project_games_dir = Path.cwd() / "games"
-    if project_games_dir.exists():
-        for name, version, path, description in _list_games(project_games_dir):
-            table.add_row(name, version or "—", description or "—", str(path))
-
-    echo(ctx, Panel(table, title="[title]dcs list games[/title]"))
-
-
-app.add_typer(list_app, name="list")
 
 
 # ---------------------------------------------------------------------------

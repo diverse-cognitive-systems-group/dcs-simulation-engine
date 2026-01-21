@@ -1,6 +1,8 @@
 """Helpers for games."""
 
+import json
 from pathlib import Path
+from typing import Any, Dict
 
 import yaml
 from loguru import logger
@@ -25,6 +27,20 @@ def create_game_from_template(name: str, template: str | Path | None = None) -> 
     dest.write_bytes(template_path.read_bytes())
     logger.info(f"Copied game template {template_path} -> {dest}")
     return dest
+
+
+def parse_kv(pairs: list[str]) -> Dict[str, Any]:
+    """Parse key=value tokens into a dict. Values accept JSON."""
+    out: Dict[str, Any] = {}
+    for token in pairs:
+        if "=" not in token:
+            raise typer.BadParameter(f"bad field (expected key=value): {token!r}")
+        k, v = token.split("=", 1)
+        try:
+            out[k] = json.loads(v)
+        except json.JSONDecodeError:
+            out[k] = v
+    return out
 
 
 def list_games(

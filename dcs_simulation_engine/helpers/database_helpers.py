@@ -15,18 +15,32 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Literal, Mapping, Optional, Tuple, Union
+from pathlib import Path
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 from dotenv import load_dotenv
 from loguru import logger
 from mnemonic import Mnemonic
 from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.errors import CollectionInvalid, OperationFailure
 
 load_dotenv()
 
@@ -66,6 +80,225 @@ _client: Optional[MongoClient[Any]] = None
 _db = None
 
 _NOW_TOKEN = re.compile(r"^__now([+-]\d+)([smdwy])__$", re.IGNORECASE)
+
+
+DEFAULT_DB_NAME: str = "dcs-db"
+SUPPORTED_EXTS = {".json", ".ndjson"}
+
+SEEDS_DIR_DEFAULT = Path("database_seeds")
+
+INDEX_DEFS: dict[str, list[dict[str, Any]]] = {
+    "characters": [{"fields": [("hid", 1)], "unique": True}],
+}
+
+
+def warn_if_db_name_exists(db_name: str) -> bool:
+    """Best-effort: return True if server reports db_name exists, else False.
+
+    If the user lacks privileges to list DBs, this returns False (no warning).
+    """
+    # Ensure client/db initialized
+    db = get_db()
+    client = _client
+    if client is None:
+        return False
+
+    try:
+        names = client.list_database_names()
+    except OperationFailure:
+        # Common with least-privilege Atlas users
+        return False
+    except Exception:
+        return False
+
+    return db_name in names
+
+
+def database_has_data(db: Optional[Database[Any]] = None) -> bool:
+    """Return True if the database appears non-empty (has any collections)."""
+    db = db or get_db()
+    return bool(db.list_collection_names())
+
+
+def init_or_seed_database(
+    *,
+    db_name: Optional[str] = None,
+    seeds_dir: Optional[Path] = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Seed the configured database from seed files.
+
+    Uses get_db() for connection (MONGO_URI env). Backs up any existing
+    seeded collections before replacing them.
+
+    Returns a small summary dict so the CLI can print friendly output.
+    """
+    db = get_db()
+    if db_name:
+        # uses already initialized client
+        db = _client[db_name]
+
+    if seeds_dir is None:
+        seeds_dir = SEEDS_DIR_DEFAULT
+
+    if not seeds_dir.exists() or not seeds_dir.is_dir():
+        raise ValueError(f"Seeds directory not found: {seeds_dir}")
+
+    seed_paths = discover_seed_files(seeds_dir)
+    if not seed_paths:
+        raise ValueError(
+            f"No seed files found in {seeds_dir} (expected *.json or *.ndjson)."
+        )
+
+    existing = db.list_collection_names()
+    if existing and not force:
+        return {
+            "seeded": False,
+            "reason": "db_not_empty",
+            "db_name": db.name,
+            "existing_collections": existing,
+            "seeds_dir": str(seeds_dir),
+            "seed_files": [p.name for p in seed_paths],
+        }
+
+    seed_database(db, seed_paths)
+    return {
+        "seeded": True,
+        "db_name": db.name,
+        "existing_collections": existing,
+        "seeds_dir": str(seeds_dir),
+        "seed_files": [p.name for p in seed_paths],
+    }
+
+
+def backup_root_dir(db_name: str) -> Path:
+    """Create and return a timestamped backup root directory."""
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    root = Path("database_backups") / f"{db_name}-{ts}"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def backup_collection(db: Database, coll_name: str, root: Path) -> None:
+    """Dump an existing collection to NDJSON + save index info."""
+    coll = db[coll_name]
+    out_path = root / f"{coll_name}.ndjson"
+    idx_path = root / f"{coll_name}.__indexes__.json"
+
+    with out_path.open("w", encoding="utf-8") as f:
+        # Note: Atlas doesn't allow noTimeout cursor on free tiers (eg. for dev work)
+        # switching to a normal cursor but if/when dbs grow large we may need to revisit
+        # cursor = coll.find({}, no_cursor_timeout=True).batch_size(1000)
+        cursor = coll.find({}).batch_size(1000)
+
+        try:
+            for doc in cursor:
+                f.write(json_util.dumps(doc))
+                f.write("\n")
+        finally:
+            cursor.close()
+
+    with idx_path.open("w", encoding="utf-8") as f:
+        json.dump(coll.index_information(), f, default=json_util.default, indent=2)
+
+
+def load_seed_documents(path: Path) -> List[Dict[str, Any]]:
+    """Load documents from a seed file."""
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        logger.warning(f"{path} is empty; skipping.")
+        return []
+
+    if path.suffix.lower() == ".ndjson":
+        docs: List[Dict[str, Any]] = []
+        for i, line in enumerate(text.splitlines(), start=1):
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            if not isinstance(obj, dict):
+                raise ValueError(f"Line {i} in {path} is not a JSON object.")
+            docs.append(obj)
+        return docs
+
+    data = json.loads(text)
+    if isinstance(data, list):
+        if not all(isinstance(x, dict) for x in data):
+            raise ValueError(f"Array in {path} must contain only objects.")
+        return data  # type: ignore[return-value]
+
+    if (
+        isinstance(data, dict)
+        and "documents" in data
+        and isinstance(data["documents"], list)
+    ):
+        docs = data["documents"]
+        if not all(isinstance(x, dict) for x in docs):
+            raise ValueError(f"'documents' in {path} must be an array of objects.")
+        return docs  # type: ignore[return-value]
+
+    raise ValueError(
+        f"Unsupported JSON structure in {path}. Expected array"
+        ", NDJSON, or object with 'documents'."
+    )
+
+
+def discover_seed_files(seeds_dir: Path) -> List[Path]:
+    """Return list of seed files in the given directory."""
+    return [
+        p
+        for p in sorted(seeds_dir.iterdir())
+        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS
+    ]
+
+
+def seed_collection(coll: Collection, docs: Sequence[Dict[str, Any]]) -> int:
+    """Seed a collection with the given documents (after dropping existing data)."""
+    coll.drop()
+
+    if not docs:
+        logger.info("Dropped '%s'; creating empty collection.", coll.name)
+        try:
+            coll.database.create_collection(coll.name)
+        except CollectionInvalid:
+            pass
+        return 0
+
+    result = coll.insert_many(list(docs), ordered=False)
+    return len(result.inserted_ids)
+
+
+def create_indices(coll: Collection) -> None:
+    """Create indices for a collection based on predefined index definitions."""
+    defs = INDEX_DEFS.get(coll.name)
+    if not defs:
+        return
+    for spec in defs:
+        fields = spec["fields"]
+        unique = spec.get("unique", False)
+        coll.create_index(fields, unique=unique)
+        logger.info("Created index on %s: %s (unique=%s)", coll.name, fields, unique)
+
+
+def seed_database(db: Database, seed_files: Iterable[Path]) -> None:
+    """Seed a database from the given seed files, backing up existing collections."""
+    existing = set(db.list_collection_names())
+    backup_root: Path | None = None
+
+    for f in seed_files:
+        collection_name = f.stem
+
+        if collection_name in existing:
+            if backup_root is None:
+                backup_root = backup_root_dir(db.name)
+                logger.info(f"Backing up existing collections to {backup_root}")
+            logger.info(f"Backing up existing '{collection_name}'...")
+            backup_collection(db, collection_name, backup_root)
+
+        logger.info(f"Seeding collection '{collection_name}' from {f.name}")
+        docs = load_seed_documents(f)
+        inserted = seed_collection(db[collection_name], docs)
+        logger.info(f"Inserted {inserted} document(s) into '{collection_name}'")
+        create_indices(db[collection_name])
 
 
 def now(delta: Union[str, int] = 0) -> datetime:
@@ -406,7 +639,7 @@ def create_player(
     except Exception:
         logger.exception("Failed to write PII fields for player %s", created_id)
 
-    logger.info("Created/updated player: %s (issued_key=%s)", created_id, bool(raw_key))
+    logger.info(f"Created/updated player: {created_id} (issued_key={bool(raw_key)})")
     return created_id, raw_key
 
 
