@@ -98,7 +98,7 @@ def warn_if_db_name_exists(db_name: str) -> bool:
     If the user lacks privileges to list DBs, this returns False (no warning).
     """
     # Ensure client/db initialized
-    db = get_db()
+    db = get_db()  # noqa
     client = _client
     if client is None:
         return False

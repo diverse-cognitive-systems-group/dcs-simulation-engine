@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+import typer
 import yaml
 from loguru import logger
 from packaging.version import InvalidVersion, Version  # type: ignore[import-untyped]
