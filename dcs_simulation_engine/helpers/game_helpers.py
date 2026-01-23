@@ -1,10 +1,101 @@
 """Helpers for games."""
 
+import json
 from pathlib import Path
+from typing import Any, Dict
 
+import typer
 import yaml
 from loguru import logger
-from packaging.version import InvalidVersion, Version  # type: ignore[import-untyped]
+from packaging.version import InvalidVersion, Version
+
+
+def create_game_from_template(name: str, template: str | Path | None = None) -> Path:
+    """Copy a game into the current working directory from a template game file."""
+    dest = Path.cwd() / f"{name}.yaml"
+
+    if dest.exists():
+        raise FileExistsError(f"{dest} already exists.")
+
+    if template is None:
+        template_path = Path(get_game_config("Explore"))
+    else:
+        t = Path(template).expanduser()
+        template_path = t if t.is_file() else Path(get_game_config(str(template)))
+
+    dest.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
+    logger.info(f"Copied game template {template_path} -> {dest}")
+    return dest
+
+
+def parse_kv(pairs: list[str]) -> Dict[str, Any]:
+    """Parse key=value tokens into a dict. Values accept JSON."""
+    out: Dict[str, Any] = {}
+    for token in pairs:
+        if "=" not in token:
+            raise typer.BadParameter(f"bad field (expected key=value): {token!r}")
+        k, v = token.split("=", 1)
+        try:
+            out[k] = json.loads(v)
+        except json.JSONDecodeError:
+            out[k] = v
+    return out
+
+
+def list_games(
+    directory: str | Path | None = None,
+) -> list[tuple[str, str | None, Path]]:
+    """Return available game configs as (name, version, path) tuples.
+
+    Parameters
+    ----------
+    directory:
+        Optional directory containing game YAML files.
+        Defaults to the built-in ``games/`` directory in the package.
+
+    Returns:
+    -------
+    list[tuple[str, str | None, Path]]
+        Each tuple contains:
+          - name:    top-level ``name`` field (string)
+          - version: top-level ``version`` field if present, else None
+          - path:    Path to the YAML file
+          - description: top-level ``description`` field if present, else None
+
+    Files that cannot be loaded or that lack a ``name`` field are skipped.
+    """
+    if directory is None:
+        directory = Path(__file__).parent.parent.parent / "games"
+    else:
+        directory = Path(directory).expanduser()
+
+    if not directory.exists() or not directory.is_dir():
+        raise FileNotFoundError(f"Games directory {directory!s} not found or invalid.")
+
+    results: list[tuple[str, str | None, Path]] = []
+
+    for path in directory.glob("*.y*ml"):
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                doc = yaml.safe_load(f) or {}
+        except Exception:
+            logger.warning(f"Failed to parse {path}, skipping.")
+            continue
+
+        raw_name = doc.get("name")
+        if not raw_name:
+            logger.warning(f"Game config {path} missing 'name', skipping.")
+            continue
+        name = str(raw_name).strip()
+
+        raw_version = doc.get("version")
+        version = str(raw_version).strip() if raw_version else None
+        raw_description = doc.get("description")
+        description = str(raw_description).strip() if raw_description else None
+
+        results.append((name, version, path, description))
+
+    return results
 
 
 def get_game_config(game: str, version: str = "latest") -> str:
