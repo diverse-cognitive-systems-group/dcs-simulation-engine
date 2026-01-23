@@ -1,98 +1,4 @@
-"""DCS CLI Entrypoint.
-
-Usage:
-    dcs [global options] <command> [command options]
-
-Global Options:
-    -h, --help          Show help for dcs or a specific command
-    -v, --version       Show version
-    -q, --quiet         Suppress non-error output
-    -y, --yes           Assume "yes" for all prompts (non-interactive mode)
-
-Commands
---------
-
-create game
-    Create a new game.yml file. Runs an interactive wizard unless flags fully specify values.
-
-    Usage:
-        dcs create game [name] [options]
-
-    Options:
-        --template <name|path>   Template to use when generating the game
-        --outdir <dir>           Output directory (default: project root)
-        --force                  Overwrite existing file
-        --non-interactive        Do not prompt; use defaults and flags
-        --description <text>     Pre-fill description
-        --tags <comma-list>      Pre-fill tags/metadata
-        --dry-run                Show output without writing files
-
-create player
-    Create a new player profile.
-
-    Usage:
-        dcs create player [name] [options]
-
-Examples:
-            dcs create player Cara tags='["new","beta"]'
-            dcs create player Bob consent_signed=true --no-key
-            dcs create player --id some_id Alice
-
-run
-    Start a game locally.
-
-    Usage:
-        dcs run [options]
-
-    Options:
-        --game <name|path>       Game to run (defaults to ./game.yml)
-        --interface <cli|ui>     Choose interface mode
-        --port <number>          Port for UI mode
-        --host <address>         Bind host
-        --env <env>              Environment profile
-        --watch                  Hot-reload on changes
-        --seed <number>          Random seed
-        --log-level <level>      Logging verbosity
-
-
-deploy
-    Deploy a game using fly.toml.
-
-    Usage:
-        dcs deploy [options]
-
-    Options:
-        --config <path>          Path to fly.toml (default: ./fly.toml)
-        --game <name|path>       Game to bundle/deploy
-        --env <env>              Environment or deployment profile
-        --region <code>          Deployment region override
-        --dry-run                Show deploy steps without executing
-        --no-build               Skip build step
-        --build-only             Build but do not deploy
-        --tag <tag>              Image or version tag
-
-
-validate
-    Validate a game configuration without running it.
-
-    Usage:
-        dcs validate --game <name|path>
-
-
-list games
-    List games in the current project.
-
-    Usage:
-        dcs list games
-
-seed database
-    Seed the database with initial data from seed files.
-
-    Usage:
-        dcs seed database [options]
-"""
-
-from __future__ import annotations
+"""DCS CLI Entrypoint."""
 
 import subprocess
 import sys
@@ -358,6 +264,8 @@ def create_player(
     console.print(f"access_key={raw_key if raw_key else 'None'}")
 
 
+# TODO: when we know how we are going to handle dbs (dev, prod) rework this script
+# to create empty, reseed, reset, local/cloud, etc.
 @create_app.command("database")
 def create_database(
     ctx: typer.Context,
@@ -575,7 +483,7 @@ def deploy_game(
         )
 
         config_path = fly_toml
-        original = dh.load_toml(config_path)
+        original = config_path.read_text()
 
         updated = dh.update_app_and_region(original, app_name=app_name, region=region)
         updated = dh.update_process_cmd(updated, cmd)

@@ -1,7 +1,5 @@
 """Helpers for deploying games/experiments using Fly.io."""
 
-from __future__ import annotations
-
 import os
 import re
 import shutil
@@ -16,6 +14,7 @@ from loguru import logger
 DEFAULT_BASE_APP_NAME = "dcs-simulation-demo"
 
 
+# TODO: when we know how we want to deploy, use more robust parsing (e.g., tomllib)
 @dataclass(frozen=True)
 class LoadedEnv:
     """Merged env + captured dotenv key/values (for forwarding to flyctl --env)."""
@@ -47,13 +46,6 @@ def load_env(env_file: Path = Path(".env")) -> LoadedEnv:
         raise RuntimeError("FLY_API_TOKEN missing in environment.")
 
     return LoadedEnv(dotenv_vars=dotenv_vars)
-
-
-def load_toml(path: Path) -> str:
-    """Load and return the text contents of the given fly.toml file."""
-    if not path.exists():
-        raise FileNotFoundError(f"{path} not found.")
-    return path.read_text()
 
 
 def update_process_cmd(toml: str, cmd: str) -> str:

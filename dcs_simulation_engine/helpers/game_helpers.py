@@ -7,12 +7,13 @@ from typing import Any, Dict
 import typer
 import yaml
 from loguru import logger
-from packaging.version import InvalidVersion, Version  # type: ignore[import-untyped]
+from packaging.version import InvalidVersion, Version
 
 
 def create_game_from_template(name: str, template: str | Path | None = None) -> Path:
     """Copy a game into the current working directory from a template game file."""
     dest = Path.cwd() / f"{name}.yaml"
+
     if dest.exists():
         raise FileExistsError(f"{dest} already exists.")
 
@@ -20,12 +21,9 @@ def create_game_from_template(name: str, template: str | Path | None = None) -> 
         template_path = Path(get_game_config("Explore"))
     else:
         t = Path(template).expanduser()
-        if t.is_file():
-            template_path = t
-        else:
-            template_path = Path(get_game_config(str(template)))
+        template_path = t if t.is_file() else Path(get_game_config(str(template)))
 
-    dest.write_bytes(template_path.read_bytes())
+    dest.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
     logger.info(f"Copied game template {template_path} -> {dest}")
     return dest
 
@@ -91,11 +89,9 @@ def list_games(
         name = str(raw_name).strip()
 
         raw_version = doc.get("version")
-        version = str(raw_version).strip() if raw_version not in ("", None) else None
+        version = str(raw_version).strip() if raw_version else None
         raw_description = doc.get("description")
-        description = (
-            str(raw_description).strip() if raw_description not in ("", None) else None
-        )
+        description = str(raw_description).strip() if raw_description else None
 
         results.append((name, version, path, description))
 
