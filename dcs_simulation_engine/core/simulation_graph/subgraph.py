@@ -29,8 +29,8 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
+from jinja2.sandbox import SandboxedEnvironment
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.prompts import PromptTemplate
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
@@ -58,6 +58,10 @@ from dcs_simulation_engine.utils.misc import byte_size_json, byte_size_pickle
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
+# Use standard SandboxedEnvironment which allows dict attribute access (e.g., pc.hid)
+# unlike LangChain's _RestrictedSandboxedEnvironment which blocks it
+_jinja_env = SandboxedEnvironment()
 
 
 def _warn_if_large_state(state: SimulationGraphState, node_name: str) -> None:
@@ -97,11 +101,9 @@ def _llm_node(
     extra_template_kwargs = extra_template_kwargs or {}
 
     # ----- Render system prompt safely -----
-    compiled_tmpl = PromptTemplate.from_template(
-        system_template, template_format="jinja2"
-    )
+    compiled_tmpl = _jinja_env.from_string(system_template)
     try:
-        rendered_sys = compiled_tmpl.format(
+        rendered_sys = compiled_tmpl.render(
             **{
                 **state,
                 "pc": runtime.context["pc"],

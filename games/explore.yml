@@ -18,7 +18,7 @@ access_settings:
       players: {}  # open to any players
 
 ### DATA COLLECTION SETTINGS ###
-# Defines what data is collected durring and after game play.
+# Defines what data is collected during and after game play.
 data_collection_settings:
   save_runs: true
 

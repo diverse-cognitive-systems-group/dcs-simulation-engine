@@ -13,8 +13,8 @@ import threading
 import time
 from typing import Any, Callable, Dict, Hashable, Iterator, List, Optional
 
+from jinja2.sandbox import SandboxedEnvironment
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -44,6 +44,10 @@ from .state import (
     display_state_snapshot,
     make_state,
 )
+
+# Use standard SandboxedEnvironment which allows dict attribute access (e.g., pc.hid)
+# unlike LangChain's _RestrictedSandboxedEnvironment which blocks it
+_jinja_env = SandboxedEnvironment()
 
 
 class SimulationGraph:
@@ -422,13 +426,13 @@ class SimulationGraph:
                     continue
                 # try compile
                 try:
-                    tmpl = PromptTemplate.from_template(raw, template_format="jinja2")
+                    tmpl = _jinja_env.from_string(raw)
                 except Exception as ex:
                     errors.append(f"{owner}.{attr}: Jinja compile failed: {ex}")
                     continue
                 # try render using temp_state
                 try:
-                    _ = tmpl.format(
+                    _ = tmpl.render(
                         **{
                             **temp_state,
                             "pc": temp_context["pc"],
@@ -524,11 +528,9 @@ class SimulationGraph:
                         f"Node '{node.name}' is missing required system_template."
                     )
                 else:
-                    compiled_tmpl = PromptTemplate.from_template(
-                        node.system_template, template_format="jinja2"
-                    )
+                    compiled_tmpl = _jinja_env.from_string(node.system_template)
                     try:
-                        rendered_sys = compiled_tmpl.format(
+                        rendered_sys = compiled_tmpl.render(
                             **{
                                 **state,
                                 "pc": runtime.context["pc"],

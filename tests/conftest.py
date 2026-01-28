@@ -59,8 +59,10 @@ def _setup_logging() -> None:
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
 
+
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook to add a file sink to default pytest logging."""
+
     # Ensure import-time logging is set up
     _setup_logging()
 
@@ -245,3 +247,45 @@ def seed_runs_from_json() -> Callable[[str], None]:
         db[colname].insert_many(docs)
 
     return _load
+
+
+# ============================================================================
+# Mock LLM Fixtures for E2E Testing
+# ============================================================================
+
+
+@pytest.fixture
+def mock_llm_client():
+    """Mock LLM client with default responses.
+
+    Returns a MockChatModel that replaces ChatOpenRouter calls with
+    deterministic responses. Useful for testing without real API calls.
+    """
+    from tests.mocks.mock_llm import MockChatModel
+
+    return MockChatModel()
+
+
+
+@pytest.fixture
+def patch_llm_client(mock_llm_client, monkeypatch):
+    """Patch ChatOpenRouter to use mock client.
+
+    This fixture automatically replaces all ChatOpenRouter instances with
+    the mock client, allowing E2E tests to run without real LLM API calls.
+
+    Note: We patch where ChatOpenRouter is imported/used, not where it's defined.
+    """
+
+    # Patch the ChatOpenRouter class to return our mock
+    def mock_chat_open_router(*args, **kwargs):
+        return mock_llm_client
+
+    # Patch where ChatOpenRouter is imported (used), not where it's defined
+    monkeypatch.setattr(
+        "dcs_simulation_engine.core.run_manager.ChatOpenRouter", mock_chat_open_router
+    )
+    monkeypatch.setattr(
+        "dcs_simulation_engine.core.simulation_graph.subgraph.ChatOpenRouter", mock_chat_open_router
+    )
+    yield mock_llm_client
