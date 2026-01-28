@@ -4,6 +4,7 @@ import json
 import pickle
 from typing import Any, Dict
 
+
 def byte_size_json(obj: Any) -> int:
     """Return the size in bytes of the JSON-encoded object."""
     return len(json.dumps(obj, ensure_ascii=False).encode("utf-8"))
