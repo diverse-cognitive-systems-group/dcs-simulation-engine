@@ -48,33 +48,31 @@ The [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) 
 
 ## How can I use it?
 
-### Option 1 - Try the [web demo](https://dcs-simulation-demo.fly.dev/) online or join a live game
-Play the lightweight Explore demo at the link above. It has no objectives or data collection — just freeform interaction with any character you choose.
+### Try it instatly (no setup)
+Anybody can play the Explore game via the live web demo.
 
-We also host periodic live games that you can participate in by emailing [dcs@psych.gatech.edu](mailto:dcs@psych.gatech.edu).
+[👉 Web Demo](https://dcs-simulation-demo.fly.dev/)
 
 <img src="images/web-demo.png" alt="Web Demo">
 
-### Option 2 - Build your own games (for researchers)
-If you are a researcher or developer, you can build and run your own games locally or deploy them for others to play. 
+### Researchers & Developers
+If you’re a researcher or developer, you can design, run, and deploy your own experiments—create new games, add or modify characters, and explore different simulation setups.
 
-- Create a fork: Forking the repo and launch dev container. This option allows you to modify the source code directly (models, orchestration, games, launch/deploy options, etc.) and you can contribute back via pull requests.
+The full Researcher User Guide lives in the wiki and walks through these options in detail.
+[👉 Researcher User Guide](USER_GUIDE.md)
 
-- Install from PyPI: Install the package from PyPI and create/modify games without changing the source code. This is ideal if you want to play and launch your own games quickly.
+At a high level, the recommended way to work with the project is to install and run it directly from PyPI. This lets you create and launch custom games and experiments without modifying the core codebase.
 
-- Install from Docker: Run from the docker image without installing anything locally. This is ideal if you want to test or deploy games without modifying the codebase.
-
-Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
-
-```bash
->> poetry add dcs-simulation-engine
-
->> dcs --help
->> dcs create-game --name new-game-name
->> dcs run-game --name new-game-name
+```sh
+pip install dcs-simulation-engine
+dcs --help
 ```
 
-If you want deeper access — customizing or analyzing characters, experimenting with simulation orchestration graphs, or testing different models — check out the [Contributing Guide](CONTRIBUTING.md). It walks you through setting up the full codebase locally and contributing code, features, or documentation.
+The [Researcher User Guide](USER_GUIDE.md) covers the complete workflow including game and character creation, validation, deployment and experimental result collection.
+
+If you want to contribute to the engine itself--core characters, games, orchestration logic, or other codebase change--fork the repository and follow the Contributing Guide to set up the full codebase locally.
+
+[👉 Contributing Guide](CONTRIBUTING.md)
 
 ## Future Directions
 **Extending the character and scenario space**: The simulation engine currently supports a carefully curated set of characters and scenarios, designed to represent a diverse range of cognitive systems—from basal intelligence and human neurodivergence to temporary disabilities, robotic agents, and even alien-like intelligences. Each has been rigorously quality-checked to ensure their representation is high quality. As new use cases emerge and scenarios grow in complexity, we aim to expand this character and scenario space while maintaining the same high standards of quality and realism.
@@ -87,6 +85,7 @@ For example, the system might normally generate a line such as “I whistle soft
 
 - [GitHub Repo](https://github.com/fuzzy-tribble/dcs-simulation-engine) - the source code for the simulation engine (you are here)
 - [Contributing Guide](CONTRIBUTING.md) - how to contribute to the project
+- [Researcher User Guide](USER_GUIDE.md) - how to create, run, and deploy your own experiments
 - [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) - background information on the project
 - [Codebase Docs](https://fuzzy-tribble.github.io/dcs-simulation-engine/) - documentation for the codebase
 - [Web Demo](https://dcs-simulation-demo.fly.dev/) - try the simulation engine online
