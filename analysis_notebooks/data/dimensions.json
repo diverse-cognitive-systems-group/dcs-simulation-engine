@@ -1,0 +1,128 @@
+{
+  "dimensions": {
+    "description": "A set of analytic dimensions used for coverage analysis to assess how well the core characters represent diverse cognitive systems. The dimensions are drawn from multiple fields, including psychology, theory of mind, and artificial intelligence, and capture commonly used axes for characterizing and distinguishing cognitive systems. Because this work adopts a broad definition of intelligence—any entity that navigates a space to achieve a goal—these dimensions enable evaluation of representational coverage across categorizations relevant to different disciplines. Each dimension includes a definition and a set of allowable classification options.",
+    "common_labels": {
+      "description": "Common names or identity labels used to recognize and refer to the entity as a kind of thing. These are socially or scientifically assigned categories (e.g., human, AI, LLM, alien, robot), not claims about capabilities or substrates.",
+      "options": [
+        "human",
+        "animal",
+        "alien",
+        "artificial intelligence",
+        "large language model",
+        "robot",
+        "cyborg",
+        "software agent",
+        "collective intelligence",
+        "unknown entity"
+      ]
+    },
+    "origin": {
+      "description": "How the system came into existence or was produced, including natural, artificial, and mixed pathways.",
+      "options": [
+        "evolved",
+        "human-engineered",
+        "trained",
+        "grown",
+        "simulated",
+        "emergent",
+        "hybrid (evolved + engineered)",
+        "unknown origin"
+      ]
+    },
+    "form": {
+      "description": "The structural or embodiment form the system takes, whether physical, virtual, or distributed.",
+      "options": [
+        "bipedal",
+        "quadrupedal",
+        "humanoid",
+        "non-humanoid",
+        "disembodied (software-only)",
+        "embodied (physical)",
+        "distributed",
+        "modular"
+      ]
+    },
+    "goalspace_bounds": {
+      "description": "What is the scale or bounds of its largest goals? The scale, scope, and flexibility of the goals the system can pursue (e.g. internal homeostasis, individual survival, social group survival, species survival, planetary stewardship, universal exploration).",
+      "options": [
+        "fixed and narrow",
+        "bounded but flexible",
+        "task-limited",
+        "open-ended",
+        "unbounded",
+        "self-generated goals"
+      ]
+    },
+    "memory_and_learning": {
+      "description": "How the system stores information and adapts its behavior based on experience.",
+      "options": [
+        "no learning",
+        "short-term memory",
+        "long-term memory",
+        "episodic memroy",
+        "semantic memory",
+        "online learning",
+        "offline learning",
+        "meta-learning"
+      ]
+    },
+    "agency_and_autonomy": {
+      "description": "The degree to which the system initiates actions and makes decisions independently.",
+      "options": [
+        "no agency",
+        "reactive",
+        "goal-directed",
+        "semi-autonomous",
+        "fully autonomous",
+        "self-modifying"
+      ]
+    },
+    "substrate": {
+      "description": "The physical or virtual medium in which the system is implemented.",
+      "options": [
+        "biological",
+        "mechanical",
+        "electronic",
+        "digital",
+        "virtual",
+        "hybrid",
+        "unknown"
+      ]
+    },
+    "processing_speed": {
+      "description": "The characteristic timescale (relative to humans?) at which the system processes information and acts.",
+      "options": [
+        "ms"
+      ]
+    },
+    "size": {
+      "description": "The physical or effective scale at which the system operates.",
+      "options": [
+        "microscopic (μm)",
+        "millimeter (mm)",
+        "centimeter (cm)",
+        "meter (m)",
+        "kilometer (km)",
+        "planetary",
+        "larger-than-planetary",
+        "non-physical"
+      ]
+    },
+    "abilities": {
+      "description": "The sensory, perceptual, regulatory, action abilities available to the system.",
+      "options": [
+        "vision",
+        "hearing",
+        "tactile",
+        "taste",
+        "smell",
+        "vestibular",
+        "proprioception",
+        "pattern-recognition",
+        "depth and motion",
+        "language comprehension",
+        "attention and focus"
+      ]
+    }
+  }
+}
