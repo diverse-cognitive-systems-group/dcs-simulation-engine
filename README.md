@@ -63,9 +63,37 @@ The full Researcher User Guide lives in the wiki and walks through these options
 
 At a high level, the recommended way to work with the project is to install and run it directly from PyPI. This lets you create and launch custom games and experiments without modifying the core codebase.
 
-```sh
-pip install dcs-simulation-engine
-dcs --help
+- Install from Docker: Run from the docker image without installing anything locally. This is ideal if you want to test or deploy games without modifying the codebase.
+
+Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
+
+```bash
+# install via poetry (or use pip if you prefer)
+>> poetry add dcs-simulation-engine
+# make sure its installed
+>> poetry show dcs-simulation-engine
+# and/or use the dcs command line tool
+>> dcs --version
+
+# Show help info
+>> dcs --help
+
+# List what games are available
+>> dcs list games
+
+# Run a game locally (add --help to see options)
+>> dcs run
+
+# Create a new game (called my-game)
+>> dcs create game my-game
+# See all options for creating games using the --help flag
+>> dcs create game --help
+
+# Validate your new or modified game
+>> dcs validate my-game
+
+# Deploy your game to a server (make sure to configure deployment settings first)
+>> dcs deploy --game my-game
 ```
 
 The [Researcher User Guide](USER_GUIDE.md) covers the complete workflow including game and character creation, validation, deployment and experimental result collection.
