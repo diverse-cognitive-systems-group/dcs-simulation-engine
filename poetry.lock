@@ -4160,6 +4160,22 @@ files = [
 ]
 
 [[package]]
+name = "python-on-whales"
+version = "0.80.0"
+description = "A Docker client for Python, designed to be fun and intuitive!"
+optional = false
+python-versions = "<4,>=3.8"
+groups = ["main"]
+files = [
+    {file = "python_on_whales-0.80.0-py3-none-any.whl", hash = "sha256:3a7207899e5189695e54859a4c49461306c67fe8545a7eb53f884e342550c37d"},
+    {file = "python_on_whales-0.80.0.tar.gz", hash = "sha256:0f18dda93a621dc34c5c26d0dbdc20003dca07a02114c4ce60910c4afb12c1ac"},
+]
+
+[package.dependencies]
+pydantic = ">=2.1.dev0,<3"
+typing-extensions = "*"
+
+[[package]]
 name = "pytokens"
 version = "0.2.0"
 description = "A Fast, spec compliant Python 3.13+ tokenizer that runs on older Pythons."
@@ -6153,4 +6169,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "5e7d6b7feafbf8a2f8f0f805f6a6a91392ee8c34db9a677ce5091f0a75d74fdd"
+content-hash = "2fdb7931303f30a702aab3a8f554ed75a34dd616bef2cfeb995224f3af418f69"

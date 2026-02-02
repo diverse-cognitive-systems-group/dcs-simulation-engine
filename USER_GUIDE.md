@@ -11,7 +11,7 @@ Users can run games locally, deploy them for live participation (human or AI), e
 
 ## Installation (PyPI)
 
-Install the engine and verify the CLI.
+Install the engine (or access the `dcs` script from devcontainers) and verify the CLI:
 
 ```sh
 pip install dcs-simulation-engine
@@ -31,8 +31,8 @@ OPENROUTER_API_KEY=...
 Run a game locally:
 
 ```sh
-dcs game list
-dcs game run explore
+dcs list games
+dcs run game explore
 ```
 
 ## Core Workflow
@@ -53,7 +53,7 @@ where primary entities include `game`, `deployment`, and `character`.
 List all known games and their descriptions:
 
 ```sh
-dcs game list
+dcs list games
 ```
 
 #### Run a game locally
@@ -61,7 +61,7 @@ dcs game list
 Run a game locally using default settings:
 
 ```sh
-dcs game run <game_name>
+dcs run game <game_name>
 ```
 
 Local runs are useful for:
@@ -76,7 +76,7 @@ Use `--help` to see all available options.
 Create a live deployment for participation and data collection:
 
 ```sh
-dcs game deploy <game_name>
+dcs deploy game <game_name>
 ```
 
 Deployments are used to:
@@ -89,27 +89,33 @@ Deployments are used to:
 View your running and completed deploymnents:
 
 ```sh
-dcs deployment list
+dcs list deployments
 ```
 
 Stop a live deployment and collect results:
 
 ```sh
-dcs deployment stop <deployment_name>
+dcs stop deployment <deployment_name>
 ```
 
 ### Extend the system with custom characters
 
+List available characters:
+
+```sh
+dcs list characters
+```
+
 Create a new character using an interactive workflow:
 
 ```sh
-dcs character create
+dcs create character
 ```
 
 Validate a character definition and generate a QA notebook:
 
 ```sh
-dcs character validate <character_name>
+dcs validate character <character_name>
 ```
 
 To suggest inclusion in the core character set, open an issue on [the GitHub repo](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/issues) with:
@@ -121,17 +127,17 @@ To suggest inclusion in the core character set, open an issue on [the GitHub rep
 Create a new game scaffold:
 
 ```sh
-dcs game create <game_name>
+dcs create game <game_name>
 ```
 
 Validate a game definition:
 
 ```sh
-dcs game validate <game_name>
+dcs validate game <game_name>
 ```
 
 ### Note on terminology
 
-The engine intentionally uses games as the primary abstraction.
+The engine intentionally uses "games" as the primary abstraction.
 
 Whether a game deployment functions as an experiment, training exercise, or learning sandbox is left to the user.
