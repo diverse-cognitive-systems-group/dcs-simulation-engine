@@ -11,6 +11,7 @@ from dcs_simulation_engine.helpers import database_helpers as dbh
 from tests.helpers import patch_yml
 
 
+
 @pytest.fixture
 def game_config_minimal(
     write_yaml: Callable[[Path, str], Path], tmp_path_factory: pytest.TempPathFactory
@@ -165,11 +166,11 @@ def game_config_with_player_persistence(
 
 
 @pytest.fixture
-def persistant_run(game_config_with_player_persistence: SimpleNamespace) -> RunManager:
+def persistent_run(game_config_with_player_persistence: SimpleNamespace) -> RunManager:
     """Fresh RunManager instance with player persistence enabled."""
     # create player in db and get access key
     player_data = {
-        "name": "Persistant Test Player",
+        "name": "Persistent Test Player",
         "email": "persistant_test_player@example.com",
     }
     player_id, access_key = dbh.create_player(
