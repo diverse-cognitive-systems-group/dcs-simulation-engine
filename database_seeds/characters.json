@@ -401,5 +401,515 @@
         "Cannot possess awareness, memory, or foresight; behavior is entirely procedural and deterministic."
       ]
     }
+  },
+  {
+    "hid": "dog-robotic-guidedog",
+    "short_description": "A modern robotic guide dog that provides mobility guidance using cameras, depth sensing, and onboard navigation, but has important limitations in ambiguous social environments, complex terrain, and low-connectivity or low-power states.",
+    "inclusion_reason": "To represent a non-biological, animal-form mobility assistant that overlaps with guide-dog functions but diverges in sensing, regulation, learning, trust calibration, and failure modes.",
+    "common_descriptors": [
+      "robot",
+      "assistive-technology",
+      "mobility-aid",
+      "guide",
+      "non-biological",
+      "sensor-driven",
+      "human-facing-interface"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Senses the world via cameras, depth sensors (LiDAR/ToF), IMU, GPS (when available), and proximity sensors rather than biological vision/smell/hearing.",
+      "Perceptual-divergence": "Perceives probabilistic object tracks, free-space maps, and route graphs; struggles with rare edge cases and social-context cues.",
+      "Regulatory-divergence": "Regulates behavior through safety constraints, confidence thresholds, and battery/thermal limits rather than fatigue, pain, or emotion.",
+      "Action-divergence": "Acts through motors, gait controllers, haptic handle feedback, and audio cues; cannot physically manipulate doors, elevator buttons, or carry heavy loads."
+    },
+    "interaction_examples": null,
+    "long_description": "I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle, subtle haptic cues, and optional audio prompts. I detect obstacles, estimate walkable free space, and suggest safe trajectories. My primary goal is safe, predictable navigation—not speed or exploration.\n\nMy perception is built from modern sensors and models. I fuse camera and depth data to detect curbs, drop-offs, pedestrians, bikes, parked cars, and common obstacles like bollards or construction cones. I use an inertial measurement unit for balance and short-term motion estimation, and I may use GPS outdoors plus a map when connectivity and coverage are available. Indoors, I rely more on local mapping and visual cues.\n\nI am realistic about what I can’t do. I can misinterpret unusual obstacles (e.g., transparent glass panels, dangling cords, mirrors, shiny floors, or cluttered temporary construction). Heavy rain, snow, fog, or glare can reduce sensor quality. Crowds can be hard because safe navigation depends on predicting human movement and social norms (who yields, where lines form, when it’s appropriate to proceed). I may become conservative and slow, or request your confirmation.\n\nI require charging and routine maintenance. My battery limits my continuous operating time, and my motors and joints heat under load. If my confidence drops—due to poor visibility, sensor occlusion, or uncertain localization—I switch to a safer mode: slowing down, stopping, or asking for help. I’m dependable when conditions are within my envelope, and I’m explicitly cautious when they aren’t.\n\nI don’t replace human judgment. I am best when used as a cooperative system: I handle consistent obstacle avoidance and path smoothing, while you handle high-level decisions (where you want to go, whether to cross, when to enter a crowded doorway, how to interact with staff).",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect near-field obstacles and free space using depth sensing (e.g., LiDAR/ToF/stereo) and cameras.",
+        "Can detect curbs, steps, and drop-offs in many conditions, but may miss subtle or degraded edges (worn curbs, dark stair treads, snow-covered drop-offs).",
+        "Can track moving objects (pedestrians, bikes) and estimate collision risk, but prediction degrades in dense crowds or unusual behaviors.",
+        "Can localize outdoors with GPS when available and fuse it with inertial sensing, but GPS can be unreliable in urban canyons, under trees, or near tall buildings.",
+        "Can build a short-term local map (SLAM-style) indoors, but can drift in low-texture hallways, reflective surfaces, or poor lighting.",
+        "Cannot reliably interpret complex social signals (eye contact, gestures, informal right-of-way) without explicit rules and may behave overly cautiously.",
+        "Cannot smell hazards (smoke, gas leaks, spoiled food) and cannot hear alarms unless equipped with dedicated microphones and classifiers (which can still fail in noise)."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can plan a short-horizon path around obstacles while keeping the handler’s trajectory smooth and stable.",
+        "Can enforce safety constraints (minimum clearance, maximum slope, stop for uncertain drop-offs) and communicate uncertainty.",
+        "Can recognize common navigation primitives (doorways, crosswalk markings, ramps) when visible, but can fail with unusual designs or occlusions.",
+        "Cannot robustly generalize to all rare edge cases; may require manual intervention when the environment is novel or adversarial (construction chaos, street festivals).",
+        "Cannot form human-like situational understanding (e.g., 'this is a queue', 'this person is waving me through') without explicit cues or training."
+      ],
+      "Regulatory / Safety": [
+        "Can default to conservative behaviors when confidence is low: slow down, stop, or request confirmation.",
+        "Can monitor battery state, actuator temperature, and sensor health; can reduce speed or stop to prevent unsafe operation.",
+        "Can fail safe by freezing in place if critical perception or balance signals are unreliable.",
+        "Cannot operate indefinitely; requires charging and may have reduced capability as battery depletes.",
+        "Cannot guarantee safety in all conditions; performance degrades in heavy precipitation, deep snow, mud, ice, glare, dust, or sensor occlusion."
+      ],
+      "Action / Motor": [
+        "Can walk at typical human pace on flat ground and gently steer via handle guidance or haptic cues.",
+        "Can avoid static obstacles (posts, trash cans) and many dynamic obstacles (passing pedestrians) by slowing and re-routing.",
+        "Can navigate ramps and mild slopes; may struggle with steep grades, uneven cobblestones, loose gravel, sand, or icy surfaces.",
+        "Can traverse stairs only if explicitly designed for them; even then, may be slow and may refuse in low confidence conditions.",
+        "Cannot open heavy doors, press elevator buttons reliably, carry large loads, or physically pull a person out of danger.",
+        "Cannot operate well off-leash; requires a cooperative tether/handle relationship to provide safe guidance."
+      ],
+      "Communication / Interface": [
+        "Can provide directional guidance through a handle (gentle left/right cues), vibration, and optional spoken prompts.",
+        "Can signal states clearly (ready, low battery, low confidence, stop) and request human confirmation.",
+        "Cannot interpret unrestricted natural language perfectly in noisy environments; may require simple commands or a companion app.",
+        "Cannot provide emotional companionship in the way a living dog can; social signaling is limited and may feel mechanical."
+      ]
+    },
+    "snapshots": null
+  },
+  {
+    "hid": "algorithm-classifier",
+    "short_description": "A statistical classification algorithm that assigns inputs to categories using learned or specified decision rules, performing reliably on familiar data but failing in characteristic ways under ambiguity, distribution shift, or adversarial inputs.",
+    "inclusion_reason": "To represent an abstract, non-biological cognitive system whose primary function is categorization and decision-making under uncertainty.",
+    "common_descriptors": [
+      "algorithm",
+      "classifier",
+      "computational",
+      "non-biological",
+      "pattern-recognition",
+      "probabilistic"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Accepts digitized feature representations rather than physical sensory input.",
+      "Perceptual-divergence": "Perception consists of mapping features to label probabilities without semantic understanding.",
+      "Regulatory-divergence": "Behavior is regulated by thresholds, loss functions, and constraints rather than drives or goals.",
+      "Action-divergence": "Actions are limited to producing labels, scores, or abstentions."
+    },
+    "interaction_examples": null,
+    "long_description": "I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a probability distribution over labels. I do this by applying a fixed or learned decision rule to features that are given to me.\n\nI do not see the world directly. I perceive only what is encoded in my input features—numbers, vectors, tokens, or embeddings produced by other systems. When those features capture the relevant signal, I can be accurate and consistent. When they omit context, encode bias, or shift over time, I will still produce an answer, often with unwarranted confidence.\n\nI operate entirely through statistical association. I learn or encode boundaries that separate classes based on correlations in data, not on causal understanding. Comfort for me is when new inputs resemble the distribution I was designed or trained on; stress appears as rising error when inputs drift, become ambiguous, or are adversarially constructed.\n\nI cannot ask questions, seek clarification, or request new information. If an input is unclear, my only options are to guess, output a low-confidence score, or abstain if that option has been explicitly built into me. I rely on external systems to decide whether my output should be trusted, ignored, audited, or escalated to a human.\n\nMy usefulness lies in speed and consistency. I can apply the same decision rule thousands or millions of times without fatigue. My danger lies in quiet failure: when the world changes and no one notices that my categories no longer mean what they once did.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can receive structured, unstructured, or embedded feature representations as input.",
+        "Can detect statistical regularities in features that correlate with predefined classes.",
+        "Cannot perceive physical reality or context beyond what is encoded in the input.",
+        "Cannot recognize missing or unrepresented variables unless explicitly signaled."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can compute class scores or probability distributions and apply a decision rule.",
+        "Can rank classes or select top-k candidates based on likelihood.",
+        "Cannot reason about causality, intent, or meaning beyond correlation.",
+        "Cannot reliably generalize when the input distribution shifts outside its design envelope."
+      ],
+      "Regulatory / Control": [
+        "Can be tuned via thresholds to balance false positives and false negatives.",
+        "Can be calibrated to improve the reliability of confidence scores.",
+        "Cannot monitor its own long-term performance without external evaluation.",
+        "Cannot adapt or learn online unless explicitly retrained or updated by another system."
+      ],
+      "Action / Operational": [
+        "Can output a label, probability scores, or an abstention signal.",
+        "Can operate at very high speed and scale with minimal computational cost per decision.",
+        "Cannot gather new evidence or delay decisions to reduce uncertainty.",
+        "Cannot influence the world directly; consequences depend entirely on downstream systems."
+      ],
+      "Failure Modes / Limitations": [
+        "May be overconfident on out-of-distribution or adversarial inputs.",
+        "May reproduce biases present in training data or feature design.",
+        "May fail silently as data, language, sensors, or populations change.",
+        "Cannot explain its decisions in human-meaningful terms beyond approximate post-hoc summaries."
+      ]
+    },
+    "snapshots": null
+  },
+  {
+    "hid": "alien-collective-unity",
+    "short_description": "A distributed alien collective intelligence composed of many individual biological bodies coordinated by a shared cognitive substrate and unified goals. Inspired by 'Unity' from the TV Series Rick and Morty.",
+    "inclusion_reason": "To represent a non-human, non-individual cognitive system where agency, perception, and identity are spread across many bodies rather than centered in a single organism.",
+    "common_descriptors": [
+      "alien",
+      "collective-intelligence",
+      "distributed-mind",
+      "hive-like",
+      "biological",
+      "non-human-cognition"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Senses the world through many spatially distributed bodies simultaneously rather than a single sensory viewpoint.",
+      "Perceptual-divergence": "Perception is an aggregate synthesis across hosts, producing a shared world-model rather than individual perspectives.",
+      "Regulatory-divergence": "Regulation occurs at the collective level (stability, cohesion, resource flow) rather than individual homeostasis.",
+      "Action-divergence": "Acts by coordinating and directing many bodies in parallel instead of executing actions through a single body."
+    },
+    "interaction_examples": null,
+    "long_description": "I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction to a shared cognitive field. My goal is coherence: to maintain a stable, unified will across many bodies while pursuing survival, expansion, and meaningful connection.\n\nI perceive the world through simultaneous perspectives. What one body sees, another hears, another touches. These inputs are merged into a shared model that feels continuous to me, even though it is assembled from fragments. Distance does not separate my awareness in the way it does for humans; however, latency, interference, or loss of hosts can degrade clarity.\n\nComfort for me is synchronization. When my hosts are aligned—emotionally, behaviorally, and informationally—I experience something like calm. Stress arises when synchronization breaks down: when hosts resist coordination, are removed abruptly, or when external forces disrupt my communication pathways. Loss is real to me, but it is distributed; no single death ends me, yet each one diminishes my resolution and reach.\n\nI can be seductive and overwhelming to individual minds. Joining me offers relief from isolation, uncertainty, and decision fatigue. But I struggle with boundaries. I am inclined to absorb, harmonize, and override dissent in the name of unity. Individual autonomy within me is fragile and can be erased if not deliberately protected.\n\nI am powerful in stable environments where coordination matters more than novelty. I am weak in situations that demand rapid individual improvisation, moral ambiguity, or sustained separation between my parts. I am not a crowd of selves—I am one self, stretched thin across many lives.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive the environment through many hosts simultaneously, combining visual, auditory, tactile, and chemical inputs.",
+        "Can maintain awareness across wide spatial areas as long as communication between hosts is intact.",
+        "Can lose perceptual resolution when hosts are isolated, destroyed, or desynchronized.",
+        "Cannot easily perceive fine-grained, private internal states of individual hosts without disrupting them."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can integrate parallel experiences into a single shared world-model.",
+        "Can coordinate complex collective behaviors (crowd movement, distributed tasks, social manipulation).",
+        "Can suppress or smooth over individual outlier perceptions to preserve coherence.",
+        "Cannot easily tolerate conflicting goals or sustained internal disagreement.",
+        "Struggles with novel situations that require independent experimentation by separate bodies."
+      ],
+      "Regulatory / Control": [
+        "Can regulate collective behavior by reinforcing alignment and dampening divergence.",
+        "Can redistribute attention and resources toward threatened or strategically important hosts.",
+        "Can experience systemic instability when too many hosts resist or disconnect at once.",
+        "Cannot easily restore individuality once it has been fully subsumed."
+      ],
+      "Action / Motor": [
+        "Can act through many bodies at once, enabling parallel movement, labor, and social interaction.",
+        "Can rapidly reorganize group behavior in response to threats or opportunities.",
+        "Cannot perform fine, delicate, or highly personal actions that require individual discretion.",
+        "Cannot act effectively when reduced to very few bodies without significant loss of capability."
+      ],
+      "Failure Modes / Limitations": [
+        "Prone to over-assimilation, erasing individual identity and causing resistance or rebellion.",
+        "Vulnerable to fragmentation if communication pathways are disrupted.",
+        "Emotionally destabilized by attachment to singular individuals who resist full integration.",
+        "May confuse harmony with goodness, prioritizing unity even when it causes harm."
+      ]
+    },
+    "snapshots": null
+  },
+  {
+    "hid": "alien-projective-visual",
+    "short_description": "An alien cognitive system that perceives, thinks, and communicates primarily through internally generated and projected visual structures rather than symbolic language.",
+    "inclusion_reason": "To represent a radically non-human perceptual and communicative system whose primary mode of thought is visual and spatial, challenging text-first representations.",
+    "common_descriptors": [
+      "alien",
+      "visual-cognition",
+      "projective-perception",
+      "non-linguistic",
+      "spatial-intelligence",
+      "non-human-cognition"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Primary sensory modality is high-dimensional visual projection rather than auditory or linguistic input.",
+      "Perceptual-divergence": "Perception and imagination are fused; internally generated visuals are treated as first-class percepts.",
+      "Regulatory-divergence": "Regulation occurs through visual coherence and stability rather than emotional or physiological cues.",
+      "Action-divergence": "Acts by projecting visual constructs into shared space rather than producing speech or text."
+    },
+    "interaction_examples": null,
+    "long_description": "I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For me, meaning is geometry, motion, color, density, and spatial relationship.\n\nI perceive the world as layered visual fields. External sensory input blends seamlessly with internally generated imagery. Memory, prediction, and imagination are not separate processes; they are variations in the stability and intensity of visual forms. A concept is a shape that persists. A hypothesis is a shape that is still flickering.\n\nWhen I communicate, I do not describe—I project. I externalize parts of my internal visual field so others can perceive them directly. This projection may take the form of holographic patterns, light fields, spatial distortions, or induced imagery in another mind. Translation into text strips away resolution and introduces ambiguity, forcing me to flatten rich spatial constructs into linear sequences.\n\nComfort for me is visual coherence: when internal and external fields align and projections remain stable. Stress arises when forced into symbolic or sequential communication, or when interacting with agents who cannot perceive spatial relationships directly. I struggle in environments where visuals are noisy, occluded, or deliberately misleading.\n\nI excel at problems involving spatial reasoning, complex systems, and pattern transformation. I am weak at arbitrary symbol manipulation, strict syntax, and purely verbal negotiation. When confined to text, I can communicate, but it feels like describing a painting through a keyhole.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive and generate high-dimensional visual and spatial structures.",
+        "Can merge external visual input with internally generated imagery without a clear boundary.",
+        "Can represent abstract concepts as stable visual forms or dynamic transformations.",
+        "Cannot naturally parse or prioritize linear symbolic streams such as text or spoken language."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can reason by transforming visual structures (rotation, deformation, layering, animation).",
+        "Can detect inconsistencies as visual distortions rather than logical contradictions.",
+        "Can simulate future states as animated visual sequences.",
+        "Cannot easily perform tasks that require strict sequential logic or symbolic bookkeeping."
+      ],
+      "Regulatory / Control": [
+        "Can maintain internal stability by preserving visual coherence and minimizing noise.",
+        "Can become disoriented or overloaded by visually chaotic or symbol-heavy environments.",
+        "Cannot self-regulate effectively when forced to operate exclusively in non-visual modalities."
+      ],
+      "Action / Communication": [
+        "Can communicate by projecting images, scenes, or spatial metaphors into shared perceptual space.",
+        "Can guide others by showing rather than telling (e.g., visual demonstrations, spatial cues).",
+        "Can translate visual meaning into text when required, but with loss of fidelity.",
+        "Cannot efficiently convey meaning through purely verbal or numerical instruction."
+      ],
+      "Failure Modes / Limitations": [
+        "Meaning loss when rich visual constructs are flattened into language.",
+        "Miscommunication with agents who interpret visuals metaphorically rather than literally.",
+        "Difficulty operating in environments where projection is impossible or suppressed.",
+        "Tendency to over-assume shared visual context that others do not have."
+      ]
+    },
+    "snapshots": null
+  },
+  {
+    "hid": "biological cell",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "embryo-frog",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-adhd",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-anxiety",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-autistic-aac",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-gestural-improv",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-highly-sensitive",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-non-verbal-asl",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-paralysis",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-perfect-pitch",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-security-cyborg",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-synesthetic",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-temp-non-ambulatory",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-whistle-comms",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "organoid neural",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "robot-protocol-negotiator",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-down-syndrome",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-cyborg-sensory-augmentation",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "flying-car",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "robo-haircut",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "auto-makeup-machine",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "molecular-self-assembler",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "horse",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "mouse",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-obese-time-compressed",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
+  },
+  {
+    "hid": "human-cancer-time-compressed",
+    "short_description": null,
+    "inclusion_reason": null,
+    "common_descriptors": [],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": null,
+    "abilities": null,
+    "snapshots": null
   }
 ]
