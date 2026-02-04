@@ -22,6 +22,8 @@ dcs --help
 
 ## Quick start
 
+Download and install Docker Desktop from [docker.com](https://www.docker.com/get-started/). (If you prefer you can just install Docker Engine, but Docker Desktop is easier for most users.)
+
 To enable roleplaying models, add your OpenRouter API key to a .env file in the directory where you run the `dcs` commands:
 
 ```sh
