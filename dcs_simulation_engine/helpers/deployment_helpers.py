@@ -1,12 +1,13 @@
 """Helpers for deploying games/experiments using Fly.io."""
 
+import json
 import os
 import re
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from dotenv import dotenv_values, load_dotenv
 from loguru import logger
@@ -20,6 +21,20 @@ class LoadedEnv:
     """Merged env + captured dotenv key/values (for forwarding to flyctl --env)."""
 
     dotenv_vars: Dict[str, str]
+
+
+def flyctl_json(args: List[str]) -> object:
+    """Run flyctl with --json and return parsed JSON.
+
+    Raises subprocess.CalledProcessError / json.JSONDecodeError on failure.
+    """
+    proc = subprocess.run(
+        ["flyctl", *args, "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(proc.stdout)
 
 
 def check_flyctl() -> None:

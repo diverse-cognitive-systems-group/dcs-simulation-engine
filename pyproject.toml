@@ -29,6 +29,7 @@ dependencies = [
   "pymongo (>=4.15.3,<5.0.0)",
   "mnemonic (>=0.21,<0.22)",
   "gradio (>=5.49.1,<6.0.0)",
+  "python-on-whales (>=0.80.0,<0.81.0)",
 ]
 
 [project.scripts]

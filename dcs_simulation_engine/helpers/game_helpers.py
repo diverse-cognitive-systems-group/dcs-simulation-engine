@@ -1,18 +1,50 @@
 """Helpers for games."""
 
-import json
-from pathlib import Path
-from typing import Any, Dict
+from __future__ import annotations
 
-import typer
+from pathlib import Path
+
 import yaml
 from loguru import logger
 from packaging.version import InvalidVersion, Version
 
+from dcs_simulation_engine.errors import GameValidationError
+
+
+def validate_game_compiles(name: str) -> Path:
+    """Validate that a game config compiles without errors."""
+    from dcs_simulation_engine.core.run_manager import RunManager
+
+    logger.debug(f"Validating game config for {name!r}")
+
+    try:
+        game_config_path = Path(get_game_config(name))
+
+        RunManager.create(
+            game=game_config_path,
+            source="validation",
+            pc_choice=None,
+            npc_choice=None,
+            access_key=None,
+        )
+    except Exception as e:
+        logger.debug(
+            f"Game validation failed for {name!r}",
+            name,
+            game_config_path,
+            exc_info=True,
+        )
+        raise GameValidationError(f"Validation failed for game {name!r}: {e}") from e
+
+    return game_config_path.resolve()
+
 
 def create_game_from_template(name: str, template: str | Path | None = None) -> Path:
-    """Copy a game into the current working directory from a template game file."""
-    dest = Path.cwd() / f"{name}.yaml"
+    """Copy a game into ./games from a template game file."""
+    games_dir = Path.cwd() / "games"
+    games_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = games_dir / f"{name}.yaml"
 
     if dest.exists():
         raise FileExistsError(f"{dest} already exists.")
@@ -23,23 +55,13 @@ def create_game_from_template(name: str, template: str | Path | None = None) -> 
         t = Path(template).expanduser()
         template_path = t if t.is_file() else Path(get_game_config(str(template)))
 
-    dest.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
-    logger.info(f"Copied game template {template_path} -> {dest}")
+    dest.write_text(
+        template_path.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    logger.info("Copied game template %s -> %s", template_path, dest)
     return dest
-
-
-def parse_kv(pairs: list[str]) -> Dict[str, Any]:
-    """Parse key=value tokens into a dict. Values accept JSON."""
-    out: Dict[str, Any] = {}
-    for token in pairs:
-        if "=" not in token:
-            raise typer.BadParameter(f"bad field (expected key=value): {token!r}")
-        k, v = token.split("=", 1)
-        try:
-            out[k] = json.loads(v)
-        except json.JSONDecodeError:
-            out[k] = v
-    return out
 
 
 def list_games(
