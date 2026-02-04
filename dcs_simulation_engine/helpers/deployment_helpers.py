@@ -1,13 +1,14 @@
 """Helpers for deploying games/experiments using Fly.io."""
 
+import json
 import os
 import re
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, List
-import json
+from typing import Dict, List, Optional
+
 from dotenv import dotenv_values, load_dotenv
 from loguru import logger
 
@@ -21,6 +22,7 @@ class LoadedEnv:
 
     dotenv_vars: Dict[str, str]
 
+
 def flyctl_json(args: List[str]) -> object:
     """Run flyctl with --json and return parsed JSON.
 
@@ -33,7 +35,6 @@ def flyctl_json(args: List[str]) -> object:
         text=True,
     )
     return json.loads(proc.stdout)
-
 
 
 def check_flyctl() -> None:
