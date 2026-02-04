@@ -2,7 +2,6 @@
 
 import json
 import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Literal, Optional
@@ -149,28 +148,7 @@ def main(
 ) -> None:
     """Initialize global CLI options and context."""
     ctx.obj = GlobalOptions(quiet=quiet, yes=yes, config=config)
-
-    # Configure logging ONCE globally, based on quiet/verbose.
-    try:
-        configure_logger(source="dcs")
-    except Exception as e:
-        logger.warning(f"Failed to configure logger in CLI callback: {e}")
-
-    if quiet:
-        level = "ERROR"
-    elif verbose == 1:
-        level = "INFO"
-    elif verbose >= 2:
-        level = "DEBUG"
-    else:
-        level = "WARNING"
-
-    logger.remove()
-    logger.add(
-        sys.stderr,
-        level=level,
-        format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>",
-    )
+    configure_logger(source="dcs-cli", quiet=quiet, verbose=verbose)
 
 
 # ---------------------------------------------------------------------------

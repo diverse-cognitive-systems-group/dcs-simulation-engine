@@ -48,7 +48,7 @@ The [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) 
 
 ## How can I use it?
 
-### Try it instatly (no setup)
+### Try it instantly (no setup)
 Anybody can play the Explore game via the live web demo.
 
 [👉 Web Demo](https://dcs-simulation-demo.fly.dev/)
