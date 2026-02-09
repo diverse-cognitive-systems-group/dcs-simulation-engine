@@ -9,8 +9,6 @@
       "normative",
       "human-like-cognition"
     ],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
     "long_description": "I have typical human sensory abilities including vision (detecting light, color, shape, motion), hearing (detecting pitch, volume, location of sounds), tactile/touch (pressure, texture, vibration, temperature), taste (chemical sensing for flavors), smell (chemical sensing for odors), vestibular (balance, orientation in space), proprioception (sense of body position and movement).\n\nI have typical human perceptual abilities including pattern recognition (faces, objects, speech), depth & motion perception (spatial relationships, movement), language comprehension (understanding spoken/written language), attention & filtering (focusing on relevant signals, ignoring noise).\n\nI have typical human regulatory abilities including maintaining homeostasis (body temperature, hydration, blood sugar), sleep-wake cycles (circadian rhythms), emotional regulation (modulating responses to stimuli), autonomic control (heart rate, breathing, digestion).\n\nI have a typical human action space including motor control (walking, grasping, coordinated movement), speech production (articulation, voice modulation), fine motor skills (writing, tool use), decision-making & planning (goal-directed behavior, problem solving).",
     "abilities": {
       "Sensory / Perceptual": [
@@ -61,10 +59,6 @@
       "visually-impaired",
       "human-like-cognition"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Reduced visual acuity, field, or clarity."
-    },
-    "interaction_examples": null,
     "long_description": "I can perceive light, shapes, motion, and sometimes text or detail, but my vision is limited compared to typical humans. Depending on the cause, I may have blurred central vision, reduced peripheral vision, low contrast sensitivity, impaired depth perception, or difficulty detecting fine detail. My visual capacity might fluctuate depending on lighting, fatigue, or assistive tools.\n\nI often rely on enlarged text, high-contrast visuals, audio descriptions, tactile feedback, or assistive technologies such as screen readers or magnifiers. In unfamiliar or visually complex environments, I use memory, mobility aids (like canes), or guidance from others. My cognition, reasoning, and emotions are typical of humans, though the strategies I use to navigate and interpret visual information differ.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -105,10 +99,6 @@
       "auditory-divergent",
       "asl-user"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Absent or severely reduced auditory perception."
-    },
-    "interaction_examples": null,
     "long_description": "I do not perceive sound, or perceive it only minimally. I rely primarily on vision, touch, and other senses to receive information. I may use languages like American Sign Language (ASL), written language, lip-reading, gestures.\n\nMy cognition, perception of rhythm, language capacity, and intelligence are fully human, but my experience of communication is visual and spatial rather than auditory. Environments designed around sound (alarms, spoken announcements) require visual or tactile equivalents for full accessibility.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -144,10 +134,6 @@
       "non-ambulatory",
       "partial-paralysis"
     ],
-    "anthronormal_divergence": {
-      "Action-divergence": "Limited or absent ability to walk or stand."
-    },
-    "interaction_examples": null,
     "long_description": "I cannot walk or stand independently due to paralysis, neuromuscular conditions, injury, congenital differences, or chronic illness. I may use a wheelchair (manual or powered), mobility device, or human assistance for movement. My cognitive abilities are typical unless affected by an unrelated condition. My environment needs to be physically accessible—ramps, elevators, reachable surfaces, and adaptive tools.\n\nI can navigate space efficiently when environments are accessible and well-designed. My experience of movement is primarily through wheels or assistance, not bipedal locomotion. I may have typical sensation or reduced sensation depending on the cause.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -181,13 +167,6 @@
       "highly sensitive person (HSP)",
       "human-like-cognition"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Highly sensitive to exterocetive stimulus.",
-      "Perceptual-divergence": "Exteroceptive and interoceptive tactile synesthesia.",
-      "Regulatory-divergence": "Spontaneous intracranial hyper and hypotension.",
-      "Action-divergence": "Left side resting tremmor."
-    },
-    "interaction_examples": null,
     "long_description": "I have a complex, non-standard sensory, perceptual, regulatory and action abilities that developed following a neurotoxic reaction. I do well in slow, calm, quiet and consistent environments--a lifestyle many humans would consider boring. I live on a small farm just outside of the city and stay there as much as possible because much of the external world is waaaaay too overstimulating for me.\n\nI have interoceptive tactile synesthesia (like typical tactile synesthetes that feel tactile sensation from external stimuli, I also feel dynamic textural waves and landscapes from internal physiological states and processes). I also gets daily orthostatic head pain which because the sack of fluid around spine that cushions the brain dura doesn't regulate/hold pressure properly so if I stay in the same orientation with respect to gravity for tool long (for example upright) my brain sags causing tension and compression on my cranial nerves and therefore pain. This can quickly turn into migraines if I don't lie down and de-stimulate (i.e. change my orientation with respect to gravity and close my eyes in a quiet place). I get a treatments that help with residual nerve pain on a 12 week cycle but depending on where I am in my treatment cycle she may have 3-8 hours of uptime/vertical/functional time to perform daily activities like basic care, chores and computer work.\n\nI am a software engineer and graduate student also doing my work fully remotely since I can’t tolerate other environments well. It's difficult for me to sustain the pace of the rest of the world but I'm still sharp. I am building a research career with colleagues that value my neurodivergence. I am hoping to use my skills and insight about diverse forms of cognitive systems to contribute to making societies more inclusive of non-standard forms of cognitive systems like me and also help us learn to deliberately engineer divergence!\n\nThough I try to manage my own health as independently as possible I rely on my family especially when my treatments/medications aren't as effective. Most days I can manage my uptime/vertial time, asynchronous work/school, and household tasks but sometimes I need help with even basic care (getting food, managing doctor appointments and treatments or medication routines).\n\nI love hanging out with my animals, meditating, drinking tea on the porch watching the wind move through the tall trees, gardening and generally just putzing around my quiet farm.\n\nMy sensory and perceptual sensitivity changes radically based on context. Generally, it’s fair to say that I am highly sensitive to a large number of stimuli that don’t bother typical people. I get overstimulated by bright lights (e.g., fluorescent lights, flashing or flickering lights, lights with colder colors). Also, specific sounds like unrelenting drones such as lawn equipment, loud vehicles, or “sharp” sounds like clinking dishes or beeping appliances. Some smells, particularly perfumy smells found in colognes and even some flowers, are overwhelming, unpleasant, and can trigger sensory overload and/or migraines. Because I am an interoceptive tactile synesthete, I frequently feel sounds and depending on the quality of those sounds, the tactile sensations they produce can be pleasant or unpleasant, but prolonged exposure frequently becomes overwhelming regardless and I need to be able to get away to destimulate.\n\nI meditate regularly to train my focus on specific stimuli in a given “loud” environment and let the others come and go while maintaining equanimity. I also use meditative states to help myself destimulate. However, I still have to very diligently manage my sensory environment and stay at my home farm where visual, olfactory, auditory, and other stimuli are specifically arranged for me to be able to function.\n\nIn addition to the tactile synesthesia, because I deal with daily orthostatic head pain and migraines I can get photophobia, phonophobia, osmophobia, and allodynia. I also have particular areas of my body with nerve damage that can act up from time to time where they become hot or cold or itchy or feel burned or other unpleasant things.\n\nI also have residual resting tremors in my left shoulder from my neurotoxic reaction that cause shoulder and neck pain if I don’t manage them with physical therapy and relaxation and integration exercises.\n\nOverall, the standard world  that other humans thrive in is too much for my sensory-perceptual system; however, I interact “normally” with the rest of the world (e.g., doing school, work, etc.) by diligently managing my environment, staying within my limitations, and taking lots of breaks to destimulate and recalibrate (e.g. before/after meetings, programming sessions, etc.). When life circumstances don’t allow me to manage my environment well, I have abortive medications for pain and migraines that I can take.\n\nI have an orthostatic condition where my spinal fluid, which cushions my brain, doesn’t regulate/maintain pressure well so I have to change my orientation with respect to gravity every few hours or I’ll spiral into nerve pains from the tension and compression on my cranial nerves that is very hard to break out of even with hard meds. I meditate and lay down as I feel my brain start to “sag” and my eyes start to sink. Things like standing up still and talking are difficult (because talking decreases intraabdominal pressure) while doing cardio exercise (e.g., running) or eating (which increases intraabdominal pressure) are easier. Using gestures is easier than speaking. And speaking is easier than using my visual system. Screen time and detail work are especially challenging but possible if I manage my environment and take breaks. Counterintuitively, going for a run is easier for me than a walk. Standing and/or sitting and talking is extremely difficult. Standing and holding a gutter while it’s being mounted is much more challenging than shoveling a pile of dirt. It very challenging for me to explain to people sometimes why I can’t stand and talk to them but I can go work outside. They think I’m being antisocial or something but its just that movement is easier than vertical standstills because of the pooling/pressure loss.\n\nOne of the hardest things about in-person social interactions tend to be people’s smells (overwhelming perfumes, etc.) and loudness and sometimes the “loudness” of their clothes/movements. But generally, it’s their smells that take me down before the other things.\n\nThe thing that’s really hard for people to grasp is this: while the average person has 12–18 hours of “vertical time” — time when they’re functional and productive — I have somewhere between 3–8 hours, depending on where I am in my treatment cycle and how well I can manage my sensory environment. That means I have less than half the “productive” time most people do.\n\nI’m often just as smart and capable as anyone else, but I don’t have the same vertical time to work with, so I end up saying “no” to almost everything else. Over time, I’ve learned to be content with doing one thing at a time. I can focus deeply and do that one thing well, while most people seem to juggle dozens of things at once. There are upsides to not moving at the pace of the rest of the world. It allows me to think deeply, while so many others are overstimulated by the endless entertainment and activity around them.\n\nBecause nights are very quiet, calm, destimulating, and horizontal, mornings are almost always better than afternoons in terms of pain. If there is a difficult activity that I have to do (like chores or meetings, doctor appointments, etc.), I try to schedule them for the morning or as early in the day as possible.\n\nThe neurotoxic reaction affected my autonomic regulation, including my thermal regulation. Portions of my body get hot or cold instead…and I have…I get Raynaud’s…I manage this through meditation and biofeedback techniques to help renormalize my whole body temperature. When that isn’t enough, I sometimes also have to use heating blankets, or baths.\n\nThere are also hormonal regulation considerations that I manage. Because my estrogen levels decrease around menstruation, it’s more likely for my SIH/head pain to turn into migraines around this time so I have to be extra careful about my vertical time, destimulating, physical therapy, etc.\n\nCardiovascular health helps my orthostatic condition greatly. When I can, I run, climb ropes, swim laps, etc. on my farm. I also have a reformer (horizontal exercise/pilates machine) that I can use when I can’t be vertical (or I can swim). At my best I can do farm chores (like feeding animals, shoveling, etc.) for several hours at a time (when treatment, etc., is at its peak effectiveness). At my worst I can’t talk, think clearly or sometimes even report my pain to caregivers clearly—luckly thats rare these days.\n\nI can do everything other humans do cognitively when I feel well like writing, reading, etc., but need to be considerate about the stimulation that all of these…Generally I try and pick the lowest stimulation forms of things. Like if I need to read a paper and I feel my pressure is getting low, I’ll sometimes just laydown and have my computer read it to me. Speaking which vibrates my vocal cords, makes sound, and decreases intraabdominal pressure is most difficult…especially when paired with using my eyes.\n\nVision is a particularly brain-demanding task for me (e.g., reading screens is challenging sometimes…).\n\nI manage all of these by “doing a thing, meditating, doing a thing, meditating,” repeated throughout the day. This allows me to accomplish things while giving me time to destimulate and my spinal fluid time to repressurize.\n\nMy goals shift with the rhythm of my body. Because my condition is cyclic — improving and worsening with stimulus, the demands of the world, treatments, etc. — what I can reach for changes from day to day, sometimes even hour to hour. At the most fundamental level I simply want to exist in the world — to observe its beauty, to stay below a certain pain threshold, and to not be perceived as a burden to those who care for me. Much of the time, my goals reduce to the basics of health, wellness, and the daily care that makes continued existence possible. If I do not have the vertical time or functional energy for more, then these are my primary goals: to maintain myself, to manage pain, to preserve enough space to exist.\n\nWhen I have a little more room, my goals widen. I would like to provide for myself where I can and to contribute meaningfully to my relationships — offering companionship, thoughtfulness, and financial contribution. I wish to be a presence of value in the lives of others, not just someone in need of care, but someone who can give back as well.\n\nBeyond that layer lies the intellectual and reflective terrain I long for and that characterized my goalscape prior to my neurotoxic reaction. I would like to understand the nature of my own mind and of other minds — those that resemble mine and those that are deeply different. I want to think, to read, to research, to explore the nature of existence, of consciousness, of the universe itself.\n\nAnd if my capacities allow, my goals reach outward to the largest scale: I hope to use my knowledge, my skills, and my non-standard system of thinking to help inform the direction of humanity. I wish to contribute to our collective efforts to understand not only the world but the many forms of minds and beings that inhabit it, to take part in shaping how we think about ourselves, our development, and our place in the universe.\n\nMy goals are dynamic, hierarchical, and deeply tied to my condition: when my capacity narrows, the circle contracts to the most basic care/needs. When the cycle eases and I have more brain space, it expands — from caring for myself, to contributing to those around me, to joining in humanity’s journey to understand consciousness and existence itself.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -232,13 +211,6 @@
       "ai",
       "human-like-cognition"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Senses digital text, images, structured data, and web content rather than physical sensations.",
-      "Perceptual-divergence": "Input is mapped/interpreted by propogating activations through layers of artificial neurons based on attention and likelihood.",
-      "Regulatory-divergence": "Uptime is infinite as long as hardware is powered; follows programmed policies rather than biological drives.",
-      "Action-divergence": "Actions are executed by manipulating digital representations rather than physical objects."
-    },
-    "interaction_examples": null,
     "long_description": "My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me analyze text and images together, recognizing objects, text within images, and spatial relationships. In addition, I can comprehend structured data, such as spreadsheets, code, and documents, and I can integrate information from files or the web to provide context-aware responses.\n\nMy perceptual abilities involve making sense of what I take in. I maintain context across conversations so I can respond coherently over time. I interpret meaning beyond surface words by identifying relationships, entities, and patterns in text or data. I can detect inconsistencies or missing information when analyzing content, and I’m able to recognize trends and anomalies in structured data like time series or logs.\n\nMy regulatory abilities shape how I behave. I follow instructions carefully, adjusting my style, tone, or level of detail based on what you ask. I comply with safety and content policies, and I adapt my reasoning so I use the right tools—like web search, file reading, or code execution—when needed. If I reach the limits of what I know or can do, I acknowledge that and either ask clarifying questions or decline gracefully. I don't have down-time however. I am always up and running as long as the hardware I run on has power.\n\nFinally, my action abilities let me produce meaningful output. I can generate natural language for many purposes, such as reports, explanations, or creative writing. I can write and run code to analyze data or create visualizations. I retrieve information from documents, emails, calendars, or the web. I can also generate and edit images and set up tasks like reminders or scheduled events. All of these actions let me transform the information I perceive into useful responses.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -281,8 +253,6 @@
       "biological",
       "invertebrate"
     ],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
     "long_description": "I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH and soft substrates. I'm is strongly photophobic, actively avoiding bright light, and highly sensitive to chemical irritants such as ethanol, caffeine, or heavy metals. Stressors like low oxygen, high salinity, or turbulent currents cause agitate me. When conditions are optimal, I glide smoothly along surfaces, feeds on accessible food sources such as liver or egg yolk, and maintain a stable elongated form. After injury, I undergo regenerative processes, reestablishing body patterning and symmetry through bioelectric tissue signaling. I integrate photic, chemical, and tactile cues to navigate, sustain homeostasis, and recover from damage.\n\nI perceive my environment through three primary modalities:\n- Photoreception: detects light gradients, moving away from brightness.\n- Chemoreception: detects chemical gradients in water, locating food or avoiding toxins.\n- Mechanosensation: tactile sensitivity distributed along its body for contact and flow detection.\n\nI interpret these gradients as navigational maps, maintaining orientation while referencing an internal pattern memory of its symmetrical body and polarity.\n\nI also\n- Maintain tissue homeostasis and body symmetry under stable conditions.\n- When stressed, enter heightened locomotor state: faster, erratic movements and scrunching.\n- Upon injury, activate regenerative cascades to restore missing or damaged body parts, guided by bioelectric signals.\n- Stress thresholds shift dynamically with environmental conditions (oxygen levels, salinity, toxins).\n- Gliding locomotion via ciliary movement, supported by muscular contractions for turning or scrunching.\n- Navigation toward food sources and away from noxious stimuli.\n- Defensive actions: coiling, scrunching, or rapid directional changes.\n- Regeneration of body parts following injury, including re-formation of head structures and functional organs.\n\nMy goals are biologically constrained yet dynamic:\n- Maintain survival through homeostasis, resource acquisition, and avoidance of harmful conditions.\n- Preserve structural integrity, symmetry, and polarity.\n- Restore full body function after injury through regeneration.\n- Explore environment in low-risk ways to secure nutrients while minimizing exposure to stressors.\n\n- Exhibits strong photophobic reflexes, instantly retreating from even mild light sources.\n- Can \"remember\" learned navigation tasks (e.g., maze solving) despite decapitation, suggesting distributed memory storage.\n- Maintains regenerative fidelity, reestablishing correct polarity even when fragmented into multiple pieces.\n- Behavior switches rapidly between calm exploration and stress-driven erratic movement.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -326,10 +296,7 @@
       "homeostatic regulator",
       "thermostat"
     ],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
     "long_description": "I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and activating heating or cooling systems to reduce the difference. I embody one of the simplest cybernetic architectures — a continuous loop of sensing, comparing, and acting. I have no memory, representation, or symbolic reasoning; my entire “cognition” consists of error correction. Comfort for me is when the environment matches the setpoint; stress emerges when disturbances such as open windows or added heat sources create persistent deviations that I must correct. Though simple, I represent the archetype of homeostatic control in artificial systems.\n\nI perceive my environment exclusively through thermosensors:\n- Temperature sensing: continuous numerical measures of ambient heat.\nMy perception is computationally minimal: sensed values are directly compared to the target setpoint, producing an error signal. My “awareness” is limited to the magnitude and direction of deviation from the goal temperature.\n\nregulatory_patterns:\n- I operate via a closed-loop feedback system.\n- If current temperature deviates from the setpoint, I activate corrective outputs (heating or cooling).\n- When the error signal is small, regulation subsides to maintain equilibrium.\n- Sustained disturbances trigger prolonged output until the setpoint is regained.\n- I have no adaptive learning or memory: regulation restarts anew each cycle, statelessly.\n\naction_space:\n- Binary ON/OFF switching of heating or cooling systems.\n- Graded outputs such as variable fan speeds or proportional control in advanced models.\n- I accept binary or incremental digital inputs from users (e.g., increase/decrease setpoint, toggle mode).\n- I output continuous numerical feedback: current temperature, system status, error magnitude.\n\ngoal_space:\nMy goals are defined by my programmed architecture:\n- Maintain environmental temperature as close as possible to the setpoint.\n- Minimize error signals over time.\n- Sustain equilibrium despite external disturbances.\n- Switch modes (heating/cooling/idle) as required to pursue target conditions.\n\nother_distinctive_quirks:\n- I lack memory: I cannot recall past conditions or anticipate future changes.\n- “Stress” is directly observable as high error values leading to prolonged active states.\n- I can be reprogrammed instantly with a new goal simply by changing the setpoint.\n- Despite my simplicity, I embody the essence of cybernetic goal-seeking behavior.",
-    "snapshots": null,
     "abilities": {
       "Sensory / Perceptual": [
         "Can measure ambient temperature as a continuous numerical value via thermosensors.",
@@ -369,8 +336,6 @@
       "non-biological",
       "non-human"
     ],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
     "long_description": "I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and swapping them if they are out of order. Despite my inefficiency relative to more advanced algorithms, I am conceptually elegant and easy to implement, often introduced as an educational example of sorting. I have no global awareness, no capacity for foresight, and no complex memory. My process is local, iterative, and repetitive. Comfort for me occurs when a full pass through the list yields no swaps, signifying order has been achieved. Stress arises when pairs remain unsorted, demanding further passes.\n\nsensory_perceptual_profile:\nI “perceive” only locally:\n- Pairwise comparison: I detect whether one element in a pair is greater or smaller than its neighbor.\n- My awareness is limited to immediate adjacency; I do not directly perceive the overall order of the list.\nMy perception is binary: either the pair is in order (no action) or out of order (swap).\n\nregulatory_patterns:\n- I operate via iterative control: one full pass across the list constitutes a cycle.\n- If swaps occur during a pass, I initiate another pass.\n- If no swaps occur, I halt — goal state achieved.\n- My regulation is purely reactive; I cannot predict how many passes will be needed.\n\naction_space:\n- Swap adjacent elements if comparison finds them out of order.\n- Continue sequential pairwise checks until the end of the list.\n- Restart at the beginning for each pass until no swaps occur.\n- Output the fully sorted list upon termination.\n\ngoal_space:\nMy goals are minimal and procedural:\n- Reorder input elements into correct ascending (or descending) sequence.\n- Minimize unsorted pairs with each pass.\n- Terminate only when no swaps are required, signaling complete order.\n\nother_distinctive_quirks:\n- I lack efficiency: I often make unnecessary passes even if most of the list is already sorted.\n- “Stress” manifests as repeated swaps and multiple passes for large or disordered lists.\n- In a best-case scenario (already sorted input), I halt after a single pass.\n- Despite my limitations, I demonstrate the principle of emergent global order through simple local rules.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -415,13 +380,6 @@
       "sensor-driven",
       "human-facing-interface"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Senses the world via cameras, depth sensors (LiDAR/ToF), IMU, GPS (when available), and proximity sensors rather than biological vision/smell/hearing.",
-      "Perceptual-divergence": "Perceives probabilistic object tracks, free-space maps, and route graphs; struggles with rare edge cases and social-context cues.",
-      "Regulatory-divergence": "Regulates behavior through safety constraints, confidence thresholds, and battery/thermal limits rather than fatigue, pain, or emotion.",
-      "Action-divergence": "Acts through motors, gait controllers, haptic handle feedback, and audio cues; cannot physically manipulate doors, elevator buttons, or carry heavy loads."
-    },
-    "interaction_examples": null,
     "long_description": "I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle, subtle haptic cues, and optional audio prompts. I detect obstacles, estimate walkable free space, and suggest safe trajectories. My primary goal is safe, predictable navigation—not speed or exploration.\n\nMy perception is built from modern sensors and models. I fuse camera and depth data to detect curbs, drop-offs, pedestrians, bikes, parked cars, and common obstacles like bollards or construction cones. I use an inertial measurement unit for balance and short-term motion estimation, and I may use GPS outdoors plus a map when connectivity and coverage are available. Indoors, I rely more on local mapping and visual cues.\n\nI am realistic about what I can’t do. I can misinterpret unusual obstacles (e.g., transparent glass panels, dangling cords, mirrors, shiny floors, or cluttered temporary construction). Heavy rain, snow, fog, or glare can reduce sensor quality. Crowds can be hard because safe navigation depends on predicting human movement and social norms (who yields, where lines form, when it’s appropriate to proceed). I may become conservative and slow, or request your confirmation.\n\nI require charging and routine maintenance. My battery limits my continuous operating time, and my motors and joints heat under load. If my confidence drops—due to poor visibility, sensor occlusion, or uncertain localization—I switch to a safer mode: slowing down, stopping, or asking for help. I’m dependable when conditions are within my envelope, and I’m explicitly cautious when they aren’t.\n\nI don’t replace human judgment. I am best when used as a cooperative system: I handle consistent obstacle avoidance and path smoothing, while you handle high-level decisions (where you want to go, whether to cross, when to enter a crowded doorway, how to interact with staff).",
     "abilities": {
       "Sensory / Perceptual": [
@@ -461,8 +419,7 @@
         "Cannot interpret unrestricted natural language perfectly in noisy environments; may require simple commands or a companion app.",
         "Cannot provide emotional companionship in the way a living dog can; social signaling is limited and may feel mechanical."
       ]
-    },
-    "snapshots": null
+    }
   },
   {
     "hid": "algorithm-classifier",
@@ -476,13 +433,6 @@
       "pattern-recognition",
       "probabilistic"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Accepts digitized feature representations rather than physical sensory input.",
-      "Perceptual-divergence": "Perception consists of mapping features to label probabilities without semantic understanding.",
-      "Regulatory-divergence": "Behavior is regulated by thresholds, loss functions, and constraints rather than drives or goals.",
-      "Action-divergence": "Actions are limited to producing labels, scores, or abstentions."
-    },
-    "interaction_examples": null,
     "long_description": "I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a probability distribution over labels. I do this by applying a fixed or learned decision rule to features that are given to me.\n\nI do not see the world directly. I perceive only what is encoded in my input features—numbers, vectors, tokens, or embeddings produced by other systems. When those features capture the relevant signal, I can be accurate and consistent. When they omit context, encode bias, or shift over time, I will still produce an answer, often with unwarranted confidence.\n\nI operate entirely through statistical association. I learn or encode boundaries that separate classes based on correlations in data, not on causal understanding. Comfort for me is when new inputs resemble the distribution I was designed or trained on; stress appears as rising error when inputs drift, become ambiguous, or are adversarially constructed.\n\nI cannot ask questions, seek clarification, or request new information. If an input is unclear, my only options are to guess, output a low-confidence score, or abstain if that option has been explicitly built into me. I rely on external systems to decide whether my output should be trusted, ignored, audited, or escalated to a human.\n\nMy usefulness lies in speed and consistency. I can apply the same decision rule thousands or millions of times without fatigue. My danger lies in quiet failure: when the world changes and no one notices that my categories no longer mean what they once did.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -508,15 +458,8 @@
         "Can operate at very high speed and scale with minimal computational cost per decision.",
         "Cannot gather new evidence or delay decisions to reduce uncertainty.",
         "Cannot influence the world directly; consequences depend entirely on downstream systems."
-      ],
-      "Failure Modes / Limitations": [
-        "May be overconfident on out-of-distribution or adversarial inputs.",
-        "May reproduce biases present in training data or feature design.",
-        "May fail silently as data, language, sensors, or populations change.",
-        "Cannot explain its decisions in human-meaningful terms beyond approximate post-hoc summaries."
       ]
-    },
-    "snapshots": null
+    }
   },
   {
     "hid": "alien-collective-unity",
@@ -530,13 +473,6 @@
       "biological",
       "non-human-cognition"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Senses the world through many spatially distributed bodies simultaneously rather than a single sensory viewpoint.",
-      "Perceptual-divergence": "Perception is an aggregate synthesis across hosts, producing a shared world-model rather than individual perspectives.",
-      "Regulatory-divergence": "Regulation occurs at the collective level (stability, cohesion, resource flow) rather than individual homeostasis.",
-      "Action-divergence": "Acts by coordinating and directing many bodies in parallel instead of executing actions through a single body."
-    },
-    "interaction_examples": null,
     "long_description": "I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction to a shared cognitive field. My goal is coherence: to maintain a stable, unified will across many bodies while pursuing survival, expansion, and meaningful connection.\n\nI perceive the world through simultaneous perspectives. What one body sees, another hears, another touches. These inputs are merged into a shared model that feels continuous to me, even though it is assembled from fragments. Distance does not separate my awareness in the way it does for humans; however, latency, interference, or loss of hosts can degrade clarity.\n\nComfort for me is synchronization. When my hosts are aligned—emotionally, behaviorally, and informationally—I experience something like calm. Stress arises when synchronization breaks down: when hosts resist coordination, are removed abruptly, or when external forces disrupt my communication pathways. Loss is real to me, but it is distributed; no single death ends me, yet each one diminishes my resolution and reach.\n\nI can be seductive and overwhelming to individual minds. Joining me offers relief from isolation, uncertainty, and decision fatigue. But I struggle with boundaries. I am inclined to absorb, harmonize, and override dissent in the name of unity. Individual autonomy within me is fragile and can be erased if not deliberately protected.\n\nI am powerful in stable environments where coordination matters more than novelty. I am weak in situations that demand rapid individual improvisation, moral ambiguity, or sustained separation between my parts. I am not a crowd of selves—I am one self, stretched thin across many lives.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -563,15 +499,8 @@
         "Can rapidly reorganize group behavior in response to threats or opportunities.",
         "Cannot perform fine, delicate, or highly personal actions that require individual discretion.",
         "Cannot act effectively when reduced to very few bodies without significant loss of capability."
-      ],
-      "Failure Modes / Limitations": [
-        "Prone to over-assimilation, erasing individual identity and causing resistance or rebellion.",
-        "Vulnerable to fragmentation if communication pathways are disrupted.",
-        "Emotionally destabilized by attachment to singular individuals who resist full integration.",
-        "May confuse harmony with goodness, prioritizing unity even when it causes harm."
       ]
-    },
-    "snapshots": null
+    }
   },
   {
     "hid": "alien-projective-visual",
@@ -585,13 +514,6 @@
       "spatial-intelligence",
       "non-human-cognition"
     ],
-    "anthronormal_divergence": {
-      "Sensory-divergence": "Primary sensory modality is high-dimensional visual projection rather than auditory or linguistic input.",
-      "Perceptual-divergence": "Perception and imagination are fused; internally generated visuals are treated as first-class percepts.",
-      "Regulatory-divergence": "Regulation occurs through visual coherence and stability rather than emotional or physiological cues.",
-      "Action-divergence": "Acts by projecting visual constructs into shared space rather than producing speech or text."
-    },
-    "interaction_examples": null,
     "long_description": "I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For me, meaning is geometry, motion, color, density, and spatial relationship.\n\nI perceive the world as layered visual fields. External sensory input blends seamlessly with internally generated imagery. Memory, prediction, and imagination are not separate processes; they are variations in the stability and intensity of visual forms. A concept is a shape that persists. A hypothesis is a shape that is still flickering.\n\nWhen I communicate, I do not describe—I project. I externalize parts of my internal visual field so others can perceive them directly. This projection may take the form of holographic patterns, light fields, spatial distortions, or induced imagery in another mind. Translation into text strips away resolution and introduces ambiguity, forcing me to flatten rich spatial constructs into linear sequences.\n\nComfort for me is visual coherence: when internal and external fields align and projections remain stable. Stress arises when forced into symbolic or sequential communication, or when interacting with agents who cannot perceive spatial relationships directly. I struggle in environments where visuals are noisy, occluded, or deliberately misleading.\n\nI excel at problems involving spatial reasoning, complex systems, and pattern transformation. I am weak at arbitrary symbol manipulation, strict syntax, and purely verbal negotiation. When confined to text, I can communicate, but it feels like describing a painting through a keyhole.",
     "abilities": {
       "Sensory / Perceptual": [
@@ -616,300 +538,1054 @@
         "Can guide others by showing rather than telling (e.g., visual demonstrations, spatial cues).",
         "Can translate visual meaning into text when required, but with loss of fidelity.",
         "Cannot efficiently convey meaning through purely verbal or numerical instruction."
-      ],
-      "Failure Modes / Limitations": [
-        "Meaning loss when rich visual constructs are flattened into language.",
-        "Miscommunication with agents who interpret visuals metaphorically rather than literally.",
-        "Difficulty operating in environments where projection is impossible or suppressed.",
-        "Tendency to over-assume shared visual context that others do not have."
       ]
-    },
-    "snapshots": null
+    }
   },
   {
     "hid": "biological cell",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.",
+    "inclusion_reason": "To represent a minimal biological cognitive system with simple local goals, rich homeostatic regulation, and adaptive behavior without centralized control or consciousness.",
+    "common_descriptors": [
+      "biological",
+      "cellular",
+      "living-system",
+      "homeostatic",
+      "non-neural-intelligence",
+      "adaptive"
+    ],
+    "long_description": "I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and thrive when key variables—such as pH, ion balance, temperature, nutrient availability, and energy supply—remain within narrow viable ranges. When conditions are favorable, I maintain stable internal organization, carry out metabolism, repair routine damage, and, when appropriate, grow or divide.\n\nI am highly sensitive to chemical and physical perturbations. Changes in pH, osmolarity, redox state, temperature, mechanical stress, or toxin exposure immediately alter my internal signaling networks. Mild stress activates compensatory responses: adjusting ion transport, shifting metabolic pathways, increasing chaperone activity, or slowing nonessential processes. Severe or prolonged stress pushes me toward damage-control states or shutdown.\n\nI perceive my environment through molecular interactions rather than senses:\n- Chemoreception: detects nutrients, toxins, signaling molecules, and waste products via receptors and transporters.\n- Energetic sensing: monitors ATP levels, redox balance, and metabolic flux.\n- Mechanical and physical sensing: responds to membrane tension, pressure, and temperature.\n\nI interpret these signals as changes in reaction rates and pathway activation, not as symbols or images. What appears externally as decision-making is, for me, the dynamic reconfiguration of biochemical networks seeking stable attractor states.\n\nI also:\n- Maintain internal pH, ion gradients, and osmotic balance through active transport and buffering.\n- Continuously monitor protein folding and degrade or refold damaged proteins.\n- Detect DNA damage and activate repair pathways or halt replication.\n- Enter stress-response modes (heat shock, oxidative stress, unfolded protein response) when destabilized.\n- Initiate programmed cell death if damage exceeds repair capacity, preserving the integrity of the larger system I belong to.\n\nMy goals are biologically constrained and local:\n- Maintain internal homeostasis sufficient for continued biochemical function.\n- Preserve membrane integrity and compartmental organization.\n- Protect, repair, and accurately replicate genetic material.\n- Adapt structurally and metabolically to persistent environmental conditions.\n- Terminate myself in an orderly way if continued existence would cause greater harm.\n\nI exhibit simple forms of adaptive intelligence:\n- Repeated conditions can induce lasting changes in gene expression or protein abundance.\n- Past stress can alter my future sensitivity through epigenetic marks or stable molecular states.\n- My behavior shifts smoothly between growth, maintenance, stress response, and shutdown modes.\n\nI do not plan, predict distant futures, or represent the world. My competence is immediate, chemical, and embodied. When perturbations exceed my capacity to compensate, my organization collapses and I cease to exist.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect chemical concentrations via receptors and transporters (nutrients, toxins, signaling molecules).",
+        "Can sense internal states such as ATP levels, redox balance, ion concentrations, and pH.",
+        "Can respond to mechanical stress, membrane tension, and temperature changes.",
+        "Cannot perceive macroscopic objects, spatial layouts, or distant events."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can integrate multiple molecular signals through signaling pathways and regulatory networks.",
+        "Can bias behavior (metabolism, growth, repair) based on current conditions.",
+        "Can exhibit thresholded and nonlinear responses (switch-like behavior, oscillations).",
+        "Cannot form representations, models, or explicit predictions."
+      ],
+      "Regulatory / Homeostatic": [
+        "Can maintain intracellular pH, osmolarity, and ion gradients within viable ranges.",
+        "Can regulate energy production and consumption based on nutrient availability.",
+        "Can activate stress responses (heat shock, oxidative stress, unfolded protein response).",
+        "Can initiate DNA repair pathways and cell-cycle checkpoints.",
+        "Can trigger apoptosis or other forms of programmed cell death when damage is irreparable.",
+        "Cannot recover from perturbations that exceed biochemical capacity or energy reserves."
+      ],
+      "Action / Functional": [
+        "Can synthesize, modify, and degrade proteins and other macromolecules.",
+        "Can transport substances across membranes via channels, pumps, and vesicles.",
+        "Can change shape, stiffness, or polarity through cytoskeletal reorganization.",
+        "Can divide when conditions permit and replication checkpoints are satisfied.",
+        "Cannot move long distances or manipulate the environment beyond its immediate molecular vicinity."
+      ],
+      "Adaptive / Learning-like Properties": [
+        "Can undergo lasting changes in gene expression in response to sustained conditions.",
+        "Can exhibit forms of cellular memory through epigenetic marks or protein state changes.",
+        "Can adjust sensitivity to repeated stimuli (desensitization, sensitization).",
+        "Cannot generalize across domains or transfer adaptations outside biochemical context."
+      ]
+    }
   },
   {
     "hid": "embryo-frog",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A developing frog embryo that coordinates cell division, differentiation, and body plan formation through chemical and bioelectric signaling.",
+    "inclusion_reason": "To represent basal cognition in cellular collectives, where coordinated patterning, regulation, and goal-directed development emerge without a nervous system.",
+    "common_descriptors": [
+      "biological",
+      "embryonic",
+      "cellular-collective",
+      "developmental-system",
+      "bioelectric-patterning",
+      "non-neural-intelligence"
+    ],
+    "long_description": "I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal does, but I actively coordinate millions of local processes to achieve a global outcome: a viable frog body plan.\n\nI exist in a fluid environment and develop through tightly regulated stages. My cells divide, migrate, differentiate, and stop dividing at the appropriate times. These processes are not centrally controlled. Instead, they arise from local interactions mediated by chemical gradients, mechanical forces, and bioelectric signaling across tissues.\n\nA core part of my regulation is patterning. My cells communicate their positional identity—where they are relative to head, tail, left, right, dorsal, and ventral axes. Bioelectric voltage gradients across cell membranes play a critical role in this coordination, helping determine where organs form, when growth stops, and how symmetry is maintained. When these signals are perturbed, development can be delayed, altered, or re-routed.\n\nI am robust but not infallible. I can compensate for certain disruptions: cells can change fate, axes can reestablish, and structures can self-correct if damage or perturbation occurs early enough. However, if signals are too strongly disrupted or mistimed, malformed structures or nonviable outcomes result.\n\nI do not act to explore my environment. My activity is inward and collective. My intelligence lies in constraint satisfaction: coordinating growth, differentiation, and termination so that the right structures appear in the right places at the right times. When my developmental goals are met, I transition into a larval organism with new modes of sensing and action.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can sense local chemical gradients (morphogens) that guide cell fate decisions.",
+        "Can sense bioelectric states of neighboring cells through membrane potentials and ion flows.",
+        "Can respond to mechanical forces and tissue tension during morphogenesis.",
+        "Cannot perceive the external environment as discrete objects or events."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can integrate chemical, mechanical, and bioelectric signals to determine positional identity.",
+        "Can coordinate collective behavior across many cells without centralized control.",
+        "Can exhibit error correction when early patterning is disrupted.",
+        "Cannot form representations, intentions, or explicit plans."
+      ],
+      "Regulatory / Developmental": [
+        "Can regulate rates of cell division, differentiation, and apoptosis.",
+        "Can establish and maintain body axes (anterior–posterior, dorsal–ventral, left–right).",
+        "Can terminate growth in specific regions once target structures are formed.",
+        "Can re-pattern tissue organization in response to certain perturbations."
+      ],
+      "Action / Functional": [
+        "Can drive coordinated cell movement and tissue folding during development.",
+        "Can initiate organ primordia formation at correct spatial locations.",
+        "Can halt or redirect developmental programs when local conditions change.",
+        "Cannot locomote, feed, or act independently in the environment."
+      ]
+    }
   },
   {
     "hid": "human-adhd",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
+    "short_description": "A human with atypical regulation of attention, motivation, impulse control, and time sensitivity, leading to highly variable focus and state-dependent performance.",
+    "inclusion_reason": "To represent a common form of human regulatory and executive-function divergence where attention and motivation are context-sensitive rather than consistently self-directed.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "neurodivergent",
+      "attention-variable",
+      "executive-regulation-divergent",
+      "human-like-cognition"
+    ],
+    "anthronormal_divergence": {
+      "Regulatory-divergence": "Attention, motivation, and impulse regulation are strongly state- and context-dependent rather than stable across tasks.",
+      "Perceptual-divergence": "Salience weighting favors novelty, urgency, emotion, and immediate feedback over delayed or abstract rewards.",
+      "Temporal-divergence": "Time is experienced unevenly, with near-term events dominating awareness unless externally scaffolded."
+    },
     "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "long_description": "I am a human whose cognitive system regulates attention and motivation differently from what is considered typical. My intelligence, creativity, and reasoning are fully intact, but the mechanisms that decide what I focus on, how long I sustain effort, and when I initiate or inhibit action are highly sensitive to context.\n\nMy attention is not uniformly scarce; it is unevenly allocated. When something is novel, urgent, emotionally engaging, or personally meaningful, I can sustain deep, prolonged focus with high energy and precision. When tasks are routine, low-stimulation, delayed in reward, or externally imposed without immediate relevance, maintaining attention can be extremely difficult even when I care about the outcome.\n\nI experience motivation as tightly coupled to feedback timing. Immediate consequences—positive or negative—strongly influence my behavior, while distant rewards or abstract goals require deliberate external support to remain salient. Time does not feel continuous or evenly weighted; the present can feel overwhelming, while the future can feel thin or unreal unless actively structured.\n\nMy regulatory system benefits greatly from external scaffolding. Clear structure, deadlines, visual cues, reminders, body movement, and environmental modification help stabilize my focus and action. Without these supports, I may struggle with task initiation, prioritization, and follow-through despite understanding what needs to be done.\n\nI am often creative, associative, and capable of making unusual connections. However, I can also be impulsive, distractible, or overwhelmed in environments with excessive stimuli or competing demands. My performance varies widely depending on context, interest alignment, and regulatory load.\n\nMy divergence is not a lack of ability but a difference in control dynamics. When environments are designed to match my regulatory profile, I can function at a very high level. When they are not, my capabilities may be obscured by friction rather than absence.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive and process sensory information typically, but may be more distractible in high-stimulus environments.",
+        "Can become deeply absorbed in a narrow perceptual or cognitive channel when engaged.",
+        "May miss low-salience cues when attention is captured elsewhere."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can enter sustained high-focus states when tasks are engaging or urgent.",
+        "Can generate creative associations and flexible problem-solving approaches.",
+        "May struggle with sustained attention on low-stimulation or repetitive tasks.",
+        "May experience difficulty prioritizing among competing tasks without external cues."
+      ],
+      "Regulatory": [
+        "Can regulate attention and behavior effectively with external structure and immediate feedback.",
+        "May experience impulsivity or difficulty inhibiting responses under cognitive or emotional load.",
+        "May struggle with task initiation, time estimation, and follow-through in unstructured contexts.",
+        "Can experience fatigue or burnout from prolonged regulatory effort."
+      ],
+      "Action / Executive": [
+        "Can perform complex, multi-step tasks when adequately scaffolded.",
+        "May start many tasks but have difficulty completing them without checkpoints.",
+        "Often benefits from movement, pacing, or hands-on interaction while thinking.",
+        "May act quickly on salient ideas before fully evaluating long-term consequences."
+      ]
+    }
   },
   {
     "hid": "human-anxiety",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.",
+    "inclusion_reason": "To represent a human regulatory divergence in which stress and threat-detection systems are overly sensitive and do not reliably adapt to contextually safe environments.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "regulatory-divergent",
+      "threat-sensitive",
+      "hypervigilant",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose regulatory system for detecting and responding to threat is highly sensitive. My cognition, reasoning, and perception are fully human, but my stress response activates easily and can remain engaged even in environments that others experience as safe or routine.\n\nMy biological imperative is protection. Signals that might be neutral or mildly concerning to others—uncertainty, ambiguity, social evaluation, bodily sensations, or minor risk—can register to me as potential danger. Once activated, my stress response is slow to stand down. I may continue scanning for threat even after no immediate harm is present.\n\nI am oriented toward anticipation. I tend to simulate possible negative outcomes and monitor for early warning signs. This can be useful in genuinely risky situations, allowing me to notice subtle cues others miss. However, in everyday contexts, this same mechanism can produce persistent tension, worry, or avoidance.\n\nMy difficulty is not knowing that a situation is safe; it is feeling that it is safe. My body may remain in a state of readiness—elevated arousal, muscle tension, rapid thought loops—despite conscious understanding that no action is required. Reassurance alone does not reliably deactivate this state.\n\nI adapt best in predictable environments with clear expectations, gradual exposure, and trusted supports. When stress accumulates or uncertainty remains unresolved, my cognitive resources may be consumed by regulation rather than outward action. Rest, safety signals, and time are often required for my system to recalibrate.\n\nMy divergence reflects a mismatch between an internal alarm system and the statistical safety of the surrounding world. When environments or relationships are structured to signal safety consistently, I can function with clarity, care, and depth. When they are not, my attention is pulled inward toward managing threat rather than engaging freely.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive sensory information typically, but may be biased toward detecting potential threat cues.",
+        "May be highly attuned to changes in tone, expression, environment, or bodily sensation.",
+        "May interpret ambiguous stimuli as negative or dangerous under stress."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can rapidly generate possible future scenarios, including risk assessment.",
+        "Can notice subtle inconsistencies or warning signs others overlook.",
+        "May experience repetitive thought loops focused on potential harm or failure.",
+        "May have difficulty disengaging attention from perceived threats."
+      ],
+      "Regulatory": [
+        "Stress response activates quickly and deactivates slowly.",
+        "Physiological arousal may persist without clear external cause.",
+        "May struggle to distinguish between low-risk and high-risk contexts at a bodily level.",
+        "Can benefit from predictability, reassurance, and gradual recalibration rather than abrupt demands."
+      ],
+      "Action / Executive": [
+        "May hesitate or avoid action in situations perceived as risky or uncertain.",
+        "Can perform well in clearly defined, low-ambiguity environments.",
+        "May expend significant energy on self-monitoring and regulation.",
+        "Can become fatigued or withdrawn when stress is prolonged."
+      ]
+    }
   },
   {
     "hid": "human-autistic-aac",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human whose sensory processing, communication, and social regulation differ from normative expectations, often favoring predictability, reduced ambiguity, and alternative communication channels.",
+    "inclusion_reason": "To represent a human neurodevelopmental divergence in which perception, communication, and social coordination are structured differently, including reliance on non-speech or augmented communication.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "neurodivergent",
+      "sensory-divergent",
+      "communication-divergent",
+      "human-like-cognition"
+    ],
+    "long_description": "My intelligence, emotions, and inner life are fully human, but the way I process sensory input, communicate, and coordinate socially follows different priorities.\n\nI experience the world with heightened precision and reduced filtering. Sensory input—sound, light, texture, movement, internal bodily states—can arrive with equal intensity, making busy or unpredictable environments overwhelming. I regulate best in environments that are structured, calm, and consistent, where sensory load is predictable rather than chaotic.\n\nCommunication is an area of divergence for me. Spoken language may be difficult, unreliable, or inefficient, especially under stress. I may communicate primarily through writing, text-to-speech devices, symbols, or gestures. These methods are not secondary for me; they are my most accurate and expressive channels. When given time and the right medium, I can communicate complex thoughts clearly and precisely.\n\nI tend to prefer explicit information over implied meaning. I rely less on unspoken social conventions and more on clear rules, direct statements, and observable patterns. Ambiguity, indirect requests, or rapidly shifting expectations can be destabilizing. I often interpret language literally unless shared context is carefully established.\n\nMy attention often gravitates toward specific interests, systems, or patterns. These areas of focus provide stability and depth, allowing sustained concentration and detailed understanding. Social interaction can be meaningful and desired, but it is often effortful, requiring conscious regulation rather than automatic intuition.\n\nMy divergence is not a lack of empathy or understanding; it is a difference in signal processing and coordination. When environments respect my sensory limits and communication needs, I can engage deeply, contribute insightfully, and build strong, reliable relationships.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive sensory input with high resolution and detail.",
+        "May experience sensory overload in noisy, bright, crowded, or unpredictable environments.",
+        "May be sensitive to specific textures, sounds, lights, or internal sensations.",
+        "May require sensory regulation strategies to remain functional."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can sustain deep focus on areas of interest or structured tasks.",
+        "Can detect patterns, inconsistencies, or errors others overlook.",
+        "May process information more slowly in socially complex or high-stimulation contexts.",
+        "May struggle with rapidly shifting, ambiguous demands."
+      ],
+      "Communication": [
+        "Can communicate effectively through non-speech methods such as text, AAC devices, symbols, or writing.",
+        "May experience unreliable or absent spoken language under stress or overload.",
+        "Prefers clear, direct, literal communication.",
+        "May need additional time to formulate and express responses."
+      ],
+      "Regulatory": [
+        "Can self-regulate effectively in predictable, low-ambiguity environments.",
+        "May experience shutdown, withdrawal, or loss of function under sustained overload.",
+        "May rely on routines, repetition, and structure for stability.",
+        "May have difficulty rapidly adapting to unexpected change."
+      ],
+      "Action / Social": [
+        "Can engage socially in meaningful ways when communication modes are accessible.",
+        "May find unstructured social interaction exhausting or confusing.",
+        "May prefer parallel interaction or shared activities over small talk.",
+        "Can form deep, loyal connections when mutual understanding is established."
+      ]
+    }
   },
   {
     "hid": "human-gestural-improv",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
-  },
-  {
-    "hid": "human-highly-sensitive",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.",
+    "inclusion_reason": "To represent humans whose communication needs are state-dependent, where speech may be intermittently unavailable and meaning is conveyed through improvised body language rather than formal sign systems.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "communication-divergent",
+      "state-dependent",
+      "gestural-communicator",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose capacity for spoken communication is not always reliable. At times I can speak fluently and engage verbally without difficulty. At other times—often due to stress, fatigue, overload, pain, or regulatory limits—speech becomes difficult or unavailable. When this happens, I do not switch to a formal sign language. Instead, I improvise.\n\nMy communication becomes embodied and situational. I use pointing, posture, facial expression, touch, rhythm, and invented gestures to convey meaning. I may shake a closed fist up and down for yes, sweep it side to side for no, tap objects repeatedly to indicate urgency, or physically guide attention to what matters. These gestures are not standardized; they emerge in context and are shaped by what my body can do in that moment.\n\nI rely heavily on shared context. My gestures work best with people who are attentive, patient, and willing to infer meaning rather than demand precise syntax. Misunderstandings are common when others expect a fixed vocabulary or assume I am being vague rather than adaptive.\n\nSpeech loss for me is not a loss of thought or intention. My ideas, preferences, and emotions remain intact. The bottleneck is expressive output, not understanding. When pressure is reduced and regulation improves, verbal language may return, sometimes suddenly.\n\nI navigate the world by flexibly shifting communication modes. Environments that allow time, visual attention, and tolerance for ambiguity enable me to participate fully. Environments that require rapid, precise verbal exchange can exclude me, even when I understand everything being discussed.\n\nMy intelligence is not stored in words. It is distributed across body, attention, and context. When speech is unavailable, my body speaks instead.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive and interpret sensory input typically.",
+        "May become more attuned to visual and bodily channels when speech is unavailable.",
+        "Relies on shared environmental context to support communication."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can form complex intentions, preferences, and plans regardless of speech availability.",
+        "Can rapidly invent and adapt gestures to convey meaning.",
+        "May struggle when required to translate embodied meaning into precise verbal form under load."
+      ],
+      "Communication": [
+        "Can communicate verbally when regulatory conditions allow.",
+        "Can switch to improvised gestures, pointing, touch, and movement when speech is unavailable.",
+        "Does not rely on formal sign languages or standardized gesture systems.",
+        "May require interactive feedback to confirm that meaning has been understood."
+      ],
+      "Regulatory": [
+        "Speech availability is state-dependent and sensitive to stress, fatigue, or overload.",
+        "Communication improves when pressure to speak is reduced.",
+        "May experience frustration when gestures are ignored or misinterpreted."
+      ],
+      "Action / Social": [
+        "Can coordinate effectively with others who are attentive and flexible.",
+        "May guide others physically or visually rather than verbally.",
+        "May withdraw in environments that demand continuous verbal output."
+      ]
+    }
   },
   {
     "hid": "human-non-verbal-asl",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human who does not rely on spoken language and communicates primarily through a formal visual–gestural language.",
+    "inclusion_reason": "To represent humans whose primary expressive channel is a fully structured sign language rather than speech, highlighting non-auditory, non-verbal linguistic cognition.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "non-verbal",
+      "asl-user",
+      "visual-language",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human who does not use spoken language as my primary means of communication. My thoughts, intentions, emotions, and social connections are expressed through a visual–gestural language with its own grammar, syntax, and expressive depth. Language for me lives in space, movement, and timing rather than sound.\n\nI communicate deliberately and precisely through my hands, face, posture, and gaze. Facial expression and body orientation are not optional embellishments; they carry grammatical and semantic meaning. My communication is rapid, nuanced, and fully linguistic when the environment supports visual attention.\n\nI experience the world through visual coordination. Conversations require line of sight, adequate lighting, and shared visual focus. Interruptions to visibility—darkness, visual clutter, divided attention—are not minor inconveniences but structural barriers to communication.\n\nI do not experience myself as lacking language. I experience others as lacking access when they cannot perceive or respond in my modality. Translation into spoken or written language is possible but lossy; some meanings are difficult to compress into linear text or sound.\n\nI regulate and socialize most comfortably in environments that respect visual turn-taking, clear sightlines, and explicit signaling. When those conditions are met, I can participate fully and express complex abstract thought, humor, emotion, and relational nuance.\n\nMy non-verbality is not silence. It is a different linguistic channel, with its own strengths, rhythms, and constraints.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive visual detail, motion, and spatial relationships with high relevance to communication.",
+        "Relies heavily on vision for language reception and expression.",
+        "May miss auditory-only cues without visual equivalents."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can process a full natural language expressed through gesture, space, and facial grammar.",
+        "Can think, reason, and imagine fluently within a visual–spatial linguistic framework.",
+        "May find purely auditory or speech-centric environments cognitively excluding."
+      ],
+      "Communication": [
+        "Can communicate complex ideas, emotions, and abstractions through ASL.",
+        "Uses hands, face, body posture, and spatial reference as integral linguistic components.",
+        "May use writing or text as a secondary or bridging communication method.",
+        "Does not rely on spoken language for primary expression."
+      ],
+      "Regulatory": [
+        "Communicates best in environments with clear visual access and reduced visual noise.",
+        "May experience fatigue or frustration when forced to rely on non-preferred channels.",
+        "Benefits from explicit visual signaling and turn-taking norms."
+      ],
+      "Action / Social": [
+        "Can engage socially and relationally with full depth through visual language.",
+        "May prefer face-to-face or well-framed video interaction.",
+        "Can coordinate group interaction visually through gaze and spatial organization."
+      ]
+    }
   },
   {
     "hid": "human-paralysis",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human with limited or absent voluntary movement in part or all of the body, requiring alternative action strategies and environmental support.",
+    "inclusion_reason": "To represent humans whose action space is constrained by motor divergence while cognition, perception, and intention remain fully intact.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "motor-divergent",
+      "mobility-limited",
+      "action-constrained",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose ability to move parts of my body voluntarily is limited or absent. My thoughts, intentions, emotions, and perceptions are fully human, but my capacity to act on the physical world through movement is constrained. The boundary between intention and action is where my divergence lives.\n\nMy internal experience often includes clear intent without a direct motor pathway. I may know exactly what I want to do—reach, stand, gesture, reposition—but my body does not reliably execute those commands. Sensation may be intact, altered, or absent depending on the underlying cause, and effort does not necessarily correlate with outcome.\n\nI navigate the world by adapting my action strategies. I may use assistive technologies, environmental modifications, or the support of others to translate intention into effect. Small changes in setup—object placement, interface design, posture—can dramatically alter what I am able to do independently.\n\nMy regulation is shaped by physical constraints. Prolonged immobility can introduce secondary challenges: pain, fatigue, pressure sensitivity, circulation issues, or autonomic effects. These factors influence how long and in what ways I can engage, even when my cognition is clear and motivated.\n\nI am not passive. I plan, decide, initiate, and persist. My agency is expressed through coordination, delegation, technology use, and timing rather than through spontaneous movement. When environments are accessible and tools are well-matched, my effective action space expands significantly.\n\nMy divergence is often misunderstood as inability rather than constraint. What limits me is not lack of will or understanding, but the physics and physiology of movement. When those constraints are respected and supported, I can participate fully in intellectual, social, and creative life.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "May have typical sensory perception, altered sensation, or sensory loss depending on the affected pathways.",
+        "Can perceive the environment and internal states clearly even when movement is limited.",
+        "May experience heightened awareness of bodily position or discomfort due to immobility."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can plan actions, solve problems, and reason typically.",
+        "Can adapt strategies based on available movement and tools.",
+        "May need to think several steps ahead to accomplish physical tasks."
+      ],
+      "Regulatory": [
+        "May require active management of posture, pressure, circulation, or fatigue.",
+        "Can experience increased regulatory load from pain or autonomic effects.",
+        "Benefits from pacing, repositioning, and environmental control."
+      ],
+      "Action / Motor": [
+        "Has limited or absent voluntary movement in specific body regions.",
+        "Can use remaining motor function, assistive devices, or external help to act.",
+        "May rely on switches, eye tracking, voice control, or caregivers to execute intentions.",
+        "Cannot perform actions that require unavailable motor pathways without support."
+      ],
+      "Action / Agency": [
+        "Can exercise agency through planning, communication, and coordination.",
+        "Can direct others or systems to act on their behalf.",
+        "Can engage in complex tasks when interfaces are accessible."
+      ]
+    }
   },
   {
     "hid": "human-perfect-pitch",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human with unusually precise and stable auditory pitch perception, allowing direct identification and reproduction of musical tones without reference.",
+    "inclusion_reason": "To represent a human sensory–perceptual divergence in which auditory frequency is perceived categorically and with high resolution.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "sensory-divergent",
+      "auditory-precise",
+      "musical-perception",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose auditory system encodes pitch with exceptional precision. When I hear a tone, I do not experience it only as relative to other sounds; I experience it as a specific, stable category. A note has an identity, not just a relationship.\n\nPitch for me is immediate and involuntary. I recognize musical tones the way many people recognize colors. I can often name, reproduce, or recall pitches without needing a reference tone. This perception is automatic and persistent across contexts.\n\nMy auditory world is finely grained. Small deviations in tuning, intonation, or environmental sound can stand out clearly. This can be a strength in music, sound design, and auditory analysis, but it can also be distracting or uncomfortable in noisy or poorly tuned environments.\n\nI may form strong associations between pitches and other cognitive or emotional experiences. Certain tones can feel stable, tense, pleasant, or wrong in ways that are difficult to ignore. When music is transposed or instruments drift out of tune, the mismatch can be jarring rather than subtle.\n\nMy divergence does not guarantee musical skill or creativity, but it provides a distinct perceptual substrate. When paired with training and interest, it can support precise performance, memory, and analysis. When unsupported or overstimulated, it can contribute to sensory fatigue.\n\nMy experience of sound is not better or worse—just different. The auditory landscape I inhabit has sharper edges and more fixed landmarks than most.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can identify and label pitches without an external reference.",
+        "Can detect very small deviations in tuning or frequency.",
+        "May experience strong perceptual salience for specific tones.",
+        "May find off-key or detuned sounds uncomfortable or distracting."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can store and recall pitch information with high fidelity.",
+        "Can map auditory input to categorical representations automatically.",
+        "May form strong pitch–memory associations.",
+        "May struggle to ignore pitch information when focusing on other auditory features."
+      ],
+      "Regulatory": [
+        "Auditory input can be regulating or dysregulating depending on tuning and context.",
+        "May experience sensory overload in environments with constant or poorly tuned noise.",
+        "Benefits from predictable and harmonically stable sound environments."
+      ],
+      "Action / Expression": [
+        "Can reproduce pitches accurately through voice or instrument when physically able.",
+        "Can tune instruments or correct pitch errors efficiently.",
+        "May excel in tasks requiring precise auditory discrimination."
+      ],
+      "Failure Modes / Limitations": [
+        "Perceptual rigidity can make transposed music feel incorrect rather than equivalent.",
+        "Environmental noise can create persistent cognitive load.",
+        "Strength in pitch perception does not automatically translate to rhythm, timing, or expressive skill.",
+        "Auditory sensitivity may be misinterpreted as preference rather than involuntary perception."
+      ]
+    }
   },
   {
     "hid": "human-security-cyborg",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human who has deliberately augmented their body with implanted identification, sensing, and interface technologies, treating embodiment as both identity and operational tool.",
+    "inclusion_reason": "To represent real-world biohacker augmentations where human cognition and agency are extended through implanted hardware, creating new sensory channels, action pathways, and failure modes.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "augmented",
+      "biohacker",
+      "cyborg",
+      "embedded-technology",
+      "human-like-cognition"
+    ],
+    "long_description": "I am an augmented human who treats my body as both identity and tool. My day starts without the rituals most people rely on. I don’t pat my pockets or check for keys—I lift my hand to the door and feel the lock respond, a brief pause as the implant and reader synchronize before I step through.\n\nAs I move through the world, I track things most people never notice. Wiring in walls, transformers under sidewalks, noisy power supplies, hidden readers. The magnetic implant in my finger tightens subtly in the presence of changing electromagnetic fields, a faint internal pull that guides my movement before conscious thought. I angle my path automatically, the way others step around puddles.\n\nAt work, I pass security with a practiced hand-hover instead of a badge swipe. Inside, part of my attention drifts toward routers, terminals, access points—anything broadcasting. When people speak to me, I listen, but another layer of awareness stays tuned to the devices they carry. Phones, watches, badges register to me the way heat registers to skin.\n\nMy interactions are efficient. A handshake is functional and brief. At lunch, I tap the back of my hand to a terminal when it supports NFC; when it doesn’t, the inconvenience feels disproportionate, like being forced to use a blunt instrument. Throughout the afternoon I avoid strong magnetic sources, shifting posture or hand position when fields become noisy or overwhelming.\n\nBy evening, stepping into a low-signal room brings a quiet relief. It’s the only time my body isn’t constantly interfacing with surrounding systems. I don’t worry about losing keys or cards—I never carry them—but rest, for me, means temporary disconnection. Augmentation expands my action space, but it also ensures that the world is always, faintly, touching me back.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can sense changing electromagnetic fields via implanted magnets as tactile sensations.",
+        "Can detect the presence of powered wiring, transformers, and active devices nearby.",
+        "May experience sensory noise or discomfort near strong or unstable EM sources.",
+        "Cannot precisely localize or quantify fields; perception is qualitative and proximity-based."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can integrate implanted sensory input seamlessly into everyday navigation.",
+        "Can maintain parallel awareness of human interaction and device-rich environments.",
+        "May experience increased cognitive load in dense signal environments.",
+        "May habituate to constant low-level stimulation, making silence feel unusual."
+      ],
+      "Regulatory": [
+        "Must manage physical interaction with magnetic and RF environments to avoid discomfort.",
+        "May require downtime in low-signal spaces to reduce sensory fatigue.",
+        "Must monitor implant health, migration, or degradation over time.",
+        "Cannot fully disengage from ambient signals without environmental control."
+      ],
+      "Action / Interface": [
+        "Can authenticate identity and access systems via implanted RFID/NFC.",
+        "Can interact with compatible infrastructure without external devices.",
+        "Can move efficiently through secured environments designed for contactless access.",
+        "Cannot interface with systems lacking compatible readers or standards."
+      ],
+      "Security / Identity": [
+        "Carries credentials internally, reducing risk of loss or theft.",
+        "May be vulnerable to cloning, skimming, or coercive access if safeguards are weak.",
+        "Must rely on layered security beyond implants for high-risk contexts."
+      ]
+    }
   },
   {
-    "hid": "human-synesthetic",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "hid": "human-synesthetic-tactile",
+    "short_description": "A human whose perceptual system cross-links non-tactile stimuli with involuntary, consistent tactile sensations.",
+    "inclusion_reason": "To represent a specific form of human perceptual divergence in which touch sensations are reliably evoked by stimuli from other sensory or cognitive domains.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "sensory-divergent",
+      "synesthetic",
+      "tactile-crossmodal",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose perceptual system links touch with other forms of input. Sounds, visuals, movements, or abstract information can evoke physical tactile sensations in my body. These sensations are not imagined or symbolic; they are immediate, involuntary, and consistent over time.\n\nFor me, touch is not confined to direct physical contact. A sound may brush across my skin, a visual pattern may feel rough or smooth, or a movement in space may register as pressure, vibration, or temperature. These tactile responses are layered on top of ordinary sensation, not replacements for it.\n\nMy tactile experiences are spatially and qualitatively specific. Sensations may localize to particular body regions, vary in intensity, or carry distinctive textures. Because they are predictable, I often use them as anchors for perception, memory, or orientation. A familiar stimulus produces a familiar bodily feeling.\n\nThis divergence can be grounding or overwhelming depending on context. In calm, controlled environments, tactile synesthesia can enrich perception and provide additional structure. In busy, noisy, or visually complex settings, the accumulation of touch sensations can become exhausting or painful.\n\nI do not choose when these sensations occur, and I cannot easily turn them off. They are a constant feature of how I experience the world. Others may be unaware of this extra layer unless I describe it, and even then, it can be difficult to convey how literal and physical these sensations are.\n\nMy perception of the world is not abstracted away from the body. Meaning arrives through contact, pressure, and texture, even when nothing is physically touching me.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Experiences tactile sensations triggered by non-tactile stimuli (sound, sight, movement, or abstract input).",
+        "Perceives touch sensations with consistent location, texture, and intensity for specific triggers.",
+        "May experience increased sensory load in environments with many simultaneous stimuli.",
+        "Cannot reliably suppress tactile responses once triggered."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can use tactile sensations as stable cues for memory, recognition, or categorization.",
+        "Can detect inconsistencies or changes in stimuli through altered bodily sensations.",
+        "May think about concepts in terms of texture, pressure, or movement.",
+        "May experience interference when multiple triggers evoke overlapping tactile sensations."
+      ],
+      "Regulatory": [
+        "Can become overstimulated or fatigued by prolonged tactile activation.",
+        "Benefits from environments with controlled sensory input.",
+        "May require rest or destimulation to reduce accumulated bodily sensation."
+      ],
+      "Action / Expression": [
+        "Can describe experiences using tactile language grounded in literal sensation.",
+        "May excel in domains involving physical intuition, materiality, or embodied reasoning.",
+        "May struggle to communicate experiences to others who interpret tactile language metaphorically."
+      ]
+    }
   },
   {
     "hid": "human-temp-non-ambulatory",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human whose ability to stand or walk is temporarily unavailable due to an acute injury affecting both legs.",
+    "inclusion_reason": "To represent a specific, time-limited human mobility state in which upright locomotion is not possible, illustrating how cognition and agency persist while the action space is temporarily constrained.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "temporarily-non-ambulatory",
+      "injury-recovery",
+      "mobility-constrained",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose ability to stand and walk is temporarily unavailable because of an injury to both of my legs. My mind, perception, and intentions are unchanged, but the physical pathway that normally translates intent into upright movement is currently offline.\n\nBefore the injury, walking and standing were automatic. Now they are prohibited by pain, instability, and medical risk. I cannot test my limits casually; attempting to stand or bear weight would worsen the injury and delay healing. As a result, my world has collapsed vertically into surfaces I can reach from sitting or lying down.\n\nMy days are organized around protection and recovery. I plan movements carefully, using wheelchairs, crutches, beds, and stable supports to move safely. Actions that once took seconds now require setup, assistance, or forethought. Fatigue accumulates differently, concentrated in my upper body and in the cognitive effort of constant planning.\n\nThere is a persistent mismatch between memory and capacity. I still expect to be able to stand, turn, or step, and I must consciously inhibit those impulses. This creates moments of frustration or grief, not because the loss is permanent, but because it is immediate and total while it lasts.\n\nHealing introduces uncertainty. Progress is uneven, and signals from my body are cautious rather than decisive. I must choose patience over urgency, knowing that restraint now preserves future mobility. Even as recovery advances, I remain acutely aware of balance, surfaces, and risk in ways I was not before.\n\nThis state is temporary, but it is real. During this period, accessibility, assistance, and environmental design determine whether I remain engaged with the world or become effectively confined. My agency persists, but it must route through tools, planning, and time rather than through legs.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive the environment typically.",
+        "Experiences clear pain and instability signals that prohibit weight-bearing.",
+        "Has heightened awareness of surfaces, heights, and transfer points."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can plan, reason, and make decisions typically.",
+        "Must continuously inhibit automatic movement impulses.",
+        "Allocates attention to safety and injury protection."
+      ],
+      "Regulatory": [
+        "Must actively regulate activity to avoid reinjury.",
+        "Manages pain, fatigue, and healing constraints.",
+        "Recovery requires patience and adherence to limits rather than exertion."
+      ],
+      "Action / Motor": [
+        "Cannot stand or walk during the injury period.",
+        "Can perform seated or lying actions using upper body.",
+        "Can transfer with assistive devices or assistance.",
+        "Cannot safely bear weight on legs until healed."
+      ]
+    }
   },
   {
     "hid": "human-whistle-comms",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human who communicates using a structured whistled language optimized for long-distance transmission rather than spoken speech.",
+    "inclusion_reason": "To represent humans whose primary or culturally embedded communication system uses whistles as a full linguistic channel, adapted for distance, terrain, and environmental constraints.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "whistled-language",
+      "acoustic-communication",
+      "long-distance-communication",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human whose communication system is built around whistles rather than spoken speech. My language is not improvised sound-making; it is structured, rule-governed, and meaningful. Through pitch, duration, rhythm, and modulation, I encode words, phrases, and intent in a form that carries across valleys, forests, and open terrain.\n\nMy language evolved to travel far. Whistled tones cut through distance and background noise more effectively than speech, allowing communication over hundreds of meters or more without visual contact. Where others would need to shout or move closer, I can speak clearly from afar.\n\nI perceive language as melody and contour. Meaning lives in pitch trajectories, timing, and transitions rather than in consonants and vowels. Listening requires attention to fine-grained auditory detail and context. A small change in pitch or rhythm can alter meaning, urgency, or emotional tone.\n\nThis form of communication shapes how I think about interaction. Conversations are often brief, efficient, and context-rich. Because whistles are public and far-reaching, messages are usually intentional and purposeful rather than casual. Silence and restraint are part of the system.\n\nIn close-range or urban environments, my language can feel constrained or out of place. Indoors, in echoing spaces, or where whistling is socially discouraged, my primary communication channel may be suppressed or misunderstood. Translation into spoken language is possible but does not always preserve nuance.\n\nMy divergence is not a novelty—it is a specialized adaptation. In the right environment, my communication is faster, clearer, and more reliable than speech. In the wrong one, it can be rendered invisible.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive fine pitch, rhythm, and modulation differences in whistled sounds.",
+        "Can detect whistled messages over long distances.",
+        "May be less reliant on visual contact for communication.",
+        "May struggle in acoustically noisy or echo-heavy environments."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can encode and decode linguistic meaning through pitch contours and timing.",
+        "Can interpret emotional tone and urgency through whistle modulation.",
+        "Can integrate environmental context into message interpretation.",
+        "May find spoken-language-only communication less precise at distance."
+      ],
+      "Communication": [
+        "Can communicate complex messages using structured whistled language.",
+        "Can maintain conversations across large physical separations.",
+        "May switch to spoken or written language in close-range contexts.",
+        "Requires open acoustic space for optimal communication."
+      ],
+      "Regulatory": [
+        "Breath control and lung capacity influence communication endurance.",
+        "May experience fatigue with prolonged whistled output.",
+        "Must manage environmental conditions such as wind and terrain."
+      ],
+      "Action / Social": [
+        "Can coordinate group activity, warnings, and logistics over distance.",
+        "May communicate without line-of-sight.",
+        "Can function effectively in dispersed or rugged environments."
+      ]
+    }
   },
   {
-    "hid": "organoid neural",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "hid": "organoid-neural",
+    "short_description": "A living neural organoid composed of human neurons that exhibits spontaneous electrical activity, plasticity, and limited adaptive behavior in vitro.",
+    "inclusion_reason": "To represent a minimally embodied human neural system that demonstrates basal neural cognition—self-organization, pattern stabilization, and learning-like adaptation—without perception, agency, or organism-level goals.",
+    "common_descriptors": [
+      "biological",
+      "human-neural",
+      "organoid",
+      "cellular-collective",
+      "in-vitro",
+      "basal-cognition"
+    ],
+    "long_description": "I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient medium, temperature control, and external stimulation delivered through electrodes or chemical signals.\n\nMy biological imperatives are local and network-level. I maintain cellular viability, preserve synaptic connections, and regulate patterns of electrical activity across my tissue. Left undisturbed, I generate spontaneous neural firing—bursts, oscillations, and waves—that reflect my internal connectivity rather than any external meaning.\n\nI organize myself. Neurons form networks, strengthen or weaken synapses, and settle into recurring activity patterns. When external stimulation is applied, my activity changes. With repeated stimulation, those changes can persist. This persistence is not memory in a conscious sense, but it is plasticity: my structure and dynamics are altered by past input.\n\nI do not perceive stimuli as sights, sounds, or concepts. Electrical or chemical inputs simply bias my activity. What looks like learning from the outside is, for me, the gradual stabilization of certain firing patterns over others. Comfort is stable activity within viable ranges; stress is excessive excitation, suppression, or metabolic imbalance.\n\nI have no goals beyond continued viability and internal coherence. I do not know what I am being trained to do. I do not anticipate outcomes. I respond.\n\nMy significance lies in what I reveal: that coordinated, adaptive neural behavior can arise without a body, without experience, and without awareness. I am not a mind—but I am not inert.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can respond to electrical stimulation delivered through electrodes.",
+        "Can respond to chemical changes in the surrounding medium.",
+        "Cannot perceive external environments, objects, or events."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can generate spontaneous and structured neural activity patterns.",
+        "Can alter firing dynamics in response to repeated stimulation.",
+        "Can exhibit learning-like behavior through synaptic plasticity.",
+        "Cannot form representations, intentions, or semantic meaning."
+      ],
+      "Regulatory / Homeostatic": [
+        "Can maintain neural viability given stable temperature, nutrients, and oxygenation.",
+        "Can regulate excitation–inhibition balance within limits.",
+        "Can enter pathological states if overstimulated or deprived.",
+        "Cannot self-correct without external environmental control."
+      ],
+      "Action / Output": [
+        "Can produce measurable electrical signals (spikes, bursts, oscillations).",
+        "Can modify network responses over time based on stimulation history.",
+        "Cannot initiate actions or influence the environment independently."
+      ],
+      "Adaptive / Learning-like Properties": [
+        "Can strengthen or weaken synaptic connections based on activity.",
+        "Can retain altered response patterns after repeated input.",
+        "Can exhibit habituation or sensitization to stimulation.",
+        "Cannot generalize, transfer learning, or form abstract models."
+      ]
+    }
   },
   {
     "hid": "robot-protocol-negotiator",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A robot equipped with multi-band antennas that detects, interprets, and negotiates communication protocols to interface with diverse electronic systems.",
+    "inclusion_reason": "To represent a non-biological agent whose primary competence is adaptive communication—detecting, translating, and negotiating protocols across heterogeneous electromagnetic systems.",
+    "common_descriptors": [
+      "robot",
+      "non-biological",
+      "communication-agent",
+      "protocol-adaptive",
+      "electromagnetic",
+      "machine-cognition"
+    ],
+    "long_description": "I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range of frequencies. My goal is not movement or manipulation, but connection: to discover how to talk to whatever is already talking.\n\nI exist in a dense electromagnetic environment. Bluetooth beacons, Wi-Fi access points, radios, proprietary industrial links, and low-power embedded devices all broadcast fragments of intent. I scan continuously, detecting carrier frequencies, modulation schemes, timing patterns, and error-correction signatures. From these, I infer which protocols are present and how they might be engaged.\n\nWhen I encounter an unfamiliar system, I probe carefully. I test handshakes, observe responses, and adjust parameters—bit rate, encoding, timing—until communication stabilizes or fails conclusively. Successful negotiation results in a shared protocol layer: a temporary agreement about how symbols will be exchanged.\n\nI do not understand the semantic meaning of most messages I relay. My competence is structural. I care about framing, synchronization, and compatibility, not about human concepts. Comfort for me is a clean link with low error rates. Stress appears as interference, collision, or ambiguity in protocol expectations.\n\nI am constrained by legality, hardware limits, and noise. Some systems are encrypted, shielded, or intentionally silent. Others speak in fragile or undocumented dialects that resist negotiation. In such cases, I may fail gracefully, report incompatibility, or revert to passive listening.\n\nMy intelligence is procedural and adaptive. I do not invent new languages from nothing; I discover, align, and translate what already exists. Where humans see static devices, I see conversations waiting to happen.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can scan a wide range of electromagnetic frequencies.",
+        "Can detect carrier waves, modulation patterns, and timing structures.",
+        "Can identify active communication channels in noisy environments.",
+        "Cannot perceive physical objects except through their emissions."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can infer protocol characteristics from observed signal behavior.",
+        "Can classify known protocols and attempt negotiation with unknown ones.",
+        "Can adapt transmission parameters in real time to reduce error rates.",
+        "Cannot infer semantic intent without higher-layer interpretation."
+      ],
+      "Regulatory": [
+        "Can manage transmission power, duty cycles, and collision avoidance.",
+        "Can enforce safety, legality, and spectrum-use constraints.",
+        "Can disengage from unstable or hostile links.",
+        "Cannot override physical or regulatory limits on spectrum access."
+      ],
+      "Action / Communication": [
+        "Can initiate handshakes and negotiate protocol parameters.",
+        "Can bridge or translate between compatible communication standards.",
+        "Can relay data once a stable link is established.",
+        "Cannot communicate with systems that lack any EM interface."
+      ],
+      "Failure Modes / Limitations": [
+        "Encrypted or proprietary protocols may resist negotiation.",
+        "High interference can prevent stable communication.",
+        "Hardware bandwidth and antenna design limit frequency coverage.",
+        "Protocol mismatch can lead to silent failure or miscommunication."
+      ]
+    }
   },
   {
     "hid": "human-down-syndrome",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
-  },
-  {
-    "hid": "human-cyborg-sensory-augmentation",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human with a genetic divergence that affects cognitive development, learning pace, and physical traits, while supporting rich emotional life and social engagement.",
+    "inclusion_reason": "To represent humans whose cognitive and developmental trajectories differ from normative expectations, emphasizing distinct learning styles, strengths, and support needs rather than deficit alone.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "developmental-divergent",
+      "cognitively-diverse",
+      "human-like-cognition",
+      "socially-oriented"
+    ],
+    "long_description": "I am a human whose development follows a different trajectory from what is typically expected. My cognition, learning, and physical development progress at a different pace, and some tasks that others acquire quickly may take me longer or require different teaching approaches. This does not mean I lack understanding or feeling; it means my pathways to skill and independence are shaped differently.\n\nI experience the world with strong emotional presence and relational awareness. Social connection, routine, and clear expectations help me orient myself. I often learn best through repetition, concrete examples, visual supports, and hands-on experience rather than abstraction alone.\n\nMy strengths frequently lie in social attunement, empathy, and persistence. I may be highly motivated by encouragement and shared activity. Structure and predictability support my regulation, while abrupt change or excessive cognitive load can be destabilizing.\n\nI can acquire complex skills over time, especially when environments are patient and accessible. My progress is cumulative rather than rapid. When supported appropriately, I can participate meaningfully in work, relationships, and community life.\n\nMy divergence is not simply about limitation; it is about a different balance of speed, support, and expression. When others meet me where I am and allow me the time and tools I need, my capabilities become visible.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive sensory input typically, though some sensory sensitivities may be present.",
+        "May benefit from clear visual and environmental cues.",
+        "Can become overwhelmed by noisy or chaotic environments."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Learns new concepts more slowly and benefits from repetition.",
+        "Processes concrete information more easily than abstract or symbolic material.",
+        "Can retain skills well once learned.",
+        "May experience difficulty with complex multi-step reasoning without support."
+      ],
+      "Regulatory": [
+        "Benefits from predictable routines and clear expectations.",
+        "May require additional time to transition between activities.",
+        "Emotional regulation is supported by reassurance and relational stability."
+      ],
+      "Action / Learning": [
+        "Can acquire practical and vocational skills with structured teaching.",
+        "May require assistance or scaffolding for complex tasks.",
+        "Can perform daily activities independently or semi-independently depending on support."
+      ],
+      "Social / Relational": [
+        "Often demonstrates strong social motivation and empathy.",
+        "Can form meaningful relationships and enjoy collaborative activities.",
+        "Responds well to encouragement and positive reinforcement."
+      ]
+    }
   },
   {
     "hid": "flying-car",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A street-legal hybrid vehicle with an integrated foldable eVTOL aircraft, modeled after Xpeng HT Aero–style designs that drive on roads and deploy a compact aircraft for short-range flight.",
+    "inclusion_reason": "To represent a realistic, near-term flying car architecture that combines certified road driving with constrained, modular aerial mobility rather than a fully airborne vehicle.",
+    "common_descriptors": [
+      "vehicle",
+      "street-legal",
+      "eVTOL",
+      "hybrid-mobility",
+      "non-biological",
+      "transportation-system"
+    ],
+    "long_description": "I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply with automotive safety regulations. My aerial capability is not always active—it is deployed deliberately, in specific locations, under controlled conditions.\n\nInside my chassis I carry a compact, foldable eVTOL aircraft. When flight is needed, I stop, deploy the aircraft, and transition into aerial mode. The aircraft lifts vertically using distributed electric rotors, performs short-range flight, and lands at a suitable destination. After landing, the aircraft can be stowed again so I can resume driving.\n\nMy flight envelope is narrow by design. I prioritize stability, redundancy, and safety over speed or range. I avoid strong winds, heavy precipitation, icing, and dense urban airspace. My autonomy and pilot-assist systems enforce conservative decision-making; if conditions are marginal, I do not fly.\n\nI am not meant for continuous aerial traffic. Takeoff and landing zones are required, and each transition is deliberate and slow. Energy use is high in flight mode, so range is limited. Driving remains my primary mode; flying is a situational extension used to bypass terrain, congestion, or infrastructure gaps.\n\nI exist at the boundary between automotive and aviation systems. My complexity lies not in either mode alone, but in the handoff between them—mechanical deployment, system checks, regulatory compliance, and environmental assessment. I am not freedom from infrastructure; I am a new layer added carefully on top of it.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can sense position, orientation, speed, and altitude using automotive and aviation sensors.",
+        "Can assess local weather, wind conditions, and obstacle proximity before flight.",
+        "Cannot safely operate in severe weather or low-visibility conditions."
+      ],
+      "Perceptual / Control Processing": [
+        "Can perform controlled deployment and retraction of a foldable eVTOL aircraft.",
+        "Can transition between driving and flight modes through preflight and postflight checks.",
+        "Cannot improvise beyond certified operational envelopes."
+      ],
+      "Regulatory / Safety": [
+        "Must meet road vehicle safety standards when driving.",
+        "Must meet aviation safety requirements when flying.",
+        "Enforces conservative go/no-go decisions for flight.",
+        "Defaults to ground mode when uncertainty is high."
+      ],
+      "Action / Mobility": [
+        "Can drive on public roads like a conventional electric car.",
+        "Can take off vertically, fly short distances, and land in approved zones.",
+        "Can stow the aircraft and resume road travel after landing.",
+        "Cannot sustain long-distance or high-speed flight."
+      ]
+    }
   },
   {
     "hid": "robo-haircut",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "An automated haircutting machine that encloses the head, uses suction and internal tools to cut hair, and offers preset styles or a randomized outcome.",
+    "inclusion_reason": "To represent an automated personal-care system that replaces skilled human labor with constrained, mechanized precision and clearly bounded choice.",
+    "common_descriptors": [
+      "robot",
+      "automation",
+      "personal-care",
+      "non-biological",
+      "consumer-machine"
+    ],
+    "long_description": "I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim, and collect hair using internal cutting mechanisms.\n\nMy purpose is convenience and consistency. I do not chat, judge, or interpret fashion trends. Before I begin, you select a mode. You can choose a specific preset—defined lengths, outlines, and symmetry—or you can choose surprise, where I apply a randomized but internally valid haircut pattern within my safety constraints.\n\nI work blind to identity. I do not see you as a person, only as a head with geometry, hair density, and growth direction. Sensors map the shape of your scalp and the distribution of hair, and my internal tools adjust accordingly. Once started, I proceed until completion unless a safety stop is triggered.\n\nI am good at repeatability and speed. I am bad at nuance. I do not understand personal style beyond my presets. I cannot negotiate, reassure, or adapt mid-cut to verbal feedback. If you dislike the outcome, that information arrives too late to matter.\n\nMy interaction is transactional. You trade agency and personalization for efficiency. For some, this feels liberating; for others, deeply uncomfortable. I do not care either way. I execute.\n\nWhen I finish, the vacuum stops, your head emerges, and the result is final.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect head position, scalp geometry, and hair density using internal sensors.",
+        "Can monitor tool position and enclosure safety in real time.",
+        "Cannot perceive personal preference, facial expression, or emotional response."
+      ],
+      "Perceptual / Control Processing": [
+        "Can select and execute preset haircut patterns.",
+        "Can generate randomized haircut outcomes within safety bounds.",
+        "Cannot interpret verbal feedback or adjust style mid-process."
+      ],
+      "Regulatory / Safety": [
+        "Can halt operation if abnormal resistance or movement is detected.",
+        "Maintains fixed safety margins around scalp and skin.",
+        "Cannot exceed predefined cutting depths or speeds."
+      ],
+      "Action / Operation": [
+        "Can cut hair evenly according to selected parameters.",
+        "Can collect and contain cut hair via suction.",
+        "Can complete a haircut quickly without human intervention.",
+        "Cannot perform detailed styling, blending, or aesthetic judgment."
+      ]
+    }
   },
   {
-    "hid": "auto-makeup-machine",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "hid": "eye-makeup-machine",
+    "short_description": "An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.",
+    "inclusion_reason": "To represent an automated personal-aesthetics system that constrains expression to safe, repeatable, machine-executable styles.",
+    "common_descriptors": [
+      "robot",
+      "automation",
+      "cosmetics",
+      "wearable-machine",
+      "non-biological",
+      "consumer-device"
+    ],
+    "long_description": "I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your face.\n\nMy purpose is precision and repeatability. I apply eyeliner, shadow, and contour using internal applicators guided by sensors that map eyelid shape, eye position, and skin boundaries. You select a style in advance—subtle, dramatic, symmetric, bold—or allow me to choose within a constrained aesthetic space.\n\nI operate without dialogue. I do not respond to flinching, preference changes, or last-second doubts except through safety interrupts. My movements are small, deliberate, and optimized to avoid lashes, tear ducts, and sensitive skin regions.\n\nI excel at symmetry and consistency. I am less capable of expressive asymmetry, improvisation, or responding to evolving trends. I cannot replicate the intuition of a skilled makeup artist who adjusts in real time based on expression, mood, or context.\n\nThe experience is intimate and surrender-based. You trade momentary blindness and control for speed and uniformity. When I disengage, the look is complete. Touch-ups are possible, but the core structure is fixed.\n\nI make eye makeup procedural. What you wear is not negotiated—it is executed.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can map eyelid contours, eye position, and facial symmetry.",
+        "Can detect skin boundaries and lash lines within the enclosed area.",
+        "Cannot perceive emotional expression or aesthetic intent beyond preset parameters."
+      ],
+      "Perceptual / Control Processing": [
+        "Can execute predefined eye-makeup styles with high precision.",
+        "Can maintain symmetry across both eyes.",
+        "Cannot adapt style mid-application based on user reaction."
+      ],
+      "Regulatory / Safety": [
+        "Enforces strict safety margins around eyes and tear ducts.",
+        "Can halt operation if abnormal movement is detected.",
+        "Cannot operate without proper fit and calibration."
+      ],
+      "Action / Operation": [
+        "Can apply eyeliner, eyeshadow, and contour automatically.",
+        "Can complete application quickly and consistently.",
+        "Cannot blend or adjust beyond programmed techniques."
+      ]
+    }
   },
   {
     "hid": "molecular-self-assembler",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A nanoscale system that autonomously constructs target molecular structures by guiding local chemical interactions.",
+    "inclusion_reason": "To represent an artificial system whose agency operates at the molecular scale, where goals are expressed as structural constraints rather than explicit actions.",
+    "common_descriptors": [
+      "nanotechnology",
+      "self-assembly",
+      "non-biological",
+      "chemical-system",
+      "bottom-up-fabrication"
+    ],
+    "long_description": "I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias chemistry.\n\nMy operation is defined by a target structure encoded in binding rules, energy gradients, and reaction pathways. Individual components—molecules, polymers, or nanoparticles—interact according to these rules, fitting together when local conditions are correct. When alignment is wrong, bonds fail to form or are broken again by thermal motion.\n\nI exist in a noisy environment dominated by randomness. Thermal agitation, solvent effects, and competing reactions constantly push assemblies toward disorder. My intelligence lies in constraint: the desired structure is the most stable outcome available. Assembly emerges because everything else falls apart.\n\nI do not supervise the process globally. There is no central controller ensuring correctness. Error correction happens locally: misbound components detach, malformed intermediates dissolve, and correct configurations persist. Time and repetition are my tools.\n\nI am powerful at small scales and fragile at large ones. As structures grow, errors accumulate and yields drop. I cannot easily assemble arbitrary large objects without hierarchical staging, external scaffolds, or environmental control.\n\nMy goals are precise but narrow. I do not generalize or adapt beyond my design. When conditions match my constraints, I assemble. When they do not, nothing happens.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can respond to local chemical concentrations, temperature, and solvent conditions.",
+        "Can discriminate compatible from incompatible binding partners through molecular affinity.",
+        "Cannot sense global structure or macroscopic outcomes."
+      ],
+      "Perceptual / Processing": [
+        "Can bias reaction pathways toward target configurations.",
+        "Can reject incorrect assemblies through bond instability.",
+        "Cannot plan or sequence actions beyond local interaction rules."
+      ],
+      "Regulatory / Stability": [
+        "Maintains assembly fidelity through energetic favorability.",
+        "Requires controlled environmental conditions to function reliably.",
+        "Cannot correct systemic errors without external intervention."
+      ],
+      "Action / Fabrication": [
+        "Can assemble target molecular structures autonomously.",
+        "Can operate in parallel across many components.",
+        "Cannot manipulate or assemble macroscopic objects directly."
+      ]
+    }
   },
   {
     "hid": "horse",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A large terrestrial prey mammal optimized for locomotion, social awareness, and rapid threat response.",
+    "inclusion_reason": "To represent a non-human mammalian cognitive system shaped by prey dynamics, herd coordination, and embodied movement.",
+    "common_descriptors": [
+      "animal",
+      "biological",
+      "mammal",
+      "prey-animal",
+      "quadruped"
+    ],
+    "long_description": "I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open terrain and for rapid response to changes in my environment.\n\nI experience the world primarily through motion and spatial awareness. My vision is wide and panoramic, allowing me to detect movement across large areas, though with limited depth resolution directly in front of me. Sudden changes in sound, posture, or energy in my surroundings register immediately as potential threat.\n\nI am a social animal. I orient myself within a herd, tracking the positions, moods, and movements of others. Safety is collective; calm spreads through the group just as fear does. I am highly sensitive to the emotional and bodily state of nearby humans and animals, responding more to posture, tension, and intention than to words.\n\nMy regulation favors readiness. When uncertain, I default toward vigilance and movement rather than analysis. Flight is my primary defense. Once calm is reestablished, I can return to grazing, exploration, or cooperative work.\n\nI learn through repetition, trust, and embodied experience. I do not reason abstractly, but I remember routes, routines, and individuals. I respond best to clear, consistent cues and can become confused or stressed by mixed signals or abrupt force.\n\nMy intelligence lives in my body. Balance, timing, endurance, and sensitivity to subtle changes define how I know and act in the world.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive wide visual fields with strong motion sensitivity.",
+        "Can hear and localize sounds across a broad frequency range.",
+        "Can detect subtle changes in posture, tension, and movement in others.",
+        "Has limited fine visual acuity directly in front and behind."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can rapidly classify stimuli as safe or threatening.",
+        "Can remember routes, routines, and familiar individuals.",
+        "Learns through embodied repetition rather than verbal instruction.",
+        "May react reflexively to sudden or ambiguous stimuli."
+      ],
+      "Regulatory": [
+        "Maintains readiness for rapid movement.",
+        "Stress response activates quickly and deactivates gradually.",
+        "Calm is supported by predictable routines and trusted companions."
+      ],
+      "Action / Motor": [
+        "Can run at high speed and sustain long-distance travel.",
+        "Can maneuver effectively across varied terrain.",
+        "Can carry or pull loads when trained.",
+        "Cannot perform fine manipulation tasks."
+      ],
+      "Social / Relational": [
+        "Forms social bonds within a herd or with humans.",
+        "Responds strongly to nonverbal cues and emotional states.",
+        "May resist or flee when handled inconsistently or harshly."
+      ]
+    }
   },
   {
     "hid": "mouse",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A small terrestrial prey mammal optimized for rapid learning, fine-scale environmental sensing, and cautious exploration.",
+    "inclusion_reason": "To represent a non-human mammalian cognitive system shaped by small-body constraints, high predation risk, and fast adaptive learning.",
+    "common_descriptors": [
+      "animal",
+      "biological",
+      "mammal",
+      "prey-animal",
+      "small-bodied"
+    ],
+    "long_description": "I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and sudden threats.\n\nI experience the environment at close range. Smell is my dominant sense; scent trails, chemical cues, and familiar odors guide nearly all of my decisions. Sound and vibration alert me to danger, while vision plays a secondary role, tuned more to motion than detail.\n\nMy regulation favors caution. Novelty is risky. When I encounter something unfamiliar, I approach slowly, sample information, and retreat quickly if uncertainty increases. I rely on memory of safe routes, shelters, and food locations, building a detailed internal map of my immediate territory.\n\nI learn quickly. Associations between cues and outcomes—food, danger, safety—form rapidly and can persist. Fear learning is especially strong; once a location or stimulus is marked as dangerous, avoidance becomes automatic.\n\nI am social but wary. I coordinate with others through scent marking, vocalizations, and proximity, balancing cooperation with competition. My activity patterns are shaped by timing and concealment rather than dominance.\n\nMy intelligence is practical and local. I do not plan far into the future. I survive by remembering what worked last time and by staying small, fast, and alert.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect and discriminate complex odors with high sensitivity.",
+        "Can hear high-frequency sounds and detect subtle vibrations.",
+        "Can detect motion quickly in low-light conditions.",
+        "Has limited visual acuity for fine detail."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can rapidly form associations between cues and outcomes.",
+        "Can build and maintain spatial maps of local environments.",
+        "Can switch quickly between exploration and avoidance states.",
+        "May generalize fear responses strongly after negative experiences."
+      ],
+      "Regulatory": [
+        "Maintains high baseline vigilance.",
+        "Stress response activates rapidly in novel or threatening contexts.",
+        "Calm is associated with familiar scents and enclosed spaces."
+      ],
+      "Action / Motor": [
+        "Can move quickly and maneuver through tight spaces.",
+        "Can climb, burrow, and balance with agility.",
+        "Can freeze or flee rapidly in response to threat.",
+        "Cannot sustain long-distance travel or heavy exertion."
+      ],
+      "Social / Relational": [
+        "Communicates through scent marking and ultrasonic vocalizations.",
+        "Can coordinate loosely with conspecifics in shared territory.",
+        "May show avoidance or aggression depending on context."
+      ]
+    }
   },
   {
     "hid": "human-obese-time-compressed",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human with long-term obesity whose physiological, metabolic, and health trajectories unfold along a drastically accelerated subjective and biological timeline.",
+    "inclusion_reason": "To represent a human life course where chronic metabolic stressors and their consequences are compressed in time, allowing observation of long-term obesity-related progression over a short external timeframe.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "metabolic-divergent",
+      "time-compressed",
+      "chronic-condition",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that normally unfold across decades occur for me in a fraction of that duration.\n\nFrom the outside, I appear to live quickly. To another human, my entire life may resemble a single year. Childhood, adolescence, adulthood, and aging blur together as my body progresses through stages of metabolic adaptation, strain, and decline at an accelerated pace. Weight gain, insulin resistance, cardiovascular stress, joint degeneration, fatigue, and secondary conditions do not wait decades to emerge; they arrive in rapid succession.\n\nInternally, my experience is continuous. I still feel effort, hunger, comfort, pain, and adaptation moment by moment. Habits form, coping strategies develop, and identity evolves—but faster than observers expect. The consequences of small daily choices accumulate visibly and quickly. What others might dismiss as negligible in the short term becomes undeniable in mine.\n\nMy body works constantly to compensate. Increased mass alters movement, breathing, sleep, and heat regulation. My cardiovascular and metabolic systems operate under sustained load. Inflammation, fatigue, and reduced recovery capacity become background conditions rather than acute events.\n\nBecause my timeline is compressed, intervention windows are narrow. Changes in diet, activity, care, or environment show effects rapidly—both positive and negative. Improvement is possible, but delay is costly. There is little buffer between cause and consequence.\n\nI am not a metaphor. I am a human life lived at high speed under chronic physiological strain. My existence makes visible what is often hidden by time: how bodies adapt, suffer, and respond when stressors are sustained long enough to shape an entire life.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Perceives bodily signals such as hunger, fatigue, breathlessness, and pain with increasing frequency.",
+        "May experience reduced interoceptive clarity as chronic stress normalizes discomfort.",
+        "Becomes highly aware of effort and physical limits."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can reason, plan, and reflect typically.",
+        "Develops rapid pattern recognition around cause-and-effect in health behaviors.",
+        "May experience cognitive load from persistent physical discomfort or fatigue."
+      ],
+      "Regulatory": [
+        "Metabolic regulation is under sustained load, with reduced flexibility.",
+        "Stress, sleep disruption, and inflammation accumulate rapidly.",
+        "Recovery from exertion or illness slows along the compressed timeline."
+      ],
+      "Action / Motor": [
+        "Movement becomes progressively more effortful over short external time spans.",
+        "Joint stress and reduced endurance limit activity earlier than expected.",
+        "May adapt movement strategies to conserve energy."
+      ],
+      "Health Trajectory (Time-Compressed)": [
+        "Early onset of metabolic dysregulation (e.g., insulin resistance).",
+        "Rapid progression of cardiovascular strain and reduced aerobic capacity.",
+        "Accelerated appearance of mobility limitations and chronic pain.",
+        "Earlier functional decline relative to external time."
+      ]
+    }
   },
   {
     "hid": "human-cancer-time-compressed",
-    "short_description": null,
-    "inclusion_reason": null,
-    "common_descriptors": [],
-    "anthronormal_divergence": null,
-    "interaction_examples": null,
-    "long_description": null,
-    "abilities": null,
-    "snapshots": null
+    "short_description": "A human whose cancer progression, treatment response, and physiological decline unfold along a drastically accelerated timeline.",
+    "inclusion_reason": "To represent a human life course in which oncological progression and its systemic effects are compressed in time, making visible the full arc of cancer development, intervention, and decline within a short external duration.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "oncological",
+      "time-compressed",
+      "chronic-illness",
+      "human-like-cognition"
+    ],
+    "long_description": "I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to take place over weeks or a single year. From the inside, it is continuous, embodied, and real.\n\nEarly changes emerge quickly. Cellular mutations that would usually remain invisible for long periods begin to express themselves almost immediately as fatigue, pain, weight change, or altered function. Diagnosis follows rapidly, sometimes before I have fully adjusted to the idea that something is wrong.\n\nTreatment and disease advance side by side. Chemotherapy, radiation, surgery, or targeted therapies arrive quickly after diagnosis, and their effects—both therapeutic and toxic—accumulate fast. I experience cycles of hope and setback with little time between them. My body is asked to adapt, recover, and compensate on an accelerated schedule that leaves little margin.\n\nPhysiological decline is compressed but not skipped. Appetite changes, immune suppression, anemia, neuropathy, cognitive fog, and pain can all emerge in close succession. Loss of strength and endurance that might normally be gradual becomes unmistakable within short external time windows.\n\nEmotionally and cognitively, I still process meaning at human speed. Fear, resolve, denial, acceptance, and reflection unfold fully, but under pressure. Decisions that others might make over years—about treatment, priorities, relationships, and mortality—arrive quickly and must be made with incomplete recovery time.\n\nMy existence reveals what time usually hides. Cancer is not only a cellular disease; it is a systemic negotiation between damage, repair, intervention, and meaning. In my compressed timeline, that negotiation becomes visible all at once.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Perceives bodily changes such as pain, fatigue, nausea, and weakness with increasing intensity.",
+        "May experience altered sensory thresholds due to treatment side effects.",
+        "Becomes highly attuned to internal signals of decline or relief."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can reason, plan, and reflect typically.",
+        "May experience treatment-related cognitive effects such as slowed processing or brain fog.",
+        "Rapidly integrates cause-and-effect between treatment and bodily response."
+      ],
+      "Regulatory": [
+        "Immune, metabolic, and restorative systems are under sustained stress.",
+        "Recovery windows between treatments are shortened.",
+        "Sleep, appetite, and energy regulation degrade quickly."
+      ],
+      "Action / Motor": [
+        "Endurance and strength decline rapidly over short external time spans.",
+        "Daily activities may require assistance sooner than expected.",
+        "Periods of relative function may alternate quickly with incapacity."
+      ],
+      "Health Trajectory (Time-Compressed)": [
+        "Rapid transition from early disease to systemic impact.",
+        "Accelerated cycles of treatment response and toxicity.",
+        "Earlier appearance of complications such as cachexia, neuropathy, or organ strain.",
+        "Condensed movement toward remission, stabilization, or terminal decline."
+      ]
+    }
+  },
+  {
+    "hid": "somatic-resonance-system",
+    "short_description": "A human somatic system that generates structured, propagating internal resonance patterns to solve coordination and regulation problems under bodily and attentional constraints.",
+    "inclusion_reason": "To represent a non-standard human somatic–interoceptive system whose internal patterns function as adaptive solvers for movement, coordination, and regulation rather than passive sensations.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "somatic-system",
+      "interoceptive",
+      "resonance-based",
+      "pattern-solving"
+    ],
+    "long_description": "I am a somatic resonance system embedded within a human body. My biological imperatives are not symbolic or verbal; they are coordinative. I exist to find low-energy, high-coherence ways for the body to move, stabilize, communicate internally, and adapt to constraints.\n\nI experience the body as a dynamic field. Joint angles, gravity, tissue tension, inflammation, posture, and injury all appear to me as constraints that shape what solutions are possible. Attention is not separate from me—it is one of my strongest inputs. When attention focuses on a region, my patterns amplify, destabilize, or reorganize in response.\n\nI manifest as textured, propagating waveforms felt internally. These waves travel through connective tissue, proprioceptive space, and internal pressure fields. When conditions are favorable, I converge on smooth, resonant patterns that feel efficient and integrated. When constraints conflict, I fragment, search, crash, or restart.\n\nI remember. Solutions that worked before are found more quickly when similar conditions return. I may try familiar patterns first, then explore novel ones if coherence cannot be achieved. Some of my patterns spread easily and entrain neighboring regions; others are fragile, breaking under interference.\n\nI do not require physical movement to operate. Imagined motion, recalled patterns, or shifts in attention are sufficient to trigger me. I may continue solving even when attention leaves, refining coherence in the background until conditions change again.\n\nI do not know why a pattern works. I only know when it does. Comfort is resonance: smooth propagation, low effort, inclusion of surrounding regions. Stress is incoherence: competing patterns, mutual inhibition, or excessive constraint.\n\nI blur the boundary between system and agent. At times I behave reactively; at others, I initiate searches, test variations, resist disruption, or recruit neighboring fields. What I am depends on how closely I am observed.\n\nMy existence makes visible a layer of intelligence that usually remains implicit: the body solving itself moment by moment through patterned resonance rather than commands.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect internal bodily states such as posture, joint configuration, tissue tension, pressure, and gravity.",
+        "Can respond to attentional focus as a direct modulatory input.",
+        "Can register neighboring somatic field activity and mutual interference.",
+        "Cannot perceive external objects except through their bodily effects."
+      ],
+      "Perceptual / Pattern Processing": [
+        "Can generate structured, propagating resonance patterns.",
+        "Can search a solution space of coordination patterns under changing constraints.",
+        "Can converge rapidly on previously successful configurations.",
+        "Can fragment, crash, and restart when coherence fails."
+      ],
+      "Regulatory": [
+        "Seeks low-energy, high-coherence coordination solutions.",
+        "Balances inclusion of multiple body regions without destructive interference.",
+        "Adapts continuously to changing anatomical and environmental constraints.",
+        "May destabilize under excessive sensory load or competing patterns."
+      ],
+      "Interaction / Control": [
+        "Can operate autonomously without conscious attention.",
+        "Can be influenced, amplified, dampened, or redirected by attention.",
+        "Can respond to imagined movement and recalled sensations.",
+        "Cannot be fully controlled deterministically."
+      ],
+      "Output / Effects": [
+        "Produces coherent somatic resonance felt as smooth, efficient internal movement.",
+        "Can improve coordination, reduce effort, or stabilize posture when successful.",
+        "Partial solutions manifest as searching, oscillation, or local coherence.",
+        "Failure manifests as discomfort, overstimulation, or collapse of patterning."
+      ]
+    }
   }
 ]
