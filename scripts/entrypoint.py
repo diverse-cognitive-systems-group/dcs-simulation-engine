@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.theme import Theme
 
+from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.helpers import database_helpers as dbh
 from dcs_simulation_engine.helpers import deploy_helpers as dh
 from dcs_simulation_engine.helpers.game_helpers import (
@@ -538,6 +539,25 @@ def validate_game(
         f"Validating game configuration at [bold]{game}[/bold]...",
         style="info",
     )
+
+    try:
+        game_config = GameConfig.from_yaml(game)
+    except Exception as e:
+        logger.error(
+            f"Loading game config from yaml file {game_config_fpath} \
+                failed. This likely means there is a syntax error \
+                    in the YAML file. \n{e}"
+        )
+        raise
+
+    # Compile the simulation graph
+    try:
+        sim_graph: SimulationGraph = SimulationGraph.compile(
+            config=game_config.graph_config
+        )
+    except Exception as e:
+        logger.error(f"Failed to compile simulation graph: {e}")
+        raise
 
     # Stub: pretend validation passed
     echo(ctx, "TODO: implement validation logic.", style="error")
