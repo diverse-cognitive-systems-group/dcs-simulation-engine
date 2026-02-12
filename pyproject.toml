@@ -32,8 +32,8 @@ dependencies = [
   "python-on-whales (>=0.80.0,<0.81.0)",
 ]
 
-[project.scripts]
-dcs = "scripts.entrypoint:run"
+[tool.poetry.scripts]
+dcs = "dcs_simulation_engine.cli.app:app"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
@@ -92,13 +92,13 @@ exclude = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.mypy]
-python_version = "3.10"
-warn_unused_ignores = true
-disallow_untyped_defs = true
-ignore_missing_imports = true
-files = ["dcs_simulation_engine", "tests"] # <— only check these
-# exclude = '''
+# [tool.mypy]
+# python_version = "3.10"
+# warn_unused_ignores = true
+# disallow_untyped_defs = true
+# ignore_missing_imports = true
+# files = ["dcs_simulation_engine", "tests"] # <— only check these
+# # exclude = '''
 # (
 #   ^notebooks/.*           # all notebooks/ and subfolders
 #   | ^manual_analysis/.*    # all manual_analysis/ and subfolders

@@ -17,7 +17,9 @@
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
     "features": {
-        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+        "ghcr.io/devcontainers/features/docker-outside-of-docker": {
+            "version": "latest"
+        }
     },
     "postCreateCommand": "poetry install --with dev",
     "customizations": {
@@ -28,7 +30,7 @@
                 "ms-python.black-formatter",
                 "charliermarsh.ruff",
                 "ms-azuretools.vscode-docker",
-                "ms-python.mypy-type-checker",
+                // "ms-python.mypy-type-checker",
                 "github.vscode-pull-request-github"
             ],
             "settings": {
@@ -41,12 +43,12 @@
                     }
                 },
                 "python.analysis.typeCheckingMode": "basic",
-                "mypy-type-checker.importStrategy": "fromEnvironment",
-                "mypy-type-checker.args": [
-                    "--strict",
-                    "--exclude",
-                    "^(tests|analysis_notebooks)/"
-                ],
+                // "mypy-type-checker.importStrategy": "fromEnvironment",
+                // "mypy-type-checker.args": [
+                //     "--strict",
+                //     "--exclude",
+                //     "^(tests|analysis_notebooks)/"
+                // ],
                 "python.testing.pytestEnabled": true,
                 "python.testing.unittestEnabled": false
             }

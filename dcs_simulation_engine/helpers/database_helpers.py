@@ -1,4 +1,8 @@
-"""Helpers for database operations."""
+"""Helpers for database operations.
+
+IMPORTANT!! THIS WHOLE FILE IS TEMP/YUCK...db needs refactor before release.
+
+"""
 
 import hashlib
 import hmac
@@ -29,7 +33,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import CollectionInvalid, OperationFailure
 
-from dcs_simulation_engine.helpers.docker_helpers import (
+from dcs_simulation_engine.infra.docker import (
     ensure_mongo_running,
     get_mongodb_ip,
 )

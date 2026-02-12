@@ -9,6 +9,7 @@ from loguru import logger
 from packaging.version import InvalidVersion, Version
 
 from dcs_simulation_engine.errors import GameValidationError
+from dcs_simulation_engine.utils.paths import package_games_dir
 
 
 def validate_game_compiles(name: str) -> Path:
@@ -66,56 +67,60 @@ def create_game_from_template(name: str, template: str | Path | None = None) -> 
 
 def list_games(
     directory: str | Path | None = None,
-) -> list[tuple[str, str | None, Path]]:
-    """Return available game configs as (name, version, path) tuples.
+) -> list[tuple[str, str, Path, str | None, str | None]]:
+    """Return available games."""
+    pkg_dir = package_games_dir()
+    user_dir = (
+        (Path.cwd() / "games") if directory is None else Path(directory).expanduser()
+    )
 
-    Parameters
-    ----------
-    directory:
-        Optional directory containing game YAML files.
-        Defaults to the built-in ``games/`` directory in the package.
+    if not user_dir.exists() or not user_dir.is_dir():
+        raise FileNotFoundError(
+            f"Provided games directory {user_dir!s} not found or invalid."
+        )
 
-    Returns:
-    -------
-    list[tuple[str, str | None, Path]]
-        Each tuple contains:
-          - name:    top-level ``name`` field (string)
-          - version: top-level ``version`` field if present, else None
-          - path:    Path to the YAML file
-          - description: top-level ``description`` field if present, else None
+    results: list[tuple[str, str, Path, str | None, str | None]] = []
 
-    Files that cannot be loaded or that lack a ``name`` field are skipped.
-    """
-    if directory is None:
-        directory = Path(__file__).parent.parent.parent / "games"
-    else:
-        directory = Path(directory).expanduser()
+    def add_from_dir(dir_path: Path) -> None:
+        for path in dir_path.glob("*.y*ml"):
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    doc = yaml.safe_load(f) or {}
+            except Exception:
+                logger.warning(f"Failed to parse {path}, skipping.")
+                continue
 
-    if not directory.exists() or not directory.is_dir():
-        raise FileNotFoundError(f"Games directory {directory!s} not found or invalid.")
+            raw_name = doc.get("name")
+            if not raw_name:
+                logger.warning(f"Game config {path} missing 'name', skipping.")
+                continue
+            name = str(raw_name).strip()
 
-    results: list[tuple[str, str | None, Path]] = []
+            raw_version = doc.get("version")
+            version = str(raw_version).strip() if raw_version else None
 
-    for path in directory.glob("*.y*ml"):
-        try:
-            with path.open("r", encoding="utf-8") as f:
-                doc = yaml.safe_load(f) or {}
-        except Exception:
-            logger.warning(f"Failed to parse {path}, skipping.")
-            continue
+            authors = doc.get("authors")
+            if isinstance(authors, list):
+                author_str = ", ".join(
+                    str(a).strip() for a in authors if str(a).strip()
+                )
+            elif isinstance(authors, str):
+                author_str = authors.strip()
+            else:
+                author_str = ""
 
-        raw_name = doc.get("name")
-        if not raw_name:
-            logger.warning(f"Game config {path} missing 'name', skipping.")
-            continue
-        name = str(raw_name).strip()
+            raw_description = doc.get("description")
+            description = str(raw_description).strip() if raw_description else None
 
-        raw_version = doc.get("version")
-        version = str(raw_version).strip() if raw_version else None
-        raw_description = doc.get("description")
-        description = str(raw_description).strip() if raw_description else None
+            results.append((name, author_str, path, version, description))
 
-        results.append((name, version, path, description))
+    # List package games first
+    if pkg_dir and pkg_dir.exists() and pkg_dir.is_dir():
+        add_from_dir(pkg_dir)
+
+    # Only include user dir if it's not the same directory
+    if not pkg_dir or pkg_dir.resolve() != user_dir.resolve():
+        add_from_dir(user_dir)
 
     return results
 

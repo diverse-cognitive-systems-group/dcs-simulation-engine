@@ -1,4 +1,4 @@
-"""Helpers for managing Docker via python-on-whales."""
+"""Docker management."""
 
 from dataclasses import dataclass
 from typing import Iterable, Optional
