@@ -2,7 +2,37 @@
 
 import json
 import pickle
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Dict
+
+
+def validate_port(port: int) -> bool:
+    """Validate if the given port number is valid."""
+    if not (1 <= port <= 65535):
+        return False
+    return True
+
+
+def parse_kv(pairs: list[str]) -> Dict[str, Any]:
+    """Parse key=value tokens into a dict. Values accept JSON."""
+    out: Dict[str, Any] = {}
+    for token in pairs:
+        if "=" not in token:
+            raise ValueError(f"bad field (expected key=value): {token!r}")
+        k, v = token.split("=", 1)
+        try:
+            out[k] = json.loads(v)
+        except json.JSONDecodeError:
+            out[k] = v
+    return out
+
+
+def get_version() -> str:
+    """Get the current package version."""
+    try:
+        return version("dcs-simulation-engine")  # your package name from pyproject
+    except PackageNotFoundError:
+        return "0.0.0"  # fallback for editable/local use
 
 
 def byte_size_json(obj: Any) -> int:

@@ -1,13 +1,6 @@
 """Helpers for database operations.
 
-Note about access keys design/issuing:
-- We generate a new access key (token using secrets) and show the user
-the key once and then store the hash of it. (We never store the raw key.)
-
-Env:
-  MONGODB_URI=mongodb+srv://user:pass@cluster/dbname
-  (optional) MONGODB_DB_NAME=dbname    # if URI lacks db path
-  ACCESS_KEY_PEPPER=...                # optional server-side secret
+IMPORTANT!! THIS WHOLE FILE IS TEMP/YUCK...db needs refactor before release.
 
 """
 
@@ -40,6 +33,11 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import CollectionInvalid, OperationFailure
 
+from dcs_simulation_engine.infra.docker import (
+    ensure_mongo_running,
+    get_mongodb_ip,
+)
+
 load_dotenv()
 
 # Collections / fields
@@ -49,6 +47,9 @@ PII_COL = "pii"
 # Mongo doesn't handle created_at or updated_at automatically.
 DEFAULT_CREATEDAT_FIELD = "created_at"
 DEFAULT_UPDATEDAT_FIELD = "updated_at"
+DEFAULT_DB_NAME: str = "dcs-db"
+DEFAULT_MONGO_URI = "mongodb://mongo:27017/"
+SEEDS_DIR_DEFAULT = Path("database_seeds")
 DEFAULT_PII_KEYS = {
     "full_name",
     "name",
@@ -69,7 +70,6 @@ PII_META_KEYS = {
 
 _DELTA_DAYS_RE = re.compile(r"__delta_days(-?\d+)__\Z")
 
-
 # Key settings
 ACCESS_KEY_PEPPER = os.getenv("ACCESS_KEY_PEPPER", "")
 DEFAULT_KEY_PREFIX = "ak-"
@@ -79,62 +79,73 @@ _db = None
 
 _NOW_TOKEN = re.compile(r"^__now([+-]\d+)([smdwy])__$", re.IGNORECASE)
 
-
-DEFAULT_DB_NAME: str = "dcs-db"
 SUPPORTED_EXTS = {".json", ".ndjson"}
-
-SEEDS_DIR_DEFAULT = Path("database_seeds")
 
 INDEX_DEFS: dict[str, list[dict[str, Any]]] = {
     "characters": [{"fields": [("hid", 1)], "unique": True}],
 }
 
 
-def warn_if_db_name_exists(db_name: str) -> bool:
-    """Best-effort: return True if server reports db_name exists, else False.
+def get_db() -> Database[Any]:
+    """Return a MongoDB database handle.
 
-    If the user lacks privileges to list DBs, this returns False (no warning).
+    Looks for MONGO_URI in env; falls back to localhost default.
     """
-    # Ensure client/db initialized
-    db = get_db()  # noqa
-    client = _client
-    if client is None:
-        return False
+    global _client, _db
+    if _db is not None:
+        return _db
 
-    try:
-        names = client.list_database_names()
-    except OperationFailure:
-        # Common with least-privilege Atlas users
-        return False
-    except Exception:
-        return False
+    uri = os.getenv("MONGO_URI")
+    if not uri:
+        ensure_mongo_running()
+        # TODO: IP addresses can change if docker services restart, etc, this
+        # may not always work as expected in all environments.
+        ip = get_mongodb_ip()
+        uri = f"mongodb://{ip}:27017/"
+        logger.debug(f"MONGO_URI not set in env; defaulting to local db ({uri})")
 
-    return db_name in names
+    _client = MongoClient(uri, tz_aware=True)
+    # make sure mongo is reachable
+    _client.admin.command("ping")
 
+    # TODO: move to proper migration system
+    _db = _client[DEFAULT_DB_NAME]
+    _db[PLAYERS_COL].create_index("access_key_hash")
+    _db[PLAYERS_COL].create_index(
+        [("access_key_revoked", ASCENDING), ("access_key_prefix", ASCENDING)]
+    )
+    _db[RUNS_COL].create_index(
+        [
+            ("player_id", ASCENDING),
+            (DEFAULT_CREATEDAT_FIELD, DESCENDING),
+            (DEFAULT_UPDATEDAT_FIELD, DESCENDING),
+        ]
+    )
+    _db[RUNS_COL].create_index([("player_id", ASCENDING), ("played_at", DESCENDING)])
+    _db[RUNS_COL].create_index(
+        [("game_config.name", ASCENDING), ("player_id", ASCENDING)]
+    )
 
-def database_has_data(db: Optional[Database[Any]] = None) -> bool:
-    """Return True if the database appears non-empty (has any collections)."""
-    db = db or get_db()
-    return bool(db.list_collection_names())
+    return _db
 
 
 def init_or_seed_database(
     *,
-    db_name: Optional[str] = None,
     seeds_dir: Optional[Path] = None,
     force: bool = False,
 ) -> dict[str, Any]:
     """Seed the configured database from seed files.
 
-    Uses get_db() for connection (MONGO_URI env). Backs up any existing
-    seeded collections before replacing them.
+    Uses get_db() for connection (MONGO_URI).
+
+    Backs up any existing collections before replacing them.
 
     Returns a small summary dict so the CLI can print friendly output.
     """
-    db = get_db()
-    if db_name:
-        # uses already initialized client
-        db = _client[db_name]
+    if _client is None:
+        db = get_db()
+    else:
+        db = _client[DEFAULT_DB_NAME]
 
     if seeds_dir is None:
         seeds_dir = SEEDS_DIR_DEFAULT
@@ -167,6 +178,34 @@ def init_or_seed_database(
         "seeds_dir": str(seeds_dir),
         "seed_files": [p.name for p in seed_paths],
     }
+
+
+def warn_if_db_name_exists(db_name: str) -> bool:
+    """Best-effort: return True if server reports db_name exists, else False.
+
+    If the user lacks privileges to list DBs, this returns False (no warning).
+    """
+    # Ensure client/db initialized
+    db = get_db()  # noqa
+    client = _client
+    if client is None:
+        return False
+
+    try:
+        names = client.list_database_names()
+    except OperationFailure:
+        # Common with least-privilege Atlas users
+        return False
+    except Exception:
+        return False
+
+    return db_name in names
+
+
+def database_has_data(db: Optional[Database[Any]] = None) -> bool:
+    """Return True if the database appears non-empty (has any collections)."""
+    db = db or get_db()
+    return bool(db.list_collection_names())
 
 
 def backup_root_dir(db_name: str) -> Path:
@@ -326,40 +365,6 @@ def now(delta: Union[str, int] = 0) -> datetime:
         raise AssertionError
 
     return base + dt
-
-
-def get_db() -> Database[Any]:
-    """Return a MongoDB database handle (lazy init)."""
-    global _client, _db
-    if _db is not None:
-        return _db
-
-    uri = os.getenv("MONGO_URI")
-    if not uri:
-        raise RuntimeError("MONGO_URI not set in .env")
-
-    _client = MongoClient(uri, tz_aware=True)
-    default_db = _client.get_default_database()  # may raise if URI has no db
-    dbname: str = default_db.name
-    _db = _client[dbname]
-
-    # cheap indexes
-    _db[PLAYERS_COL].create_index("access_key_hash")
-    _db[PLAYERS_COL].create_index(
-        [("access_key_revoked", ASCENDING), ("access_key_prefix", ASCENDING)]
-    )
-    _db[RUNS_COL].create_index(
-        [
-            ("player_id", ASCENDING),
-            (DEFAULT_CREATEDAT_FIELD, DESCENDING),
-            (DEFAULT_UPDATEDAT_FIELD, DESCENDING),
-        ]
-    )
-    _db[RUNS_COL].create_index([("player_id", ASCENDING), ("played_at", DESCENDING)])
-    _db[RUNS_COL].create_index(
-        [("game_config.name", ASCENDING), ("player_id", ASCENDING)]
-    )
-    return _db
 
 
 def _resolve_magic_tokens(obj: Any) -> Any:
@@ -591,6 +596,17 @@ def _write_pii_fields(player_id: str, pii_fields: Dict[str, Any]) -> None:
     )
 
 
+def list_players() -> List[Dict[str, Any]]:
+    """Return list of all players (non-PII fields only)."""
+    coll: Collection = get_db()[PLAYERS_COL]
+    cursor = coll.find({}, projection={"_id": 1, "access_key_hash": 0})
+    players = []
+    for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        players.append(doc)
+    return players
+
+
 def create_player(
     player_data: Dict[str, Any],
     *,
@@ -665,6 +681,20 @@ def save_run_data(
 
     logger.debug(f"Saved run {rid} for player {player_id}")
     return rid
+
+
+def list_characters() -> List[Dict[str, Any]]:
+    """Return list of all characters (non-PII fields only)."""
+    coll: Collection = get_db()["characters"]
+    cursor = coll.find(
+        {},
+        projection={
+            "_id": 0,
+            "hid": 1,
+            "short_description": 1,
+        },
+    )
+    return list(cursor)
 
 
 def list_characters_where(

@@ -6,10 +6,8 @@
 lint:
 	poetry run ruff check dcs_simulation_engine/
 	poetry run black --check --diff dcs_simulation_engine
-# TODO: pre-release - enable mypy when types are fixed
-# 	poetry run mypy dcs_simulation_engine
 
-# Run your test suite quietly.
+# Run test suite quietly.
 test:
 	poetry run pytest -m unit -q && poetry run pytest -m functional -q
 

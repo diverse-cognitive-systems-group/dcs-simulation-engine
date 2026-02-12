@@ -6,15 +6,24 @@ from pathlib import Path
 from loguru import logger
 
 
-def configure_logger(source: str) -> None:
+def configure_logger(source: str, quiet: bool = False, verbose: int = 0) -> None:
     """Configure Loguru logging."""
     # Clear any previously added handlers
     logger.remove()
 
+    if quiet:
+        console_level = "ERROR"
+    elif verbose == 1:
+        console_level = "INFO"
+    elif verbose >= 2:
+        console_level = "DEBUG"
+    else:
+        console_level = "WARNING"
+
     # Console handler — ERROR and above
     logger.add(
         sink=sys.stderr,
-        level="ERROR",
+        level=console_level,
         format=(
             "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} "
             "| {file.name}:{line} | {message}"
