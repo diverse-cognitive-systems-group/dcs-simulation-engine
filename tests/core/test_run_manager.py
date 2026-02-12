@@ -23,9 +23,9 @@ def test_init_from_create(run: RunManager) -> None:
     assert isinstance(run.graph, SimulationGraph)
 
 
-def test_save_run_to_database(persistant_run: RunManager) -> None:
+def test_save_run_to_database(persistent_run: RunManager) -> None:
     """Should save state on stop."""
-    run = persistant_run
+    run = persistent_run
     assert run is not None
     logger.debug(f"Run state before stopping: {run}")
     assert run.player_id is not None
@@ -54,7 +54,7 @@ def test_first_step(run: RunManager) -> None:
     print(f"New state: {run.state}")
     assert run.state is not None
     assert len(run.state["history"]) == 0
-    # TODO: messages conent should contain "SETUP_SCENE"
+    # TODO: messages content should contain "SETUP_SCENE"
 
 
 @pytest.mark.slow

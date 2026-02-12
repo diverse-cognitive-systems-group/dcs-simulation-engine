@@ -1,3 +1,1 @@
-"""CLI subpackage."""
-
-__all__ = ["main"]
+"""CLI package."""

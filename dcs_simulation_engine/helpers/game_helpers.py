@@ -1,18 +1,51 @@
 """Helpers for games."""
 
-import json
-from pathlib import Path
-from typing import Any, Dict
+from __future__ import annotations
 
-import typer
+from pathlib import Path
+
 import yaml
 from loguru import logger
 from packaging.version import InvalidVersion, Version
 
+from dcs_simulation_engine.errors import GameValidationError
+from dcs_simulation_engine.utils.paths import package_games_dir
+
+
+def validate_game_compiles(name: str) -> Path:
+    """Validate that a game config compiles without errors."""
+    from dcs_simulation_engine.core.run_manager import RunManager
+
+    logger.debug(f"Validating game config for {name!r}")
+
+    try:
+        game_config_path = Path(get_game_config(name))
+
+        RunManager.create(
+            game=game_config_path,
+            source="validation",
+            pc_choice=None,
+            npc_choice=None,
+            access_key=None,
+        )
+    except Exception as e:
+        logger.debug(
+            f"Game validation failed for {name!r}",
+            name,
+            game_config_path,
+            exc_info=True,
+        )
+        raise GameValidationError(f"Validation failed for game {name!r}: {e}") from e
+
+    return game_config_path.resolve()
+
 
 def create_game_from_template(name: str, template: str | Path | None = None) -> Path:
-    """Copy a game into the current working directory from a template game file."""
-    dest = Path.cwd() / f"{name}.yaml"
+    """Copy a game into ./games from a template game file."""
+    games_dir = Path.cwd() / "games"
+    games_dir.mkdir(parents=True, exist_ok=True)
+
+    dest = games_dir / f"{name}.yaml"
 
     if dest.exists():
         raise FileExistsError(f"{dest} already exists.")
@@ -23,77 +56,71 @@ def create_game_from_template(name: str, template: str | Path | None = None) -> 
         t = Path(template).expanduser()
         template_path = t if t.is_file() else Path(get_game_config(str(template)))
 
-    dest.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
-    logger.info(f"Copied game template {template_path} -> {dest}")
+    dest.write_text(
+        template_path.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    logger.info("Copied game template %s -> %s", template_path, dest)
     return dest
-
-
-def parse_kv(pairs: list[str]) -> Dict[str, Any]:
-    """Parse key=value tokens into a dict. Values accept JSON."""
-    out: Dict[str, Any] = {}
-    for token in pairs:
-        if "=" not in token:
-            raise typer.BadParameter(f"bad field (expected key=value): {token!r}")
-        k, v = token.split("=", 1)
-        try:
-            out[k] = json.loads(v)
-        except json.JSONDecodeError:
-            out[k] = v
-    return out
 
 
 def list_games(
     directory: str | Path | None = None,
-) -> list[tuple[str, str | None, Path]]:
-    """Return available game configs as (name, version, path) tuples.
+) -> list[tuple[str, str, Path, str | None, str | None]]:
+    """Return available games."""
+    pkg_dir = package_games_dir()
+    user_dir = (
+        (Path.cwd() / "games") if directory is None else Path(directory).expanduser()
+    )
 
-    Parameters
-    ----------
-    directory:
-        Optional directory containing game YAML files.
-        Defaults to the built-in ``games/`` directory in the package.
+    if not user_dir.exists() or not user_dir.is_dir():
+        raise FileNotFoundError(
+            f"Provided games directory {user_dir!s} not found or invalid."
+        )
 
-    Returns:
-    -------
-    list[tuple[str, str | None, Path]]
-        Each tuple contains:
-          - name:    top-level ``name`` field (string)
-          - version: top-level ``version`` field if present, else None
-          - path:    Path to the YAML file
-          - description: top-level ``description`` field if present, else None
+    results: list[tuple[str, str, Path, str | None, str | None]] = []
 
-    Files that cannot be loaded or that lack a ``name`` field are skipped.
-    """
-    if directory is None:
-        directory = Path(__file__).parent.parent.parent / "games"
-    else:
-        directory = Path(directory).expanduser()
+    def add_from_dir(dir_path: Path) -> None:
+        for path in dir_path.glob("*.y*ml"):
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    doc = yaml.safe_load(f) or {}
+            except Exception:
+                logger.warning(f"Failed to parse {path}, skipping.")
+                continue
 
-    if not directory.exists() or not directory.is_dir():
-        raise FileNotFoundError(f"Games directory {directory!s} not found or invalid.")
+            raw_name = doc.get("name")
+            if not raw_name:
+                logger.warning(f"Game config {path} missing 'name', skipping.")
+                continue
+            name = str(raw_name).strip()
 
-    results: list[tuple[str, str | None, Path]] = []
+            raw_version = doc.get("version")
+            version = str(raw_version).strip() if raw_version else None
 
-    for path in directory.glob("*.y*ml"):
-        try:
-            with path.open("r", encoding="utf-8") as f:
-                doc = yaml.safe_load(f) or {}
-        except Exception:
-            logger.warning(f"Failed to parse {path}, skipping.")
-            continue
+            authors = doc.get("authors")
+            if isinstance(authors, list):
+                author_str = ", ".join(
+                    str(a).strip() for a in authors if str(a).strip()
+                )
+            elif isinstance(authors, str):
+                author_str = authors.strip()
+            else:
+                author_str = ""
 
-        raw_name = doc.get("name")
-        if not raw_name:
-            logger.warning(f"Game config {path} missing 'name', skipping.")
-            continue
-        name = str(raw_name).strip()
+            raw_description = doc.get("description")
+            description = str(raw_description).strip() if raw_description else None
 
-        raw_version = doc.get("version")
-        version = str(raw_version).strip() if raw_version else None
-        raw_description = doc.get("description")
-        description = str(raw_description).strip() if raw_description else None
+            results.append((name, author_str, path, version, description))
 
-        results.append((name, version, path, description))
+    # List package games first
+    if pkg_dir and pkg_dir.exists() and pkg_dir.is_dir():
+        add_from_dir(pkg_dir)
+
+    # Only include user dir if it's not the same directory
+    if not pkg_dir or pkg_dir.resolve() != user_dir.resolve():
+        add_from_dir(user_dir)
 
     return results
 

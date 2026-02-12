@@ -3,13 +3,13 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'dcs-simulation-demo'
+app = 'exp001'
 primary_region = 'dfw'
 
 [build]
 
 [processes]
-web = 'poetry run dcs run --game Explore --port 8080 --host 0.0.0.0'
+web = 'poetry run dcs run --game explore --port 8080 --host 0.0.0.0'
 
 [http_service]
 internal_port = 8080
