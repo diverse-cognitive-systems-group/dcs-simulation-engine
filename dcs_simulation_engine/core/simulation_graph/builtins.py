@@ -3,7 +3,7 @@
 import re
 from typing import Any, Dict, List, Set, Tuple, Union
 
-from langchain_core.prompts import PromptTemplate
+from jinja2.sandbox import SandboxedEnvironment
 from loguru import logger
 from tomlkit import key
 
@@ -15,6 +15,10 @@ from dcs_simulation_engine.core.simulation_graph.state import (
 JSONType = Union[
     Dict[str, Any], List[Any], Tuple[Any, ...], Set[Any], str, int, float, bool, None
 ]
+
+# Use standard SandboxedEnvironment which allows dict attribute access (e.g., pc.hid)
+# unlike LangChain's _RestrictedSandboxedEnvironment which blocks it
+_jinja_env = SandboxedEnvironment()
 
 
 def _render_any(value: JSONType, render_kwargs: dict[str, Any]) -> JSONType:
@@ -34,8 +38,8 @@ def _render_any(value: JSONType, render_kwargs: dict[str, Any]) -> JSONType:
     """
     # Render strings that look like Jinja templates
     if isinstance(value, str) and ("{{" in value or "{%" in value):
-        tmpl = PromptTemplate.from_template(value, template_format="jinja2")
-        return tmpl.format(**render_kwargs)
+        tmpl = _jinja_env.from_string(value)
+        return tmpl.render(**render_kwargs)
 
     # Recurse into common containers
     if isinstance(value, dict):
@@ -80,8 +84,8 @@ def raise_error(
     #  update end game reason?
     # Issue a special message?
     # render message from state
-    tmpl = PromptTemplate.from_template(message, template_format="jinja2")
-    rendered_message = tmpl.format(
+    tmpl = _jinja_env.from_string(message)
+    rendered_message = tmpl.render(
         **{**state, "pc": context["pc"], "npc": context["npc"]}
     )
     logger.error(f"Error node called with message: {rendered_message}")

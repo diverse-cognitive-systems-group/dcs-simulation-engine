@@ -9,7 +9,7 @@ lint:
 
 # Run test suite quietly.
 test:
-	poetry run pytest -m unit -q
+	poetry run pytest -m unit -q && poetry run pytest -m functional -q
 
 # Build documentation (MkDocs in this example).
 docs:

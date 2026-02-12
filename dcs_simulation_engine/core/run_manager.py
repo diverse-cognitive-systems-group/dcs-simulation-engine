@@ -276,6 +276,7 @@ class RunManager(BaseModel):
                     raise NotImplementedError(
                         f"Provider not implemented yet: {node.provider}"
                     )
+
         # if subgraph customizations exist, add them to context
         if game_config.subgraph_customizations:
             if game_config.subgraph_customizations.additional_validator_rules:
@@ -286,6 +287,7 @@ class RunManager(BaseModel):
                 context["additional_updater_rules"] = (
                     game_config.subgraph_customizations.additional_updater_rules
                 )
+
         # add subgraph models
         subgraph_models = init_subgraph_context()
         context["models"][VALIDATOR_NAME] = subgraph_models[VALIDATOR_NAME]
@@ -423,6 +425,7 @@ class RunManager(BaseModel):
                         self.state = SimulationGraphState(**event["state"])
                     else:
                         yield event
+
             except Exception as e:
                 logger.exception(f"Error during graph invocation: {e}")
                 raise
