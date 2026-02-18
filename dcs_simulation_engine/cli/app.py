@@ -66,3 +66,7 @@ def main(
     """Initialize global CLI options and context."""
     ctx.obj = GlobalOptions(quiet=quiet, yes=yes, config=config)
     configure_logger(source="dcs-cli", quiet=quiet, verbose=verbose)
+
+
+if __name__ == "__main__":
+    app()

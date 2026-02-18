@@ -73,3 +73,8 @@ output/
 # Exclude vscode workspace configuration 
 # (easier for devs to contribute with same env settings)
 !.vscode/
+
+# ai tools
+.claude/
+.continue/
+.kilocode/

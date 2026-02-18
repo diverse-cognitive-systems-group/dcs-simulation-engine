@@ -1,0 +1,12 @@
+{
+  "name": "Test User Two",
+  "email": "usertwo@example.com",
+  "consent_signature": {
+    "key": "consent_signature",
+    "type": "checkboxes",
+    "label": "Consent Signature",
+    "required": true,
+    "pii": false,
+    "answer": ["I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature."]
+  }
+}

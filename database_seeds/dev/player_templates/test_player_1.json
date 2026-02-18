@@ -1,0 +1,29 @@
+{
+  "name": "Test User One",
+  "email": "userone@example.com",
+  "phone_number": "+1-555-555-5555",
+  "prior_experience": {
+    "key": "prior_experience",
+    "type": "textarea",
+    "label": "Prior experience with non-standard cognitive agents",
+    "required": false,
+    "pii": false,
+    "answer": "Software developer with experience in AI systems"
+  },
+  "consent_to_followup": {
+    "key": "consent_to_followup",
+    "type": "checkboxes",
+    "label": "Follow-ups",
+    "required": false,
+    "pii": false,
+    "answer": ["I consent to being contacted for a voluntary follow-up regarding this study."]
+  },
+  "consent_signature": {
+    "key": "consent_signature",
+    "type": "checkboxes",
+    "label": "Consent Signature",
+    "required": true,
+    "pii": false,
+    "answer": ["I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature."]
+  }
+}

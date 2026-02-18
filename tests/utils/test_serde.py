@@ -36,7 +36,7 @@ extra: value
     msg = str(exc.value)
 
     # All errors in one message
-    assert "doesn’t match the expected structure" in msg
+    assert "doesn't match the expected structure" in msg
     assert "Missing required field: `name`" in msg
     # accept either our friendly wording or Pydantic's native text with the location
     assert ("Wrong type at `count`" in msg) or (

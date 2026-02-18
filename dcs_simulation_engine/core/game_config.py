@@ -357,7 +357,7 @@ class GameConfig(SerdeMixin, BaseModel):
             # regardless of player_id
             in_invalid = True
         else:
-            # If no player_id, we can’t be in an invalid set scoped to a player.
+            # If no player_id, we can't be in an invalid set scoped to a player.
             in_invalid = (
                 False
                 if not player_id

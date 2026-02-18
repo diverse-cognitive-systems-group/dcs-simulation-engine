@@ -229,7 +229,7 @@ def _seed_db_from_json(_isolate_db_state: None) -> None:
       2) <repo_root>/tests/seeds/   (default)
     """
     db = dbh.get_db()
-    default_dir = Path(__file__).resolve().parent.parent / "database_seeds"
+    default_dir = Path(__file__).resolve().parent.parent / "database_seeds" / "dev"
     seed_dir = Path(os.getenv("TEST_SEED_DIR", default_dir))
     _seed_from_dir(db, seed_dir)
 

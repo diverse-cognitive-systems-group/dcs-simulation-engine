@@ -29,6 +29,6 @@ McKinnley Workman at dcs@psych.gatech.edu*
 USER_FRIENDLY_EXC = (
     "Whoa...something went sideways."
     " Our engineers have been alerted and are investigating.\n"
-    "This session can’t continue, but we appreciate your understanding"
+    "This session can't continue, but we appreciate your understanding"
     " while we sort it out."
 )

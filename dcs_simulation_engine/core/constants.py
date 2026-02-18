@@ -29,7 +29,7 @@ abilities diverge from standard normative assumptions.
 USAGE_MSG: str = """
 # Instructions
 
-To participate in our research, you’ll need to *sign a consent form to receive
+To participate in our research, you'll need to *sign a consent form to receive
 an access token*.
 
 With a token, you can start in Benchmarking Mode, which lets us run an

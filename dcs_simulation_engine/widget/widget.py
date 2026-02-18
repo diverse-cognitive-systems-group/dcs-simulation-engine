@@ -17,6 +17,7 @@ from dcs_simulation_engine.widget.ui.game_setup import build_game_setup
 from dcs_simulation_engine.widget.ui.gate import build_gate
 from dcs_simulation_engine.widget.ui.header import build_header
 from dcs_simulation_engine.widget.wiring import wire_handlers
+from dcs_simulation_engine.widget import api as widget_api
 
 MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 
@@ -148,3 +149,114 @@ def build_widget(
         # TODO: how to handle whole app crashes....
 
     return widget
+
+
+def build_api_blocks() -> gr.Blocks:
+    """Build a Gradio Blocks instance with API-only endpoints.
+
+    These endpoints are accessible via Gradio's API at /api/{api_name} or /call/{api_name}.
+    Can be mounted alongside the main widget or used standalone.
+
+    Returns:
+        A gr.Blocks instance with API functions mounted.
+    """
+    api_blocks = gr.Blocks()
+
+    with api_blocks:
+        # Create run API - using gr.Interface for clean API exposure
+        gr.Interface(
+            fn=widget_api.create_run,
+            inputs=[
+                gr.Textbox(label="game"),
+                gr.Textbox(label="source", value="api"),
+                gr.Textbox(label="pc_choice"),
+                gr.Textbox(label="npc_choice"),
+                gr.Textbox(label="access_key"),
+                gr.Textbox(label="player_id"),
+            ],
+            outputs=gr.JSON(label="result"),
+            api_name="create_run",
+                    )
+
+        # Step run API
+        gr.Interface(
+            fn=widget_api.step_run,
+            inputs=[
+                gr.Textbox(label="run_id"),
+                gr.Textbox(label="user_input"),
+            ],
+            outputs=gr.JSON(label="result"),
+            api_name="step_run",
+                    )
+
+        # Play run API
+        gr.Interface(
+            fn=lambda run_id, inputs_json: widget_api.play_run(
+                run_id=run_id,
+                inputs=inputs_json if isinstance(inputs_json, list) else [],
+            ),
+            inputs=[
+                gr.Textbox(label="run_id"),
+                gr.JSON(label="inputs"),
+            ],
+            outputs=gr.JSON(label="result"),
+            api_name="play_run",
+                    )
+
+        # Get state API
+        gr.Interface(
+            fn=widget_api.get_state,
+            inputs=[gr.Textbox(label="run_id")],
+            outputs=gr.JSON(label="result"),
+            api_name="get_state",
+                    )
+
+        # Save run API
+        gr.Interface(
+            fn=widget_api.save_run,
+            inputs=[
+                gr.Textbox(label="run_id"),
+                gr.Textbox(label="output_dir"),
+            ],
+            outputs=gr.JSON(label="result"),
+            api_name="save_run",
+                    )
+
+        # Delete run API
+        gr.Interface(
+            fn=widget_api.delete_run,
+            inputs=[gr.Textbox(label="run_id")],
+            outputs=gr.JSON(label="result"),
+            api_name="delete_run",
+                    )
+
+    return api_blocks
+
+
+def build_widget_with_api(
+    game_name: str = "explore",
+    banner: str | None = None,
+) -> gr.Blocks:
+    """Build a combined Gradio app with both UI widget and API endpoints.
+
+    Args:
+        game_name: The game configuration to load.
+        banner: Optional banner text.
+
+    Returns:
+        A gr.Blocks instance with both UI and API.
+    """
+    widget = build_widget(game_name=game_name, banner=banner)
+    api = build_api_blocks()
+
+    # Combine into a single app with tabs
+    combined = gr.Blocks(title="DCS Simulation")
+    with combined:
+        with gr.Tabs():
+            with gr.Tab("Simulation"):
+                widget.render()
+            with gr.Tab("API", visible=False):
+                # API tab is hidden but endpoints are still accessible
+                api.render()
+
+    return combined

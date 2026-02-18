@@ -41,6 +41,29 @@ graph_config:
   # If kind is "builtin.<name>" then it takes config according to that builtin function definition.
   # If kind is "custom" then it takes provider, model, and system_template that invokes a model and returns a dict/object according to "Output format" in the system_template.
   nodes:
+    - name: user_max_retry_exit
+      kind: builtin.update_state # update_state builtin func takes state_updates: dict[str, Any] and updates the game state with those values.
+      kwargs:
+        state_updates:
+          lifecycle: EXIT
+          exit_reason: "maximum retries exceeded"
+
+    - name: simulator_max_retry_exit
+      kind: builtin.update_state # update_state builtin func takes state_updates: dict[str, Any] and updates the game state with those values.
+      kwargs:
+        state_updates:
+          lifecycle: EXIT
+          exit_reason: "simulator could not produce valid response within retry limit"
+          
+    # - name: retry
+    #   kind: builtin.retry # retry builtin func takes event_draft, invalid_reason?, increments retries for event_draft.type, gathers a user retry message if type is user, and returns updated message draft with guidance if type is simulator.
+    #   kwargs:
+    #     retry_message: |
+    #       Your previous action was invalid: Please try again.
+    #       Remaining Retries: {{ retry_limits[event_draft.type] - retries[event_draft.type] }}
+    #       Previous Action: {{ event_draft.content }}
+    #       Reason: {{ invalid_reason }}
+
     - name: command_filter
       kind: builtin.command_filter # command builtin func takes command to match "eg. help" and a message to display and/or states updates. It checks for a match in event_draft.content
       kwargs:
@@ -163,11 +186,11 @@ graph_config:
     - from: simulator_max_retry_exit
       to: exit_message
 
-    - from: retry
-      to:
-        conditional:
-          - if: "{{ state['event_draft']['type'] == 'user' }}"
-            then: __END__
-          - if: "{{ state['event_draft']['type'] == 'ai' }}"
-            then: update
-          - else: error_in_checkpoint
+    # - from: retry
+    #   to:
+    #     conditional:
+    #       - if: "{{ state['event_draft']['type'] == 'user' }}"
+    #         then: __END__
+    #       - if: "{{ state['event_draft']['type'] == 'ai' }}"
+    #         then: update
+    #       - else: error_in_checkpoint

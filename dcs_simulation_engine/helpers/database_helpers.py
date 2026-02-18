@@ -49,7 +49,7 @@ DEFAULT_CREATEDAT_FIELD = "created_at"
 DEFAULT_UPDATEDAT_FIELD = "updated_at"
 DEFAULT_DB_NAME: str = "dcs-db"
 DEFAULT_MONGO_URI = "mongodb://mongo:27017/"
-SEEDS_DIR_DEFAULT = Path("database_seeds")
+SEEDS_DIR_DEFAULT = Path("database_seeds/dev")
 DEFAULT_PII_KEYS = {
     "full_name",
     "name",
@@ -251,13 +251,13 @@ def load_seed_documents(path: Path) -> List[Dict[str, Any]]:
         for i, line in enumerate(text.splitlines(), start=1):
             if not line.strip():
                 continue
-            obj = json.loads(line)
+            obj = json_util.loads(line)
             if not isinstance(obj, dict):
                 raise ValueError(f"Line {i} in {path} is not a JSON object.")
             docs.append(obj)
         return docs
 
-    data = json.loads(text)
+    data = json_util.loads(text)
     if isinstance(data, list):
         if not all(isinstance(x, dict) for x in data):
             raise ValueError(f"Array in {path} must contain only objects.")
@@ -460,7 +460,7 @@ def validate_access_key_bip39(
     ] = "english",
     delimiter: str = "-",
 ) -> bool:
-    """Validate a presented access key’s mnemonic checksum (format + BIP-39).
+    """Validate a presented access key's mnemonic checksum (format + BIP-39).
 
     This does NOT authenticate (you still compare digests in DB); it only verifies
     that the human-readable part is a valid BIP-39 phrase with the right checksum.
@@ -823,7 +823,7 @@ def validate_query_against_server(collection: str, query: Dict[str, Any]) -> Non
             db[collection].find_one(query, projection={"_id": 1})
 
     except Exception as exc:
-        # Wrap with your project’s error type if you have one
+        # Wrap with your project's error type if you have one
         raise RuntimeError(
             f"Invalid query for collection '{collection}': {query!r}"
         ) from exc

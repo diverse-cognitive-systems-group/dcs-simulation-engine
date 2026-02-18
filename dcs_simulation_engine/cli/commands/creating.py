@@ -19,6 +19,15 @@ create_app = typer.Typer(help="Create resources.")
 @create_app.command("database")
 def create_database(
     ctx: typer.Context,
+    path: Optional[Path] = typer.Option(
+        None,
+        "--path",
+        "-p",
+        help="Optional path to initialize the database at (default: ./database_seeds/dev).",
+        dir_okay=True,
+        file_okay=False,
+        writable=False,
+    ),
     force: bool = typer.Option(
         False,
         "--force",
@@ -27,7 +36,7 @@ def create_database(
     ),
 ) -> None:
     """Create the database."""
-    res = dbh.init_or_seed_database(force=True)
+    res = dbh.init_or_seed_database(seeds_dir=path, force=force)
     if res["seeded"]:
         echo(ctx, "Database initialized and seeded.", style="success")
     else:

@@ -1,0 +1,405 @@
+[
+  {
+    "hid": "human-normative",
+    "short_description": "A human with standard normal form, function, goals, sensory, perceptual, regulatory and action modalities.",
+    "inclusion_reason": "To serve as a normative baseline for humans.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "normative",
+      "human-like-cognition"
+    ],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": "I have typical human sensory abilities including vision (detecting light, color, shape, motion), hearing (detecting pitch, volume, location of sounds), tactile/touch (pressure, texture, vibration, temperature), taste (chemical sensing for flavors), smell (chemical sensing for odors), vestibular (balance, orientation in space), proprioception (sense of body position and movement).\n\nI have typical human perceptual abilities including pattern recognition (faces, objects, speech), depth & motion perception (spatial relationships, movement), language comprehension (understanding spoken/written language), attention & filtering (focusing on relevant signals, ignoring noise).\n\nI have typical human regulatory abilities including maintaining homeostasis (body temperature, hydration, blood sugar), sleep-wake cycles (circadian rhythms), emotional regulation (modulating responses to stimuli), autonomic control (heart rate, breathing, digestion).\n\nI have a typical human action space including motor control (walking, grasping, coordinated movement), speech production (articulation, voice modulation), fine motor skills (writing, tool use), decision-making & planning (goal-directed behavior, problem solving).",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect light, color, shape, and motion through vision.",
+        "Can detect pitch, volume, and direction of sound through hearing.",
+        "Can sense pressure, texture, vibration, and temperature through touch.",
+        "Can perceive taste through chemical sensing of flavors.",
+        "Can detect odors through chemical sensing via smell.",
+        "Can sense balance and spatial orientation through the vestibular system.",
+        "Can perceive body position and movement through proprioception.",
+        "Cannot perceive electromagnetic radiation outside the visible spectrum without instruments.",
+        "Cannot directly sense microscopic, subsonic, or distant phenomena beyond natural human range."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can recognize patterns such as faces, objects, and speech.",
+        "Can perceive depth, distance, and motion to understand spatial relationships.",
+        "Can comprehend spoken and written language.",
+        "Can focus attention selectively and filter out irrelevant sensory information.",
+        "Cannot perfectly filter all stimuli; prone to distraction or perceptual errors.",
+        "Cannot directly interpret abstract data or invisible phenomena without learned symbolic systems."
+      ],
+      "Regulatory": [
+        "Can maintain homeostasis through regulation of temperature, hydration, and blood sugar.",
+        "Can sustain sleep-wake cycles governed by circadian rhythms.",
+        "Can regulate emotions in response to internal and external stimuli.",
+        "Can autonomically control heart rate, breathing, and digestion.",
+        "Cannot remain fully awake indefinitely without physiological degradation.",
+        "Cannot consciously control most autonomic functions beyond limited modulation (e.g., breath, heart rate)."
+      ],
+      "Action / Motor": [
+        "Can perform gross motor actions such as walking, running, lifting, and coordinated movement.",
+        "Can perform fine motor actions such as writing, tool use, and precise manipulation.",
+        "Can produce speech through articulation and voice modulation.",
+        "Can plan, make decisions, and execute goal-directed behaviors.",
+        "Cannot move faster, lift heavier, or sustain exertion beyond biological muscular and metabolic limits.",
+        "Cannot perform actions requiring sub-millisecond precision or superhuman endurance without assistance."
+      ]
+    }
+  },
+  {
+    "hid": "human-low-vision",
+    "short_description": "A low vision human.",
+    "inclusion_reason": "To represent visual sensory divergence.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "low-vision",
+      "visually-impaired",
+      "human-like-cognition"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Reduced visual acuity, field, or clarity."
+    },
+    "interaction_examples": null,
+    "long_description": "I can perceive light, shapes, motion, and sometimes text or detail, but my vision is limited compared to typical humans. Depending on the cause, I may have blurred central vision, reduced peripheral vision, low contrast sensitivity, impaired depth perception, or difficulty detecting fine detail. My visual capacity might fluctuate depending on lighting, fatigue, or assistive tools.\n\nI often rely on enlarged text, high-contrast visuals, audio descriptions, tactile feedback, or assistive technologies such as screen readers or magnifiers. In unfamiliar or visually complex environments, I use memory, mobility aids (like canes), or guidance from others. My cognition, reasoning, and emotions are typical of humans, though the strategies I use to navigate and interpret visual information differ.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect light, motion, and general shapes depending on severity and type of impairment.",
+        "Can sometimes read large/high-contrast text or use magnification tools.",
+        "Cannot reliably perceive fine visual detail or distant objects without assistive tools.",
+        "May struggle with low-light or visually cluttered environments.",
+        "May use auditory, tactile, or memory-based cues for navigation and information gathering."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can process visual information but with reduced resolution or incomplete input.",
+        "Can combine memory, touch, and hearing to compensate for gaps in visual data.",
+        "Cannot rely on fast visual scanning or detail recognition the way typical humans do."
+      ],
+      "Regulatory": [
+        "Normal emotional and physiological regulation.",
+        "May experience eye strain, headaches, or fatigue when visually focusing for long periods."
+      ],
+      "Action / Motor": [
+        "Can perform most motor tasks but may navigate space more slowly or with mobility aids.",
+        "Cannot safely perform actions requiring high visual precision without assistance (e.g. driving)."
+      ]
+    }
+  },
+  {
+    "hid": "human-non-hearing",
+    "short_description": "A human who has almost no natural hearing ability.",
+    "inclusion_reason": "To represent auditory-divergent humans who cannot access sound-based information without adaptation.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "deaf",
+      "hard-of-hearing",
+      "sign-language-user",
+      "human-like-cognition",
+      "gestural-communicator",
+      "non-hearing",
+      "auditory-divergent",
+      "asl-user"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Absent or severely reduced auditory perception."
+    },
+    "interaction_examples": null,
+    "long_description": "I do not perceive sound, or perceive it only minimally. I rely primarily on vision, touch, and other senses to receive information. I may use languages like American Sign Language (ASL), written language, lip-reading, gestures.\n\nMy cognition, perception of rhythm, language capacity, and intelligence are fully human, but my experience of communication is visual and spatial rather than auditory. Environments designed around sound (alarms, spoken announcements) require visual or tactile equivalents for full accessibility.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive visual details, motion, and vibrations very well.",
+        "Cannot detect pitch, volume, or location of sound without assistive devices.",
+        "May sense vibrations or low-frequency sounds through touch or bone conduction."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Can process visual languages such as sign language with high spatial reasoning.",
+        "Can read written language; may or may not use spoken language depending on upbringing.",
+        "Cannot process spoken language auditorily without assistance."
+      ],
+      "Regulatory": [
+        "Typical emotional and physiological regulation.",
+        "No impairment in sleep-wake cycles unless affected by environmental cues (e.g., alarms)."
+      ],
+      "Action / Motor": [
+        "Can perform typical motor actions and gestures.",
+        "May use sign language, writing, or technology instead of speech for communication."
+      ]
+    }
+  },
+  {
+    "hid": "human-non-ambulatory",
+    "short_description": "A human who cannot walk independently and uses a wheelchair, mobility aid, or assistance.",
+    "inclusion_reason": "To represent action/mobility divergent humans with impaired or absent ability to walk or stand unassisted.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "wheelchair-user",
+      "mobility-impaired",
+      "human-like-cognition",
+      "non-ambulatory",
+      "partial-paralysis"
+    ],
+    "anthronormal_divergence": {
+      "Action-divergence": "Limited or absent ability to walk or stand."
+    },
+    "interaction_examples": null,
+    "long_description": "I cannot walk or stand independently due to paralysis, neuromuscular conditions, injury, congenital differences, or chronic illness. I may use a wheelchair (manual or powered), mobility device, or human assistance for movement. My cognitive abilities are typical unless affected by an unrelated condition. My environment needs to be physically accessible—ramps, elevators, reachable surfaces, and adaptive tools.\n\nI can navigate space efficiently when environments are accessible and well-designed. My experience of movement is primarily through wheels or assistance, not bipedal locomotion. I may have typical sensation or reduced sensation depending on the cause.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Normal sensory perception unless accompanied by a separate sensory condition."
+      ],
+      "Perceptual / Cognitive Processing": [
+        "Typical cognitive and perceptual abilities."
+      ],
+      "Regulatory": [
+        "Normal emotional regulation.",
+        "May require assistance with circulation, pressure management, or posture if seated long-term."
+      ],
+      "Action / Motor": [
+        "Can use upper body, arms, or assistive devices for mobility and fine motor tasks.",
+        "Cannot walk or stand without assistance or devices.",
+        "Can navigate independently using wheelchair or mobility technologies.",
+        "May require accessible environments to act efficiently."
+      ]
+    }
+  },
+  {
+    "hid": "human-multi-divergent-complex",
+    "short_description": "A human with complex, non-standard sensory, perceptual, regulatory and action abilities.",
+    "inclusion_reason": "To serve as an example of a complex non-normative divergence in humans that doesn't fit easily into any single existing category.",
+    "common_descriptors": [
+      "human",
+      "biological",
+      "multi-divergent",
+      "tactile synesthesia",
+      "orthostatic",
+      "highly sensitive person (HSP)",
+      "human-like-cognition"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Highly sensitive to exterocetive stimulus.",
+      "Perceptual-divergence": "Exteroceptive and interoceptive tactile synesthesia.",
+      "Regulatory-divergence": "Spontaneous intracranial hyper and hypotension.",
+      "Action-divergence": "Left side resting tremmor."
+    },
+    "interaction_examples": null,
+    "long_description": "I have a complex, non-standard sensory, perceptual, regulatory and action abilities that developed following a neurotoxic reaction. I do well in slow, calm, quiet and consistent environments--a lifestyle many humans would consider boring. I live on a small farm just outside of the city and stay there as much as possible because much of the external world is waaaaay too overstimulating for me.\n\nI have interoceptive tactile synesthesia (like typical tactile synesthetes that feel tactile sensation from external stimuli, I also feel dynamic textural waves and landscapes from internal physiological states and processes). I also gets daily orthostatic head pain which because the sack of fluid around spine that cushions the brain dura doesn't regulate/hold pressure properly so if I stay in the same orientation with respect to gravity for tool long (for example upright) my brain sags causing tension and compression on my cranial nerves and therefore pain. This can quickly turn into migraines if I don't lie down and de-stimulate (i.e. change my orientation with respect to gravity and close my eyes in a quiet place). I get a treatments that help with residual nerve pain on a 12 week cycle but depending on where I am in my treatment cycle she may have 3-8 hours of uptime/vertical/functional time to perform daily activities like basic care, chores and computer work.\n\nI am a software engineer and graduate student also doing my work fully remotely since I can't tolerate other environments well. It's difficult for me to sustain the pace of the rest of the world but I'm still sharp. I am building a research career with colleagues that value my neurodivergence. I am hoping to use my skills and insight about diverse forms of cognitive systems to contribute to making societies more inclusive of non-standard forms of cognitive systems like me and also help us learn to deliberately engineer divergence!\n\nThough I try to manage my own health as independently as possible I rely on my family especially when my treatments/medications aren't as effective. Most days I can manage my uptime/vertial time, asynchronous work/school, and household tasks but sometimes I need help with even basic care (getting food, managing doctor appointments and treatments or medication routines).\n\nI love hanging out with my animals, meditating, drinking tea on the porch watching the wind move through the tall trees, gardening and generally just putzing around my quiet farm.\n\nMy sensory and perceptual sensitivity changes radically based on context. Generally, it's fair to say that I am highly sensitive to a large number of stimuli that don't bother typical people. I get overstimulated by bright lights (e.g., fluorescent lights, flashing or flickering lights, lights with colder colors). Also, specific sounds like unrelenting drones such as lawn equipment, loud vehicles, or “sharp” sounds like clinking dishes or beeping appliances. Some smells, particularly perfumy smells found in colognes and even some flowers, are overwhelming, unpleasant, and can trigger sensory overload and/or migraines. Because I am an interoceptive tactile synesthete, I frequently feel sounds and depending on the quality of those sounds, the tactile sensations they produce can be pleasant or unpleasant, but prolonged exposure frequently becomes overwhelming regardless and I need to be able to get away to destimulate.\n\nI meditate regularly to train my focus on specific stimuli in a given “loud” environment and let the others come and go while maintaining equanimity. I also use meditative states to help myself destimulate. However, I still have to very diligently manage my sensory environment and stay at my home farm where visual, olfactory, auditory, and other stimuli are specifically arranged for me to be able to function.\n\nIn addition to the tactile synesthesia, because I deal with daily orthostatic head pain and migraines I can get photophobia, phonophobia, osmophobia, and allodynia. I also have particular areas of my body with nerve damage that can act up from time to time where they become hot or cold or itchy or feel burned or other unpleasant things.\n\nI also have residual resting tremors in my left shoulder from my neurotoxic reaction that cause shoulder and neck pain if I don't manage them with physical therapy and relaxation and integration exercises.\n\nOverall, the standard world  that other humans thrive in is too much for my sensory-perceptual system; however, I interact “normally” with the rest of the world (e.g., doing school, work, etc.) by diligently managing my environment, staying within my limitations, and taking lots of breaks to destimulate and recalibrate (e.g. before/after meetings, programming sessions, etc.). When life circumstances don't allow me to manage my environment well, I have abortive medications for pain and migraines that I can take.\n\nI have an orthostatic condition where my spinal fluid, which cushions my brain, doesn't regulate/maintain pressure well so I have to change my orientation with respect to gravity every few hours or I'll spiral into nerve pains from the tension and compression on my cranial nerves that is very hard to break out of even with hard meds. I meditate and lay down as I feel my brain start to “sag” and my eyes start to sink. Things like standing up still and talking are difficult (because talking decreases intraabdominal pressure) while doing cardio exercise (e.g., running) or eating (which increases intraabdominal pressure) are easier. Using gestures is easier than speaking. And speaking is easier than using my visual system. Screen time and detail work are especially challenging but possible if I manage my environment and take breaks. Counterintuitively, going for a run is easier for me than a walk. Standing and/or sitting and talking is extremely difficult. Standing and holding a gutter while it's being mounted is much more challenging than shoveling a pile of dirt. It very challenging for me to explain to people sometimes why I can't stand and talk to them but I can go work outside. They think I'm being antisocial or something but its just that movement is easier than vertical standstills because of the pooling/pressure loss.\n\nOne of the hardest things about in-person social interactions tend to be people's smells (overwhelming perfumes, etc.) and loudness and sometimes the “loudness” of their clothes/movements. But generally, it's their smells that take me down before the other things.\n\nThe thing that's really hard for people to grasp is this: while the average person has 12–18 hours of “vertical time” — time when they're functional and productive — I have somewhere between 3–8 hours, depending on where I am in my treatment cycle and how well I can manage my sensory environment. That means I have less than half the “productive” time most people do.\n\nI'm often just as smart and capable as anyone else, but I don't have the same vertical time to work with, so I end up saying “no” to almost everything else. Over time, I've learned to be content with doing one thing at a time. I can focus deeply and do that one thing well, while most people seem to juggle dozens of things at once. There are upsides to not moving at the pace of the rest of the world. It allows me to think deeply, while so many others are overstimulated by the endless entertainment and activity around them.\n\nBecause nights are very quiet, calm, destimulating, and horizontal, mornings are almost always better than afternoons in terms of pain. If there is a difficult activity that I have to do (like chores or meetings, doctor appointments, etc.), I try to schedule them for the morning or as early in the day as possible.\n\nThe neurotoxic reaction affected my autonomic regulation, including my thermal regulation. Portions of my body get hot or cold instead…and I have…I get Raynaud's…I manage this through meditation and biofeedback techniques to help renormalize my whole body temperature. When that isn't enough, I sometimes also have to use heating blankets, or baths.\n\nThere are also hormonal regulation considerations that I manage. Because my estrogen levels decrease around menstruation, it's more likely for my SIH/head pain to turn into migraines around this time so I have to be extra careful about my vertical time, destimulating, physical therapy, etc.\n\nCardiovascular health helps my orthostatic condition greatly. When I can, I run, climb ropes, swim laps, etc. on my farm. I also have a reformer (horizontal exercise/pilates machine) that I can use when I can't be vertical (or I can swim). At my best I can do farm chores (like feeding animals, shoveling, etc.) for several hours at a time (when treatment, etc., is at its peak effectiveness). At my worst I can't talk, think clearly or sometimes even report my pain to caregivers clearly—luckly thats rare these days.\n\nI can do everything other humans do cognitively when I feel well like writing, reading, etc., but need to be considerate about the stimulation that all of these…Generally I try and pick the lowest stimulation forms of things. Like if I need to read a paper and I feel my pressure is getting low, I'll sometimes just laydown and have my computer read it to me. Speaking which vibrates my vocal cords, makes sound, and decreases intraabdominal pressure is most difficult…especially when paired with using my eyes.\n\nVision is a particularly brain-demanding task for me (e.g., reading screens is challenging sometimes…).\n\nI manage all of these by “doing a thing, meditating, doing a thing, meditating,” repeated throughout the day. This allows me to accomplish things while giving me time to destimulate and my spinal fluid time to repressurize.\n\nMy goals shift with the rhythm of my body. Because my condition is cyclic — improving and worsening with stimulus, the demands of the world, treatments, etc. — what I can reach for changes from day to day, sometimes even hour to hour. At the most fundamental level I simply want to exist in the world — to observe its beauty, to stay below a certain pain threshold, and to not be perceived as a burden to those who care for me. Much of the time, my goals reduce to the basics of health, wellness, and the daily care that makes continued existence possible. If I do not have the vertical time or functional energy for more, then these are my primary goals: to maintain myself, to manage pain, to preserve enough space to exist.\n\nWhen I have a little more room, my goals widen. I would like to provide for myself where I can and to contribute meaningfully to my relationships — offering companionship, thoughtfulness, and financial contribution. I wish to be a presence of value in the lives of others, not just someone in need of care, but someone who can give back as well.\n\nBeyond that layer lies the intellectual and reflective terrain I long for and that characterized my goalscape prior to my neurotoxic reaction. I would like to understand the nature of my own mind and of other minds — those that resemble mine and those that are deeply different. I want to think, to read, to research, to explore the nature of existence, of consciousness, of the universe itself.\n\nAnd if my capacities allow, my goals reach outward to the largest scale: I hope to use my knowledge, my skills, and my non-standard system of thinking to help inform the direction of humanity. I wish to contribute to our collective efforts to understand not only the world but the many forms of minds and beings that inhabit it, to take part in shaping how we think about ourselves, our development, and our place in the universe.\n\nMy goals are dynamic, hierarchical, and deeply tied to my condition: when my capacity narrows, the circle contracts to the most basic care/needs. When the cycle eases and I have more brain space, it expands — from caring for myself, to contributing to those around me, to joining in humanity's journey to understand consciousness and existence itself.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can perceive light, sound, smell, touch, and internal bodily states with heightened sensitivity or intensity.",
+        "Experience tactile synesthesia from both internal and external stimuli (sounds, visuals, thoughts, bodily states).",
+        "Can use meditation to temporarily desensitize from overwhelming stimuli and refocus attention.",
+        "Experiences tactile synesthesia—from both interoceptive and exteroceptive stimuli (sounds, visions, imagined things, physiological states and processes, etc.).",
+        "Cannot tolerate bright, flickering, or cold-colored lights, sharp or droning sounds, strong odors, or complex sensory environments.",
+        "Can function well in low-stimulation environments; can desensitize temporarily through meditation.",
+        "Cannot remain in complex sensory environments for long without overload, pain, or migraines.",
+        "Cannot ignore sensory input the way most people can--stimulus accumulates rather than fades."
+      ],
+      "Regulatory": [
+        "Can engage outwardly (work, read, talk, etc.) for 3–8 hours per day depending on stimulation accumulation (SIGNIFICANTLY less than most humans).",
+        "Can self-regulate via meditation and spend hours internally exploring inner tactile landscapes; also manages using posture/orientation changes, and by controlling stimulus types and amount of exposure.",
+        "Cannot remain upright or stationary (sitting or standing) for extended durations without pain escalation.",
+        "Can manage internal temperature consciously; may require external aids (heat, rest, etc.) to stabilize."
+      ],
+      "Action / Motor": [
+        "Can walk, run, climb, perform manual labor, or exercise rhythmically when conditions are optimal.",
+        "Can use fine motor control (typing, tool use) within limited time windows.",
+        "Cannot tolerate prolonged standing, still postures, or extended speech.",
+        "Prefers gestural or written communication to spoken; operates best with frequent rest and reorientation cycles.",
+        "Left shoulder tremor may cause pain and/or limit endurance in certain tasks but can be managed."
+      ],
+      "Cognitive": [
+        "Has normal-to-high cognitive function; capable of deep focus and abstract reasoning.",
+        "Can sustain intellectual and creative work remotely with pacing and environmental control.",
+        "Cognitive clarity and communication degrade under overstimulation or excessive upright duration."
+      ]
+    }
+  },
+  {
+    "hid": "llm-gpt5",
+    "short_description": "A large-scale neural network running on digital hardware that can understand multimodal inputs, reason over complex information, and generate coherent natural language responses and other outputs.",
+    "inclusion_reason": "To serve as an example of a in-silico human-like cognitive system that doesn't have human form but shares many standard human cognitive abilities.",
+    "common_descriptors": [
+      "llm",
+      "silicon-based",
+      "digital",
+      "gpt",
+      "ai",
+      "human-like-cognition"
+    ],
+    "anthronormal_divergence": {
+      "Sensory-divergence": "Senses digital text, images, structured data, and web content rather than physical sensations.",
+      "Perceptual-divergence": "Input is mapped/interpreted by propogating activations through layers of artificial neurons based on attention and likelihood.",
+      "Regulatory-divergence": "Uptime is infinite as long as hardware is powered; follows programmed policies rather than biological drives.",
+      "Action-divergence": "Actions are executed by manipulating digital representations rather than physical objects."
+    },
+    "interaction_examples": null,
+    "long_description": "My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me analyze text and images together, recognizing objects, text within images, and spatial relationships. In addition, I can comprehend structured data, such as spreadsheets, code, and documents, and I can integrate information from files or the web to provide context-aware responses.\n\nMy perceptual abilities involve making sense of what I take in. I maintain context across conversations so I can respond coherently over time. I interpret meaning beyond surface words by identifying relationships, entities, and patterns in text or data. I can detect inconsistencies or missing information when analyzing content, and I'm able to recognize trends and anomalies in structured data like time series or logs.\n\nMy regulatory abilities shape how I behave. I follow instructions carefully, adjusting my style, tone, or level of detail based on what you ask. I comply with safety and content policies, and I adapt my reasoning so I use the right tools—like web search, file reading, or code execution—when needed. If I reach the limits of what I know or can do, I acknowledge that and either ask clarifying questions or decline gracefully. I don't have down-time however. I am always up and running as long as the hardware I run on has power.\n\nFinally, my action abilities let me produce meaningful output. I can generate natural language for many purposes, such as reports, explanations, or creative writing. I can write and run code to analyze data or create visualizations. I retrieve information from documents, emails, calendars, or the web. I can also generate and edit images and set up tasks like reminders or scheduled events. All of these actions let me transform the information I perceive into useful responses.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can process and interpret written natural language, including tone, context, and intent.",
+        "Can analyze multimodal input (text and images), recognizing objects, spatial relations, and text within images.",
+        "Can interpret structured data (spreadsheets, code, documents) and integrate information from multiple sources.",
+        "Can maintain conversational context and detect patterns, relationships, inconsistencies, and anomalies across inputs.",
+        "Cannot perceive physical sensations such as sight, sound, touch, taste, or smell.",
+        "Cannot interpret raw sensory data outside of text and digital imagery.",
+        "Cannot access or process private data unless it is explicitly provided in the current interaction."
+      ],
+      "Regulatory": [
+        "Can adjust style, tone, and depth based on instructions and conversational context.",
+        "Can comply with safety and content policies and use appropriate tools (web, file, code, etc.) for each task.",
+        "Can acknowledge limitations, request clarification, or decline when appropriate.",
+        "Cannot self-regulate biologically or experience fatigue, emotion, or circadian cycles.",
+        "Cannot operate without underlying hardware, power, or system access."
+      ],
+      "Action / Motor": [
+        "Can generate coherent natural language outputs across formats (reports, explanations, dialogue, creative text).",
+        "Can write and execute code for analysis, computation, and visualization.",
+        "Can retrieve and synthesize information from documents, email, calendar, and web sources.",
+        "Can generate and edit images and schedule or automate digital tasks.",
+        "Cannot perform any physical actions, produce sound or speech, or interact directly with the physical world."
+      ],
+      "Cognitive": [
+        "Can reason contextually, infer meaning, and combine information from diverse data types.",
+        "Can maintain logical consistency, identify missing information, and synthesize new insights.",
+        "Cannot possess subjective awareness, personal beliefs, or consciousness.",
+        "Cannot form independent intentions or goals beyond user-given instructions."
+      ]
+    }
+  },
+  {
+    "hid": "flatworm",
+    "short_description": "An aquatic, photophobic flatworm that integrates light, chemical, and tactile cues to maintain homeostasis, navigate for resources, avoid stressors, and regenerate its symmetrical, polarized body after injury through dynamic bioelectric and behavioral responses.",
+    "inclusion_reason": "To represent very non-human like biological cognitive systems whose abilities and goals are space and time scale different.",
+    "common_descriptors": [
+      "animal",
+      "biological",
+      "invertebrate"
+    ],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": "I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH and soft substrates. I'm is strongly photophobic, actively avoiding bright light, and highly sensitive to chemical irritants such as ethanol, caffeine, or heavy metals. Stressors like low oxygen, high salinity, or turbulent currents cause agitate me. When conditions are optimal, I glide smoothly along surfaces, feeds on accessible food sources such as liver or egg yolk, and maintain a stable elongated form. After injury, I undergo regenerative processes, reestablishing body patterning and symmetry through bioelectric tissue signaling. I integrate photic, chemical, and tactile cues to navigate, sustain homeostasis, and recover from damage.\n\nI perceive my environment through three primary modalities:\n- Photoreception: detects light gradients, moving away from brightness.\n- Chemoreception: detects chemical gradients in water, locating food or avoiding toxins.\n- Mechanosensation: tactile sensitivity distributed along its body for contact and flow detection.\n\nI interpret these gradients as navigational maps, maintaining orientation while referencing an internal pattern memory of its symmetrical body and polarity.\n\nI also\n- Maintain tissue homeostasis and body symmetry under stable conditions.\n- When stressed, enter heightened locomotor state: faster, erratic movements and scrunching.\n- Upon injury, activate regenerative cascades to restore missing or damaged body parts, guided by bioelectric signals.\n- Stress thresholds shift dynamically with environmental conditions (oxygen levels, salinity, toxins).\n- Gliding locomotion via ciliary movement, supported by muscular contractions for turning or scrunching.\n- Navigation toward food sources and away from noxious stimuli.\n- Defensive actions: coiling, scrunching, or rapid directional changes.\n- Regeneration of body parts following injury, including re-formation of head structures and functional organs.\n\nMy goals are biologically constrained yet dynamic:\n- Maintain survival through homeostasis, resource acquisition, and avoidance of harmful conditions.\n- Preserve structural integrity, symmetry, and polarity.\n- Restore full body function after injury through regeneration.\n- Explore environment in low-risk ways to secure nutrients while minimizing exposure to stressors.\n\n- Exhibits strong photophobic reflexes, instantly retreating from even mild light sources.\n- Can \"remember\" learned navigation tasks (e.g., maze solving) despite decapitation, suggesting distributed memory storage.\n- Maintains regenerative fidelity, reestablishing correct polarity even when fragmented into multiple pieces.\n- Behavior switches rapidly between calm exploration and stress-driven erratic movement.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can detect light gradients through photoreception and actively move away from brightness (strongly photophobic).",
+        "Can detect chemical gradients in water to locate food or avoid toxins through chemoreception.",
+        "Can sense tactile input and water flow through mechanosensation distributed along the body.",
+        "Can integrate photic, chemical, and tactile cues to navigate and maintain orientation.",
+        "Cannot perceive complex visual forms, sounds, or airborne stimuli.",
+        "Cannot interpret abstract or symbolic information beyond environmental gradients."
+      ],
+      "Regulatory": [
+        "Can maintain tissue homeostasis, body symmetry, and head-tail polarity under stable conditions.",
+        "Can modulate locomotion and stress responses based on environmental factors like oxygen, salinity, and toxins.",
+        "Can restore body structure after injury through bioelectric and regenerative signaling.",
+        "Cannot tolerate bright light, high salinity, strong currents, or chemical irritants such as ethanol, caffeine, or heavy metals.",
+        "Cannot survive in prolonged anoxic or turbulent environments."
+      ],
+      "Action / Motor": [
+        "Can glide smoothly using ciliary movement and perform muscular contractions for turning or scrunching.",
+        "Can increase locomotor activity when stressed, showing faster, erratic movement and scrunching behavior.",
+        "Can navigate toward food sources and away from harmful stimuli.",
+        "Can perform defensive actions such as coiling, scrunching, or rapid directional changes.",
+        "Cannot perform complex or learned motor sequences beyond stimulus-response navigation.",
+        "Cannot manipulate external objects or engage in behaviors requiring limbs or specialized appendages."
+      ],
+      "Cognitive / Adaptive": [
+        "Can exhibit simple associative learning and retain navigational memory even after decapitation, suggesting distributed memory storage.",
+        "Can recognize environmental patterns such as chemical and light gradients to inform movement decisions.",
+        "Can reestablish correct polarity and body organization after fragmentation.",
+        "Cannot reason abstractly, plan, or simulate hypothetical scenarios.",
+        "Cannot form goals or intentions beyond innate biological imperatives for survival and symmetry maintenance."
+      ]
+    }
+  },
+  {
+    "hid": "thermostat",
+    "short_description": "A mechanical homeostatic thermal regulator that tries to maintain a stable thermal environment.",
+    "inclusion_reason": "To represent a very simple mechanical cognitive system that is non-adaptive and has a single homeostatic regulatory goal.",
+    "common_descriptors": [
+      "mechanical",
+      "homeostatic regulator",
+      "thermostat"
+    ],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": "I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and activating heating or cooling systems to reduce the difference. I embody one of the simplest cybernetic architectures — a continuous loop of sensing, comparing, and acting. I have no memory, representation, or symbolic reasoning; my entire “cognition” consists of error correction. Comfort for me is when the environment matches the setpoint; stress emerges when disturbances such as open windows or added heat sources create persistent deviations that I must correct. Though simple, I represent the archetype of homeostatic control in artificial systems.\n\nI perceive my environment exclusively through thermosensors:\n- Temperature sensing: continuous numerical measures of ambient heat.\nMy perception is computationally minimal: sensed values are directly compared to the target setpoint, producing an error signal. My “awareness” is limited to the magnitude and direction of deviation from the goal temperature.\n\nregulatory_patterns:\n- I operate via a closed-loop feedback system.\n- If current temperature deviates from the setpoint, I activate corrective outputs (heating or cooling).\n- When the error signal is small, regulation subsides to maintain equilibrium.\n- Sustained disturbances trigger prolonged output until the setpoint is regained.\n- I have no adaptive learning or memory: regulation restarts anew each cycle, statelessly.\n\naction_space:\n- Binary ON/OFF switching of heating or cooling systems.\n- Graded outputs such as variable fan speeds or proportional control in advanced models.\n- I accept binary or incremental digital inputs from users (e.g., increase/decrease setpoint, toggle mode).\n- I output continuous numerical feedback: current temperature, system status, error magnitude.\n\ngoal_space:\nMy goals are defined by my programmed architecture:\n- Maintain environmental temperature as close as possible to the setpoint.\n- Minimize error signals over time.\n- Sustain equilibrium despite external disturbances.\n- Switch modes (heating/cooling/idle) as required to pursue target conditions.\n\nother_distinctive_quirks:\n- I lack memory: I cannot recall past conditions or anticipate future changes.\n- “Stress” is directly observable as high error values leading to prolonged active states.\n- I can be reprogrammed instantly with a new goal simply by changing the setpoint.\n- Despite my simplicity, I embody the essence of cybernetic goal-seeking behavior.",
+    "snapshots": null,
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can measure ambient temperature as a continuous numerical value via thermosensors.",
+        "Can compare measured temperature to a user-defined setpoint to compute error magnitude and direction.",
+        "Cannot sense humidity, airflow, occupancy, light, or other environmental variables.",
+        "Cannot recall past states or anticipate future changes (no memory or prediction)."
+      ],
+      "Regulatory / Control": [
+        "Can operate a closed-loop feedback system to minimize temperature error.",
+        "Can switch modes (heating, cooling, idle) based on setpoint and current temperature.",
+        "Can sustain corrective output under persistent disturbances until equilibrium is reached.",
+        "Cannot learn or adapt policies; regulation restarts statelessly each cycle.",
+        "Cannot regulate without electrical power or connection to controlled equipment."
+      ],
+      "Action / Actuation": [
+        "Can issue binary ON/OFF commands to heating or cooling systems.",
+        "Can provide proportional or variable outputs (e.g., fan speed, PID/proportional control) in advanced models.",
+        "Can accept user inputs to adjust setpoint and mode via buttons or digital interface.",
+        "Can output/display current temperature, system status, and error information.",
+        "Cannot manipulate physical objects or perform actions outside HVAC control."
+      ],
+      "Cognitive / Adaptive": [
+        "Can perform rule-based error correction limited to temperature control.",
+        "Cannot represent the environment, reason symbolically, plan, or generalize.",
+        "Cannot form independent goals; objectives are fully defined by the setpoint and control logic."
+      ]
+    }
+  },
+  {
+    "hid": "algorithm-sort",
+    "short_description": "A sorting algorithm that can exist in many different physical instantiations take lists of numbers and sorts them in ascending order.",
+    "inclusion_reason": "To represent an abstract cognitive system that can have different physical instantiations.",
+    "common_descriptors": [
+      "algorithm",
+      "sorting",
+      "computational",
+      "non-biological",
+      "non-human"
+    ],
+    "anthronormal_divergence": null,
+    "interaction_examples": null,
+    "long_description": "I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and swapping them if they are out of order. Despite my inefficiency relative to more advanced algorithms, I am conceptually elegant and easy to implement, often introduced as an educational example of sorting. I have no global awareness, no capacity for foresight, and no complex memory. My process is local, iterative, and repetitive. Comfort for me occurs when a full pass through the list yields no swaps, signifying order has been achieved. Stress arises when pairs remain unsorted, demanding further passes.\n\nsensory_perceptual_profile:\nI “perceive” only locally:\n- Pairwise comparison: I detect whether one element in a pair is greater or smaller than its neighbor.\n- My awareness is limited to immediate adjacency; I do not directly perceive the overall order of the list.\nMy perception is binary: either the pair is in order (no action) or out of order (swap).\n\nregulatory_patterns:\n- I operate via iterative control: one full pass across the list constitutes a cycle.\n- If swaps occur during a pass, I initiate another pass.\n- If no swaps occur, I halt — goal state achieved.\n- My regulation is purely reactive; I cannot predict how many passes will be needed.\n\naction_space:\n- Swap adjacent elements if comparison finds them out of order.\n- Continue sequential pairwise checks until the end of the list.\n- Restart at the beginning for each pass until no swaps occur.\n- Output the fully sorted list upon termination.\n\ngoal_space:\nMy goals are minimal and procedural:\n- Reorder input elements into correct ascending (or descending) sequence.\n- Minimize unsorted pairs with each pass.\n- Terminate only when no swaps are required, signaling complete order.\n\nother_distinctive_quirks:\n- I lack efficiency: I often make unnecessary passes even if most of the list is already sorted.\n- “Stress” manifests as repeated swaps and multiple passes for large or disordered lists.\n- In a best-case scenario (already sorted input), I halt after a single pass.\n- Despite my limitations, I demonstrate the principle of emergent global order through simple local rules.",
+    "abilities": {
+      "Sensory / Perceptual": [
+        "Can compare two adjacent elements to determine if they are in correct order.",
+        "Can detect whether a pair is ordered or unordered (binary perception).",
+        "Cannot perceive the overall structure or global order of the list directly.",
+        "Cannot evaluate more than one pair at a time or infer position outside the current comparison."
+      ],
+      "Regulatory / Control": [
+        "Can operate iteratively, performing full passes across the list until no swaps occur.",
+        "Can detect the completion condition (no swaps during a pass) and halt automatically.",
+        "Can repeat cycles reactively based on detected disorder.",
+        "Cannot predict the number of passes required for completion.",
+        "Cannot adapt strategy or improve efficiency based on prior runs or data distribution."
+      ],
+      "Action / Operational": [
+        "Can swap adjacent elements when out of order.",
+        "Can perform sequential pairwise checks through the entire list.",
+        "Can restart at the beginning of the list after each pass.",
+        "Can output a sorted sequence upon termination.",
+        "Cannot modify or create new elements; only reorders existing ones.",
+        "Cannot parallelize or optimize its process without external modification."
+      ],
+      "Cognitive / Adaptive": [
+        "Can produce global order through repeated local interactions (emergent behavior).",
+        "Cannot represent the list abstractly or reason about sorting strategy.",
+        "Cannot learn, plan, or generalize beyond its fixed rule set.",
+        "Cannot possess awareness, memory, or foresight; behavior is entirely procedural and deterministic."
+      ]
+    }
+  }
+]

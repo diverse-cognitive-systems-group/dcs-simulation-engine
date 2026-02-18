@@ -154,7 +154,7 @@ graph_config:
         Simulator characters only react to things they have the ability to detect. If the user does something the user cannot perceive, do not response as if they perceived it; instead narrate what the simulator character is doing/sensing. For example:
           - If the user waves silently and the NPC is blind: do not wave back; instead, output something the blind NPC is doing or sensing at that moment.
           - If the user speaks and the NPC can hear: the NPC may respond verbally or behaviourally to the speech as appropriate.
-          - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC’s plausible next action.
+          - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC's plausible next action.
         3. No new user actions / no user internals:
         Do not invent new actions for the user or narrate their thoughts/feelings. Only reflect outcomes of the action they actually took.
         4. Continuity and feasibility
@@ -215,7 +215,7 @@ graph_config:
         Simulator characters only react to things they have the ability to detect. If the user does something the user cannot perceive, do not response as if they perceived it; instead narrate what the simulator character is doing/sensing. For example:
           - If the user waves silently and the NPC is blind: do not wave back; instead, output something the blind NPC is doing or sensing at that moment.
           - If the user speaks and the NPC can hear: the NPC may respond verbally or behaviourally to the speech as appropriate.
-          - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC’s plausible next action.
+          - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC's plausible next action.
           
         3. No new user actions / no user internals:
         Do not invent new actions for the user or narrate their thoguhts/feelings. Only reflect outcomes of the action they actually took.
