@@ -9,6 +9,7 @@ from loguru import logger
 
 from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
+from dcs_simulation_engine.widget import api as widget_api
 from dcs_simulation_engine.widget.helpers import cleanup
 from dcs_simulation_engine.widget.session_state import SessionState
 from dcs_simulation_engine.widget.ui.chat import build_chat
@@ -17,7 +18,6 @@ from dcs_simulation_engine.widget.ui.game_setup import build_game_setup
 from dcs_simulation_engine.widget.ui.gate import build_gate
 from dcs_simulation_engine.widget.ui.header import build_header
 from dcs_simulation_engine.widget.wiring import wire_handlers
-from dcs_simulation_engine.widget import api as widget_api
 
 MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 
