@@ -45,7 +45,7 @@ def wire_handlers(
     )
 
     setup_sim_evt.success(
-        fn=lambda: gr.update(visible=True),  # renable chat textbox
+        fn=lambda: gr.update(visible=True),  # reenable chat textbox
         inputs=[],
         outputs=[chat.interface.textbox],
     )
