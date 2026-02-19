@@ -29,13 +29,35 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
             """
         <style>
         button[aria-label="Clear"] {
-        display: none !important;
+            display: none !important;
         }
         button[aria-label="Retry"] {
-        display: none !important;
+            display: none !important;
         }
         button[aria-label="Undo"] {
-        display: none !important;
+            display: none !important;
+        }
+        /* Fix flagging buttons overlapping chat messages */
+        /* Target the flag button container within chat messages */
+        .message-buttons-bot, .message-buttons-user {
+            position: relative !important;
+            display: block !important;
+            clear: both !important;
+            margin-top: 8px !important;
+        }
+        /* Ensure flagging options don't overlap message content */
+        .chatbot .message-wrap .message {
+            position: relative !important;
+            overflow: visible !important;
+        }
+        .chatbot .message-wrap .message .prose {
+            position: relative !important;
+            z-index: 1 !important;
+        }
+        /* Style the flag buttons to appear below message text */
+        .chatbot button.flag {
+            position: relative !important;
+            margin-top: 4px !important;
         }
         </style>
         """
@@ -44,8 +66,6 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
         chatbot = gr.Chatbot(
             placeholder="""<strong>Loading simulation environment.</strong>
             <br>This might take a minute...☕""",
-            type="messages",
-            show_copy_all_button=True,
         )
 
         chatinterface = gr.ChatInterface(
@@ -54,19 +74,13 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
             # TODO: add additional outputs that freeze group on exception
             # additional_outputs=[group],  # add state to outputs via wiring
             multimodal=False,  # only text input
-            type="messages",  # pass history (list of dics - openai-style role/content
             chatbot=chatbot,
             # textbox=gr.Textbox(),
             editable=False,  # users cannot edit past messages
             # title="Simulating",
             # description="A game with ...",
-            flagging_mode="manual",  # users will see a button to flag
-            flagging_options=[
-                "Doesn't make sense",
-                "Out of character",
-                "Something else",
-            ],
-            flagging_dir="logs/flags",  # path to directory where flagged data is stored
+            # NOTE: Using Chatbot's feedback_options instead of ChatInterface flagging
+            # as the latter has rendering issues in Gradio 6.x
             analytics_enabled=True,  # enable gradio analytics
             autofocus=True,  # focus on textbox on load
             autoscroll=True,  # scroll to latest message on update
@@ -79,7 +93,6 @@ def build_chat(state: gr.State, access_gated: bool) -> ChatUI:
         )
         chatinterface.textbox.placeholder = "What do you do next?"
         chatinterface.chatbot.show_label = False  # no chat label
-        chatinterface.chatbot.show_copy_all_button = True
         chatinterface.chatbot.group_consecutive_messages = False  # separate back2back
         chatinterface.chatbot.render_markdown = True  # render markdown in messages
 

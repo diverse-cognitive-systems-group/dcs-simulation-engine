@@ -23,13 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10.13"
-      - name: Install Poetry
-        run: pipx install "poetry==2.1.4"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install 3.13
       - name: Install deps (incl. dev)
-        run: poetry install --with dev --no-interaction
+        run: uv sync --extra dev
       - run: make lint
 
   test:
@@ -37,13 +36,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10.13"
-      - name: Install Poetry
-        run: pipx install "poetry==2.1.4"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install 3.13
       - name: Install deps (incl. dev)
-        run: poetry install --with dev --no-interaction
+        run: uv sync --extra dev
       - run: make test
 
   build-docs:
@@ -51,13 +49,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install Poetry
-        run: pipx install "poetry==2.1.4"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install 3.13
       - name: Install deps (incl. dev)
-        run: poetry install --with dev --no-interaction
+        run: uv sync --extra dev
       - run: make docs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

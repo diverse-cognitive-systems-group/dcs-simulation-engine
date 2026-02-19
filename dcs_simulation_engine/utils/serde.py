@@ -161,7 +161,7 @@ class SerdeMixin(BaseModel):
         if problem_mark:
             line = problem_mark.line + 1
             col = problem_mark.column
-        header = "Your YAML isn’t valid."
+        header = "Your YAML isn't valid."
         if line is not None and col is not None:
             snippet = cls._yaml_context_snippet(text, line, col)
             return f"{header}\nLine {line}, column {col+1}.\n\n{snippet}\n\nFix the \
@@ -176,7 +176,7 @@ class SerdeMixin(BaseModel):
         model: type[BaseModel] | None = None,
     ) -> str:
         """Turn Pydantic errors into actionable, plain-English guidance."""
-        lines = ["Your YAML loaded, but it doesn’t match the expected structure:"]
+        lines = ["Your YAML loaded, but it doesn't match the expected structure:"]
         for err in e.errors():
             loc = ".".join(str(p) for p in err.get("loc", ()))
             typ = err.get("type", "")

@@ -1,0 +1,12 @@
+[
+  {
+    "player_id": "000000000000000000000001",
+    "fields": {
+      "full_name": "User One",
+      "email": "userone@example.com",
+      "phone_number": "+1-555-555-5555"
+    },
+    "created_at": {"$date": "2026-01-01T00:00:00.000Z"},
+    "updated_at": {"$date": "2026-01-01T00:00:00.000Z"}
+  }
+]

@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+
+        {
+            "label": "docker-compose-up",
+            "type": "shell",
+            "command": "docker compose -f compose.yaml up --detach",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "docker-compose-down",
+            "type": "shell",
+            "command": "docker compose -f compose.yaml down --volumes",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

@@ -30,7 +30,7 @@
                 "ms-python.black-formatter",
                 "charliermarsh.ruff",
                 "ms-azuretools.vscode-docker",
-                // "ms-python.mypy-type-checker",
+                "streetsidesoftware.code-spell-checker",
                 "github.vscode-pull-request-github"
             ],
             "settings": {

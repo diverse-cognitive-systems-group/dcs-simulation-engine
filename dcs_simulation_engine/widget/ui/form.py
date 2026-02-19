@@ -73,7 +73,7 @@ def build_form(access_gated: bool, form_config: Dict[str, Any]) -> FormUI:
                     lines=1,
                     show_label=False,
                     container=False,
-                    show_copy_button=True,
+                    buttons=["copy"],
                 )
                 spacer(8)
                 with gr.Row():

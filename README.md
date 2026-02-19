@@ -55,8 +55,58 @@ Anybody can play the Explore game via the live web demo.
 
 <img src="images/web-demo.png" alt="Web Demo">
 
-### Researchers & Developers
-If you’re a researcher or developer, you can design, run, and deploy your own experiments—create new games, add or modify characters, and explore different simulation setups.
+
+### Developers
+
+#### Python Setup
+
+It is recommend that you use [uv](https://github.com/astral-sh/uv) to manage your Python environment. You can install it with
+
+```sh
+# install uv (if you don't have it already)
+pip install uv
+
+# install python 3.13 with uv
+uv python install 3.13
+
+# create a new virtual environment with uv
+uv venv --python 3.13
+
+# activate the virtual environment
+source .venv/bin/activate
+
+# installs dependencies and installs your current project in editable mode (similar to pip install -e .)
+uv sync --extra dev
+```
+
+To run the engine locally, you will need to have Docker installed and running on your machine. You can download Docker Desktop from [docker.com](https://www.docker.com/get-started/).
+
+
+#### Debugging
+
+It is recommended to use the [vscode](https://code.visualstudio.com/) to debug the application. The `.vscode/tasks.json` file automatically handles stopping and starting the docker containers for you.
+
+When you run the debug configuration, the application will create a new mongo database and seed it with the json files in `database_seeds/dev`.
+
+> ⚠️ **Use `dev` as the access key for any game type that requires one.**
+
+
+#### Tests
+
+Currently, only functional tests are automated. You can run them with:
+
+```sh
+uv run pytest -m functional
+```
+
+#### API Usage
+
+The engine also exposes a REST API via gradio's built in API server. While these are not automated yet, we have included examples here in `tests/api_manual` of how to call the api using the `gradio_client` library. it is possible to call the API using REST calls directly as well, but this is much more tedious so we recommend using the client library.
+
+
+### Researchers
+
+If you’re a researcher, you can design, run, and deploy your own experiments—create new games, add or modify characters, and explore different simulation setups.
 
 The full Researcher User Guide lives in the wiki and walks through these options in detail.
 [👉 Researcher User Guide](USER_GUIDE.md)
@@ -66,35 +116,6 @@ At a high level, the recommended way to work with the project is to install and 
 - Install from Docker: Run from the docker image without installing anything locally. This is ideal if you want to test or deploy games without modifying the codebase.
 
 Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
-
-```bash
-# install via poetry (or use pip if you prefer)
->> poetry add dcs-simulation-engine
-# make sure its installed
->> poetry show dcs-simulation-engine
-# and/or use the dcs command line tool
->> dcs --version
-
-# Show help info
->> dcs --help
-
-# List what games are available
->> dcs list games
-
-# Run a game locally (add --help to see options)
->> dcs run
-
-# Create a new game (called my-game)
->> dcs create game my-game
-# See all options for creating games using the --help flag
->> dcs create game --help
-
-# Validate your new or modified game
->> dcs validate my-game
-
-# Deploy your game to a server (make sure to configure deployment settings first)
->> dcs deploy --game my-game
-```
 
 The [Researcher User Guide](USER_GUIDE.md) covers the complete workflow including game and character creation, validation, deployment and experimental result collection.
 

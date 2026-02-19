@@ -11,10 +11,18 @@ from dcs_simulation_engine.widget.constants import USER_FRIENDLY_EXC
 from dcs_simulation_engine.widget.session_state import SessionState
 
 
-def cleanup(state: gr.State) -> None:
-    """Clean up resources associated with a session."""
+def cleanup(state: SessionState | gr.State) -> None:
+    """Clean up resources associated with a session.
+
+    Note: When called as delete_callback, Gradio passes the state value directly.
+    When called from on_unload, it may be the gr.State component.
+    """
     logger.debug("Cleaning up session resources")
-    session_state: SessionState = state.value
+    # Handle both cases: state value (dict) or gr.State component
+    if isinstance(state, dict):
+        session_state: SessionState = state
+    else:
+        session_state = state.value
     if "run" not in session_state:
         logger.debug("No 'run' in session state to clean up")
         return
@@ -43,7 +51,7 @@ def wpm_to_cps(wpm: int) -> float:
 def slow_yield_chars(
     message: str,
     wpm: int = 180,  # ~15 cps
-    min_yield_interval: float = 0.03,  # don’t spam UI; yield at most ~33 FPS
+    min_yield_interval: float = 0.03,  # don't spam UI; yield at most ~33 FPS
 ) -> Iterator[str]:
     """Yield a message one character at a time, simulating human typing speed."""
     cps = wpm_to_cps(wpm)

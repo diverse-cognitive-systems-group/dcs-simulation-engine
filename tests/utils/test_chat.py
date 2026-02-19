@@ -53,7 +53,7 @@ def test_chat_openrouter_invoke_multi_turn() -> None:
             "content": "You are a sad and emotionally withdrawn assistant. \
                 Respond with a tone of melancholy.",
         },
-        {"role": "user", "content": "I’m planning a trip to Japan."},
+        {"role": "user", "content": "I'm planning a trip to Japan."},
         {
             "role": "assistant",
             "content": "That sounds nice... I guess. Japan has some beautiful places.",

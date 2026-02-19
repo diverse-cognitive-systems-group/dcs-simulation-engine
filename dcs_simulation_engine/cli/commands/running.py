@@ -1,14 +1,17 @@
 """CLI commands for running resources."""
 
+import os
+
 import typer
 from loguru import logger
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
 from dcs_simulation_engine.utils.misc import validate_port
-from dcs_simulation_engine.widget.widget import build_widget
+from dcs_simulation_engine.widget.widget import build_widget_with_api
 
 run_app = typer.Typer(help="Run resources.")
 
+IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
 @run_app.command("game")
 def run_game(
@@ -41,10 +44,13 @@ def run_game(
     """Run a game locally."""
     gradio_app = None
     try:
-        dbh.init_or_seed_database()
+        # force_db_init should be True by default only for
+        # development environments
+        force_db_init = not IS_PROD  
+        dbh.init_or_seed_database(force=force_db_init)
 
         logger.debug("Building Gradio widget...")
-        gradio_app = build_widget(game_name=name, banner=banner)
+        gradio_app = build_widget_with_api(game_name=name, banner=banner)
 
         browser_host = "localhost" if host in ("0.0.0.0", "127.0.0.1") else host
         base_url = f"http://{browser_host}:{port}"

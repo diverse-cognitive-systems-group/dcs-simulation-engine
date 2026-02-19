@@ -14,7 +14,41 @@
                 "functional",
                 "-v",
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
         },
+        {
+            "name": "dcs run game: explore",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
+            "args": [
+                "run",
+                "game",
+                "Foresight",
+            ],
+            "cwd": "${workspaceFolder}",
+
+            // run docker compose in dev with: docker compose -f docker-compose.dev.yml up --build
+            "preLaunchTask": "docker-compose-up",
+            "postDebugTask":  "docker-compose-down",
+        },
+
+        {
+            "name": "dcs create database: dev",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
+            "args": [
+                "create",
+                "database",
+                "--path",
+                "database_seeds/dev",
+            ],
+            "cwd": "${workspaceFolder}",
+
+            // run docker compose in dev with: docker compose -f docker-compose.dev.yml up --build
+            "preLaunchTask": "docker-compose-up",
+            "postDebugTask": "docker-compose-down",
+        }
     ]
 }
