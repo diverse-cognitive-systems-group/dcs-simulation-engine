@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.13.12-slim
+FROM python:3.13-slim-bookworm
 
 # Install git + optional SSH client for GitHub/Bitbucket, plus minimal build deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
