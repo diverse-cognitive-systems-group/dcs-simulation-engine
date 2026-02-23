@@ -1,0 +1,5 @@
+# Opens all tasks on the API interface.
+run:
+  id: "usability_api"
+  interfaces: ["api"]
+  seed: null                    # no fixed seed for usability testing

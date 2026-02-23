@@ -1,0 +1,5 @@
+# Opens all tasks on the GUI interface.
+run:
+  id: "usability_gui"
+  interfaces: ["gui"]
+  seed: null                    # no fixed seed for usability testing
