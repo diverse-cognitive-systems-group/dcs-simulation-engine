@@ -2,8 +2,51 @@
 
 import json
 import pickle
+from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+
+def fmt_dt(dt: Optional[datetime]) -> str:
+    """Format datetime for display."""
+    return dt.strftime("%Y-%m-%d %H:%M") if dt else "—"
+
+
+def parse_iso(s: str) -> datetime:
+    """Parse an ISO datetime string, ensuring it's timezone-aware in UTC."""
+    dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def as_str(d: dict, *keys: str, default: str = "—") -> str:
+    """Helper to get a string value from a dict with multiple possible keys."""
+    for k in keys:
+        v = d.get(k)
+        if v is not None and v != "":
+            return str(v)
+    return default
+
+
+def fmt_uptime(dt: Optional[datetime]) -> str:
+    """Return human-friendly uptime like '5m', '2h', '3d'."""
+    if not dt:
+        return "—"
+
+    delta = datetime.now(timezone.utc) - dt
+    seconds = int(delta.total_seconds())
+
+    if seconds < 60:
+        return f"{seconds}s"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h"
+    days = hours // 24
+    return f"{days}d"
 
 
 def validate_port(port: int) -> bool:

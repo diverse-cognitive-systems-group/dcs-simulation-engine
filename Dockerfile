@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.10.13-slim
+FROM python:3.13-slim-bookworm
 
 # Install git + optional SSH client for GitHub/Bitbucket, plus minimal build deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -12,16 +12,16 @@ ENV POETRY_VIRTUALENVS_CREATE=false \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Pin Poetry to stable 2.1.x
-RUN pip install --no-cache-dir "poetry==2.1.4"
+# Install uv
+RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
 # Cache-friendly deps layer
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml uv.lock* ./
+
+# Install deps
+RUN uv sync
 
 # App code
 COPY . .
-
-# Install dependencies and project
-RUN poetry install --only main --no-interaction --no-ansi

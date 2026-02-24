@@ -13,7 +13,7 @@
     // Mount the Docker socket and feature
     "mounts": [
         "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-        "source=poetry-cache,target=/root/.cache/pypoetry,type=volume",
+        "source=pip-cache,target=/root/.cache/pip,type=volume",
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
     "features": {
@@ -21,7 +21,7 @@
             "version": "latest"
         }
     },
-    "postCreateCommand": "poetry install --with dev",
+    "postCreateCommand": "pip install -e .",
     "customizations": {
         "vscode": {
             "extensions": [

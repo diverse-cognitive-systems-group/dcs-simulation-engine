@@ -5,12 +5,11 @@ from typing import Optional
 
 import typer
 
-from dcs_simulation_engine.cli.commands.creating import create_app
-from dcs_simulation_engine.cli.commands.deleting import delete_app
-from dcs_simulation_engine.cli.commands.listing import list_app
-from dcs_simulation_engine.cli.commands.running import run_app
-from dcs_simulation_engine.cli.commands.stopping import stop_app
-from dcs_simulation_engine.cli.commands.validating import validate_app
+from dcs_simulation_engine.cli.commands.list import list_app
+from dcs_simulation_engine.cli.commands.modify import modify_app
+from dcs_simulation_engine.cli.commands.run import run
+from dcs_simulation_engine.cli.commands.status import status
+from dcs_simulation_engine.cli.commands.stop import stop
 from dcs_simulation_engine.cli.common import GlobalOptions, version_callback
 from dcs_simulation_engine.helpers.logging_helpers import configure_logger
 
@@ -19,12 +18,14 @@ app = typer.Typer(
     help="Command line interface for the DCS Simulation Engine.",
 )
 
+# sub-apps
 app.add_typer(list_app, name="list")
-app.add_typer(create_app, name="create")
-app.add_typer(validate_app, name="validate")
-app.add_typer(run_app, name="run")
-app.add_typer(delete_app, name="delete")
-app.add_typer(stop_app, name="stop")
+app.add_typer(modify_app, name="modify")
+
+# top level commands (no subcommand)
+app.command("run")(run)
+app.command("stop")(stop)
+app.command("status")(status)
 
 
 @app.callback(invoke_without_command=False)

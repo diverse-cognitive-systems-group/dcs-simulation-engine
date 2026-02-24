@@ -65,6 +65,7 @@ data/*.db
 
 logs/
 output/
+results/
 *.log
 
 # Environment variables

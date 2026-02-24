@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 import re
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import (
@@ -216,6 +217,51 @@ def backup_root_dir(db_name: str) -> Path:
     return root
 
 
+def backup_collection_sqlite(db, coll_name: str, root: Path) -> None:
+    """Save docs into SQLite as Extended JSON so you can query locally via SQLite JSON functions."""
+    coll = db[coll_name]
+    out_path = root / f"{coll_name}.sqlite"
+
+    conn = sqlite3.connect(out_path)
+    cur = conn.cursor()
+
+    cur.execute("PRAGMA journal_mode=WAL;")
+    cur.execute("PRAGMA synchronous=NORMAL;")
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS docs (
+            _id TEXT PRIMARY KEY,
+            doc TEXT NOT NULL
+        )
+    """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_docs_id ON docs(_id)")
+
+    cursor = coll.find({}).batch_size(1000)
+    try:
+        batch = []
+        for doc in cursor:
+            doc_json = json_util.dumps(doc)  # preserves ObjectId/dates as extended JSON
+            _id = str(doc.get("_id"))
+            batch.append((_id, doc_json))
+            if len(batch) >= 1000:
+                cur.executemany(
+                    "INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch
+                )
+                conn.commit()
+                batch.clear()
+
+        if batch:
+            cur.executemany(
+                "INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch
+            )
+            conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def backup_collection(db: Database, coll_name: str, root: Path) -> None:
     """Dump an existing collection to NDJSON + save index info."""
     coll = db[coll_name]
@@ -243,7 +289,7 @@ def load_seed_documents(path: Path) -> List[Dict[str, Any]]:
     """Load documents from a seed file."""
     text = path.read_text(encoding="utf-8").strip()
     if not text:
-        logger.warning(f"{path} is empty; skipping.")
+        logger.debug(f"{path} is empty; skipping.")
         return []
 
     if path.suffix.lower() == ".ndjson":
@@ -605,6 +651,17 @@ def list_players() -> List[Dict[str, Any]]:
         doc["id"] = str(doc.pop("_id"))
         players.append(doc)
     return players
+
+
+def list_runs() -> List[Dict[str, Any]]:
+    """Return list of all runs (non-PII fields only)."""
+    coll: Collection = get_db()[RUNS_COL]
+    cursor = coll.find({}, projection={"_id": 1})
+    runs = []
+    for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        runs.append(doc)
+    return runs
 
 
 def create_player(
