@@ -1,5 +1,20 @@
 # Opens all tasks on the API interface.
+# Opens all tasks on the GUI interface.
 run:
-  id: "usability_api"
+  name: usability-01
+
+  provider:
+    # location: local
+    location: fly
+    config:
+      host: 0.0.0.0
+      port: 8080
+  
   interfaces: ["api"]
-  seed: null                    # no fixed seed for usability testing
+
+games:
+  - name: Explore
+  - name: Infer Intent
+  - name: Foresight
+  - name: Goal Horizon
+  - name: Teamwork
