@@ -1,16 +1,9 @@
-# Foundational Analysis
+# Foundational Analyses
 
-Contains the manual analysis of the DCS Simulation Engine including usability, quality, core tasks, and characters. 
+Contains manual analyses relevant to DCS Simulation Engine.
 
-Each component is designed to evaluate specific aspect of the engine's performance and user experience.
+Analyses are self-contained, with dependencies defined in the [analysis] TOML. Only relevant analyses are re-run and appended when changes occur.
 
-Each analysis is self-contained and only relevant analyses are re-run and added as new ...for example
+- Each evaluate specific aspect of the engine's performance and user experience.
 
-FOr example upon major interface changes, the usability analysis is re-run and updated to reflect the new user experience. Upon character changes/additions the character coverage and perhaps simulation quality analyses are updated to reflect the new character's performance and coverage in the simulation.
-
-
-
-
-analysis dependencies are in toml [analysis]
-
-Each analysis is self-contained (environment.)
+For example, major interface updates trigger a usability analysis refresh, while character additions or changes update character coverage and simulation quality to reflect their impact.

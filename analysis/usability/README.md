@@ -1,6 +1,6 @@
 # Usability Analysis
 
-An analysis of interfacesto ensure they are easy to use and understand.
+An analysis of interfaces to ensure they are easy to use, understand, and reduce usability related confounds prior to downstream experimental usage. 
 
 ## Workflow
 
