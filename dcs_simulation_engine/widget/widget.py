@@ -69,8 +69,7 @@ def build_widget(
     ### BUILD WIDGET ###
 
     widget = gr.Blocks(
-        title="DCS Simulation",
-        theme=gr.themes.Default(primary_hue="violet"),
+        title="DCS Simulation"
     )
     with widget:
         state = gr.State(
@@ -250,13 +249,14 @@ def build_widget_with_api(
     api = build_api_blocks()
 
     # Combine into a single app with tabs
-    combined = gr.Blocks(title="DCS Simulation")
+    combined = gr.Blocks(
+        title="DCS Simulation",
+    )
     with combined:
-        with gr.Tabs():
-            with gr.Tab("Simulation"):
-                widget.render()
-            with gr.Tab("API", visible=False):
-                # API tab is hidden but endpoints are still accessible
-                api.render()
+        widget.render()
+
+        # API endpoints are accessible without being visible
+        with gr.Column(visible=False):
+            api.render()
 
     return combined

@@ -2,7 +2,7 @@
 FROM python:3.13-slim-bookworm
 
 # Install git + optional SSH client for GitHub/Bitbucket, plus minimal build deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt update && apt install -y --no-install-recommends \
     git openssh-client ca-certificates curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,11 +22,12 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# Cache-friendly deps layer
-COPY pyproject.toml uv.lock* ./
+# App code
+COPY . .
 
 # Install deps - include dev deps for devcontainer
 RUN uv sync --extra dev
 
-# App code
-COPY . .
+# Add an alias for the dcs command to run with uv
+RUN echo 'alias dcs="uv run dcs"' >> ~/.bashrc
+
