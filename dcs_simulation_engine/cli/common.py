@@ -58,13 +58,13 @@ def version_callback(value: bool) -> None:
 
 def step(msg: str) -> None:
     """Print a step message."""
-    typer.secho("• ", fg=typer.colors.GREEN, bold=True, nl=False)
-    typer.secho(msg, fg=typer.colors.GREEN, bold=True, nl=False)
+    typer.secho("• ", fg=typer.colors.BLUE, nl=False)
+    typer.secho(msg, fg=typer.colors.BLUE, nl=False)
 
 
 def done() -> None:
     """Print 'done' message."""
-    typer.secho(" done.", fg=typer.colors.GREEN, bold=True)
+    typer.secho(" done.", fg=typer.colors.BLUE)
 
 
 def check_localhost_http(

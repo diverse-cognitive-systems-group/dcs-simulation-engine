@@ -1,8 +1,5 @@
 run:
-  slug: demo-4928
-  provider:
-    name: fly
-  interfaces: ["gui", "api"]
+  name: demo-4928
 
 games:
-  - name: explore
+  - name: Explore

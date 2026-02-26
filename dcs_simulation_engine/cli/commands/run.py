@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import gradio as gr
 import typer
@@ -10,35 +10,15 @@ from loguru import logger
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
 from dcs_simulation_engine.cli.common import check_localhost_http, done, step
-from dcs_simulation_engine.cli.config import RunConfig, parse_run_config
+from dcs_simulation_engine.cli.run_spec import RunConfig, parse_run_config
 from dcs_simulation_engine.utils.file import load_yaml
-from dcs_simulation_engine.utils.misc import validate_port
 from dcs_simulation_engine.widget.widget import build_widget_with_api
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
 
-def _local_defaults(provider_cfg: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "host": provider_cfg.get("host", "0.0.0.0"),
-        "port": int(provider_cfg.get("port", provider_cfg.get("port", 8080))),
-        "share": bool(provider_cfg.get("share", False)),
-        "name": provider_cfg.get("name", "<b>DEFAULT</b>"),
-    }
-
-
 def _run_local(cfg: RunConfig, config_path: Optional[Path]) -> None:
-    provider_cfg = _local_defaults(cfg.run.provider.config)
-
-    host: str = str(provider_cfg["host"])
-    port: int = int(provider_cfg["port"])
-    share: bool = bool(provider_cfg["share"])
-    name: str = str(provider_cfg["name"])
-
-    if not validate_port(port):
-        raise typer.BadParameter("run.provider.config.port must be between 1 and 65535")
-
-    # Friendly header
+    """Run the simulation engine locally."""
     typer.echo()
     if config_path:
         typer.secho(
@@ -51,7 +31,6 @@ def _run_local(cfg: RunConfig, config_path: Optional[Path]) -> None:
         )
 
     typer.echo(f"Run name: {cfg.run.name}")
-    typer.echo(f"Location: {cfg.run.provider.location}")
     typer.echo()
 
     # init DB once for the whole run
@@ -78,7 +57,7 @@ def _run_local(cfg: RunConfig, config_path: Optional[Path]) -> None:
             )
 
         game = cfg.games[0]
-        banner = str(game.overrides.get("banner", name))
+        banner = str(game.overrides.get("banner", game.name))
 
         extra_overrides = {k: v for k, v in game.overrides.items() if k != "banner"}
         if extra_overrides:
@@ -86,28 +65,23 @@ def _run_local(cfg: RunConfig, config_path: Optional[Path]) -> None:
                 f"Ignoring game overrides not supported: {list(extra_overrides.keys())}"
             )
 
-        logger.debug(f"Building widget for game='{game.name}' on {host}:{port} ...")
         gradio_app = build_widget_with_api(game_name=game.name, banner=banner)
         apps.append(gradio_app)
 
         launch_info = gradio_app.launch(
-            server_name=host,
-            server_port=port,
-            share=share,
+            server_name="127.0.0.1",
+            server_port=8080,
             quiet=True,
             prevent_thread_lock=True,
             theme=gr.themes.Default(primary_hue="violet"),
         )
-
-        browser_host = "localhost" if host in ("0.0.0.0", "127.0.0.1") else host
-        base_url = f"http://{browser_host}:{port}"
-
         done()
+
+        base_url = "http://localhost:8080"
 
         typer.echo()
         typer.secho(
-            f"All set! Simulation engine is running at {base_url}",
-            fg=typer.colors.GREEN,
+            f"Simulation engine is running at {base_url}",
             bold=True,
         )
 
@@ -152,9 +126,6 @@ def _run_fly(cfg: RunConfig, config_path: Optional[Path]) -> None:
             "Ensure deploy_app + FlyError are importable."
         ) from e
 
-    pcfg = cfg.run.provider.config
-    run_name = cfg.run.name
-
     typer.echo()
     if config_path:
         typer.secho(
@@ -166,45 +137,29 @@ def _run_fly(cfg: RunConfig, config_path: Optional[Path]) -> None:
             "Starting Simulation Engine using default run configuration", bold=True
         )
 
-    typer.echo(f"Run name: {run_name}")
-    typer.echo(f"Location: {cfg.run.provider.location}")
-    typer.echo(f"Games: {', '.join(g.name for g in cfg.games)}")
-    typer.echo()
-
-    step("Creating deployments on Fly.io...")
-
-    app_tmpl = str(pcfg.get("app_name_template", "{name}"))
-    fly_toml = Path(str(pcfg.get("fly_toml", "fly.toml")))
-    env_file_raw = pcfg.get("env_file", ".env")
-    env_file = Path(str(env_file_raw)) if env_file_raw is not None else None
-    region = pcfg.get("region", None)
-    version = str(pcfg.get("version", "latest"))
-
-    created: list[tuple[str, str]] = []
+    typer.echo(f"Run name: {cfg.run.name}")
+    step("Creating deployment on Fly.io...")
 
     try:
-        for game in cfg.games:
-            deployment = app_tmpl.format(name=run_name, game=game.name)
+        if not cfg.games:
+            raise typer.BadParameter("No games configured")
 
-            extra_overrides = dict(game.overrides)
-            if extra_overrides:
-                logger.warning(
-                    f"Fly overrides present for game='{game.name}' but not yet wired into deploy_app: "
-                    f"{list(extra_overrides.keys())}"
-                )
-
-            res = deploy_app(
-                game=game.name,
-                app_name=deployment,
-                fly_toml=fly_toml,
-                env_file=env_file,
-                region=region,
-                version=version,
+        # TODO: implement multiple games per link/run using multipage apps.
+        # For now, just launch the first game and warn if multiple are provided.
+        if len(cfg.games) > 1:
+            logger.warning(
+                f"Multiple games in run config isn't implemented yet. "
+                f"Launching only the first game: '{cfg.games[0].name}'. "
+                f"Ignoring: {[g.name for g in cfg.games[1:]]}"
             )
 
-            app_name = getattr(res, "name", deployment)
-            url = getattr(res, "url", None) or f"https://{app_name}.fly.dev"
-            created.append((game.name, url))
+        game = cfg.games[0]
+        res = deploy_app(
+            game=game,
+            app_name=cfg.run.name,
+        )
+
+        url = getattr(res, "url", None) or f"https://{cfg.run.name}.fly.dev"
 
     except FlyError as e:
         done()
@@ -214,14 +169,10 @@ def _run_fly(cfg: RunConfig, config_path: Optional[Path]) -> None:
     done()
 
     typer.echo()
-    typer.secho("All set!", fg=typer.colors.GREEN, bold=True)
-    typer.echo("Your games are available here:")
-    for name, url in created:
-        typer.echo(f"• {name}: {url}")
-
-    typer.echo()
-    typer.echo("To see what's running later, use `dcs status`.")
-    typer.echo()
+    typer.secho(
+        f"Simulation engine is running at {url}",
+        bold=True,
+    )
 
 
 def run(
@@ -236,6 +187,12 @@ def run(
         file_okay=True,
         readable=True,
     ),
+    deploy: bool = typer.Option(
+        False,
+        "--deploy",
+        help="Deploy publicly instead of running locally.",
+        is_flag=True,
+    ),
 ) -> None:
     """Start simulation engine."""
     cfg = RunConfig()  # defaults: local + explore
@@ -246,11 +203,11 @@ def run(
         data = load_yaml(config)
         cfg = parse_run_config(data)
 
-    provider = cfg.run.provider.location.strip().lower()
-    logger.debug(f"Selected provider: {provider}")
     local_is_running = check_localhost_http()[0] == "Live"
 
-    if provider == "local":
+    if deploy:
+        _run_fly(cfg, config)
+    else:
         if local_is_running:
             typer.secho(
                 "A service is already running on localhost. Only one local instance is supported at a time.",
@@ -261,7 +218,6 @@ def run(
         else:
             _run_local(cfg, config)
 
-    elif provider == "fly":
-        _run_fly(cfg, config)
-    else:
-        raise typer.BadParameter(f"Unknown provider: {provider}")
+    typer.echo()
+    typer.echo("To see what's running, use `dcs status`.")
+    typer.echo()

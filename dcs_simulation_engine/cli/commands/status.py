@@ -91,7 +91,6 @@ def status() -> None:
     table = Table(
         title="Simulation Engine Run Status",
         show_header=True,
-        header_style="bold magenta",
     )
     table.add_column("Location")
     table.add_column("Deployment")
@@ -100,7 +99,7 @@ def status() -> None:
     table.add_column("Machines")
     table.add_column("Players")
     table.add_column("Runs")
-    table.add_column("Access link")
+    table.add_column("Widget link")
 
     any_rows = False
 
@@ -164,10 +163,11 @@ def status() -> None:
     if not any_rows:
         table.add_row("—", "—", "No runs found", "—", "—", "—", "—", "—")
 
+    typer.echo()
     console.print(table)
 
     typer.echo()
     typer.secho(
         "Tip: use `fly --help` for detailed troubleshooting of specific apps.",
-        fg=typer.colors.BLUE,
+        fg=typer.colors.YELLOW,
     )

@@ -7,20 +7,11 @@ import typer
 
 
 @dataclass
-class ProviderSpec:
-    """Specification for a provider to run games on."""
-
-    location: str = "local"
-    config: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
 class RunSpec:
-    """Specification for a run, including provider and other global settings."""
+    """Specification for a run."""
 
     name: str = "default"
-    provider: ProviderSpec = field(default_factory=ProviderSpec)
-    interfaces: list[str] = field(default_factory=lambda: ["gui", "api"])  # NEW
+    interfaces: list[str] = field(default_factory=lambda: ["gui", "api"])
 
 
 @dataclass
@@ -66,15 +57,6 @@ def parse_run_config(data: dict[str, Any]) -> RunConfig:
             f"run.interfaces has invalid values: {bad}. Allowed: {sorted(allowed)}"
         )
 
-    provider_obj = run_obj.get("provider", {}) or {}
-    if not isinstance(provider_obj, dict):
-        raise typer.BadParameter("run.provider must be a mapping")
-
-    provider_location = str(provider_obj.get("location", "local")).strip().lower()
-    provider_cfg = provider_obj.get("config", {}) or {}
-    if not isinstance(provider_cfg, dict):
-        raise typer.BadParameter("run.provider.config must be a mapping")
-
     games_obj = data.get("games", None)
     games: list[GameSpec] = []
 
@@ -97,7 +79,6 @@ def parse_run_config(data: dict[str, Any]) -> RunConfig:
     return RunConfig(
         run=RunSpec(
             name=run_name,
-            provider=ProviderSpec(location=provider_location, config=provider_cfg),
             interfaces=interfaces,
         ),
         games=games,
