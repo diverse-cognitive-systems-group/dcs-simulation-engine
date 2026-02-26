@@ -13,7 +13,7 @@
     // Mount the Docker socket and feature
     "mounts": [
         "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-        "source=poetry-cache,target=/root/.cache/pypoetry,type=volume",
+        "source=uv-cache,target=/root/.cache/uv,type=volume",
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
     "features": {
@@ -21,7 +21,10 @@
             "version": "latest"
         }
     },
-    "postCreateCommand": "poetry install --with dev",
+    "postCreateCommand": "uv sync --extra dev",
+    "remoteEnv": {
+        "PATH": "/app/.venv/bin:${containerEnv:PATH}"
+    },
     "customizations": {
         "vscode": {
             "extensions": [

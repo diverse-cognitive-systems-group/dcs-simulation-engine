@@ -70,11 +70,12 @@ output/
 # Environment variables
 .env
 
-# Exclude vscode workspace configuration 
+# Exclude vscode workspace configuration
 # (easier for devs to contribute with same env settings)
 !.vscode/
 
 # ai tools
+CLAUDE.md
 .claude/
 .continue/
 .kilocode/
