@@ -301,7 +301,7 @@ class GameConfig(SerdeMixin, BaseModel):
         return res
 
     def is_player_allowed(self, player_id: Optional[str]) -> bool:
-        """Check access via UNION(valid) − UNION(invalid) over `access_settings.user`.
+        """Check access via UNION(valid) - UNION(invalid) over `access_settings.user`.
 
         Empty maps mean “no restriction”. If BOTH valid and invalid are empty,
         allow any player (including None).

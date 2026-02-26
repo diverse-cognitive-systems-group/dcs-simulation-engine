@@ -6,7 +6,16 @@ that has a consent_signature. Create a player through the widget UI first,
 or use an existing player_id that has completed the consent form.
 """
 
+import json
+
+from pygments import highlight
+from pygments.formatters import TerminalFormatter
+from pygments.lexers import JsonLexer
 from gradio_client import Client
+
+
+def pprint(data):
+    print(highlight(json.dumps(data, indent=2), JsonLexer(), TerminalFormatter()))
 
 # Connect to the Gradio server
 client = Client("http://localhost:8080")
@@ -14,11 +23,9 @@ client = Client("http://localhost:8080")
 # IMPORTANT: Replace with a valid player_id that has consent_signature
 # You can create a player through the widget UI first
 player_id = "000000000000000000000001"
-
 access_key = "dev"
 
 # Create a new run
-print("Creating run...")
 result = client.predict(
     game="Foresight",
     source="api",
@@ -28,42 +35,46 @@ result = client.predict(
     player_id=player_id,
     api_name="/create_run"
 )
-print(f"Create run result: {result}")
+print("Create run result:")
+pprint(result)
 
 run_id = result["run_id"]
-print(f"RUN_ID: {run_id}")
 
 # Step the run (initial step with empty input)
-print("\nStepping run (initial)...")
+print("\nStepping run (initial):")
 result = client.predict(
     run_id=run_id,
     user_input="",
     api_name="/step_run"
 )
-print(f"Initial step result: {result}")
+print("Initial step result:")
+pprint(result)
 
 # Step with user input
-print("\nStepping run with user action...")
+print("\nStepping run with user action:")
 result = client.predict(
     run_id=run_id,
     user_input="I predict the character will move toward the light source",
     api_name="/step_run"
 )
-print(f"Step result: {result}")
-print(f"\nSimulator response: {result['state']['simulator_output']}")
+print("Step result:")
+pprint(result)
+print("\nSimulator response:")
+pprint(result['state']['simulator_output'])
 
 # Get current state
-print("\nGetting state...")
+print("\nGetting state:")
 result = client.predict(
     run_id=run_id,
     api_name="/get_state"
 )
-print(f"Current state: {result}")
+print("Current state:")
+pprint(result)
 
 # Cleanup - delete the run
-print("\nDeleting run...")
+print("\nDeleting run:")
 result = client.predict(
     run_id=run_id,
     api_name="/delete_run"
 )
-print(f"Delete result: {result}")
+pprint(result)

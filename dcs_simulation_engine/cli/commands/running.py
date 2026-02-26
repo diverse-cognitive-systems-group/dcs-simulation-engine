@@ -2,6 +2,7 @@
 
 import os
 
+import gradio as gr
 import typer
 from loguru import logger
 
@@ -35,7 +36,7 @@ def run_game(
         help="Port to run the Gradio server on.",
     ),
     banner: str = typer.Option(
-        "<b>DEFAULT BANNER</b>",
+        None,
         "--banner",
         help="Optional markdown banner to show at the top of the widget.",
     ),
@@ -70,6 +71,7 @@ def run_game(
             share=share,
             quiet=True,
             prevent_thread_lock=True,
+            theme=gr.themes.Default(primary_hue="violet"),
         )
 
         public_url = (

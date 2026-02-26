@@ -13,7 +13,6 @@
     // Mount the Docker socket and feature
     "mounts": [
         "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-        "source=uv-cache,target=/root/.cache/uv,type=volume",
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
     "features": {
@@ -21,16 +20,11 @@
             "version": "latest"
         }
     },
-    "postCreateCommand": "uv sync --extra dev",
-    "remoteEnv": {
-        "PATH": "/app/.venv/bin:${containerEnv:PATH}"
-    },
     "customizations": {
         "vscode": {
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ms-python.black-formatter",
                 "charliermarsh.ruff",
                 "ms-azuretools.vscode-docker",
                 "streetsidesoftware.code-spell-checker",
@@ -39,7 +33,8 @@
             "settings": {
                 "editor.formatOnSave": true,
                 "[python]": {
-                    "editor.defaultFormatter": "ms-python.black-formatter",
+                    // ruff formatter and linter
+                    "editor.defaultFormatter": "charliermarsh.ruff",
                     "editor.codeActionsOnSave": {
                         "source.organizeImports": "always",
                         "source.fixAll": "always"
