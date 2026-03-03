@@ -2,7 +2,7 @@ import requests
 import os
 import time
 
-# ====== CONFIG ======
+
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MODEL = "openai/gpt-4o-mini"
 
@@ -30,7 +30,7 @@ def get_user_response(prompt):
     )
     return r.json()["choices"][0]["message"]["content"]
 
-# ====== MAIN ======
+
 tasks = requests.get(f"{BASE_URL}/tasks", headers=HEADERS).json()
 
 for task in tasks:
