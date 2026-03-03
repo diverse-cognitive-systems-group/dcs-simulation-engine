@@ -46,7 +46,12 @@ def list_characters(ctx: typer.Context) -> None:
         echo(ctx, f"Failed to list characters: {e}", style="error")
         raise typer.Exit(code=1)
 
-    table = Table(title="Characters", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="Available Characters",
+        show_header=True,
+        header_style="bold white",
+        show_lines=True,
+    )
     table.add_column("#", justify="right")
     table.add_column("HID")
     table.add_column("Short Description")
@@ -65,7 +70,8 @@ def list_characters(ctx: typer.Context) -> None:
 
 
 def _render_id_table(ctx: typer.Context, title: str, ids: List[str]) -> None:
-    table = Table(title=title, show_header=True, header_style="bold magenta")
+    """Helper to render a simple table of IDs."""
+    table = Table(title=title, show_header=True, header_style="bold white")
     table.add_column("#", justify="right")
     table.add_column("ID")
 

@@ -144,9 +144,8 @@ def stop(
     # Make saves BEFORE stopping/destroying.
     if not no_save:
         if run_id:
-            typer.secho(
-                f"Saving artifacts under results/{app}/{run_id}/",
-                fg=typer.colors.BLUE,
+            console.print(
+                f"Saving artifacts under results/{app}/{run_id}/", style="dim"
             )
 
         if logs_out is not None:

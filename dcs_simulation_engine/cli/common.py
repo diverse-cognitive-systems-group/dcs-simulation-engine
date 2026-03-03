@@ -13,14 +13,10 @@ from rich.theme import Theme
 from dcs_simulation_engine.infra import deploy
 from dcs_simulation_engine.utils.package import get_package_version
 
-# TODO: this theme color scheme is YUCK. Make look nicer.
 cli_theme = Theme(
     {
-        "info": "bold cyan",
-        "warning": "bold yellow",
-        "error": "bold red",
-        "success": "bold green",
-        "title": "bold magenta",
+        "warning": "bold bright_yellow",
+        "error": "bold bright_red",
     }
 )
 console = Console(theme=cli_theme)
@@ -37,7 +33,7 @@ class GlobalOptions:
     config: Optional[Path] = None
 
 
-def echo(ctx: Optional[typer.Context], message: str, style: str = "info") -> None:
+def echo(ctx: Optional[typer.Context], message: str, style: str = "white") -> None:
     """Respect global quiet flag; print only if not quiet."""
     quiet = False
     if ctx is not None and isinstance(getattr(ctx, "obj", None), GlobalOptions):
@@ -52,19 +48,19 @@ def echo(ctx: Optional[typer.Context], message: str, style: str = "info") -> Non
 def version_callback(value: bool) -> None:
     """Callback to display version and exit."""
     if value:
-        console.print(f"dcs v{get_package_version()}", style="title", highlight=False)
+        console.print(f"dcs v{get_package_version()}", style="white", highlight=False)
         raise typer.Exit()
 
 
 def step(msg: str) -> None:
     """Print a step message."""
-    typer.secho("• ", fg=typer.colors.BLUE, nl=False)
-    typer.secho(msg, fg=typer.colors.BLUE, nl=False)
+    console.print("• ", style="dim", end="")
+    console.print(msg, style="dim", end="")
 
 
 def done() -> None:
     """Print 'done' message."""
-    typer.secho(" done.", fg=typer.colors.BLUE)
+    console.print(" done.", style="dim")
 
 
 def check_localhost_http(

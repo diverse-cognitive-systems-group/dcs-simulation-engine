@@ -89,23 +89,20 @@ def status() -> None:
     done()
 
     table = Table(
-        title="Simulation Engine Run Status",
+        title="Simulation Engine Instances",
         show_header=True,
+        header_style="bold white",
     )
-    table.add_column("Location")
-    table.add_column("Deployment")
+    table.add_column("Name")
     table.add_column("Status")
     table.add_column("Uptime")
-    table.add_column("Machines")
-    table.add_column("Players")
-    table.add_column("Runs")
-    table.add_column("Widget link")
+    table.add_column("Assignments Completed")
+    table.add_column("Live Link")
 
     any_rows = False
 
     if local_status == "Live":
         table.add_row(
-            "local",
             "default",
             "Running",
             "-",
@@ -115,7 +112,7 @@ def status() -> None:
         any_rows = True
 
     if not apps and not any_rows:
-        table.add_row("—", "—", "No deployments found", "—", "—", "—", "—", "—")
+        table.add_row("—", "—", "Not running", "—", "—")
         console.print(table)
         typer.echo()
         return
@@ -129,9 +126,7 @@ def status() -> None:
             machines = list_machines(app_name)
             done()
         except FlyError as e:
-            table.add_row(
-                "fly.io", app_name, f"Failed: {e}", "—", "—", "—", "—", access
-            )
+            table.add_row(app_name, f"Failed: {e}", "—", "—", access)
             any_rows = True
             continue
 
@@ -142,32 +137,23 @@ def status() -> None:
         created_dt = parse_iso(created) if created != "—" else None
         uptime = fmt_uptime(created_dt)
 
-        # TODO: implement this!
-        # players = get_players_count(app_name)
-        # runs = get_runs_count(app_name)
-        players = "—"
-        runs = "—"
-
         table.add_row(
-            "fly.io",
             app_name,
             status_summary,
             uptime,
-            machine_counts,
-            str(players),
-            str(runs),
+            "-",
             access,
         )
         any_rows = True
 
     if not any_rows:
-        table.add_row("—", "—", "No runs found", "—", "—", "—", "—", "—")
+        table.add_row("—", "—", "No runs found", "—", "—")
 
     typer.echo()
     console.print(table)
 
     typer.echo()
-    typer.secho(
+    console.print(
         "Tip: use `fly --help` for detailed troubleshooting of specific apps.",
-        fg=typer.colors.YELLOW,
+        style="dim",
     )

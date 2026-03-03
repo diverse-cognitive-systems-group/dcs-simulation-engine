@@ -92,7 +92,7 @@ def _run_local(cfg: RunConfig, config_path: Optional[Path]) -> None:
             typer.echo(f"Public link: {public_url}")
 
         typer.echo()
-        typer.secho("Press Ctrl+C to stop.", fg=typer.colors.YELLOW)
+        typer.secho("Press Ctrl+C to stop.")
         typer.echo()
 
         import time
