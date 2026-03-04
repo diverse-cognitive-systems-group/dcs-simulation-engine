@@ -6,7 +6,7 @@ from pathlib import Path
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
 # --- I/O --- #
-OUTPUT_FPATH: Path = Path("output")
+OUTPUT_FPATH: Path = Path("results")
 OUTPUT_FPATH.mkdir(parents=True, exist_ok=True)
 
 LOGS_FPATH: Path = Path("logs")

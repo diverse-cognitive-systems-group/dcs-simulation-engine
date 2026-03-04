@@ -6,10 +6,10 @@ import typer
 from rich.table import Table
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
-from dcs_simulation_engine.cli.common import done, echo, select_deployment, step
+from dcs_simulation_engine.cli.common import done, echo, select_run, step
 from dcs_simulation_engine.helpers.game_helpers import list_games as _list_games
 
-list_app = typer.Typer(help="List games or characters available for use.")
+list_app = typer.Typer(help="List resources (games, characters, players, runs).")
 
 
 @list_app.command("games")
@@ -38,8 +38,7 @@ def list_characters(ctx: typer.Context) -> None:
         if len(chars) == 0:
             echo(
                 ctx,
-                "No characters found. You may need to seed the database first"
-                " (dcs create database).",
+                "No characters found." " (dcs create database).",
                 style="warning",
             )
     except Exception as e:
@@ -89,41 +88,29 @@ def _render_id_table(ctx: typer.Context, title: str, ids: List[str]) -> None:
 @list_app.command("players")
 def list_players(
     ctx: typer.Context,
-    deployment: Optional[str] = typer.Argument(None, help="Deployment name."),
+    run_name: Optional[str] = typer.Argument(None, help="Run name."),
 ) -> None:
     """List players in a live database."""
-    app, local_is_running = select_deployment(ctx, deployment, include_local=True)
+    run_name = select_run(ctx, run_name)
 
-    if app in ("local", "localhost"):
-        if not local_is_running:
-            echo(
-                ctx,
-                "Localhost is not live. Start the local server first.",
-                style="error",
-            )
-            raise typer.Exit(code=1)
+    step(f"Listing players for {run_name}...")
+    try:
+        chars = dbh.list_players() or []
+    except Exception as e:
+        echo(ctx, f"Failed to list players from local database: {e}", style="error")
+        raise typer.Exit(code=1)
+    done()
 
-        step("Listing players from local database...")
-        try:
-            chars = dbh.list_players() or []
-        except Exception as e:
-            echo(ctx, f"Failed to list players from local database: {e}", style="error")
-            raise typer.Exit(code=1)
-        done()
+    if len(chars) == 0:
+        echo(
+            ctx,
+            "No players found.",
+            style="warning",
+        )
 
-        if len(chars) == 0:
-            echo(
-                ctx,
-                "No players found in local database. You may need to seed the database first (dcs create database).",
-                style="warning",
-            )
-
-        ids = [str(c.get("id") or "—") for c in chars]
-        _render_id_table(ctx, "Players", ids)
-        return
-
-    echo(ctx, "TODO: implement listing players from fly deployment.", style="warning")
-    raise typer.Exit(code=2)
+    ids = [str(c.get("id") or "—") for c in chars]
+    _render_id_table(ctx, "Players", ids)
+    return
 
 
 @list_app.command("runs")
@@ -132,34 +119,34 @@ def list_runs(
     deployment: Optional[str] = typer.Argument(None, help="Deployment name."),
 ) -> None:
     """List runs in a live database."""
-    app, local_is_running = select_deployment(ctx, deployment, include_local=True)
+    # run_name = select_run(ctx, deployment)
 
-    if app in ("local", "localhost"):
-        if not local_is_running:
-            echo(
-                ctx,
-                "Localhost is not live. Start the local server first.",
-                style="error",
-            )
-            raise typer.Exit(code=1)
+    # if app in ("local", "localhost"):
+    #     if not local_is_running:
+    #         echo(
+    #             ctx,
+    #             "Localhost is not live. Start the local server first.",
+    #             style="error",
+    #         )
+    #         raise typer.Exit(code=1)
 
-        step("Listing runs from local database...")
-        try:
-            runs = dbh.list_runs() or []
-        except Exception as e:
-            echo(ctx, f"Failed to list runs from local database: {e}", style="error")
-            raise typer.Exit(code=1)
-        done()
+    #     step("Listing runs from local database...")
+    #     try:
+    #         runs = dbh.list_runs() or []
+    #     except Exception as e:
+    #         echo(ctx, f"Failed to list runs from local database: {e}", style="error")
+    #         raise typer.Exit(code=1)
+    #     done()
 
-        if len(runs) == 0:
-            echo(
-                ctx,
-                "No runs found in local database. You may need to seed the database first (dcs create database).",
-                style="warning",
-            )
-        ids = [str(r.get("id") or "—") for r in runs]
-        _render_id_table(ctx, "Runs", ids)
-        return
+    #     if len(runs) == 0:
+    #         echo(
+    #             ctx,
+    #             "No runs found.",
+    #             style="warning",
+    #         )
+    #     ids = [str(r.get("id") or "—") for r in runs]
+    #     _render_id_table(ctx, "Runs", ids)
+    #     return
 
-    echo(ctx, "TODO: implement listing runs from fly deployment.", style="warning")
+    echo(ctx, "TODO: implement.", style="error")
     raise typer.Exit(code=2)

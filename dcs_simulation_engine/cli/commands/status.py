@@ -7,13 +7,13 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from dcs_simulation_engine.cli.common import check_localhost_http, done, step
+from dcs_simulation_engine.cli.common import done, step
+from dcs_simulation_engine.helpers.run_helpers import load_runs, run_status, run_uptime
 from dcs_simulation_engine.infra import deploy
 from dcs_simulation_engine.infra.fly import (
     FlyError,
-    list_machines,
 )
-from dcs_simulation_engine.utils.misc import as_str, fmt_dt, fmt_uptime, parse_iso
+from dcs_simulation_engine.utils.misc import as_str, fmt_dt, parse_iso
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 console = Console()
@@ -67,11 +67,11 @@ def _summarize_machines(
 
 def status() -> None:
     """Check status of simulation engine."""
-    step("Checking local deployment on localhost:8080...")
-    local_status, local_detail = check_localhost_http(port=8080, path="/")
+    step("Fetching run details...")
+    runs = load_runs()
     done()
 
-    step("Fetching deployments...")
+    step("Fetching run data for remote instances...")
     try:
         apps = deploy.list_deployments()
     except FlyError as e:
@@ -89,65 +89,59 @@ def status() -> None:
     done()
 
     table = Table(
-        title="Simulation Engine Instances",
+        title="Simulation Engine Run Instances",
         show_header=True,
         header_style="bold white",
     )
     table.add_column("Name")
     table.add_column("Status")
     table.add_column("Uptime")
-    table.add_column("Assignments Completed")
-    table.add_column("Live Link")
+    table.add_column("Link")
 
-    any_rows = False
-
-    if local_status == "Live":
-        table.add_row(
-            "default",
-            "Running",
-            "-",
-            "—",
-            f"http://localhost:8080 ({local_detail})",
-        )
-        any_rows = True
-
-    if not apps and not any_rows:
-        table.add_row("—", "—", "Not running", "—", "—")
+    if not runs:
+        table.add_row("—", "—", "No runs found", "—")
         console.print(table)
         typer.echo()
         return
 
-    for app in apps:
-        app_name = as_str(app, "Name", "name")
-        access = _app_access_link(app_name) if app_name != "—" else "—"
-
-        try:
-            step(f"Fetching machines for {app_name}...")
-            machines = list_machines(app_name)
-            done()
-        except FlyError as e:
-            table.add_row(app_name, f"Failed: {e}", "—", "—", access)
-            any_rows = True
-            continue
-
-        step(f"Summarizing machines for {app_name}...")
-        status_summary, machine_counts, created = _summarize_machines(machines)
-        done()
-
-        created_dt = parse_iso(created) if created != "—" else None
-        uptime = fmt_uptime(created_dt)
-
+    for name in runs:
+        run = runs[name]
+        status = run_status(name).value.capitalize()
+        uptime = run_uptime(name, format=True)
         table.add_row(
-            app_name,
-            status_summary,
+            name,
+            status,
             uptime,
-            "-",
-            access,
+            run.get("link") or "—",
         )
-        any_rows = True
 
-    if not any_rows:
-        table.add_row("—", "—", "No runs found", "—", "—")
+    # for app in apps:
+    #     app_name = as_str(app, "Name", "name")
+    #     access = _app_access_link(app_name) if app_name != "—" else "—"
+
+    #     try:
+    #         step(f"Fetching machines for {app_name}...")
+    #         machines = list_machines(app_name)
+    #         done()
+    #     except FlyError as e:
+    #         table.add_row(app_name, f"Failed: {e}", "—", "—", access)
+    #         any_rows = True
+    #         continue
+
+    #     step(f"Summarizing machines for {app_name}...")
+    #     status_summary, machine_counts, created = _summarize_machines(machines)
+    #     done()
+
+    #     created_dt = parse_iso(created) if created != "—" else None
+    #     uptime = fmt_uptime(created_dt)
+
+    #     table.add_row(
+    #         app_name,
+    #         status_summary,
+    #         uptime,
+    #         "-",
+    #         access,
+    #     )
 
     typer.echo()
     console.print(table)

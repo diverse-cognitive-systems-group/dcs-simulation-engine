@@ -4,17 +4,18 @@ import socket
 from dataclasses import dataclass
 from http.client import HTTPConnection
 from pathlib import Path
-from typing import List, Literal, Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 import typer
 from rich.console import Console
 from rich.theme import Theme
 
-from dcs_simulation_engine.infra import deploy
+from dcs_simulation_engine.helpers.run_helpers import load_runs
 from dcs_simulation_engine.utils.package import get_package_version
 
 cli_theme = Theme(
     {
+        "success": "green",
         "warning": "bold bright_yellow",
         "error": "bold bright_red",
     }
@@ -63,13 +64,17 @@ def done() -> None:
     console.print(" done.", style="dim")
 
 
-def check_localhost_http(
+def check_localhost(
     host: str = "127.0.0.1",
     port: int = 8080,
     path: str = "/",
     timeout_s: float = 0.6,
 ) -> Tuple[str, str]:
-    """Returns localhost status."""
+    """Returns localhost status.
+
+    "Down" = nothing is running on the port
+    "Up" = something is running and responded to HTTP request (could still be unhealthy)
+    """
     # First: fast TCP check
     try:
         with socket.create_connection((host, port), timeout=timeout_s):
@@ -92,58 +97,52 @@ def check_localhost_http(
             conn.close()
 
         if 200 <= code < 400:
-            return ("Live", f"HTTP {code}")
-        return ("Live", f"HTTP {code} (unhealthy)")
+            return ("Up", f"HTTP {code}")
+        return ("Up", f"HTTP {code} (unhealthy)")
     except Exception as e:
-        return ("Live", f"non-HTTP or no response: {e.__class__.__name__}")
+        return ("Up", f"non-HTTP or no response: {e.__class__.__name__}")
 
 
-def deployment_names(include_local: bool = True) -> Tuple[List[str], bool]:
-    """Get deployment names."""
-    apps = deploy.list_deployments() or []
-    names = [
-        (a.get("Name") or a.get("name"))
-        for a in apps
-        if (a.get("Name") or a.get("name"))
-    ]
+# def deployment_names(include_local: bool = True) -> Tuple[List[str], bool]:
+#     """Get deployment names."""
+#     apps = deploy.list_deployments() or []
+#     names = [
+#         (a.get("Name") or a.get("name"))
+#         for a in apps
+#         if (a.get("Name") or a.get("name"))
+#     ]
 
-    local_is_running = check_localhost_http()[0] == "Live"
-    if include_local and local_is_running and "local" not in names:
-        names.append("local")
+#     local_is_running = check_localhost()[0] == "Up"
+#     if include_local and local_is_running and "local" not in names:
+#         names.append("local")
 
-    return names, local_is_running
+#     return names, local_is_running
 
 
-def select_deployment(
+def select_run(
     ctx: typer.Context,
-    deployment: Optional[str],
-    *,
-    include_local: bool = True,
-) -> Tuple[str, bool]:
-    """Select deployment, either from argument or prompt."""
-    if deployment:
-        # Still compute localhost state for downstream decisions.
-        _, local_is_running = deployment_names(include_local=include_local)
-        return deployment, local_is_running
+    run_name: Optional[str],
+) -> str:
+    """Select run, either from argument or prompt."""
+    runs = load_runs()
+    if run_name:
+        if run_name not in runs:
+            echo(ctx, f"Run '{run_name}' not found.", style="error")
+            raise typer.Exit(code=1)
 
-    names, local_is_running = deployment_names(include_local=include_local)
-
-    if not names:
-        typer.secho(
-            "Simulation engine isn't running anywhere (local or remote).",
-            fg=typer.colors.YELLOW,
-        )
+    if not runs:
+        console.print("No runs available to select from.", style="warning")
         raise typer.Exit()
 
-    for i, name in enumerate(names, 1):
-        typer.echo(f"{i}. {name}")
+    for i, name in enumerate(runs, 1):
+        console.print(f"{i}. {name}")
 
-    choice = typer.prompt("Select deployment", type=int)
+    choice = typer.prompt("Select run", type=int)
 
     try:
-        app = names[choice - 1]
+        name = runs[choice - 1]
     except (IndexError, ValueError):
-        typer.secho("Invalid selection.", fg=typer.colors.RED)
+        console.print("Invalid selection.", style="error")
         raise typer.Exit(code=1)
 
-    return app, local_is_running
+    return name
