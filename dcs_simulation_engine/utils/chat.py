@@ -1,4 +1,4 @@
-"""A module for ChatX classes that inhereit from ChatOpenAI.
+"""A module for ChatX classes that inherit from ChatOpenAI.
 
 These are used to make instantiation of chat models with different
 clients (openrouter, local) and model version seamless by exposing

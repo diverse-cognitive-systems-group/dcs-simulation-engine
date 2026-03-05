@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """Test script for DCS Simulation Engine API using gradio_client."""
 
+import json
+
+from pygments import highlight
+from pygments.formatters import TerminalFormatter
+from pygments.lexers import JsonLexer
 from gradio_client import Client
+
+
+def pprint(data):
+    print(highlight(json.dumps(data, indent=2), JsonLexer(), TerminalFormatter()))
 
 # Connect to the Gradio server
 client = Client("http://localhost:8080")
 
 # Create a new run
-print("Creating run...")
 result = client.predict(
     game="explore",
     source="api",
@@ -17,42 +25,47 @@ result = client.predict(
     player_id="",
     api_name="/create_run"
 )
-print(f"Create run result: {result}")
+print("Create run result:")
+pprint(result)
 
 run_id = result["run_id"]
-print(f"RUN_ID: {run_id}")
 
 # Step the run (initial step with empty input)
-print("\nStepping run (initial)...")
+print("\nStepping run (initial):")
 result = client.predict(
     run_id=run_id,
     user_input="",
     api_name="/step_run"
 )
-print(f"Initial step result: {result}")
+print("Initial step result:")
+pprint(result)
 
 # Step with user input
-print("\nStepping run with user action...")
+print("Stepping run with user action:")
 result = client.predict(
     run_id=run_id,
-    user_input="You smell and then gently lick the thermostat",
+    user_input="You smell the thermostat",
     api_name="/step_run"
 )
-print(f"Step result: {result}")
-print(f"\nSimulator response: {result['state']['simulator_output']}")
+print("Step result:")
+pprint(result)
+print("\nSimulator response:")
+pprint(result['state']['simulator_output'])
+
 
 # Get current state
-print("\nGetting state...")
+print("\nGetting state:")
 result = client.predict(
     run_id=run_id,
     api_name="/get_state"
 )
-print(f"Current state: {result}")
+print("Current state:")
+pprint(result)
 
 # Cleanup - delete the run
-print("\nDeleting run...")
+print("\nDeleting run:")
 result = client.predict(
     run_id=run_id,
     api_name="/delete_run"
 )
-print(f"Delete result: {result}")
+pprint(result)

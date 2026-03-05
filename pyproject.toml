@@ -64,6 +64,14 @@ dev = [
   "types-pyyaml>=6.0.12.20250822",
   "yamale>=6.0.0,<7.0.0"
 ]
+analysis = [
+    "ipykernel>=6.31.0",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.8",
+    "pandas>=3.0.1",
+    "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
+]
 
 # This allows you to defines "scripts" so that your package can install executables into the current
 # python environment which will include the system PATH so they may be invoked from the command line.
