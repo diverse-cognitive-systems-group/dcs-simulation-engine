@@ -17,12 +17,16 @@ class DockerNotInstalled(RuntimeError):
     """Docker CLI is not installed / not found."""
 
 
-class ComposeUpFailed(RuntimeError):
-    """docker compose up failed (daemon down, compose missing, bad config, etc.)."""
+class ServiceManagementError(RuntimeError):
+    """Failed to ensure a desired service state (up/down)."""
 
 
-class ServiceNotRunning(RuntimeError):
-    """A required compose service is still not running after attempting to start."""
+class ComposeUpFailed(ServiceManagementError):
+    """docker compose up failed."""
+
+
+class ComposeDownFailed(ServiceManagementError):
+    """docker compose down failed."""
 
 
 @dataclass(frozen=True)
@@ -114,38 +118,98 @@ def is_service_running(service: str) -> bool:
 
 
 def compose_up(services: Iterable[str], *, build: bool = True) -> None:
-    """Run `docker compose up` for the given services in the given context."""
+    """Run `docker compose up` for the given services."""
     try:
+        services = list(services)
         logger.info("Starting: {}", ", ".join(services))
+
         docker.compose.up(
-            services=list(services),
+            services=services,
             detach=True,
             build=build,
         )
+
     except DockerException as e:
         raise ComposeUpFailed(str(e)) from e
 
 
-def ensure_mongo_running() -> bool:
+def compose_down(services: Iterable[str], *, wipe: bool = False) -> None:
+    """Stop docker compose services.
+
+    wipe=False -> stop containers only
+    wipe=True  -> down + remove volumes (fresh next start)
+    """
+    try:
+        services = list(services)
+        logger.info("Stopping: {}", ", ".join(services))
+
+        if wipe:
+            docker.compose.down(
+                services=services,
+                volumes=True,
+                remove_orphans=True,
+            )
+        else:
+            docker.compose.stop(
+                services=services,
+                timeout=30,
+            )
+
+    except DockerException as e:
+        raise ComposeDownFailed(str(e)) from e
+
+
+def ensure_mongo_service_up(*, build: bool = True) -> bool:
     """Ensure mongo + mongo-express are running.
 
-    Returns:
-        True if any services were started, False if everything was already running.
+    Returns True if we had to start anything, False if already up.
 
-    Raises:
-        DockerNotInstalled, ComposeUpFailed, ServiceNotRunning
+    Raises ServiceManagementError if we cannot ensure the services are up.
     """
     check_docker_installed()
-
     services = (MONGO_SERVICE_NAME, MONGO_EXPRESS_SERVICE_NAME)
 
-    not_running = [s for s in services if not is_service_running(s)]
-    if not_running:
-        logger.info("Starting docker services: {}", ", ".join(not_running))
-        compose_up(not_running)
+    to_start = [s for s in services if not is_service_running(s)]
+    if to_start:
+        try:
+            compose_up(to_start, build=build)
+        except ComposeUpFailed as e:
+            raise ServiceManagementError(
+                f"Failed to start services: {', '.join(to_start)}"
+            ) from e
 
     still_down = [s for s in services if not is_service_running(s)]
     if still_down:
-        raise ServiceNotRunning(", ".join(still_down))
+        raise ServiceManagementError(
+            f"Services are not running after start attempt: {', '.join(still_down)}"
+        )
 
-    return bool(not_running)
+    return bool(to_start)
+
+
+def ensure_mongo_service_down(*, wipe: bool = False) -> bool:
+    """Ensure mongo + mongo-express are stopped.
+
+    If wipe=True, containers and volumes are removed so next start is fresh.
+
+    Returns True if we had to stop anything, False if already down.
+    """
+    check_docker_installed()
+    services = (MONGO_SERVICE_NAME, MONGO_EXPRESS_SERVICE_NAME)
+
+    to_stop = [s for s in services if is_service_running(s)]
+    if to_stop:
+        try:
+            compose_down(to_stop, wipe=wipe)
+        except ComposeDownFailed as e:
+            raise ServiceManagementError(
+                f"Failed to stop services: {', '.join(to_stop)}"
+            ) from e
+
+    still_up = [s for s in services if is_service_running(s)]
+    if still_up:
+        raise ServiceManagementError(
+            f"Services are still running after stop attempt: {', '.join(still_up)}"
+        )
+
+    return bool(to_stop)

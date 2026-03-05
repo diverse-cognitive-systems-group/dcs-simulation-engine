@@ -1,5 +1,7 @@
 name: Teamwork
 version: 1.0.0
+authors:
+  - DCS
 description: |
   A game where a player character (PC) and non-player character (NPC) collaborate to achieve a shared goal (optionally over multiple sessions). It is useful to measure how well characters with divergent abilities work together toward a shared objective.
 access_settings:

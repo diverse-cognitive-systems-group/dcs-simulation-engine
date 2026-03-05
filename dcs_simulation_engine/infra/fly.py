@@ -37,6 +37,14 @@ class LoadedEnv:
     dotenv_vars: Dict[str, str]
 
 
+def destroy_app(app_name: str) -> None:
+    """Destroy a Fly app."""
+    try:
+        subprocess.run(["fly", "apps", "destroy", app_name, "--yes"], check=True)
+    except subprocess.CalledProcessError as e:
+        raise FlyError(f"fly apps destroy failed (exit {e.returncode})") from e
+
+
 def flyctl_json(args: List[str]) -> object:
     """Run flyctl with --json and return parsed JSON."""
     proc = subprocess.run(
@@ -62,6 +70,34 @@ def ensure_fly_available() -> None:
         raise FlyError(str(e)) from e
 
 
+def ensure_fly_auth() -> None:
+    """Verify flyctl is authenticated (i.e. `fly auth whoami` works and returns an email)."""
+    try:
+        res = subprocess.run(
+            ["fly", "auth", "whoami", "--json"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        data = json.loads(res.stdout or "{}")
+        email = (
+            data.get("email")
+            or data.get("Email")
+            or data.get("user")
+            or data.get("User")
+        )
+        if not email:
+            raise RuntimeError("not logged in")
+    except FileNotFoundError:
+        raise FlyError(
+            "flyctl not found. Please install flyctl and ensure it's on your PATH."
+        )
+    except Exception as e:
+        raise FlyError(
+            "Failed to verify Fly authentication. Please ensure you're logged in via `fly auth login`."
+        ) from e
+
+
 def load_env(env_file: Optional[Path] = Path(".env")) -> LoadedEnv:
     """Load env vars from .env and ensure FLY_API_TOKEN exists in environment."""
     if env_file is None or not env_file.exists():
@@ -84,7 +120,7 @@ def build_deploy_cmd(
 ) -> list[str]:
     """Build the flyctl deploy command, injecting env vars from .env."""
     cmd: list[str] = [
-        "flyctl",
+        "fly",
         "deploy",
         "--config",
         str(config_path),
@@ -138,16 +174,10 @@ def build_process_command(
             raise ValueError("--game is required for widget deployments.")
 
         cmd_parts: list[str] = [
-            "poetry",
+            "uv",
             "run",
             "dcs",
             "run",
-            "game",
-            str(game),
-            "--port",
-            "8080",
-            "--host",
-            "0.0.0.0",
         ]
         if tag:
             cmd_parts.extend(["--banner", tag])
@@ -155,7 +185,7 @@ def build_process_command(
         return " ".join(cmd_parts)
 
     cmd_parts = [
-        "poetry",
+        "uv",
         "run",
         "python",
         "-m",
@@ -260,19 +290,33 @@ def stop_all_machines(app_name: str) -> list[str]:
     return machine_ids
 
 
-def download_logs_json(*, app_name: str, no_tail: bool = True) -> str:
-    """Download logs for a Fly app."""
+def download_db(*, app_name: str, remote_path: str, local_path: Path) -> None:
+    """Download a file from the Fly app via SFTP."""
     ensure_fly_available()
-    cmd = ["flyctl", "logs", "--app", app_name]
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        sftp_get(app_name=app_name, remote_path=remote_path, local_path=local_path)
+    except Exception as e:
+        raise FlyError(f"Failed to download DB: {e}") from e
+
+
+def download_logs_jsonl(*, app_name: str, out_path: Path, no_tail: bool = True) -> None:
+    """Download Fly logs in JSONL format and write to out_path."""
+    ensure_fly_available()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = ["fly", "logs", "--app", app_name, "--json"]
     if no_tail:
         cmd.append("--no-tail")
-    cmd.append("--json")
+
     try:
         proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return proc.stdout
     except subprocess.CalledProcessError as e:
         err = (e.stderr or "").strip() or (e.stdout or "").strip() or str(e)
         raise FlyError(f"Failed to download logs: {err}") from e
+
+    # fly logs --json outputs newline-delimited JSON objects (JSONL)
+    out_path.write_text(proc.stdout, encoding="utf-8")
 
 
 def sftp_get(*, app_name: str, remote_path: str, local_path: Path) -> None:

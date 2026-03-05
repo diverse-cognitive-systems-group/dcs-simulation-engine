@@ -1,3 +1,5 @@
+.dcs_se_runs
+
 *temp
 *tmp
 stderr
@@ -65,6 +67,7 @@ data/*.db
 
 logs/
 output/
+results/
 *.log
 
 # Environment variables

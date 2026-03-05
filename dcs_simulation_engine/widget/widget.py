@@ -68,9 +68,7 @@ def build_widget(
 
     ### BUILD WIDGET ###
 
-    widget = gr.Blocks(
-        title="DCS Simulation"
-    )
+    widget = gr.Blocks(title="DCS Simulation")
     with widget:
         state = gr.State(
             value=SessionState(
@@ -175,7 +173,7 @@ def build_api_blocks() -> gr.Blocks:
             ],
             outputs=gr.JSON(label="result"),
             api_name="create_run",
-                    )
+        )
 
         # Step run API
         gr.Interface(
@@ -186,7 +184,7 @@ def build_api_blocks() -> gr.Blocks:
             ],
             outputs=gr.JSON(label="result"),
             api_name="step_run",
-                    )
+        )
 
         # Play run API
         gr.Interface(
@@ -200,7 +198,7 @@ def build_api_blocks() -> gr.Blocks:
             ],
             outputs=gr.JSON(label="result"),
             api_name="play_run",
-                    )
+        )
 
         # Get state API
         gr.Interface(
@@ -208,7 +206,7 @@ def build_api_blocks() -> gr.Blocks:
             inputs=[gr.Textbox(label="run_id")],
             outputs=gr.JSON(label="result"),
             api_name="get_state",
-                    )
+        )
 
         # Save run API
         gr.Interface(
@@ -219,7 +217,7 @@ def build_api_blocks() -> gr.Blocks:
             ],
             outputs=gr.JSON(label="result"),
             api_name="save_run",
-                    )
+        )
 
         # Delete run API
         gr.Interface(
@@ -227,7 +225,7 @@ def build_api_blocks() -> gr.Blocks:
             inputs=[gr.Textbox(label="run_id")],
             outputs=gr.JSON(label="result"),
             api_name="delete_run",
-                    )
+        )
 
     return api_blocks
 

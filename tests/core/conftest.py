@@ -5,11 +5,9 @@ from types import SimpleNamespace
 from typing import Callable
 
 import pytest
-
 from dcs_simulation_engine.core.run_manager import RunManager
 from dcs_simulation_engine.helpers import database_helpers as dbh
-from tests.helpers import patch_yml
-
+from tests.helpers import patch_yaml
 
 
 @pytest.fixture
@@ -18,7 +16,7 @@ def game_config_minimal(
 ) -> SimpleNamespace:
     """Fixture for a minimal base GameConfig."""
     base = tmp_path_factory.mktemp("cfg_minimal")
-    game_config_yml = """
+    game_config_yaml = """
     name: Minimal Test Game Config
     version: 1.0.0
     description: A minimal game config for testing.
@@ -60,8 +58,8 @@ def game_config_minimal(
         - from: echoNode
           to: __END__
     """
-    game_config_path = base / "game_config_minimal.yml"
-    write_yaml(game_config_path, game_config_yml)
+    game_config_path = base / "game_config_minimal.yaml"
+    write_yaml(game_config_path, game_config_yaml)
     return SimpleNamespace(path=game_config_path)
 
 
@@ -126,8 +124,8 @@ def game_config_with_branching_graph(
         - from: scene_continuation_agent
           to: __END__
     """
-    patched_yml = patch_yml(game_config_minimal.path, patch)
-    return SimpleNamespace(path=patched_yml.path)
+    patched_yaml = patch_yaml(game_config_minimal.path, patch)
+    return SimpleNamespace(path=patched_yaml.path)
 
 
 @pytest.fixture
@@ -161,8 +159,8 @@ def game_config_with_player_persistence(
         valid:
           characters: { hid: 'flatworm' }
     """
-    patched_yml = patch_yml(game_config_minimal.path, patch)
-    return SimpleNamespace(path=patched_yml.path)
+    patched_yaml = patch_yaml(game_config_minimal.path, patch)
+    return SimpleNamespace(path=patched_yaml.path)
 
 
 @pytest.fixture
