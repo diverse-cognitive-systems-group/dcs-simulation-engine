@@ -1,210 +1,97 @@
 """CLI stop command function."""
 
 import os
-from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 import typer
-from rich.console import Console
 
-from dcs_simulation_engine.cli.common import select_run
-
-console = Console()
+from dcs_simulation_engine.cli.common import console, select_run, step
+from dcs_simulation_engine.core.constants import OUTPUT_FPATH
+from dcs_simulation_engine.helpers import database_helpers as dbh
+from dcs_simulation_engine.helpers.run_helpers import (
+    STATUS,
+    local_run_name,
+    run_status,
+    update_run,
+)
+from dcs_simulation_engine.infra.docker import ensure_mongo_service_down
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
 
-def _default_paths(app: str) -> tuple[Path, Path, str]:
-    """Default save locations."""
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base = Path("results") / app / run_id
-
-    db_out = base / "database" / "db.sqlite3"
-    logs_out = base / "logs" / "logs.jsonl"
-
-    db_out.parent.mkdir(parents=True, exist_ok=True)
-    logs_out.parent.mkdir(parents=True, exist_ok=True)
-
-    return db_out, logs_out, run_id
-
-
 def stop(
     ctx: typer.Context,
-    deployment: Optional[str] = typer.Argument(
-        None, help="Deployment name (Fly app name). If omitted, you will be prompted."
-    ),
-    logs_out: Optional[Path] = typer.Option(
-        None,
-        "--logs-out",
-        help="Write recent logs to this file (JSON lines). Defaults to results/<deployment>/<run_id>/logs/logs.jsonl",
-        dir_okay=False,
-        file_okay=True,
-    ),
-    logs_no_tail: bool = typer.Option(
-        True, "--no-tail/--tail", help="Fetch buffered logs only."
-    ),
-    db_remote: Optional[str] = typer.Option(
-        None,
-        "--db-remote",
-        help="Remote DB file path on the VM to download. If omitted, DB download is skipped.",
-    ),
-    db_out: Optional[Path] = typer.Option(
-        None,
-        "--db-out",
-        help="Local path to save the downloaded DB file. Defaults to results/<deployment>/<run_id>/database/db.sqlite3",
-        dir_okay=False,
-        file_okay=True,
-    ),
-    no_save: bool = typer.Option(
-        False, "--no-save", help="Skip downloading DB and logs before stopping."
+    run_name: Optional[str] = typer.Option(
+        None, "--run-name", "-r", help="Run name. If omitted, you will be prompted."
     ),
     destroy: bool = typer.Option(
         False,
         "--destroy",
-        help="Destroy the Fly app (deletes deployment). Destructive.",
-    ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Do not prompt for confirmation."
+        help="Permanently delete this run (remote + local). Destructive; cannot be restarted.",
     ),
 ) -> None:
-    """Stop simulation engine (optionally save artifacts; optionally destroy deployment)."""
-    # 1) Pick deployment (prompt if omitted)
-    run_name = select_run(ctx, deployment, include_local=True)
+    """Stop simulation engine (optionally save artifacts; optionally delete the run)."""
+    selected_run = select_run(ctx, run_name)
 
-    # # not implemented for fly apps
-    # if app != "local":
-    #     console.print(
-    #         "Stopping+save Fly apps is not implemented yet.",
-    #         style="error",
-    #     )
-    #     raise typer.Exit(code=1)
+    local_run = local_run_name()
+    selected_run_status = run_status(selected_run)
+    if not destroy:
+        if selected_run_status == STATUS.STOPPED:
+            console.print(
+                f"Run '{selected_run}' is already stopped. Use --destroy to delete it.",
+                style="warning",
+            )
+            raise typer.Exit()
 
-    # # 2) Default save locations (unless --no-save)
-    # # We create ONE run_id folder and put both artifacts under it.
-    # run_id: Optional[str] = None
-    # if not no_save:
-    #     default_db_out, default_logs_out, run_id = _default_paths(app)
+        if selected_run == local_run:
+            console.print(
+                "A local run must be stopped manually using Ctrl+C in the terminal where its running.",
+                style="error",
+            )
+            raise typer.Exit(code=1)
+        else:  # remote deployment stop logic here (if applicable)
+            console.print(f"Stopping run {selected_run}")
+            console.print(
+                "Stopping remote deployments not implemented yet", style="error"
+            )
+            raise typer.Exit(code=1)
+    else:
+        run_results_dir = OUTPUT_FPATH / selected_run
+        console.print()
+        console.print(
+            "WARNING: This will permanently delete this run.\n",
+            "It cannot be restarted, but run data will be saved.",
+            style="error",
+        )
+        if not typer.confirm("Continue?", default=False):
+            console.print("Cancelled.", style="warning")
+            raise typer.Exit(code=1)
+        console.print(f"Destroying run instance: '{selected_run}'")
+        try:
+            with step("Saving db"):
+                dbh.backup_db(run_results_dir, append_ts=False)
+            with step("Saving metadata"):
+                update_run(selected_run, status=STATUS.DESTROYED)
+        except Exception as e:
+            console.print()
+            console.print("Artifact save failed. Aborting delete.", style="error")
+            console.print(str(e))
+            raise typer.Exit(code=1)
 
-    #     # logs should default-save unless user explicitly disables saving
-    #     if logs_out is None:
-    #         logs_out = default_logs_out
+        with step("Destroying run"):
+            if selected_run == local_run:
+                if selected_run_status == STATUS.RUNNING:
+                    console.print(
+                        "A local run must be stopped manually using Ctrl+C in the terminal "
+                        "where its running before it can be destroyed.",
+                        style="error",
+                    )
+                    raise typer.Exit(code=1)
+                else:  # status is stopped
+                    ensure_mongo_service_down(wipe=True)
+            else:  # remote run
+                console.log(
+                    "Destroying remote runs not implemented yet.", style="error"
+                )
 
-    #     # DB only defaults if user indicated they want a DB download (db_remote provided)
-    #     if db_remote and db_out is None:
-    #         db_out = default_db_out
-
-    # # 3) Validate DB args
-    # missing_db_out = bool(db_remote) and (db_out is None)
-    # missing_db_remote = bool(db_out) and (db_remote is None)
-
-    # if missing_db_out or missing_db_remote:
-    #     typer.secho(
-    #         "DB download requires both --db-remote and --db-out.",
-    #         fg=typer.colors.RED,
-    #         err=True,
-    #     )
-    #     raise typer.Exit(code=2)
-
-    # # 4) Destroy warning if nothing will be saved
-    # # "Anything being saved" means: logs_out set OR db_remote+db_out set.
-    # has_any_targets = (logs_out is not None) or bool(db_remote and db_out)
-    # if destroy and (no_save or not has_any_targets):
-    #     warn = (
-    #         "You are about to DESTROY the deployment. This can permanently delete data "
-    #         "stored on the VM (including any unsaved DB/logs)."
-    #     )
-    #     typer.secho(warn, fg=typer.colors.YELLOW, bold=True)
-    #     if not force:
-    #         ok = typer.confirm(
-    #             "Continue without saving artifacts?",
-    #             default=False,
-    #         )
-    #         if not ok:
-    #             console.print("Aborted.", style="warning")
-    #             raise typer.Exit(code=1)
-
-    # # 5) Confirmation prompt (for stop and especially destroy)
-    # if destroy:
-    #     typer.secho(
-    #         f"DESTRUCTIVE: This will delete the app '{app}' without saving anything!",
-    #         fg=typer.colors.RED,
-    #         bold=True,
-    #     )
-    #     if not force:
-    #         ok = typer.confirm(
-    #             f"Type yes to destroy '{app}'",
-    #             default=False,
-    #         )
-    #         if not ok:
-    #             console.print("Aborted.", style="warning")
-    #             raise typer.Exit(code=1)
-    # else:
-    #     if not force:
-    #         ok = typer.confirm(f"Stop '{app}' (scale to 0)?", default=True)
-    #         if not ok:
-    #             console.print("Aborted.", style="warning")
-    #             raise typer.Exit(code=1)
-
-    # # 6) Save step (unless --no-save)
-    # # Make saves BEFORE stopping/destroying.
-    # if not no_save:
-    #     if run_id:
-    #         console.print(
-    #             f"Saving artifacts under results/{app}/{run_id}/", style="dim"
-    #         )
-
-    #     if logs_out is not None:
-    #         try:
-    #             step(f"Saving logs to {logs_out}...")
-    #             if app == "local":
-    #                 # FIXME: STOPPED HERE; save with number appended to avoid overwriting
-    #                 console.print("Not implemented yet.", style="error")
-    #             else:
-    #                 download_logs_jsonl(
-    #                     app_name=app, no_tail=logs_no_tail, out_path=logs_out
-    #                 )
-    #             done()
-    #         except Exception as e:
-    #             done()
-    #             typer.secho(f"Failed to save logs: {e}", fg=typer.colors.RED, err=True)
-    #             if destroy and not force:
-    #                 if not typer.confirm("Continue anyway?", default=False):
-    #                     raise typer.Exit(code=1)
-
-    #     if db_remote and db_out:
-    #         try:
-    #             step(f"Downloading DB to {db_out}...")
-    #             # FIXME: STOPPED HERE
-    #             console.print("Not implemented yet.", style="error")
-    #             done()
-    #         except Exception as e:
-    #             done()
-    #             typer.secho(
-    #                 f"Failed to download DB: {e}", fg=typer.colors.RED, err=True
-    #             )
-    #             if destroy and not force:
-    #                 if not typer.confirm("Continue anyway?", default=False):
-    #                     raise typer.Exit(code=1)
-
-    # # 7) Stop or destroy
-    # if destroy:
-    #     try:
-    #         step(f"Destroying deployment {app}...")
-    #         deploy.destroy_deployment(app)
-    #         done()
-    #     except FlyError as e:
-    #         done()
-    #         typer.secho(
-    #             f"Failed to destroy '{app}': {e}", fg=typer.colors.RED, err=True
-    #         )
-    #         raise typer.Exit(code=1)
-    # else:
-    #     try:
-    #         step(f"Stopping {app}...")
-    #         deploy.stop_deployment(deployment=app)
-    #         done()
-    #     except FlyError as e:
-    #         done()
-    #         typer.secho(f"Failed to stop '{app}': {e}", fg=typer.colors.RED, err=True)
-    #         raise typer.Exit(code=1)
+        console.print(f"Deleted run: {selected_run}", style="success")

@@ -1,13 +1,13 @@
 """CLI commands for listing resources."""
 
-from typing import List, Optional
-
 import typer
 from rich.table import Table
 
-import dcs_simulation_engine.helpers.database_helpers as dbh
-from dcs_simulation_engine.cli.common import done, echo, select_run, step
-from dcs_simulation_engine.helpers.game_helpers import list_games as _list_games
+from dcs_simulation_engine.cli.common import echo
+from dcs_simulation_engine.helpers.game_helpers import (
+    list_characters as _list_characters,
+    list_games as _list_games,
+)
 
 list_app = typer.Typer(help="List resources (games, characters, players, runs).")
 
@@ -34,7 +34,7 @@ def list_games(ctx: typer.Context) -> None:
 def list_characters(ctx: typer.Context) -> None:
     """List available characters."""
     try:
-        chars = dbh.list_characters()
+        chars = _list_characters()
         if len(chars) == 0:
             echo(
                 ctx,
@@ -66,87 +66,3 @@ def list_characters(ctx: typer.Context) -> None:
         table.add_row("—", "—", "No characters found")
 
     echo(ctx, table)
-
-
-def _render_id_table(ctx: typer.Context, title: str, ids: List[str]) -> None:
-    """Helper to render a simple table of IDs."""
-    table = Table(title=title, show_header=True, header_style="bold white")
-    table.add_column("#", justify="right")
-    table.add_column("ID")
-
-    if not ids:
-        table.add_row("—", f"No {title.lower()} found")
-        echo(ctx, table)
-        return
-
-    for idx, _id in enumerate(ids, start=1):
-        table.add_row(str(idx), _id)
-
-    echo(ctx, table)
-
-
-@list_app.command("players")
-def list_players(
-    ctx: typer.Context,
-    run_name: Optional[str] = typer.Argument(None, help="Run name."),
-) -> None:
-    """List players in a live database."""
-    run_name = select_run(ctx, run_name)
-
-    step(f"Listing players for {run_name}...")
-    try:
-        chars = dbh.list_players() or []
-    except Exception as e:
-        echo(ctx, f"Failed to list players from local database: {e}", style="error")
-        raise typer.Exit(code=1)
-    done()
-
-    if len(chars) == 0:
-        echo(
-            ctx,
-            "No players found.",
-            style="warning",
-        )
-
-    ids = [str(c.get("id") or "—") for c in chars]
-    _render_id_table(ctx, "Players", ids)
-    return
-
-
-@list_app.command("runs")
-def list_runs(
-    ctx: typer.Context,
-    deployment: Optional[str] = typer.Argument(None, help="Deployment name."),
-) -> None:
-    """List runs in a live database."""
-    # run_name = select_run(ctx, deployment)
-
-    # if app in ("local", "localhost"):
-    #     if not local_is_running:
-    #         echo(
-    #             ctx,
-    #             "Localhost is not live. Start the local server first.",
-    #             style="error",
-    #         )
-    #         raise typer.Exit(code=1)
-
-    #     step("Listing runs from local database...")
-    #     try:
-    #         runs = dbh.list_runs() or []
-    #     except Exception as e:
-    #         echo(ctx, f"Failed to list runs from local database: {e}", style="error")
-    #         raise typer.Exit(code=1)
-    #     done()
-
-    #     if len(runs) == 0:
-    #         echo(
-    #             ctx,
-    #             "No runs found.",
-    #             style="warning",
-    #         )
-    #     ids = [str(r.get("id") or "—") for r in runs]
-    #     _render_id_table(ctx, "Runs", ids)
-    #     return
-
-    echo(ctx, "TODO: implement.", style="error")
-    raise typer.Exit(code=2)

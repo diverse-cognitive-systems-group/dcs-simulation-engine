@@ -1,6 +1,7 @@
 """Shared cli utilities."""
 
 import socket
+from contextlib import contextmanager
 from dataclasses import dataclass
 from http.client import HTTPConnection
 from pathlib import Path
@@ -53,15 +54,19 @@ def version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-def step(msg: str) -> None:
-    """Print a step message."""
-    console.print("• ", style="dim", end="")
-    console.print(msg, style="dim", end="")
-
-
-def done() -> None:
-    """Print 'done' message."""
-    console.print(" done.", style="dim")
+@contextmanager
+def step(msg: str):
+    """Context manager for displaying a step with a spinner."""
+    try:
+        with console.status(msg, spinner="dots") as status:
+            yield
+    except Exception:
+        status.stop()
+        console.print(f"[red]✖[/red] {msg}", style="dim")
+        raise
+    else:
+        status.stop()
+        console.print(f"[green]✔[/green] {msg}", style="dim")
 
 
 def check_localhost(
@@ -103,46 +108,32 @@ def check_localhost(
         return ("Up", f"non-HTTP or no response: {e.__class__.__name__}")
 
 
-# def deployment_names(include_local: bool = True) -> Tuple[List[str], bool]:
-#     """Get deployment names."""
-#     apps = deploy.list_deployments() or []
-#     names = [
-#         (a.get("Name") or a.get("name"))
-#         for a in apps
-#         if (a.get("Name") or a.get("name"))
-#     ]
-
-#     local_is_running = check_localhost()[0] == "Up"
-#     if include_local and local_is_running and "local" not in names:
-#         names.append("local")
-
-#     return names, local_is_running
-
-
 def select_run(
     ctx: typer.Context,
     run_name: Optional[str],
 ) -> str:
     """Select run, either from argument or prompt."""
-    runs = load_runs()
+    runs = load_runs()  # Dict[str, Dict[str, Any]]
+
+    if not runs:
+        console.print("No runs available to select from.", style="warning")
+        raise typer.Exit(code=0)
+
     if run_name:
         if run_name not in runs:
             echo(ctx, f"Run '{run_name}' not found.", style="error")
             raise typer.Exit(code=1)
+        return run_name
 
-    if not runs:
-        console.print("No runs available to select from.", style="warning")
-        raise typer.Exit()
+    names = list(runs.keys())
 
-    for i, name in enumerate(runs, 1):
+    for i, name in enumerate(names, 1):
         console.print(f"{i}. {name}")
 
     choice = typer.prompt("Select run", type=int)
 
-    try:
-        name = runs[choice - 1]
-    except (IndexError, ValueError):
+    if not (1 <= choice <= len(names)):
         console.print("Invalid selection.", style="error")
         raise typer.Exit(code=1)
 
-    return name
+    return names[choice - 1]

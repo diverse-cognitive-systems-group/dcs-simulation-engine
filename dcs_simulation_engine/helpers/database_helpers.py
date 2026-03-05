@@ -35,7 +35,7 @@ from pymongo.database import Database
 from pymongo.errors import CollectionInvalid, OperationFailure
 
 from dcs_simulation_engine.infra.docker import (
-    ensure_mongo_running,
+    ensure_mongo_service_up,
     get_mongodb_ip,
 )
 
@@ -97,8 +97,12 @@ def get_db() -> Database[Any]:
         return _db
 
     uri = os.getenv("MONGO_URI")
+    logger.debug(
+        f"Connecting to MongoDB with MONGO_URI={uri or 'not set, using default'}"
+    )
     if not uri:
-        ensure_mongo_running()
+        logger.debug("MONGO_URI not set")
+        ensure_mongo_service_up()
         # TODO: IP addresses can change if docker services restart, etc, this
         # may not always work as expected in all environments.
         ip = get_mongodb_ip()
@@ -934,3 +938,37 @@ def user_matches_where(
     except Exception as e:
         logger.error(f"user_matches_where failed: {e}")
         return False
+
+
+def backup_db(outdir: Path, append_ts: bool = True) -> Path:
+    """Backup the entire MongoDB database to a directory."""
+    db = get_db()
+
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    if append_ts:
+        root = Path(outdir) / f"{ts}"
+    else:
+        root = Path(outdir) / "db"
+    root.mkdir(parents=True, exist_ok=False)
+
+    collections = sorted(db.list_collection_names())
+
+    for coll_name in collections:
+        backup_collection(db, coll_name, root)
+
+    manifest = {
+        "db_name": db.name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "collections": collections,
+        "format": {
+            "collection_dump": "<collection>.ndjson",
+            "indexes_dump": "<collection>.__indexes__.json",
+            "ndjson_encoding": "bson.json_util extended json",
+        },
+    }
+    (root / "__manifest__.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    return root

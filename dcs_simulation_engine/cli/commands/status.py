@@ -7,7 +7,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from dcs_simulation_engine.cli.common import done, step
+from dcs_simulation_engine.cli.common import step
 from dcs_simulation_engine.helpers.run_helpers import load_runs, run_status, run_uptime
 from dcs_simulation_engine.infra import deploy
 from dcs_simulation_engine.infra.fly import (
@@ -67,26 +67,24 @@ def _summarize_machines(
 
 def status() -> None:
     """Check status of simulation engine."""
-    step("Fetching run details...")
-    runs = load_runs()
-    done()
+    with step("Fetching run data"):
+        runs = load_runs()
 
-    step("Fetching run data for remote instances...")
-    try:
-        apps = deploy.list_deployments()
-    except FlyError as e:
-        done()
-        msg = str(e)
-        if "flyctl not found" in msg.lower() or "not found on path" in msg.lower():
+        try:
+            apps = deploy.list_deployments()
+        except FlyError as e:
+            msg = str(e)
+            if "flyctl not found" in msg.lower() or "not found on path" in msg.lower():
+                typer.secho(
+                    "flyctl not found. Install Fly CLI to check status.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
             typer.secho(
-                "flyctl not found. Install Fly CLI to check status.",
-                fg=typer.colors.RED,
-                err=True,
+                f"Failed to fetch deployments: {e}", fg=typer.colors.RED, err=True
             )
             raise typer.Exit(code=1)
-        typer.secho(f"Failed to fetch deployments: {e}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1)
-    done()
 
     table = Table(
         title="Simulation Engine Run Instances",
@@ -114,34 +112,6 @@ def status() -> None:
             uptime,
             run.get("link") or "—",
         )
-
-    # for app in apps:
-    #     app_name = as_str(app, "Name", "name")
-    #     access = _app_access_link(app_name) if app_name != "—" else "—"
-
-    #     try:
-    #         step(f"Fetching machines for {app_name}...")
-    #         machines = list_machines(app_name)
-    #         done()
-    #     except FlyError as e:
-    #         table.add_row(app_name, f"Failed: {e}", "—", "—", access)
-    #         any_rows = True
-    #         continue
-
-    #     step(f"Summarizing machines for {app_name}...")
-    #     status_summary, machine_counts, created = _summarize_machines(machines)
-    #     done()
-
-    #     created_dt = parse_iso(created) if created != "—" else None
-    #     uptime = fmt_uptime(created_dt)
-
-    #     table.add_row(
-    #         app_name,
-    #         status_summary,
-    #         uptime,
-    #         "-",
-    #         access,
-    #     )
 
     typer.echo()
     console.print(table)

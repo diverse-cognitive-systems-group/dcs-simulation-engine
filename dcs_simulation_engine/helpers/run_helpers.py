@@ -1,15 +1,28 @@
 """Helper functions for managing CLI DCS Simulation Engine run instances."""
 
+from __future__ import annotations
+
 import json
+import re
 import time
+from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from dcs_simulation_engine.core.constants import OUTPUT_FPATH
+from loguru import logger
 
-RUNS_FILE = Path.home() / ".dcs_se_runs"
-RUN_FILE = "run-metadata.json"
+from dcs_simulation_engine.core.constants import OUTPUT_FPATH
+from dcs_simulation_engine.helpers.logging_helpers import (
+    add_run_logger,
+    remove_run_logger,
+)
+from dcs_simulation_engine.utils.paths import package_root
+
+RUNS_FILE = package_root() / ".dcs_se_runs"
+RUN_FILE = "metadata.json"
+
+_RUN_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+MAX_RUN_NAME_LEN = 15
 
 
 class STATUS(Enum):
@@ -18,6 +31,35 @@ class STATUS(Enum):
     RUNNING = "running"  # start or resume
     STOPPED = "stopped"  # stop
     DESTROYED = "destroyed"  # archive + delete
+
+
+class RunNameError(ValueError):
+    """Base class for run-name validation errors."""
+
+
+@dataclass(frozen=True)
+class BadRunNameError(RunNameError):
+    """Raised when a provided run name is invalid."""
+
+    run_name: str
+
+    def __str__(self) -> str:
+        return (
+            f"Invalid run name {self.run_name!r}. "
+            "Use lowercase letters or numbers separated by dashes "
+            "(max length 8, e.g. 'test1', 'run-2')."
+        )
+
+
+@dataclass(frozen=True)
+class RunNameNotUniqueError(RunNameError):
+    """Raised when a run with the specified name already exists."""
+
+    run_name: str
+    status: object  # STATUS enum type if you have it
+
+    def __str__(self) -> str:
+        return f"Run {self.run_name!r} already exists (status={self.status})."
 
 
 class RunNotFoundError(Exception):
@@ -46,6 +88,7 @@ def _save_runs(runs: Dict[str, Dict[str, Any]]) -> None:
 
 def _ensure_run(runs: Dict[str, Dict[str, Any]], name: str) -> Dict[str, Any]:
     if name not in runs:
+        logger.debug(f"Creating new run '{name}'")
         runs[name] = {
             "name": name,
             "link": None,
@@ -54,6 +97,9 @@ def _ensure_run(runs: Dict[str, Dict[str, Any]], name: str) -> Dict[str, Any]:
             "stop_times": [],  # list[float]
             "destroy_time": None,  # float|None
         }
+        logger.debug(f"Adding a file sink for run '{name}'")
+        run_results_dir = OUTPUT_FPATH / name
+        add_run_logger(name, run_results_dir)
     return runs[name]
 
 
@@ -65,6 +111,28 @@ def _derived_status(run: Dict[str, Any]) -> STATUS:
     return STATUS.RUNNING if len(starts) > len(stops) else STATUS.STOPPED
 
 
+def validate_run_name(run_name: Optional[str]) -> str:
+    """Validate and normalize run name.
+
+    Rules:
+    - lowercase letters or numbers
+    - dash separated segments
+    - max length 8
+    """
+    if run_name is None:
+        raise BadRunNameError("")
+
+    v = run_name.strip()
+
+    if len(v) > MAX_RUN_NAME_LEN:
+        raise BadRunNameError(v)
+
+    if not _RUN_NAME_RE.fullmatch(v):
+        raise BadRunNameError(v)
+
+    return v
+
+
 def load_runs() -> Dict[str, Dict[str, Any]]:
     """Returns a dict of run_name -> run_metadata."""
     if not RUNS_FILE.exists():
@@ -72,6 +140,14 @@ def load_runs() -> Dict[str, Dict[str, Any]]:
     with open(RUNS_FILE, "r") as f:
         data = json.load(f)
     return data if isinstance(data, dict) else {}
+
+
+def ensure_run_name_unique(run_name: str):
+    """Raise if a run with this name already exists."""
+    status = run_status(run_name)
+    if status is not None:
+        raise RunNameNotUniqueError(run_name=run_name, status=status)
+    return True
 
 
 def run_status(name: str) -> STATUS:
@@ -129,6 +205,7 @@ def update_run(name: str, status: STATUS, link: Optional[str] = None) -> STATUS:
     if status == STATUS.DESTROYED:
         run["destroy_time"] = _now()
         _archive_and_delete(runs, name, run)
+        remove_run_logger(name)
         return STATUS.DESTROYED
 
     raise ValueError(f"Unsupported status: {status}")
