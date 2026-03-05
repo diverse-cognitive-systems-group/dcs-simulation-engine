@@ -9,10 +9,6 @@ from rich.table import Table
 
 from dcs_simulation_engine.cli.common import step
 from dcs_simulation_engine.helpers.run_helpers import load_runs, run_status, run_uptime
-from dcs_simulation_engine.infra import deploy
-from dcs_simulation_engine.infra.fly import (
-    FlyError,
-)
 from dcs_simulation_engine.utils.misc import as_str, fmt_dt, parse_iso
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
@@ -69,22 +65,6 @@ def status() -> None:
     """Check status of simulation engine."""
     with step("Fetching run data"):
         runs = load_runs()
-
-        try:
-            apps = deploy.list_deployments()
-        except FlyError as e:
-            msg = str(e)
-            if "flyctl not found" in msg.lower() or "not found on path" in msg.lower():
-                typer.secho(
-                    "flyctl not found. Install Fly CLI to check status.",
-                    fg=typer.colors.RED,
-                    err=True,
-                )
-                raise typer.Exit(code=1)
-            typer.secho(
-                f"Failed to fetch deployments: {e}", fg=typer.colors.RED, err=True
-            )
-            raise typer.Exit(code=1)
 
     table = Table(
         title="Simulation Engine Run Instances",

@@ -44,6 +44,7 @@ class BadRunNameError(RunNameError):
     run_name: str
 
     def __str__(self) -> str:
+        """Returns a message indicating that the run name is invalid and provides the rules for valid names."""
         return (
             f"Invalid run name {self.run_name!r}. "
             "Use lowercase letters or numbers separated by dashes "
@@ -59,6 +60,7 @@ class RunNameNotUniqueError(RunNameError):
     status: object  # STATUS enum type if you have it
 
     def __str__(self) -> str:
+        """Returns a message indicating that the run name is not unique and includes the existing run's status."""
         return f"Run {self.run_name!r} already exists (status={self.status})."
 
 
