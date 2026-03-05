@@ -1,7 +1,0 @@
-run:
-  name: ii4938
-
-games:
-  - name: Infer Intent
-    overrides:
-      banner: "<b>A TEST – PT</b>"
