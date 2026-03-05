@@ -5,15 +5,14 @@ from pathlib import Path
 from typing import Callable
 
 import pytest
-from langchain_core.messages import HumanMessage
-from langgraph.graph.state import CompiledStateGraph
-from loguru import logger
-
 from dcs_simulation_engine.core.simulation_graph import (
     GraphConfig,
     SimulationGraph,
     SimulationGraphState,
 )
+from langchain_core.messages import HumanMessage
+from langgraph.graph.state import CompiledStateGraph
+from loguru import logger
 
 # @pytest.mark.unit
 # def test_schema_fields_sync() -> None:
@@ -29,7 +28,7 @@ def test_compile_fails_on_missing_node(write_yaml: Callable[[str, str], Path]) -
 
     Note: This check ONLY LangGraph's built-in checks (no custom validation needed).
     """
-    yml = """
+    yaml = """
     name: invalid-missing-node
     nodes:
       - name: agentA
@@ -51,7 +50,7 @@ def test_compile_fails_on_missing_node(write_yaml: Callable[[str, str], Path]) -
       - from: __START__
         to: agentB   # <-- missing node on purpose
     """
-    p = write_yaml("invalid-missing-node.yml", yml)
+    p = write_yaml("invalid-missing-node.yaml", yaml)
     graph_config = GraphConfig.from_yaml(p)
     # make sure graph_config is loaded correctly
     assert graph_config.name == "invalid-missing-node"
@@ -68,7 +67,7 @@ def test_compile_fails_when_end_unreachable(
 
     YAML has a START edge but no path to __end__.
     """
-    yml = """
+    yaml = """
     name: invalid-end-unreachable
     nodes:
       - name: agentA
@@ -81,7 +80,7 @@ def test_compile_fails_when_end_unreachable(
         to: agentA
       # (no edges to __end__)
     """
-    p = write_yaml("invalid-end-unreachable.yml", yml)
+    p = write_yaml("invalid-end-unreachable.yaml", yaml)
     graph_config = GraphConfig.from_yaml(p)
     assert graph_config.name == "invalid-end-unreachable"
 
@@ -147,7 +146,7 @@ def test_simple_graph(tmp_path: Path) -> None:
 
     It and outputs the correct letter "I"
     """
-    path = tmp_path / "graph-simple.yml"
+    path = tmp_path / "graph-simple.yaml"
     _write_simple_yaml(path)
 
     graph_config = GraphConfig.from_yaml(path)
@@ -176,7 +175,7 @@ def test_invoke_simple(tmp_path: Path) -> None:
                    something is wrong with the code"
     )
 
-    path = tmp_path / "graph-simple.yml"
+    path = tmp_path / "graph-simple.yaml"
     _write_simple_yaml(path)
     graph_config = GraphConfig.from_yaml(path)
     graph = SimulationGraph.compile(graph_config)
@@ -249,7 +248,7 @@ def _write_conditional_yaml(path: Path) -> None:
 @pytest.mark.unit
 def test_conditional_graph(tmp_path: Path) -> None:
     """Compiles a graph with conditional edges (new schema) and verifies topology."""
-    path = tmp_path / "graph-conditional.yml"
+    path = tmp_path / "graph-conditional.yaml"
     _write_conditional_yaml(path)
 
     graph_config = GraphConfig.from_yaml(path)
@@ -272,7 +271,7 @@ def test_conditional_graph(tmp_path: Path) -> None:
 @pytest.mark.slow
 def test_invoke_conditional(tmp_path: Path) -> None:
     """Invokes the conditional graph through correct branches."""
-    path = tmp_path / "graph-conditional.yml"
+    path = tmp_path / "graph-conditional.yaml"
     _write_conditional_yaml(path)
     graph_config = GraphConfig.from_yaml(path)
 
@@ -309,7 +308,7 @@ def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
         "If the test fails, try running it again....doesn't necessarily mean "
         "something is wrong with the code."
     )
-    yml = """
+    yaml = """
     name: jinja-test-graph
     nodes:
       - name: echoChar
@@ -327,7 +326,7 @@ def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
       - from: echoChar
         to: __end__
     """
-    p = write_yaml("graph-jinja.yml", yml)
+    p = write_yaml("graph-jinja.yaml", yaml)
     graph_config = GraphConfig.from_yaml(p)
 
     graph = SimulationGraph.compile(graph_config)
@@ -363,7 +362,7 @@ def test_jinja_works_with_dynamic_input(write_yaml: Callable[[str, str], Path]) 
         "If the test fails, try running it again....doesn't necessarily mean "
         "something is wrong with the code."
     )
-    yml = """
+    yaml = """
     name: jinja-test-graph
     nodes:
       - name: echoChar
@@ -386,7 +385,7 @@ def test_jinja_works_with_dynamic_input(write_yaml: Callable[[str, str], Path]) 
       - from: echoChar
         to: __end__
     """
-    p = write_yaml("graph-jinja.yml", yml)
+    p = write_yaml("graph-jinja.yaml", yaml)
     graph_config = GraphConfig.from_yaml(p)
 
     graph = SimulationGraph.compile(graph_config)

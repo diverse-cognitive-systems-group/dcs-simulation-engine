@@ -27,12 +27,10 @@
                 "Foresight",
             ],
             "cwd": "${workspaceFolder}",
-
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yml up --build
+            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
             "preLaunchTask": "docker-compose-up",
-            "postDebugTask":  "docker-compose-down",
+            "postDebugTask": "docker-compose-down",
         },
-
         {
             "name": "dcs create database: dev",
             "type": "debugpy",
@@ -45,8 +43,7 @@
                 "database_seeds/dev",
             ],
             "cwd": "${workspaceFolder}",
-
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yml up --build
+            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
             "preLaunchTask": "docker-compose-up",
             "postDebugTask": "docker-compose-down",
         }

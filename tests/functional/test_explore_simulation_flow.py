@@ -5,7 +5,6 @@ multiple conversation turns to saving, without requiring external API calls.
 """
 
 import pytest
-
 from dcs_simulation_engine.core.run_manager import RunManager
 
 
@@ -14,7 +13,7 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
     """Test complete simulation flow: init -> 10 turns -> save.
 
     This test validates:
-    1. RunManager initializes correctly from explore.yml game config
+    1. RunManager initializes correctly from explore.yaml game config
     2. ENTER lifecycle step returns welcome message
     3. Multiple user inputs get processed through the simulation graph
     4. LLM validator and updater nodes execute with mocked responses
@@ -55,7 +54,7 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
     enter_step_message_count = len(run.state["history"])
     assert enter_step_message_count == 2, "After ENTER, history should have 2 messages"
     assert run.turns == 1, "After ENTER, turns should be 1"
-    
+
     # start executing user inputs
     user_inputs = [
         "I wave my hand",
@@ -111,7 +110,6 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
     assert (
         run.state["lifecycle"] == "UPDATE"
     ), "Should still be in UPDATE lifecycle before exit"
-
 
     # History = ENTER messages + 10 conversation turns × 2 messages
     expected_history_length = enter_step_message_count + 10 * 2

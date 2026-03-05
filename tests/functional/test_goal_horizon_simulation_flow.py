@@ -7,51 +7,62 @@ This test suite validates the goal-horizon game's mechanics:
 
 Tests use mocked LLMs to avoid external API dependencies.
 
-TODO: The goal-horizon.yml game config has an invalid MongoDB query syntax for NPC
+TODO: The goal-horizon.yaml game config has an invalid MongoDB query syntax for NPC
 character constraints (`$ne` at top level instead of field level). This prevents
 testing NPC constraint validation with mongomock. Fix the game config and add
-NPC constraint tests when resolved. See games/goal-horizon.yml:79-82.
+NPC constraint tests when resolved. See games/goal-horizon.yaml:79-82.
 """
 
-import pytest
-from bson import ObjectId
 from pathlib import Path
 from unittest.mock import patch
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
+import pytest
+from bson import ObjectId
 from dcs_simulation_engine.core.run_manager import RunManager
-
 
 # Test player ID for goal-horizon tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
 
 # Path to goal-horizon game config
-GOAL_HORIZON_CONFIG = Path(__file__).parent.parent.parent / "games" / "goal-horizon.yml"
+GOAL_HORIZON_CONFIG = (
+    Path(__file__).parent.parent.parent / "games" / "goal-horizon.yaml"
+)
 
 
 @pytest.fixture
 def patch_get_valid_characters():
     """Patch get_valid_characters to bypass invalid MongoDB NPC query.
 
-    The goal-horizon.yml config has invalid MongoDB syntax (`$ne` at top level
+    The goal-horizon.yaml config has invalid MongoDB syntax (`$ne` at top level
     instead of field level) that causes mongomock to fail. This fixture returns
     mock character lists that would be returned if the query were valid.
 
-    TODO: Remove this fixture when games/goal-horizon.yml:79-82 is fixed.
+    TODO: Remove this fixture when games/goal-horizon.yaml:79-82 is fixed.
     """
+
     def mock_get_valid_characters(self, player_id=None):
         # Return all characters for PC (open constraint)
         # Return non-human-normative characters for NPC (simulating $ne constraint)
         # Format: list of tuples (formatted_name, hid)
-        all_chars = ["flatworm", "human-normative", "octopus", "dolphin",
-                     "corvid", "great-ape", "elephant", "canine", "feline"]
+        all_chars = [
+            "flatworm",
+            "human-normative",
+            "octopus",
+            "dolphin",
+            "corvid",
+            "great-ape",
+            "elephant",
+            "canine",
+            "feline",
+        ]
         pc_chars = [(c, c) for c in all_chars]  # (formatted, hid) tuples
         npc_chars = [(c, c) for c in all_chars if c != "human-normative"]
         return pc_chars, npc_chars
 
     with patch(
         "dcs_simulation_engine.core.game_config.GameConfig.get_valid_characters",
-        mock_get_valid_characters
+        mock_get_valid_characters,
     ):
         yield
 
@@ -64,19 +75,23 @@ def seed_consenting_player(_isolate_db_state):
     in their player document. This fixture creates such a player.
     """
     db = dbh.get_db()
-    db[dbh.PLAYERS_COL].insert_one({
-        "_id": TEST_PLAYER_ID,
-        "consent_signature": {
-            "answer": ["I confirm that the information I have provided is true..."]
-        },
-        "full_name": "Test Player",
-        "email": "test@example.com",
-    })
+    db[dbh.PLAYERS_COL].insert_one(
+        {
+            "_id": TEST_PLAYER_ID,
+            "consent_signature": {
+                "answer": ["I confirm that the information I have provided is true..."]
+            },
+            "full_name": "Test Player",
+            "email": "test@example.com",
+        }
+    )
     yield
 
 
 @pytest.mark.functional
-def test_goal_horizon_initialization(patch_llm_client, patch_get_valid_characters, _isolate_db_state):
+def test_goal_horizon_initialization(
+    patch_llm_client, patch_get_valid_characters, _isolate_db_state
+):
     """Test goal-horizon game initializes correctly with RunManager.
 
     Verifies:
@@ -99,7 +114,9 @@ def test_goal_horizon_initialization(patch_llm_client, patch_get_valid_character
 
 
 @pytest.mark.functional
-def test_goal_horizon_minimal_graph_step(patch_llm_client, patch_get_valid_characters, _isolate_db_state):
+def test_goal_horizon_minimal_graph_step(
+    patch_llm_client, patch_get_valid_characters, _isolate_db_state
+):
     """Test minimal graph (START → END) executes without errors.
 
     Verifies:
@@ -126,7 +143,9 @@ def test_goal_horizon_minimal_graph_step(patch_llm_client, patch_get_valid_chara
 
 
 @pytest.mark.functional
-def test_goal_horizon_exit_and_save(patch_llm_client, patch_get_valid_characters, _isolate_db_state):
+def test_goal_horizon_exit_and_save(
+    patch_llm_client, patch_get_valid_characters, _isolate_db_state
+):
     """Test goal-horizon game runs can be exited and saved to database.
 
     Verifies:

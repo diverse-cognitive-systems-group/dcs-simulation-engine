@@ -6,7 +6,7 @@ from typing import Callable
 
 import pytest
 
-YAML_EXTS = (".yml", ".yaml")
+YAML_EXTS = (".yaml", ".yaml")
 GAMES_DIR = Path(__file__).parent.parent / "games"
 
 
@@ -16,7 +16,7 @@ def echo_game(
 ) -> SimpleNamespace:
     """Return a yaml file of a simple echo game."""
     base = tmp_path_factory.mktemp("cfg_minimal")
-    echo_yml = """
+    echo_yaml = """
     graph_config:
       name: echo_graph
       description: A single echo node graph.
@@ -43,14 +43,14 @@ def echo_game(
         - from: echo
           to: __END__
     """
-    echo_path = base / "echo.yml"
-    write_yaml(echo_path, echo_yml)
+    echo_path = base / "echo.yaml"
+    write_yaml(echo_path, echo_yaml)
     return SimpleNamespace(path=echo_path)
 
 
 @pytest.fixture(scope="module")
 def games_fpaths() -> list[Path]:
-    """Return all yaml/yml files under games/ sorted."""
+    """Return all yaml/yaml files under games/ sorted."""
     files = [
         p for p in GAMES_DIR.rglob("*") if p.is_file() and p.suffix.lower() in YAML_EXTS
     ]

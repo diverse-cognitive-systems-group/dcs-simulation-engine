@@ -11,10 +11,10 @@ x1 = X.from_json(js)
 x2 = X.from_yaml(ys)
 
 x.save_json("system.json", indent=2)
-x.save_yaml("system.yml")
+x.save_yaml("system.yaml")
 
 x4 = X.load_json("system.json")
-x5 = X.load_yaml("system.yml")
+x5 = X.load_yaml("system.yaml")
 
 """
 
@@ -47,7 +47,7 @@ class SerdeMixin(BaseModel):
 
         Pass yaml.safe_dump kwargs if desired (e.g., sort_keys=False).
         """
-        # TODO: pre-v001 make export nice yml not all the /newlines
+        # TODO: pre-v001 make export nice yaml not all the /newlines
         data = self.model_dump()
         # readable, block-style YAML; avoid single-line flow; keep key order
         return str(

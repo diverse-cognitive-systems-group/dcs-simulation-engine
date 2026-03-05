@@ -209,7 +209,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
     """
     # First: treat `game` as a path
     possible_path = Path(game).expanduser()
-    if possible_path.is_file() and possible_path.suffix.lower() in {".yml", ".yaml"}:
+    if possible_path.is_file() and possible_path.suffix.lower() in {".yaml", ".yaml"}:
         return str(possible_path)
 
     # Otherwise: treat it as a built-in game name
