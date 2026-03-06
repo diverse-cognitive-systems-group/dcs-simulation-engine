@@ -168,9 +168,18 @@ graph_config:
               Game Completed after {{ len(history) }} turns.
     # form builtin loops through each question in the form and displays it to the user to collect responses asking after submissions and before final save if they want to edit any responses.
     - name: completion_form
-      kind: builtin.form 
+      kind: builtin.form
       kwargs:
         form_name: completion_form
+    - name: score_inference
+      kind: builtin.llm_eval
+      kwargs:
+        template_name: inference_scorer
+        model_key: llm_eval
+        guess_form: completion_form
+        guess_key: user_goal_inference
+        result_key: evaluation
+        display_result: false
     - name: error_in_lifecycle
       kind: builtin.raise_error # error builtin funct takes a message: str and raises an error with that message.
       kwargs:
@@ -211,5 +220,8 @@ graph_config:
       to:
         conditional:
           - if: "state['lifecycle'] == 'EXIT'"
-            then: exit_message
+            then: score_inference
           - else: __END__
+
+    - from: score_inference
+      to: exit_message
