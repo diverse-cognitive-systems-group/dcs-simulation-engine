@@ -79,3 +79,9 @@ CLAUDE.md
 .claude/
 .continue/
 .kilocode/
+
+
+ui/node_modules
+ui/.svelte-kit
+
+dev.json

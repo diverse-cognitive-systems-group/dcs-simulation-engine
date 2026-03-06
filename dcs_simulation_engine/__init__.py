@@ -1,1 +1,0 @@
-"""DCS Simulation Engine package."""

@@ -1,54 +1,13 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "pytest",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest: functional",
-            "args": [
-                "-m",
-                "functional",
-                "-v",
-            ],
-            "cwd": "${workspaceFolder}",
-        },
-        {
-            "name": "dcs run game: explore",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
-            "args": [
-                "run",
-                "game",
-                "Foresight",
-            ],
-            "cwd": "${workspaceFolder}",
-
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yml up --build
-            "preLaunchTask": "docker-compose-up",
-            "postDebugTask":  "docker-compose-down",
-        },
-
-        {
-            "name": "dcs create database: dev",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
-            "args": [
-                "create",
-                "database",
-                "--path",
-                "database_seeds/dev",
-            ],
-            "cwd": "${workspaceFolder}",
-
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yml up --build
-            "preLaunchTask": "docker-compose-up",
-            "postDebugTask": "docker-compose-down",
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "python: current file",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "python": "${workspaceFolder}/core/.venv/bin/python",
+      "console": "integratedTerminal"
+    }
+  ]
 }

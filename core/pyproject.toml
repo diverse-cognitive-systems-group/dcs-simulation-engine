@@ -1,0 +1,110 @@
+# https://peps.python.org/pep-0621/
+
+[build-system]
+build-backend = "setuptools.build_meta"
+# https://peps.python.org/pep-0518/
+requires = ["setuptools>=61"]
+
+[project]
+authors = [{email = "dcs@psych.gatech.edu", name = "dcs"}]
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13"
+]
+# Declare any runtime pip dependencies (such as numpy)
+# Do NOT put test dependencies (such as pytest) here.
+# Test dependencies go in the [project.optional-dependencies] section.
+# ! NOTE: To change a dependency to a local version, use the following syntax:
+# "my-package @ git+file:///path/to/your/package"
+dependencies = [
+  "bcrypt>=4.0.0",
+  "dotenv>=0.9.9",
+  "fastapi>=0.111.0",
+  "httpx>=0.27.0",
+  "isort>=8.0.1",
+  "ruff>=0.15.5",
+  "typer>=0.12.0",
+  "uvicorn>=0.29.0",
+  "textual>=0.80.0",
+  "websockets>=12.0",
+  "dcs-db",
+]
+
+description = "A textual environment for simulating diverse cognitive systems."
+license = "MIT"
+license-files = ["LICENSE"]
+
+# The name of the python package. This should be the same as the modules code directory
+name = "dcs-simulation-engine"
+readme = "README.md"
+requires-python = ">=3.11"
+version = "0.1.0"
+
+# Installs all testing dependencies needed when pytest runs. Do NOT put
+# runtime dependencies here. These libraries will not be included when
+# the package "deploys".
+[project.optional-dependencies]
+dev = [
+]
+
+# This allows you to defines "scripts" so that your package can install executables into the current
+# python environment which will include the system PATH so they may be invoked from the command line.
+# For example, "my-app-cli" = "my_app.main:main" below will allow a user to type my-app-cli" in the terminal
+# after this package is pip installed, to invoke the main function in the my_app package.
+[project.scripts]
+dcs = "dcs_simulation_engine.cli.app:app"
+
+[project.urls]
+Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
+Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/issues"
+
+# Pytest configuration
+# https://docs.pytest.org/en/stable/customize.html#pyproject-toml
+[tool.pytest.ini_options]
+addopts = [
+  # "--black",
+  "--cache-clear",
+  "--cov-report=term",
+  # "--numprocesses=auto", # multiprocessing
+  "--cov-report=xml",
+  "--cov=trajectory_core",
+  "--durations=0",
+  # "--isort",
+  "--verbose",
+  # "--disable-warnings", # disable warnings
+  # "--pylint-rcfile=.pylintrc", # uncomment to enable pylint during unit tests
+  # "--pylint",
+  "-x" # stop tests after first failure
+]
+
+[tool.ruff]
+line-length = 120
+src = ["dcs_simulation_engine", "tests"]
+
+[tool.ruff.lint]
+exclude = [
+  "*.ipynb", # all notebooks
+  "analysis_notebooks/*" # specific folder
+]
+select = [
+  "D", # docstring rules
+  "E", # pycodestyle rules
+  "F", # pyflakes rules
+  "I" # import rules
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.uv.sources]
+dcs-db = { path = "../db", editable = true }
+
+[tool.setuptools]
+py-modules = ["__init__"]
+
+[tool.setuptools.packages.find]
+# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
+include = ["dcs_simulation_engine*"]

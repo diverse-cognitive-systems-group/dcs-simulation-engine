@@ -1,17 +1,12 @@
 {
-    "mypy-type-checker.ignorePatterns": [
-        "**/**/*.py",
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/core",
+        "${workspaceFolder}/db",
     ],
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "terminal.integrated.defaultProfile.osx": "zsh",
-    "terminal.integrated.profiles.osx": {
-        "zsh": {
-            "path": "/bin/zsh",
-            "args": [
-                "-l",
-                "-i"
-            ]
-        }
-    },
-    "evenBetterToml.formatter.reorderKeys": true,
+
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/core",
+        "${workspaceFolder}/db",
+    ],
+    // "python.analysis.typeCheckingMode": "off"
 }
