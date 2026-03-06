@@ -23,7 +23,7 @@ This run config produces results for reproducibility + analysis. It specifies:
 
 ```sh
 # Run dcs-se with usability run config
-dcs run --config usability-component-a.yaml --deploy
+dcs run --run-name usability-ca --game-name "infer intent" --deploy
 
 # Check status (# players, games, etc.)
 dcs status
