@@ -1,5 +1,6 @@
 """Builtin simulation graph node functions."""
 
+import json
 import re
 from typing import Any, Dict, List, Set, Tuple, Union
 
