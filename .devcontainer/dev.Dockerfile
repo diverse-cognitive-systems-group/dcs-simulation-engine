@@ -22,6 +22,9 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
+# Analysis nbs are repo-local code that should be importable by the notebooks, but not packaged
+ENV PYTHONPATH=/app
+
 # App code
 COPY . .
 
@@ -30,4 +33,3 @@ RUN uv sync --extra dev
 
 # Add an alias for the dcs command to run with uv
 RUN echo 'alias dcs="uv run dcs"' >> ~/.bashrc
-

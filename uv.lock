@@ -637,8 +637,10 @@ dependencies = [
 [package.optional-dependencies]
 analysis = [
     { name = "ipykernel" },
+    { name = "itables" },
     { name = "jupyter" },
     { name = "matplotlib" },
+    { name = "networkx" },
     { name = "pandas" },
     { name = "scikit-learn" },
     { name = "seaborn" },
@@ -670,6 +672,7 @@ requires-dist = [
     { name = "ipykernel", marker = "extra == 'analysis'", specifier = ">=6.31.0" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.30.1,<7.0.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0.1,<7.0.0" },
+    { name = "itables", marker = "extra == 'analysis'", specifier = ">=2.7.0" },
     { name = "jupyter", marker = "extra == 'analysis'", specifier = ">=1.1.1" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.1.1,<2.0.0" },
     { name = "langchain", specifier = ">=0.3.27,<0.4.0" },
@@ -683,6 +686,7 @@ requires-dist = [
     { name = "mnemonic", specifier = ">=0.21,<0.22" },
     { name = "mongomock", marker = "extra == 'dev'", specifier = ">=4.3.0,<5.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.17.1,<2.0.0" },
+    { name = "networkx", marker = "extra == 'analysis'", specifier = ">=3.6.1" },
     { name = "openai", specifier = ">=1.99.9,<2.0.0" },
     { name = "pandas", marker = "extra == 'analysis'", specifier = ">=3.0.1" },
     { name = "pydantic", specifier = ">=2.11.9,<3.0.0" },
@@ -1257,6 +1261,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1e/82/fa43935523efdfcce6abbae9da7f372b627b27142c3419fcf13bf5b0c397/isort-6.1.0.tar.gz", hash = "sha256:9b8f96a14cfee0677e78e941ff62f03769a06d412aabb9e2a90487b3b7e8d481", size = 824325, upload-time = "2025-10-01T16:26:45.027Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/cc/9b681a170efab4868a032631dea1e8446d8ec718a7f657b94d49d1a12643/isort-6.1.0-py3-none-any.whl", hash = "sha256:58d8927ecce74e5087aef019f778d4081a3b6c98f15a80ba35782ca8a2097784", size = 94329, upload-time = "2025-10-01T16:26:43.291Z" },
+]
+
+[[package]]
+name = "itables"
+version = "2.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/c1/bd0bdc1314cf2d682d4e364c2df381f127a39c7d1953a008af5de66f9e7d/itables-2.7.0.tar.gz", hash = "sha256:fd9e541973a654f79dcebbd7c0d875a08db7b99a3fc467a91de260c78f6643ea", size = 2386312, upload-time = "2026-02-04T19:52:14.823Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/f9/dffe93846eb054da789173c3c03e8f6a565e2c18bb941d54085032f8060b/itables-2.7.0-py3-none-any.whl", hash = "sha256:68910282840c0770da2f336a207e64c75e052b31949ac97faa15a1f621727a4c", size = 2420679, upload-time = "2026-02-04T19:52:08.031Z" },
 ]
 
 [[package]]
@@ -2420,6 +2433,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/83/f8/51569ac65d696c8ecbee95938f89d4abf00f47d58d48f6fbabfe8f0baefe/nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe", size = 7418, upload-time = "2024-01-21T14:25:19.227Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c", size = 5195, upload-time = "2024-01-21T14:25:17.223Z" },
+]
+
+[[package]]
+name = "networkx"
+version = "3.6.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/51/63fe664f3908c97be9d2e4f1158eb633317598cfa6e1fc14af5383f17512/networkx-3.6.1.tar.gz", hash = "sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509", size = 2517025, upload-time = "2025-12-08T17:02:39.908Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/c9/b2622292ea83fbb4ec318f5b9ab867d0a28ab43c5717bb85b0a5f6b3b0a4/networkx-3.6.1-py3-none-any.whl", hash = "sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762", size = 2068504, upload-time = "2025-12-08T17:02:38.159Z" },
 ]
 
 [[package]]
