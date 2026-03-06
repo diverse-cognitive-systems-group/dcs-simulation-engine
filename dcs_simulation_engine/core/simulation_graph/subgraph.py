@@ -37,6 +37,7 @@ from langgraph.runtime import Runtime
 from loguru import logger
 
 from dcs_simulation_engine.core.simulation_graph.constants import (
+    EVAL_NAME,
     FINALIZER_NAME,
     LARGE_PROMPT_WARN_BYTES,
     LARGE_STATE_WARN_BYTES,
@@ -349,5 +350,10 @@ def init_subgraph_context() -> Dict[str, Any]:
         model="openai/gpt-5-mini",
         timeout=5,  # or httpx.Timeout for more control
         max_retries=2,  # provider level retries
+    )
+    models[EVAL_NAME] = ChatOpenRouter(
+        model="openai/gpt-5-mini",
+        timeout=15,  # longer timeout — scoring prompt is larger
+        max_retries=2,
     )
     return models

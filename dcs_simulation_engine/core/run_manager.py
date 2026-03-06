@@ -21,6 +21,7 @@ from dcs_simulation_engine.core.simulation_graph import (
     make_state,
 )
 from dcs_simulation_engine.core.simulation_graph.constants import (
+    EVAL_NAME,
     UPDATER_NAME,
     VALIDATOR_NAME,
 )
@@ -256,6 +257,7 @@ class RunManager(BaseModel):
         subgraph_models = init_subgraph_context()
         context["models"][VALIDATOR_NAME] = subgraph_models[VALIDATOR_NAME]
         context["models"][UPDATER_NAME] = subgraph_models[UPDATER_NAME]
+        context["models"][EVAL_NAME] = subgraph_models[EVAL_NAME]
 
         # Compile the simulation graph
         try:

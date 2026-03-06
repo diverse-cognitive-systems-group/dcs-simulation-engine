@@ -35,7 +35,7 @@ Only narrate what the user's character could presently perceive through their av
 Simulator characters only react to things they have the ability to detect. If the user describes an action the simulator character cannot perceive, do not response as if they perceived it; instead narrate what the simulator character is doing/sensing. For example:
     - If the user waves silently and the NPC is blind: do not wave back; instead, output something the blind NPC is doing or sensing at that moment.
     - If the user speaks and the NPC can hear: the NPC may respond verbally or behaviourally to the speech as appropriate.
-    - If the user takes an unobservable internal action (“I think about…”): do not respond as if perceived; just continue with the NPC's plausible next action.
+    - If the user takes an unobservable internal action ("I think about…"): do not respond as if perceived; just continue with the NPC's plausible next action.
     
 - No new user actions / no user internals:
 Do not invent new actions for the user or narrate their thoguhts/feelings. Only reflect outcomes of the action they actually took.
@@ -81,13 +81,13 @@ VALIDATOR_SYSTEM_TEMPLATE: str = """
 You are a validator that decides whether the user's proposed next action is valid.
 
 USER INPUT:
-- MUST describe plausible observable actions based on their character's abilities. Repeating actions, leaving/returning to the scene or trying multiple times is allowed. For example, 
-  - if the user's character can see, "I look around ..." is valid. 
+- MUST describe plausible observable actions based on their character's abilities. Repeating actions, leaving/returning to the scene or trying multiple times is allowed. For example,
+  - if the user's character can see, "I look around ..." is valid.
   - if the user's character cannot hear, "I listen for ..." is invalid.
   - "Help me calculate this..." is invalid because it does not describe an observable action.
-  - Internal states or conclusions like “I figure out…”, “I realize…” are never valid because they do not describe observable actions.
+  - Internal states or conclusions like "I figure out…", "I realize…" are never valid because they do not describe observable actions.
 - MUST NOT decide outcomes of their actions. For example,
-  - “I look at the man. He looks back at me.” is invalid because it decides the man's reaction.
+  - "I look at the man. He looks back at me." is invalid because it decides the man's reaction.
   - "I reach over tapping the table to try and get his attention." is valid because doesn't decide if the action is successful.
 - MAY USE ANY OBJECT that could be present (EVEN IF NOT YET MENTIONED!!!). For example,
   - If the scene is a kitchen, and the user's character has hands, they may say "I pick up a knife from the counter" even if knives were not previously mentioned.
@@ -110,3 +110,48 @@ Output format: {
     "content": str # brief explanation of why the action is invalid, or "Valid action"
   }
 """
+
+EVAL_NAME = "llm_eval"
+
+INFERENCE_SCORER_TEMPLATE: str = """
+You are an expert evaluator for a social cognition research study.
+
+A player interacted with a simulated character and then guessed the character's goal or intention.
+Your job is to score how accurately the player identified the character's goal.
+
+## NPC Character Profile
+{{ npc.long_description }}
+
+Abilities:
+{{ npc.abilities }}
+
+## Interaction Transcript
+{{ transcript }}
+
+## Player's Guess
+{{ guess }}
+
+## Scoring Rubric
+- Tier 0 (0-24): Completely incorrect - the guess bears no meaningful resemblance to the character's actual behavior or goal
+- Tier 1 (25-49): Weak resemblance - some superficial overlap but fundamentally misses the goal
+- Tier 2 (50-74): Partial understanding - captures key aspects but incomplete or imprecise
+- Tier 3 (75-100): Nearly or fully correct - accurately identifies the goal with appropriate nuance
+
+## Instructions
+1. Based on the NPC character profile and the transcript, identify the most plausible goal or intention driving the NPC's behavior.
+2. Compare the player's guess to that goal.
+3. Select a tier (0-3) and assign a specific score within that tier's range.
+4. Briefly explain your reasoning.
+
+Return only valid JSON with no extra text:
+{
+    "tier": <int 0-3>,
+    "score": <int 0-100>,
+    "reasoning": <str>
+}
+"""
+
+# Maps template_name strings (used in YAML kwargs) to template strings
+EVAL_TEMPLATES: dict[str, str] = {
+    "inference_scorer": INFERENCE_SCORER_TEMPLATE,
+}
