@@ -26,9 +26,7 @@ def extract_region_from_toml(toml: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-def update_app_and_region(
-    toml: str, app_name: str, region: Optional[str] = None
-) -> str:
+def update_app_and_region(toml: str, app_name: str, region: Optional[str] = None) -> str:
     """Update app name and (optionally) primary_region in fly.toml contents."""
     app_pattern = r"^(app\s*=\s*)'[^']*'"
     app_replacement = rf"\1'{app_name}'"
@@ -41,9 +39,7 @@ def update_app_and_region(
 
     region_pattern = r"^(primary_region\s*=\s*)'[^']*'"
     region_replacement = rf"\1'{region}'"
-    new_toml2, n_region = re.subn(
-        region_pattern, region_replacement, new_toml, flags=re.MULTILINE
-    )
+    new_toml2, n_region = re.subn(region_pattern, region_replacement, new_toml, flags=re.MULTILINE)
     if n_region > 0:
         return new_toml2
 

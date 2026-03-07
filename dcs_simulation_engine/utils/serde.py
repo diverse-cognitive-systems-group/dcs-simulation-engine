@@ -63,9 +63,7 @@ class SerdeMixin(BaseModel):
 
     # ---------- user-friendly loaders ----------
     @classmethod
-    def from_json(
-        cls: type[T], source: Union[Mapping[str, Any], str, Path], **kw: Any
-    ) -> T:
+    def from_json(cls: type[T], source: Union[Mapping[str, Any], str, Path], **kw: Any) -> T:
         """Instantiate model from a JSON string or a file path with friendly errors."""
         # logger.debug(f"Serde called with source type: {type(source)}")
         # logger.debug(f"Source content: {str(source)}")
@@ -82,9 +80,7 @@ class SerdeMixin(BaseModel):
         if s.startswith("{") or s.startswith("["):
             return cls.model_validate_json(s, **kw)
         try:
-            return cls.model_validate_json(
-                Path(source).read_text(encoding="utf-8"), **kw
-            )
+            return cls.model_validate_json(Path(source).read_text(encoding="utf-8"), **kw)
         except OSError:
             # Not a file; assume it's JSON content even if not '{'/'[' prefixed
             return cls.model_validate_json(source, **kw)
@@ -92,9 +88,7 @@ class SerdeMixin(BaseModel):
     @classmethod
     def from_yaml(cls: type[T], source: Union[str, Path], **validate_kwargs: Any) -> T:
         """Instantiate model from a YAML string or a file path with friendly errors."""
-        if isinstance(source, Path) or (
-            isinstance(source, str) and Path(source).exists()
-        ):
+        if isinstance(source, Path) or (isinstance(source, str) and Path(source).exists()):
             text = Path(source).read_text(encoding="utf-8")
         else:
             text = str(source)
@@ -107,9 +101,7 @@ class SerdeMixin(BaseModel):
         try:
             return cls.model_validate(data, **validate_kwargs)
         except ValidationError as e:
-            raise ValueError(
-                SerdeMixin._format_validation_error(e, data=data, model=cls)
-            ) from e
+            raise ValueError(SerdeMixin._format_validation_error(e, data=data, model=cls)) from e
 
     # ---------- convenience save/load ----------
     def save_json(self, path: Union[str, Path], **dump_kwargs: Any) -> Path:
@@ -147,7 +139,7 @@ class SerdeMixin(BaseModel):
         out = []
         for idx in range(i, j):
             prefix = ">" if idx == line - 1 else " "
-            out.append(f"{prefix} {idx+1:>4}: {lines[idx]}")
+            out.append(f"{prefix} {idx + 1:>4}: {lines[idx]}")
             if idx == line - 1:
                 caret = " " * (col + 7) + "^"  # 7 accounts for formatting above
                 out.append(caret)
@@ -164,7 +156,7 @@ class SerdeMixin(BaseModel):
         header = "Your YAML isn't valid."
         if line is not None and col is not None:
             snippet = cls._yaml_context_snippet(text, line, col)
-            return f"{header}\nLine {line}, column {col+1}.\n\n{snippet}\n\nFix the \
+            return f"{header}\nLine {line}, column {col + 1}.\n\n{snippet}\n\nFix the \
                  YAML formatting at the ^ marker."
         return f"{header} {str(e)}"
 
@@ -190,9 +182,7 @@ class SerdeMixin(BaseModel):
         return "\n".join(lines)
 
     @classmethod
-    def _humanize_error(
-        cls, loc: str, typ: str, msg: str, model: type[BaseModel] | None
-    ) -> str:
+    def _humanize_error(cls, loc: str, typ: str, msg: str, model: type[BaseModel] | None) -> str:
         # Missing required field
         if "missing" in typ or "missing" in msg.lower():
             suggestion = cls._suggest_example(loc, model)
@@ -233,16 +223,9 @@ class SerdeMixin(BaseModel):
                 origin = get_origin(field_type)
                 args = get_args(field_type)
                 # If nested BaseModel, descend
-                if isinstance(fld.annotation, type) and issubclass(
-                    fld.annotation, BaseModel
-                ):
+                if isinstance(fld.annotation, type) and issubclass(fld.annotation, BaseModel):
                     current_model = fld.annotation
-                elif (
-                    origin in (list, tuple)
-                    and args
-                    and isinstance(args[0], type)
-                    and issubclass(args[0], BaseModel)
-                ):
+                elif origin in (list, tuple) and args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
                     current_model = args[0]  # item model
                 # else:
                 #     current_model = None  # stop
@@ -297,7 +280,7 @@ class SerdeMixin(BaseModel):
             return "<text>"
         # Optionals / Unions
         if origin is Union:
-            return f"<{ ' or '.join(name(a) for a in args) }>"
+            return f"<{' or '.join(name(a) for a in args)}>"
         # Collections
         if origin in (list, tuple, set):
             inner = _try_example(args[0]) if args else "<item>"

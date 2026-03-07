@@ -127,14 +127,11 @@ def create_run(state: SessionState, token_value: Optional[str] = None) -> RunMan
 def format(msg_dict: Dict[str, Any]) -> str:
     """Format dict style message into a markdown formatted string for gradio display."""
     if not isinstance(msg_dict, dict):
-        logger.error(
-            f"Received non-dict message in format: {msg_dict}. Returning str()."
-        )
+        logger.error(f"Received non-dict message in format: {msg_dict}. Returning str().")
         raise gr.Error(USER_FRIENDLY_EXC)
     if "type" not in msg_dict or "content" not in msg_dict:
         logger.warning(
-            f"Received malformed message in format: {msg_dict}."
-            " Dict must include 'type' and 'content' keys."
+            f"Received malformed message in format: {msg_dict}. Dict must include 'type' and 'content' keys."
         )
         raise gr.Error(USER_FRIENDLY_EXC)
     t = (msg_dict.get("type") or "info").lower()
@@ -197,9 +194,7 @@ COMPONENTS = {
         multiselect=True,
         info=q.get("info", ""),
     ),
-    "radio": lambda q: gr.Radio(
-        label=q.get("label", ""), choices=q.get("options", []), info=q.get("info", "")
-    ),
+    "radio": lambda q: gr.Radio(label=q.get("label", ""), choices=q.get("options", []), info=q.get("info", "")),
     "checkboxes": lambda q: gr.CheckboxGroup(
         label=q.get("label", ""),
         show_label=bool(q.get("label")),
@@ -231,9 +226,7 @@ def validate_phone(val: str) -> bool:
     return len(digits) >= 10
 
 
-def collect_form_answers(
-    spec: Dict[str, Any], values: Any
-) -> Tuple[bool, str, Dict[str, Any]]:
+def collect_form_answers(spec: Dict[str, Any], values: Any) -> Tuple[bool, str, Dict[str, Any]]:
     """Collect and validate consent form answers.
 
     Returns (ok, message, answers_dict). If not ok, message is an error string.
@@ -256,11 +249,9 @@ def collect_form_answers(
         if required and (v is None or v == "" or (isinstance(v, list) and not v)):
             errors.append(f"- {human_readable_label} is required.")
         if atype == "email" and not validate_email(v):
-            errors.append(f"- {human_readable_label}" " must be a valid email.")
+            errors.append(f"- {human_readable_label} must be a valid email.")
         if atype == "phone" and not validate_phone(v):
-            errors.append(
-                f"- {human_readable_label}" " must be a valid 10+ digit phone number."
-            )
+            errors.append(f"- {human_readable_label} must be a valid 10+ digit phone number.")
         answers[qid] = v
 
     if errors:

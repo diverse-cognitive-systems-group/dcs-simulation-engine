@@ -73,10 +73,7 @@ class RunManager(BaseModel):
         if v is None:
             raise ValueError("stopping_conditions cannot be empty.")
         if not isinstance(v, dict):
-            raise TypeError(
-                "stopping_conditions must be a dict[str, list[str]] or "
-                "compatible mapping."
-            )
+            raise TypeError("stopping_conditions must be a dict[str, list[str]] or compatible mapping.")
         # use cls.model_fields here (not RunManager) to avoid class-construction issues
         allowed = set(cls.model_fields.keys()) | {
             "runtime_seconds",
@@ -91,14 +88,10 @@ class RunManager(BaseModel):
             if isinstance(conds, str):
                 conds = [conds]
             if not isinstance(conds, list) or not conds:
-                raise ValueError(
-                    f"Conditions for '{attr}' must be a non-empty list of strings."
-                )
+                raise ValueError(f"Conditions for '{attr}' must be a non-empty list of strings.")
             for c in conds:
                 if not isinstance(c, str) or not c.strip():
-                    raise ValueError(
-                        f"Condition for '{attr}' must be a non-empty string."
-                    )
+                    raise ValueError(f"Condition for '{attr}' must be a non-empty string.")
             out[attr] = conds
         return out
 
@@ -169,39 +162,27 @@ class RunManager(BaseModel):
 
             # Make sure the game is open to this player or None if public
             if not game_config.is_player_allowed(player_id):
-                raise PermissionError(
-                    f"Player with ID '{player_id}' is not allowed to access this game."
-                )
+                raise PermissionError(f"Player with ID '{player_id}' is not allowed to access this game.")
         except Exception as e:
             logger.error(f"Failed to setup access settings: {e}")
             raise
 
         # Load characters based on choice (if any) and character settings
         try:
-            valid_pcs, valid_npcs = game_config.get_valid_characters(
-                player_id=player_id
-            )
+            valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id)
 
             valid_pcs = [value for _, value in valid_pcs]
             valid_npcs = [value for _, value in valid_npcs]
 
             if not valid_pcs:
-                raise ValueError(
-                    "No valid player character choices found in game config."
-                )
+                raise ValueError("No valid player character choices found in game config.")
             if not valid_npcs:
-                raise ValueError(
-                    "No valid non-player character choices found in game config."
-                )
+                raise ValueError("No valid non-player character choices found in game config.")
 
             if pc_choice and pc_choice not in valid_pcs:
-                raise ValueError(
-                    f"Invalid pc_choice: {pc_choice}. Valid choices: {valid_pcs}"
-                )
+                raise ValueError(f"Invalid pc_choice: {pc_choice}. Valid choices: {valid_pcs}")
             if npc_choice and npc_choice not in valid_npcs:
-                raise ValueError(
-                    f"Invalid npc_choice: {npc_choice}. Valid choices: {valid_npcs}"
-                )
+                raise ValueError(f"Invalid npc_choice: {npc_choice}. Valid choices: {valid_npcs}")
             if pc_choice is None:
                 pc_choice = random.choice(valid_pcs)
             if npc_choice is None:
@@ -220,10 +201,7 @@ class RunManager(BaseModel):
         try:
             state: SimulationGraphState = make_state()
             if game_config.graph_config.state_overrides:
-                logger.debug(
-                    f"Applying state overrides: "
-                    f"{game_config.graph_config.state_overrides}"
-                )
+                logger.debug(f"Applying state overrides: {game_config.graph_config.state_overrides}")
                 state.update(**game_config.graph_config.state_overrides)
             else:
                 logger.debug("No state overrides to apply.")
@@ -254,39 +232,25 @@ class RunManager(BaseModel):
         for node in game_config.graph_config.nodes:
             if node.provider:  # only setup nodes with a provider
                 if node.model is None:
-                    raise ValueError(
-                        f"Model must be specified for provider {node.provider}"
-                    )
+                    raise ValueError(f"Model must be specified for provider {node.provider}")
                 if node.additional_kwargs is None:
                     node.additional_kwargs = {}
                 if node.provider == "openrouter":
-                    llm: BaseChatModel = ChatOpenRouter(
-                        model=node.model, **node.additional_kwargs
-                    )
+                    llm: BaseChatModel = ChatOpenRouter(model=node.model, **node.additional_kwargs)
                     context["models"][node.model] = llm
                 elif node.provider == "huggingface":
-                    raise NotImplementedError(
-                        f"Provider not implemented yet: {node.provider}"
-                    )
+                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
                 elif node.provider == "local":
-                    raise NotImplementedError(
-                        f"Provider not implemented yet: {node.provider}"
-                    )
+                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
                 else:
-                    raise NotImplementedError(
-                        f"Provider not implemented yet: {node.provider}"
-                    )
+                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
 
         # if subgraph customizations exist, add them to context
         if game_config.subgraph_customizations:
             if game_config.subgraph_customizations.additional_validator_rules:
-                context["additional_validator_rules"] = (
-                    game_config.subgraph_customizations.additional_validator_rules
-                )
+                context["additional_validator_rules"] = game_config.subgraph_customizations.additional_validator_rules
             if game_config.subgraph_customizations.additional_updater_rules:
-                context["additional_updater_rules"] = (
-                    game_config.subgraph_customizations.additional_updater_rules
-                )
+                context["additional_updater_rules"] = game_config.subgraph_customizations.additional_updater_rules
 
         # add subgraph models
         subgraph_models = init_subgraph_context()
@@ -295,16 +259,12 @@ class RunManager(BaseModel):
 
         # Compile the simulation graph
         try:
-            sim_graph: SimulationGraph = SimulationGraph.compile(
-                config=game_config.graph_config
-            )
+            sim_graph: SimulationGraph = SimulationGraph.compile(config=game_config.graph_config)
         except Exception as e:
             logger.error(f"Failed to compile simulation graph: {e}")
             raise
 
-        name = f"{source}-{game_config.name}-{safe_timestamp()}".lower().replace(
-            " ", "-"
-        )
+        name = f"{source}-{game_config.name}-{safe_timestamp()}".lower().replace(" ", "-")
         cfg = RunnableConfig(configurable={"thread_id": name})
         run = cls(
             name=name,
@@ -315,9 +275,7 @@ class RunManager(BaseModel):
             config=cfg,
             context=context,
         )
-        logger.info(
-            f"Created new run of {name} with pc: {pc_choice}, npc: {npc_choice}"
-        )
+        logger.info(f"Created new run of {name} with pc: {pc_choice}, npc: {npc_choice}")
         if player_id:
             logger.debug(f"Setting player_id: {player_id}")
             run.player_id = player_id
@@ -340,9 +298,7 @@ class RunManager(BaseModel):
         if self.state is None:
             raise ValueError("Internal state is not initialized.")
 
-        is_command = isinstance(user_input, str) and user_input.strip().startswith(
-            ("/", "\\")
-        )
+        is_command = isinstance(user_input, str) and user_input.strip().startswith(("/", "\\"))
         is_handled = False
         if is_command:
             parts = user_input.strip().split(maxsplit=1)
@@ -383,9 +339,7 @@ class RunManager(BaseModel):
                     "type": "user",
                     "content": user_input,
                 }
-                logger.warning(
-                    f"Run manager doesn't recognize this command: {cmd}. " "Continuing."
-                )
+                logger.warning(f"Run manager doesn't recognize this command: {cmd}. Continuing.")
                 is_handled = False
 
         if self.exited:
@@ -407,12 +361,8 @@ class RunManager(BaseModel):
                             "content": user_input.get("content", ""),
                         }
                     else:
-                        raise TypeError(
-                            f"user_input must be str or Mapping, got {type(user_input)}"
-                        )
-                    logger.debug(
-                        f"Updated state with user_input: {self.state['user_input']}"
-                    )
+                        raise TypeError(f"user_input must be str or Mapping, got {type(user_input)}")
+                    logger.debug(f"Updated state with user_input: {self.state['user_input']}")
 
                 stream = self.graph.stream(
                     state=self.state,  # dynamic state
@@ -468,14 +418,8 @@ class RunManager(BaseModel):
 
         else:
             logger.info("Player persistence not enabled; saving locally.")
-            out_dir = (
-                OUTPUT_FPATH
-                if path is None
-                else Path(path).parent if Path(path).suffix else Path(path)
-            )
-            fname = (
-                f"{self.name}.json" if self.source else f"run_{safe_timestamp()}.json"
-            )
+            out_dir = OUTPUT_FPATH if path is None else Path(path).parent if Path(path).suffix else Path(path)
+            fname = f"{self.name}.json" if self.source else f"run_{safe_timestamp()}.json"
             if path is None:
                 out_dir = Path(OUTPUT_FPATH)
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -510,10 +454,7 @@ class RunManager(BaseModel):
 
         # check if graph lifecycle has been set to EXIT
         if self.state["lifecycle"] == "EXIT":
-            self.exit(
-                reason=self.state["exit_reason"]
-                or "Game graph lifecycle is EXIT. No reason given."
-            )
+            self.exit(reason=self.state["exit_reason"] or "Game graph lifecycle is EXIT. No reason given.")
             return
 
         # check all other stopping conditions
@@ -532,31 +473,20 @@ class RunManager(BaseModel):
             for condition in cond_list:
                 try:
                     # numeric compare (">10", "<=3", etc.)
-                    if (
-                        isinstance(attr_value, (int, float))
-                        and condition.strip()[0] in "<>!="
-                    ):
+                    if isinstance(attr_value, (int, float)) and condition.strip()[0] in "<>!=":
                         expr = f"{attr_value}{condition}"
                         if eval(expr):  # noqa: S307 (unchanged behavior)
-                            self.exit(
-                                reason=f"stopping condition met: {attr} {condition}"
-                            )
+                            self.exit(reason=f"stopping condition met: {attr} {condition}")
                             return
 
                     # string contains
                     elif isinstance(attr_value, str):
                         if condition in attr_value:
-                            self.exit(
-                                reason=f"stopping condition met: {attr} contains "
-                                f"'{condition}'"
-                            )
+                            self.exit(reason=f"stopping condition met: {attr} contains '{condition}'")
                             return
 
                 except Exception as e:
-                    logger.error(
-                        f"Error evaluating stopping condition for {attr}='{condition}':"
-                        f" {e}"
-                    )
+                    logger.error(f"Error evaluating stopping condition for {attr}='{condition}': {e}")
 
     @staticmethod
     def _normalize_and_check_stopping_conditions(
@@ -583,14 +513,10 @@ class RunManager(BaseModel):
             if isinstance(conds, str):
                 conds = [conds]
             if not isinstance(conds, list) or not conds:
-                raise ValueError(
-                    f"Conditions for '{attr}' must be a non-empty list of strings."
-                )
+                raise ValueError(f"Conditions for '{attr}' must be a non-empty list of strings.")
             for c in conds:
                 if not isinstance(c, str):
-                    raise ValueError(
-                        f"Condition for '{attr}' must be a string, got {type(c)}"
-                    )
+                    raise ValueError(f"Condition for '{attr}' must be a string, got {type(c)}")
                 cs = c.strip()
                 if not cs:
                     raise ValueError(f"Condition for '{attr}' cannot be blank.")
@@ -606,9 +532,7 @@ class RunManager(BaseModel):
     ) -> None:
         """Append user-defined stopping conditions while preserving existing ones."""
         # DO NOT call the pydantic validator directly; use the pure helper
-        new_conditions = RunManager._normalize_and_check_stopping_conditions(
-            new_conditions
-        )
+        new_conditions = RunManager._normalize_and_check_stopping_conditions(new_conditions)
         for k, new_list in new_conditions.items():
             if k not in existing_conditions:
                 existing_conditions[k] = list(new_list)

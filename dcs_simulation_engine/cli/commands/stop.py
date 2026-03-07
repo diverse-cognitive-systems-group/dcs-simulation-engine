@@ -51,9 +51,7 @@ def stop(
             raise typer.Exit(code=1)
         else:  # remote deployment stop logic here (if applicable)
             console.print(f"Stopping run {selected_run}")
-            console.print(
-                "Stopping remote deployments not implemented yet", style="error"
-            )
+            console.print("Stopping remote deployments not implemented yet", style="error")
             raise typer.Exit(code=1)
     else:
         run_results_dir = OUTPUT_FPATH / selected_run
@@ -90,8 +88,6 @@ def stop(
                 else:  # status is stopped
                     ensure_mongo_service_down(wipe=True)
             else:  # remote run
-                console.log(
-                    "Destroying remote runs not implemented yet.", style="error"
-                )
+                console.log("Destroying remote runs not implemented yet.", style="error")
 
         console.print(f"Deleted run: {selected_run}", style="success")

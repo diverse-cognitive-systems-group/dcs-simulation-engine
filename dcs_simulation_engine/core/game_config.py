@@ -55,10 +55,7 @@ class ValiditySelector(BaseModel):
             raise ValueError("Must be a mapping of {collection_name: query_dict}.")
         unknown = set(v) - ALLOWED_SOURCES
         if unknown:
-            raise ValueError(
-                f"Unknown collection(s): {sorted(unknown)}. "
-                f"Allowed: {sorted(ALLOWED_SOURCES)}"
-            )
+            raise ValueError(f"Unknown collection(s): {sorted(unknown)}. Allowed: {sorted(ALLOWED_SOURCES)}")
         for k, q in v.items():
             if not isinstance(q, dict):
                 raise ValueError(f"Query for '{k}' must be a dict.")
@@ -185,9 +182,7 @@ class GameConfig(SerdeMixin, BaseModel):
     # Character settings
     character_settings: CharacterSettings
 
-    subgraph_customizations: SubgraphCustomizations = Field(
-        default_factory=SubgraphCustomizations
-    )
+    subgraph_customizations: SubgraphCustomizations = Field(default_factory=SubgraphCustomizations)
     graph_config: GraphConfig
 
     def validate_mongo_queries(self) -> None:
@@ -217,9 +212,7 @@ class GameConfig(SerdeMixin, BaseModel):
                 return set()
             acc: set[str] = set()
             for source, where in where_map.items():
-                hids = dbh.list_characters_where(
-                    player_id=player_id or None, query=where, collection=source
-                )
+                hids = dbh.list_characters_where(player_id=player_id or None, query=where, collection=source)
                 acc.update(hids)
             return acc
 
@@ -227,17 +220,13 @@ class GameConfig(SerdeMixin, BaseModel):
         pc_valid = fetch_union(getattr(self.character_settings.pc, "valid", {}))
         pc_invalid = fetch_union(getattr(self.character_settings.pc, "invalid", {}))
         final_pcs = pc_valid - pc_invalid
-        logger.debug(
-            f"PCs: |V|={len(pc_valid)} |I|={len(pc_invalid)} |V-I|={len(final_pcs)}"
-        )
+        logger.debug(f"PCs: |V|={len(pc_valid)} |I|={len(pc_invalid)} |V-I|={len(final_pcs)}")
 
         # NPCs
         npc_valid = fetch_union(getattr(self.character_settings.npc, "valid", {}))
         npc_invalid = fetch_union(getattr(self.character_settings.npc, "invalid", {}))
         final_npcs = npc_valid - npc_invalid
-        logger.debug(
-            f"NPCs: |V|={len(npc_valid)} |I|={len(npc_invalid)} |V-I|={len(final_npcs)}"
-        )
+        logger.debug(f"NPCs: |V|={len(npc_valid)} |I|={len(npc_invalid)} |V-I|={len(final_npcs)}")
 
         # Return deterministic lists (sorted) or randomize upstream as needed
         sorted_pcs = sorted(final_pcs)
@@ -279,10 +268,7 @@ class GameConfig(SerdeMixin, BaseModel):
                 try:
                     formatted.append(str(fmt).format(**context))
                 except Exception as exc:  # pragma: no cover - defensive
-                    logger.warning(
-                        f"Failed to format character choice for hid={hid} "
-                        f"with fmt={fmt!r}: {exc}"
-                    )
+                    logger.warning(f"Failed to format character choice for hid={hid} with fmt={fmt!r}: {exc}")
                     formatted.append(hid)
 
             return formatted
@@ -291,9 +277,7 @@ class GameConfig(SerdeMixin, BaseModel):
         formatted_npcs = format_characters(sorted_npcs, npc_fmt)
 
         # update this to return a list of tuples with formatted string and hid)
-        res = list(zip(formatted_pcs, sorted_pcs)), list(
-            zip(formatted_npcs, sorted_npcs)
-        )
+        res = list(zip(formatted_pcs, sorted_pcs)), list(zip(formatted_npcs, sorted_npcs))
         # logger.debug(
         #     f"Returning formatted character choices: {type(res[0])}, {type(res[1])}"
         #     f"Example: PC={res[0]}, NPC={res[1]}"
@@ -312,16 +296,11 @@ class GameConfig(SerdeMixin, BaseModel):
         valid_map = getattr(sel, "valid", {}) or {}
         invalid_map = getattr(sel, "invalid", {}) or {}
 
-        logger.debug(
-            f"is_player_allowed called with valid_map={valid_map},"
-            f" invalid_map={invalid_map}"
-        )
+        logger.debug(f"is_player_allowed called with valid_map={valid_map}, invalid_map={invalid_map}")
 
         # If both sides are empty → no restriction → allow anyone.
         if not valid_map and not invalid_map:
-            logger.debug(
-                "is_player_allowed: no restrictions (valid/invalid empty) -> allow"
-            )
+            logger.debug("is_player_allowed: no restrictions (valid/invalid empty) -> allow")
             return True
 
         def any_empty_query(m: dict[Any, Any]) -> bool:
@@ -338,14 +317,10 @@ class GameConfig(SerdeMixin, BaseModel):
         else:
             # Need a concrete player to test non-empty restrictions.
             if not player_id:
-                logger.debug(
-                    "is_player_allowed: valid map has non-empty queries "
-                    "but no player_id -> deny"
-                )
+                logger.debug("is_player_allowed: valid map has non-empty queries but no player_id -> deny")
                 return False
             in_valid = any(
-                dbh.user_matches_where(player_id=player_id, query=q, collection=src)
-                for src, q in valid_map.items()
+                dbh.user_matches_where(player_id=player_id, query=q, collection=src) for src, q in valid_map.items()
             )
 
         # ----- INVALID -----
@@ -369,7 +344,6 @@ class GameConfig(SerdeMixin, BaseModel):
 
         allowed = in_valid and not in_invalid
         logger.debug(
-            f"is_player_allowed: player_id={player_id} -> "
-            f"valid={in_valid} invalid={in_invalid} allowed={allowed}"
+            f"is_player_allowed: player_id={player_id} -> valid={in_valid} invalid={in_invalid} allowed={allowed}"
         )
         return allowed

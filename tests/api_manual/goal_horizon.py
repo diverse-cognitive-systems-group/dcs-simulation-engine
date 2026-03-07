@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test script for DCS Simulation Engine API using gradio_client - Goal Horizon game.
+"""Test script for DCS Simulation Engine API - Goal Horizon game.
 
 NOTE: This game requires consent. The player_id must reference a player record
 that has a consent_signature. Create a player through the widget UI first,
@@ -11,70 +11,39 @@ import json
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer
-from gradio_client import Client
+
+from dcs_simulation_engine.client import APIClient
 
 
-def pprint(data):
-    print(highlight(json.dumps(data, indent=2), JsonLexer(), TerminalFormatter()))
+def _pprint(data):
+    print(highlight(json.dumps(data, indent=2, default=str), JsonLexer(), TerminalFormatter()))
 
-# Connect to the Gradio server
-client = Client("http://localhost:8080")
 
-# IMPORTANT: Replace with a valid player_id that has consent_signature
-# You can create a player through the widget UI first
 player_id = "000000000000000000000001"
 access_key = "dev"
 
-# Create a new run
-result = client.predict(
+client = APIClient("http://localhost:8080")
+
+with client.create_run(
     game="Goal Horizon",
-    source="api",
-    pc_choice="human-normative",
-    npc_choice="flatworm",
+    pc="human-normative",
+    npc="flatworm",
     access_key=access_key,
     player_id=player_id,
-    api_name="/create_run"
-)
-print("Create run result:")
-pprint(result)
+) as run:
+    print(f"Run created: {run!r}")
 
-run_id = result["run_id"]
+    print("\nStepping run (initial):")
+    run.step()
+    print(f"Simulator output: {run.simulator_output}")
 
-# Step the run (initial step with empty input)
-print("\nStepping run (initial):")
-result = client.predict(
-    run_id=run_id,
-    user_input="",
-    api_name="/step_run"
-)
-print("Initial step result:")
-pprint(result)
+    print("\nStepping run with user input:")
+    run.step("I observe the character to understand their goal boundaries")
+    print(f"Simulator output: {run.simulator_output}")
 
-# Step with user input
-print("\nStepping run with user action:")
-result = client.predict(
-    run_id=run_id,
-    user_input="I observe the character to understand their goal boundaries",
-    api_name="/step_run"
-)
-print("Step result:")
-pprint(result)
-print("\nSimulator response:")
-pprint(result['state']['simulator_output'])
+    print("\nFull state:")
+    _pprint(run.raw_state)
 
-# Get current state
-print("\nGetting state:")
-result = client.predict(
-    run_id=run_id,
-    api_name="/get_state"
-)
-print("Current state:")
-pprint(result)
+    print(f"\nMeta: turns={run.turns}, is_complete={run.is_complete}")
 
-# Cleanup - delete the run
-print("\nDeleting run:")
-result = client.predict(
-    run_id=run_id,
-    api_name="/delete_run"
-)
-pprint(result)
+print("Run deleted.")

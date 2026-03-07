@@ -65,15 +65,9 @@ class Node(BaseModel):
     @model_validator(mode="after")
     def _validate_kind_specifics(self) -> "Node":
         if self.kind == "custom":
-            missing = [
-                k
-                for k in ("provider", "model", "system_template")
-                if not getattr(self, k)
-            ]
+            missing = [k for k in ("provider", "model", "system_template") if not getattr(self, k)]
             if missing:
-                raise ValueError(
-                    f"custom node '{self.name}' missing: {', '.join(missing)}"
-                )
+                raise ValueError(f"custom node '{self.name}' missing: {', '.join(missing)}")
             if self.kwargs:
                 raise ValueError(
                     f"custom node '{self.name}' must not define 'kwargs'; "
@@ -86,10 +80,7 @@ class Node(BaseModel):
             self._ensure_builtin_exists_and_validate_kwargs(builtin_name)
             return self
 
-        raise ValueError(
-            f"Unsupported kind '{self.kind}' for node '{self.name}'. "
-            "Use 'custom' or 'builtin.<name>'."
-        )
+        raise ValueError(f"Unsupported kind '{self.kind}' for node '{self.name}'. Use 'custom' or 'builtin.<name>'.")
 
     def _ensure_builtin_exists_and_validate_kwargs(self, builtin_name: str) -> None:
         """Validate builtin existence and that `kwargs` matches its signature.
@@ -104,16 +95,12 @@ class Node(BaseModel):
         try:
             func = getattr(builtins, builtin_name)
         except AttributeError as e:
-            raise ValueError(
-                f"builtin '{builtin_name}' not found in builtins.py"
-            ) from e
+            raise ValueError(f"builtin '{builtin_name}' not found in builtins.py") from e
         if not callable(func):
             raise ValueError(f"builtin '{builtin_name}' exists but is not callable")
 
         # If a strict Pydantic config model is registered, use it
-        cfg_models: Optional[Dict[str, Type[BaseModel]]] = getattr(
-            builtins, "CONFIG_MODELS", None
-        )
+        cfg_models: Optional[Dict[str, Type[BaseModel]]] = getattr(builtins, "CONFIG_MODELS", None)
         if isinstance(cfg_models, dict) and builtin_name in cfg_models:
             Model = cfg_models[builtin_name]
             try:
@@ -135,9 +122,7 @@ class Node(BaseModel):
         injected = {"state", "context", "logger"}
 
         # detect **kwargs and reject *args (config is kwargs only)
-        accepts_kwargs = any(
-            p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
-        )
+        accepts_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
         if any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params.values()):
             raise ValueError(
                 f"builtin '{builtin_name}' uses *args which is \
@@ -177,10 +162,7 @@ class Node(BaseModel):
         try:
             DynamicModel(**(self.kwargs or {}))
         except ValidationError as ve:
-            raise ValueError(
-                f"Invalid kwargs for builtin '{builtin_name}' in node '{self.name}':"
-                f" {ve}"
-            ) from ve
+            raise ValueError(f"Invalid kwargs for builtin '{builtin_name}' in node '{self.name}': {ve}") from ve
 
 
 class IfThen(BaseModel):
@@ -228,10 +210,7 @@ class GraphConfig(SerdeMixin, BaseModel):
     def fill_defaults(self) -> "GraphConfig":
         """Fill in default values for name and description if not provided."""
         if self.description is None:
-            self.description = (
-                f"A simulation graph with {len(self.nodes)} nodes "
-                f"and {len(self.edges)} edges."
-            )
+            self.description = f"A simulation graph with {len(self.nodes)} nodes and {len(self.edges)} edges."
         return self
 
     def list_nodes(self) -> List[str]:

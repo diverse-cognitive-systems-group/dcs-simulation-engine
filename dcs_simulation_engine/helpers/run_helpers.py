@@ -182,9 +182,7 @@ def update_run(name: str, status: STATUS, link: Optional[str] = None) -> STATUS:
         if status == STATUS.DESTROYED:
             _archive_and_delete(runs, name, run)  # idempotent-ish
             return STATUS.DESTROYED
-        raise InvalidRunTransitionError(
-            f"Run '{name}' is destroyed; cannot transition to {status.value}"
-        )
+        raise InvalidRunTransitionError(f"Run '{name}' is destroyed; cannot transition to {status.value}")
 
     current = _derived_status(run)
 
@@ -213,9 +211,7 @@ def update_run(name: str, status: STATUS, link: Optional[str] = None) -> STATUS:
     raise ValueError(f"Unsupported status: {status}")
 
 
-def _archive_and_delete(
-    runs: Dict[str, Dict[str, Any]], name: str, run: Dict[str, Any]
-) -> None:
+def _archive_and_delete(runs: Dict[str, Dict[str, Any]], name: str, run: Dict[str, Any]) -> None:
     results_dir = OUTPUT_FPATH / name
     results_dir.mkdir(parents=True, exist_ok=True)
     with open(results_dir / RUN_FILE, "w") as f:
