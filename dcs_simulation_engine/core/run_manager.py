@@ -198,12 +198,16 @@ class RunManager(BaseModel):
             logger.error(f"Failed to load characters: {e}")
             raise
 
+        # Instantiate the game class and build the graph config
+        game_instance = game_config.get_game_class_instance()
+        graph_cfg = game_instance.build_graph_config()
+
         # Initialize empty state
         try:
             state: SimulationGraphState = make_state()
-            if game_config.graph_config.state_overrides:
-                logger.debug(f"Applying state overrides: {game_config.graph_config.state_overrides}")
-                state.update(**game_config.graph_config.state_overrides)
+            if graph_cfg.state_overrides:
+                logger.debug(f"Applying state overrides: {graph_cfg.state_overrides}")
+                state.update(**graph_cfg.state_overrides)
             else:
                 logger.debug("No state overrides to apply.")
 
@@ -230,7 +234,7 @@ class RunManager(BaseModel):
             additional_validator_rules="",
             additional_updater_rules="",
         )
-        for node in game_config.graph_config.nodes:
+        for node in graph_cfg.nodes:
             if node.provider:  # only setup nodes with a provider
                 if node.model is None:
                     raise ValueError(f"Model must be specified for provider {node.provider}")
@@ -247,11 +251,10 @@ class RunManager(BaseModel):
                     raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
 
         # if subgraph customizations exist, add them to context
-        if game_config.subgraph_customizations:
-            if game_config.subgraph_customizations.additional_validator_rules:
-                context["additional_validator_rules"] = game_config.subgraph_customizations.additional_validator_rules
-            if game_config.subgraph_customizations.additional_updater_rules:
-                context["additional_updater_rules"] = game_config.subgraph_customizations.additional_updater_rules
+        if game_instance.additional_validator_rules:
+            context["additional_validator_rules"] = game_instance.additional_validator_rules
+        if game_instance.additional_updater_rules:
+            context["additional_updater_rules"] = game_instance.additional_updater_rules
 
         # add subgraph models
         subgraph_models = init_subgraph_context()
@@ -261,7 +264,7 @@ class RunManager(BaseModel):
 
         # Compile the simulation graph
         try:
-            sim_graph: SimulationGraph = SimulationGraph.compile(config=game_config.graph_config)
+            sim_graph: SimulationGraph = SimulationGraph.compile(config=graph_cfg)
         except Exception as e:
             logger.error(f"Failed to compile simulation graph: {e}")
             raise
