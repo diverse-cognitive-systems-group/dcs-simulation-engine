@@ -97,9 +97,7 @@ def get_db() -> Database[Any]:
         return _db
 
     uri = os.getenv("MONGO_URI")
-    logger.debug(
-        f"Connecting to MongoDB with MONGO_URI={uri or 'not set, using default'}"
-    )
+    logger.debug(f"Connecting to MongoDB with MONGO_URI={uri or 'not set, using default'}")
     if not uri:
         logger.debug("MONGO_URI not set")
         ensure_mongo_service_up()
@@ -116,9 +114,7 @@ def get_db() -> Database[Any]:
     # TODO: move to proper migration system
     _db = _client[DEFAULT_DB_NAME]
     _db[PLAYERS_COL].create_index("access_key_hash")
-    _db[PLAYERS_COL].create_index(
-        [("access_key_revoked", ASCENDING), ("access_key_prefix", ASCENDING)]
-    )
+    _db[PLAYERS_COL].create_index([("access_key_revoked", ASCENDING), ("access_key_prefix", ASCENDING)])
     _db[RUNS_COL].create_index(
         [
             ("player_id", ASCENDING),
@@ -127,9 +123,7 @@ def get_db() -> Database[Any]:
         ]
     )
     _db[RUNS_COL].create_index([("player_id", ASCENDING), ("played_at", DESCENDING)])
-    _db[RUNS_COL].create_index(
-        [("game_config.name", ASCENDING), ("player_id", ASCENDING)]
-    )
+    _db[RUNS_COL].create_index([("game_config.name", ASCENDING), ("player_id", ASCENDING)])
 
     return _db
 
@@ -160,9 +154,7 @@ def init_or_seed_database(
 
     seed_paths = discover_seed_files(seeds_dir)
     if not seed_paths:
-        raise ValueError(
-            f"No seed files found in {seeds_dir} (expected *.json or *.ndjson)."
-        )
+        raise ValueError(f"No seed files found in {seeds_dir} (expected *.json or *.ndjson).")
 
     existing = db.list_collection_names()
     if existing and not force:
@@ -250,16 +242,12 @@ def backup_collection_sqlite(db, coll_name: str, root: Path) -> None:
             _id = str(doc.get("_id"))
             batch.append((_id, doc_json))
             if len(batch) >= 1000:
-                cur.executemany(
-                    "INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch
-                )
+                cur.executemany("INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch)
                 conn.commit()
                 batch.clear()
 
         if batch:
-            cur.executemany(
-                "INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch
-            )
+            cur.executemany("INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch)
             conn.commit()
     finally:
         cursor.close()
@@ -313,29 +301,18 @@ def load_seed_documents(path: Path) -> List[Dict[str, Any]]:
             raise ValueError(f"Array in {path} must contain only objects.")
         return data  # type: ignore[return-value]
 
-    if (
-        isinstance(data, dict)
-        and "documents" in data
-        and isinstance(data["documents"], list)
-    ):
+    if isinstance(data, dict) and "documents" in data and isinstance(data["documents"], list):
         docs = data["documents"]
         if not all(isinstance(x, dict) for x in docs):
             raise ValueError(f"'documents' in {path} must be an array of objects.")
         return docs  # type: ignore[return-value]
 
-    raise ValueError(
-        f"Unsupported JSON structure in {path}. Expected array"
-        ", NDJSON, or object with 'documents'."
-    )
+    raise ValueError(f"Unsupported JSON structure in {path}. Expected array, NDJSON, or object with 'documents'.")
 
 
 def discover_seed_files(seeds_dir: Path) -> List[Path]:
     """Return list of seed files in the given directory."""
-    return [
-        p
-        for p in sorted(seeds_dir.iterdir())
-        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS
-    ]
+    return [p for p in sorted(seeds_dir.iterdir()) if p.is_file() and p.suffix.lower() in SUPPORTED_EXTS]
 
 
 def seed_collection(coll: Collection, docs: Sequence[Dict[str, Any]]) -> int:
@@ -591,11 +568,7 @@ def _split_pii(player_data: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, A
             field_key = value.get("key", key)
             answer = value.get("answer")
 
-            is_pii = (
-                bool(value.get("pii"))
-                or field_key in DEFAULT_PII_KEYS
-                or key in DEFAULT_PII_KEYS
-            )
+            is_pii = bool(value.get("pii")) or field_key in DEFAULT_PII_KEYS or key in DEFAULT_PII_KEYS
 
             if not is_pii:
                 # Not PII → pass through unchanged
@@ -684,9 +657,7 @@ def create_player(
     # 2) Add access key data if needed
     raw_key: Optional[str] = None
     if issue_access_key:
-        raw_key, prefix_fragment, digest = _new_access_key_bip39(
-            words=12, language="english"
-        )
+        raw_key, prefix_fragment, digest = _new_access_key_bip39(words=12, language="english")
         sanitized.update(
             {
                 "access_key_hash": digest,
@@ -772,9 +743,7 @@ def list_characters_where(
     """
     if not player_id and collection in {RUNS_COL, PLAYERS_COL}:
         raise ValueError("player_id is required to query runs or players collection")
-    logger.debug(
-        f"Listing character hids from collection={collection} with query={query}"
-    )
+    logger.debug(f"Listing character hids from collection={collection} with query={query}")
     if not isinstance(query, Mapping):
         raise TypeError("query must be a mapping")
 
@@ -790,9 +759,7 @@ def list_characters_where(
 
     # Only inject player_id for scoped collections
     if collection == RUNS_COL:
-        logger.debug(
-            f"Injecting player_id={player_id} into query for collection={collection}"
-        )
+        logger.debug(f"Injecting player_id={player_id} into query for collection={collection}")
         pid_clause = {"player_id": ObjectId(player_id)}
         where = {"$and": [where, pid_clause]} if where else pid_clause
 
@@ -813,11 +780,7 @@ def list_characters_where(
     order_by = spec.get("order_by")
     if isinstance(order_by, (list, tuple)) and order_by:
         field = str(order_by[0])
-        direction = (
-            DESCENDING
-            if len(order_by) > 1 and str(order_by[1]).lower().startswith("d")
-            else ASCENDING
-        )
+        direction = DESCENDING if len(order_by) > 1 and str(order_by[1]).lower().startswith("d") else ASCENDING
         docs.sort(key=lambda d: d.get(field), reverse=(direction == DESCENDING))
 
     # Optional limit
@@ -856,9 +819,7 @@ def get_character_from_hid(
 
     db = get_db()
 
-    doc: Optional[Dict[str, Any]] = db[collection].find_one(
-        {"hid": hid}, projection={"_id": 0}
-    )
+    doc: Optional[Dict[str, Any]] = db[collection].find_one({"hid": hid}, projection={"_id": 0})
     if not doc:
         raise ValueError(f"Character with hid='{hid}' not found")
 
@@ -885,9 +846,7 @@ def validate_query_against_server(collection: str, query: Dict[str, Any]) -> Non
 
     except Exception as exc:
         # Wrap with your project's error type if you have one
-        raise RuntimeError(
-            f"Invalid query for collection '{collection}': {query!r}"
-        ) from exc
+        raise RuntimeError(f"Invalid query for collection '{collection}': {query!r}") from exc
 
 
 def user_matches_where(
@@ -903,10 +862,7 @@ def user_matches_where(
       - runs:    require player_id; AND with {"player_id": ObjectId(player_id)}
       - characters: no implicit player filter
     """
-    logger.debug(
-        "Checking user_matches_where for "
-        f"player_id={player_id}, collection={collection}, query={query}"
-    )
+    logger.debug(f"Checking user_matches_where for player_id={player_id}, collection={collection}, query={query}")
     if not isinstance(query, Mapping):
         raise TypeError("query must be a mapping")
 

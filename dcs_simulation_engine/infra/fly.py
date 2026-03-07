@@ -80,18 +80,11 @@ def ensure_fly_auth() -> None:
             text=True,
         )
         data = json.loads(res.stdout or "{}")
-        email = (
-            data.get("email")
-            or data.get("Email")
-            or data.get("user")
-            or data.get("User")
-        )
+        email = data.get("email") or data.get("Email") or data.get("user") or data.get("User")
         if not email:
             raise RuntimeError("not logged in")
     except FileNotFoundError:
-        raise FlyError(
-            "flyctl not found. Please install flyctl and ensure it's on your PATH."
-        )
+        raise FlyError("flyctl not found. Please install flyctl and ensure it's on your PATH.")
     except Exception as e:
         raise FlyError(
             "Failed to verify Fly authentication. Please ensure you're logged in via `fly auth login`."
@@ -115,9 +108,7 @@ def load_env(env_file: Optional[Path] = Path(".env")) -> LoadedEnv:
     return LoadedEnv(dotenv_vars=dotenv_vars)
 
 
-def build_deploy_cmd(
-    config_path: Path, app_name: str, dotenv_vars: Dict[str, str]
-) -> list[str]:
+def build_deploy_cmd(config_path: Path, app_name: str, dotenv_vars: Dict[str, str]) -> list[str]:
     """Build the flyctl deploy command, injecting env vars from .env."""
     cmd: list[str] = [
         "fly",
@@ -243,9 +234,7 @@ def deploy_app(
     except subprocess.CalledProcessError as e:
         raise FlyError(f"flyctl deploy failed (exit {e.returncode})") from e
 
-    return DeployResult(
-        app_name=app_name, process_cmd=process_cmd, forwarded_env_keys=forwarded_keys
-    )
+    return DeployResult(app_name=app_name, process_cmd=process_cmd, forwarded_env_keys=forwarded_keys)
 
 
 def list_apps() -> list[dict[str, Any]]:
@@ -281,9 +270,7 @@ def stop_all_machines(app_name: str) -> list[str]:
         return []
 
     try:
-        subprocess.run(
-            ["flyctl", "machine", "stop", *machine_ids, "--app", app_name], check=True
-        )
+        subprocess.run(["flyctl", "machine", "stop", *machine_ids, "--app", app_name], check=True)
     except subprocess.CalledProcessError as e:
         raise FlyError(f"flyctl machine stop failed (exit {e.returncode})") from e
 

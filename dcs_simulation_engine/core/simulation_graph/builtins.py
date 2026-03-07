@@ -12,9 +12,7 @@ from dcs_simulation_engine.core.simulation_graph.state import (
     SimulationGraphState,
 )
 
-JSONType = Union[
-    Dict[str, Any], List[Any], Tuple[Any, ...], Set[Any], str, int, float, bool, None
-]
+JSONType = Union[Dict[str, Any], List[Any], Tuple[Any, ...], Set[Any], str, int, float, bool, None]
 
 # Use standard SandboxedEnvironment which allows dict attribute access (e.g., pc.hid)
 # unlike LangChain's _RestrictedSandboxedEnvironment which blocks it
@@ -54,9 +52,7 @@ def _render_any(value: JSONType, render_kwargs: dict[str, Any]) -> JSONType:
     return value  # Base case: unchanged
 
 
-def update_state(
-    state: SimulationGraphState, context: ContextSchema, state_updates: dict[str, Any]
-) -> dict[str, Any]:
+def update_state(state: SimulationGraphState, context: ContextSchema, state_updates: dict[str, Any]) -> dict[str, Any]:
     """Builtin update_state node function.
 
     Takes a dictionary of state field updates and applies them to the simulation state.
@@ -65,17 +61,13 @@ def update_state(
     for state_key, state_val in state_updates.items():
         if state_key not in state:
             logger.error(f"State update key '{state_key}' not in state schema.")
-            raise KeyError(
-                f"State update key '{key}' not in state schema. Update state_updates."
-            )
+            raise KeyError(f"State update key '{key}' not in state schema. Update state_updates.")
         val = _render_any(state_val, render_kwargs)
         state_updates[state_key] = val
     return state_updates
 
 
-def raise_error(
-    state: SimulationGraphState, context: ContextSchema, message: str
-) -> None:
+def raise_error(state: SimulationGraphState, context: ContextSchema, message: str) -> None:
     """Builtin error node function.
 
     Takes an error message string and raises an error.
@@ -85,16 +77,12 @@ def raise_error(
     # Issue a special message?
     # render message from state
     tmpl = _jinja_env.from_string(message)
-    rendered_message = tmpl.render(
-        **{**state, "pc": context["pc"], "npc": context["npc"]}
-    )
+    rendered_message = tmpl.render(**{**state, "pc": context["pc"], "npc": context["npc"]})
     logger.error(f"Error node called with message: {rendered_message}")
     raise RuntimeError(rendered_message)
 
 
-def command_filter(
-    state: SimulationGraphState, context: ContextSchema, command_handlers: dict
-) -> dict[str, Any]:
+def command_filter(state: SimulationGraphState, context: ContextSchema, command_handlers: dict) -> dict[str, Any]:
     """Builtin command filter node function."""
     # Check state.event_draft for command pattern (e.g., "/help" or "\help")
     user_input = state.get("user_input")
@@ -128,20 +116,14 @@ def command_filter(
     for state_key, state_val in command_handler.items():
         if state_key not in state:
             logger.error(f"Command handler key '{state_key}' not in state schema.")
-            raise KeyError(
-                f"Command handler key '{key}' not in state schema. Update handler."
-            )
+            raise KeyError(f"Command handler key '{key}' not in state schema. Update handler.")
         val = _render_any(state_val, render_kwargs)
         state_updates[state_key] = val
-    logger.debug(
-        f"Command '{command}' matched; applying state updates: {state_updates}."
-    )
+    logger.debug(f"Command '{command}' matched; applying state updates: {state_updates}.")
     return state_updates
 
 
-def form(
-    state: SimulationGraphState, context: ContextSchema, form_name: str
-) -> dict[str, Any]:
+def form(state: SimulationGraphState, context: ContextSchema, form_name: str) -> dict[str, Any]:
     """Builtin form node function.
 
     Takes a form definition and collects user responses to each question in the form.

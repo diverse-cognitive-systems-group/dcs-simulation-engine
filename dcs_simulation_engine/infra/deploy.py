@@ -50,9 +50,7 @@ def stop_deployment(
     """Stop a deployment and optionally download logs + DB."""
     # best-effort logs
     if logs_out:
-        logs = provider.download_logs_jsonl(
-            app_name=deployment, no_tail=logs_no_tail, out_path=logs_out
-        )
+        logs = provider.download_logs_jsonl(app_name=deployment, no_tail=logs_no_tail, out_path=logs_out)
         logs_out.parent.mkdir(parents=True, exist_ok=True)
         logs_out.write_text(logs)
 

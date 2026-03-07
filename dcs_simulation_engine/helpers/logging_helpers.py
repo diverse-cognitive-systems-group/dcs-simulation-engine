@@ -27,10 +27,7 @@ def configure_logger(source: str, quiet: bool = False, verbose: int = 0) -> None
     logger.add(
         sink=sys.stderr,
         level=console_level,
-        format=(
-            "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} "
-            "| {file.name}:{line} | {message}"
-        ),
+        format=("{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"),
     )
 
     # File handler — DEBUG+, rotated daily, keep 7 days, zipped
@@ -42,10 +39,7 @@ def configure_logger(source: str, quiet: bool = False, verbose: int = 0) -> None
     logger.add(
         sink=str(log_path),
         level="DEBUG",
-        format=(
-            "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} "
-            "| {file.name}:{line} | {message}"
-        ),
+        format=("{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"),
         rotation="00:00",
         retention="7 days",
         compression="zip",
@@ -72,10 +66,7 @@ def add_run_logger(run_name: str, run_results_dir: Path) -> int:
     sink_id = logger.add(
         sink=str(run_log_path),
         level="DEBUG",
-        format=(
-            "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} "
-            "| {file.name}:{line} | {message}"
-        ),
+        format=("{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"),
         rotation="00:00",
         retention="30 days",
         compression="zip",

@@ -54,9 +54,7 @@ def _validate_player(ctx: typer.Context, player_id: str) -> None:
 @modify_app.command("game")
 def modify_game(
     ctx: typer.Context,
-    name: Optional[str] = typer.Argument(
-        None, help="Name of the game. If omitted, you will be prompted."
-    ),
+    name: Optional[str] = typer.Argument(None, help="Name of the game. If omitted, you will be prompted."),
     delete: bool = typer.Option(False, "--delete", help="Delete the game directory."),
 ) -> None:
     """Create or delete a game."""
@@ -101,12 +99,8 @@ def modify_game(
 @modify_app.command("character")
 def modify_character(
     ctx: typer.Context,
-    name: Optional[str] = typer.Argument(
-        None, help="Character name. If omitted, you will be prompted."
-    ),
-    fields: List[str] = typer.Argument(
-        None, help="Extra character fields as key=value (values may be JSON)."
-    ),
+    name: Optional[str] = typer.Argument(None, help="Character name. If omitted, you will be prompted."),
+    fields: List[str] = typer.Argument(None, help="Extra character fields as key=value (values may be JSON)."),
     file: Optional[Path] = typer.Option(
         None,
         "--file",
@@ -117,12 +111,8 @@ def modify_character(
         exists=True,
         readable=True,
     ),
-    character_id: Optional[str] = typer.Option(
-        None, "--id", help="Explicit character _id to upsert."
-    ),
-    delete: bool = typer.Option(
-        False, "--delete", help="Delete the character by --id."
-    ),
+    character_id: Optional[str] = typer.Option(None, "--id", help="Explicit character _id to upsert."),
+    delete: bool = typer.Option(False, "--delete", help="Delete the character by --id."),
 ) -> None:
     """Create/update (upsert) or delete a character."""
     if delete:
@@ -160,9 +150,7 @@ def modify_character(
         resolved_name = typer.prompt("Character name")
     data["name"] = resolved_name
 
-    upsert_fn = getattr(dbh, "create_character", None) or getattr(
-        dbh, "upsert_character", None
-    )
+    upsert_fn = getattr(dbh, "create_character", None) or getattr(dbh, "upsert_character", None)
     if not callable(upsert_fn):
         echo(ctx, "Character modify not implemented.", style="error")
         raise typer.Exit(code=2)
@@ -196,12 +184,8 @@ def modify_player(
         exists=True,
         readable=True,
     ),
-    player_id: Optional[str] = typer.Option(
-        None, "--id", help="Explicit player _id to upsert."
-    ),
-    no_key: bool = typer.Option(
-        False, "--no-key", help="Do not issue a new access key."
-    ),
+    player_id: Optional[str] = typer.Option(None, "--id", help="Explicit player _id to upsert."),
+    no_key: bool = typer.Option(False, "--no-key", help="Do not issue a new access key."),
     delete: bool = typer.Option(False, "--delete", help="Delete the player by --id."),
 ) -> None:
     """Create/update (upsert) or delete a player."""

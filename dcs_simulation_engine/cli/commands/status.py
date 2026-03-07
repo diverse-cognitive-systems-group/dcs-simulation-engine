@@ -33,9 +33,7 @@ def _summarize_machines(
     total = len(machines)
 
     running = sum(1 for s in states if s in {"started", "running"})
-    stoppedish = sum(
-        1 for s in states if s in {"stopped", "stopping", "destroyed", "suspended"}
-    )
+    stoppedish = sum(1 for s in states if s in {"stopped", "stopping", "destroyed", "suspended"})
     other = total - running - stoppedish
 
     if running == total:
@@ -46,17 +44,11 @@ def _summarize_machines(
         # no running machines -> treat as stopped/suspended-ish for CLI purposes
         status = "Stopped"
 
-    created_times = [
-        parse_iso(as_str(m, "created_at", "CreatedAt", "created")) for m in machines
-    ]
+    created_times = [parse_iso(as_str(m, "created_at", "CreatedAt", "created")) for m in machines]
     created_times = [t for t in created_times if t]
     created = min(created_times) if created_times else None
 
-    counts = (
-        f"{total} (running {running})"
-        if other == 0
-        else f"{total} (running {running}, other {other})"
-    )
+    counts = f"{total} (running {running})" if other == 0 else f"{total} (running {running}, other {other})"
 
     return (status, counts, fmt_dt(created))
 

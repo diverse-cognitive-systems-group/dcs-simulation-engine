@@ -30,10 +30,7 @@ class BadGameNameError(GameNameError):
 
     def __str__(self) -> str:
         """Return a user-friendly error message."""
-        return (
-            f"Unknown game name {self.game_name!r}. "
-            f"Available games: {', '.join(self.available)}"
-        )
+        return f"Unknown game name {self.game_name!r}. Available games: {', '.join(self.available)}"
 
 
 def validate_game_name(game_name: Optional[str]) -> str:
@@ -111,14 +108,10 @@ def list_games(
 ) -> list[tuple[str, str, Path, str | None, str | None]]:
     """Return available games."""
     pkg_dir = package_games_dir()
-    user_dir = (
-        (Path.cwd() / "games") if directory is None else Path(directory).expanduser()
-    )
+    user_dir = (Path.cwd() / "games") if directory is None else Path(directory).expanduser()
 
     if not user_dir.exists() or not user_dir.is_dir():
-        raise FileNotFoundError(
-            f"Provided games directory {user_dir!s} not found or invalid."
-        )
+        raise FileNotFoundError(f"Provided games directory {user_dir!s} not found or invalid.")
 
     results: list[tuple[str, str, Path, str | None, str | None]] = []
 
@@ -142,9 +135,7 @@ def list_games(
 
             authors = doc.get("authors")
             if isinstance(authors, list):
-                author_str = ", ".join(
-                    str(a).strip() for a in authors if str(a).strip()
-                )
+                author_str = ", ".join(str(a).strip() for a in authors if str(a).strip())
             elif isinstance(authors, str):
                 author_str = authors.strip()
             else:
@@ -225,9 +216,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
             doc_name = doc.get("name")
 
             if not doc_name:
-                logger.warning(
-                    f"Game config {path} has no top-level 'name' field. Skipping."
-                )
+                logger.warning(f"Game config {path} has no top-level 'name' field. Skipping.")
                 continue
 
             names_found.append(doc_name)
@@ -236,31 +225,21 @@ def get_game_config(game: str, version: str = "latest") -> str:
                 matches.append((path, doc))
 
         except Exception:
-            logger.warning(
-                f"Failed to load game config from {path}. Maybe syntax error? Skipping."
-            )
+            logger.warning(f"Failed to load game config from {path}. Maybe syntax error? Skipping.")
             continue
 
     if not matches:
-        raise FileNotFoundError(
-            f"No game config matching {game!r} found. Found built-ins: {names_found}"
-        )
+        raise FileNotFoundError(f"No game config matching {game!r} found. Found built-ins: {names_found}")
 
     # If a specific version was requested, honor it exactly.
     if version != "latest":
-        matching_versions = [
-            p for p, doc in matches if str(doc.get("version", "")).strip() == version
-        ]
+        matching_versions = [p for p, doc in matches if str(doc.get("version", "")).strip() == version]
         if matching_versions:
             chosen = str(matching_versions[0])
-            logger.debug(
-                f"Selected game config {chosen} for game={game!r}, version={version!r}"
-            )
+            logger.debug(f"Selected game config {chosen} for game={game!r}, version={version!r}")
             return chosen
 
-        available_versions = sorted(
-            {str(doc.get("version", "")).strip() or "<none>" for _, doc in matches}
-        )
+        available_versions = sorted({str(doc.get("version", "")).strip() or "<none>" for _, doc in matches})
         raise FileNotFoundError(
             f"No game config for {game!r} with version {version!r} found. "
             f"Available versions for this game: {available_versions}"
@@ -279,10 +258,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
         try:
             v = Version(raw_version)
         except InvalidVersion:
-            logger.warning(
-                f"Game config {path} has invalid version {raw_version!r}. "
-                "Treating as unversioned."
-            )
+            logger.warning(f"Game config {path} has invalid version {raw_version!r}. Treating as unversioned.")
             other_candidates.append((None, path))
             continue
 
@@ -294,10 +270,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
     if stable_candidates:
         v, chosen_path = max(stable_candidates, key=lambda x: x[0])
         chosen = str(chosen_path)
-        logger.debug(
-            f"Selected latest stable game config {chosen} "
-            f"for game={game!r}, version={v}"
-        )
+        logger.debug(f"Selected latest stable game config {chosen} for game={game!r}, version={v}")
         return chosen
 
     # No stable versions; fall back to highest version among others, if any.
@@ -306,21 +279,15 @@ def get_game_config(game: str, version: str = "latest") -> str:
         v, chosen_path = max(versioned_others, key=lambda x: x[0])
         chosen = str(chosen_path)
         logger.debug(
-            f"No stable versions for {game!r}. "
-            f"Selected latest non-stable game config {chosen} with version={v}."
+            f"No stable versions for {game!r}. Selected latest non-stable game config {chosen} with version={v}."
         )
         return chosen
 
     # No parseable versions at all: fall back to latest by modification time.
     if other_candidates:
-        chosen_path = max(
-            (p for _, p in other_candidates), key=lambda p: p.stat().st_mtime
-        )
+        chosen_path = max((p for _, p in other_candidates), key=lambda p: p.stat().st_mtime)
         chosen = str(chosen_path)
-        logger.debug(
-            f"No version info for {game!r}. "
-            f"Selected most recently modified game config {chosen}."
-        )
+        logger.debug(f"No version info for {game!r}. Selected most recently modified game config {chosen}.")
         return chosen
 
     # This should be unreachable, but keep a defensive error.

@@ -38,7 +38,6 @@ def _run_local(run_name: str, game_name: str, status: Optional[STATUS] = None) -
 
         # start the widget
         with step("Starting widget"):
-
             gradio_app = build_widget_with_api(game_name=game_name, banner=run_name)
 
             server = "127.0.0.1"
@@ -55,9 +54,7 @@ def _run_local(run_name: str, game_name: str, status: Optional[STATUS] = None) -
 
         console.print(f"Simulation engine is running at {base_url}", style="success")
 
-        public_url = (
-            getattr(launch_info, "share_url", None) if launch_info is not None else None
-        )
+        public_url = getattr(launch_info, "share_url", None) if launch_info is not None else None
         if public_url:
             typer.echo(f"Public link: {public_url}")
 

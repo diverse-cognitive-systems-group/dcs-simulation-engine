@@ -45,19 +45,13 @@ def build_widget(
         logger.debug(f"Access gate required: {access_gated}")
         if access_gated:
             if game_config.access_settings is None:
-                raise ValueError(
-                    "Game config requires access gating but has no access settings"
-                )
+                raise ValueError("Game config requires access gating but has no access settings")
             if game_config.access_settings.new_player_form is None:
-                raise ValueError(
-                    "Game config requires access gating but no new player form provided"
-                )
+                raise ValueError("Game config requires access gating but no new player form provided")
         else:
             logger.debug("No access gating required. Prepopulating valid characters.")
             valid_pcs, valid_npcs = game_config.get_valid_characters()
-            logger.info(
-                f"Found {len(valid_pcs)} valid PCs and {len(valid_npcs)} valid NPCs."
-            )
+            logger.info(f"Found {len(valid_pcs)} valid PCs and {len(valid_npcs)} valid NPCs.")
             if not valid_pcs:
                 logger.warning("No valid PCs found for game.")
             if not valid_npcs:

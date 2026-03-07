@@ -51,9 +51,7 @@ def eval_condition(expr: str, state: Mapping[str, Any]) -> bool:
         logger.debug(f"Condition eval {bool(result)} for {expr}")
         return bool(result)
     except Exception as e:
-        logger.error(
-            f"Condition eval error for {expr} using eval with source:\n{s}. Error: {e}"
-        )
+        logger.error(f"Condition eval error for {expr} using eval with source:\n{s}. Error: {e}")
         return False
 
 
@@ -89,9 +87,7 @@ def predicate(expr: Optional[str], state: Mapping[str, Any]) -> bool:
 
     if s.startswith("reply_contains(") and s.endswith(")"):
         arg = s[len("reply_contains(") : -1].strip()
-        if (arg.startswith("'") and arg.endswith("'")) or (
-            arg.startswith('"') and arg.endswith('"')
-        ):
+        if (arg.startswith("'") and arg.endswith("'")) or (arg.startswith('"') and arg.endswith('"')):
             needle = arg[1:-1]
         else:
             needle = arg

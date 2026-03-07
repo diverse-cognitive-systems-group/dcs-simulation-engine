@@ -53,15 +53,10 @@ def validate_chat_input(user_input: str) -> Any:
 def handle_chat_feedback(data: gr.LikeData, state: SessionState) -> None:
     """Handle user feedback (like/dislike) on chat messages."""
     if "run" not in state:
-        logger.error(
-            "handle_feedback called but no active simulation run found in state."
-        )
+        logger.error("handle_feedback called but no active simulation run found in state.")
         return  # don't want to crash the app over feedback
     run = state["run"]
-    logger.warning(
-        f"🚩 Player ({run.player_id}) flagged a message as"
-        f" '{data.liked}' in run '{run.name}': {data.value}"
-    )
+    logger.warning(f"🚩 Player ({run.player_id}) flagged a message as '{data.liked}' in run '{run.name}': {data.value}")
     data_dict = {
         "liked": data.liked,
         "value": data.value,
@@ -98,22 +93,14 @@ def setup_simulation(
                         "content": e.content,
                     }
                 )  # type: ignore
-                initial_history.append(
-                    {"role": "assistant", "content": formatted_response_partial}
-                )
+                initial_history.append({"role": "assistant", "content": formatted_response_partial})
             elif isinstance(e, HumanMessage):
-                initial_history.append(
-                    {"role": "user", "content": e.content}
-                )  # type: ignore
+                initial_history.append({"role": "user", "content": e.content})  # type: ignore
             elif isinstance(e, dict) and "type" in e and "content" in e:
                 formatted_response = format(e)
-                initial_history.append(
-                    {"role": "assistant", "content": formatted_response}
-                )
+                initial_history.append({"role": "assistant", "content": formatted_response})
             else:
-                logger.warning(
-                    f"Unknown message type in history during setup: {type(e)}"
-                )
+                logger.warning(f"Unknown message type in history during setup: {type(e)}")
         state["initial_history"] = initial_history
         logger.debug(f"Initial history length: {len(initial_history)}")
         updated_chatbot_value = initial_history
@@ -126,7 +113,9 @@ def setup_simulation(
         raise gr.Error(USER_FRIENDLY_EXC)
 
 
-def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
+def on_gate_continue(
+    state: SessionState, token_value: str
+) -> Tuple[
     SessionState,
     Dict[str, Any],  # gate container update
     Dict[str, Any],  # setup container update
@@ -166,12 +155,8 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
         raise gr.Error(USER_FRIENDLY_EXC)
 
     if not token_value:  # empty token "" or None
-        logger.debug(
-            "Access gated but no token provided; returning token validation error."
-        )
-        updated_token_error_box = gr.update(
-            visible=True, value="  Access token required"
-        )
+        logger.debug("Access gated but no token provided; returning token validation error.")
+        updated_token_error_box = gr.update(visible=True, value="  Access token required")
     else:
         try:
             logger.debug("Trying to get player ID from access token.")
@@ -189,10 +174,7 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
                 )
 
             if not state["game_config"].is_player_allowed(player_id=player_id):
-                logger.warning(
-                    f"Player {player_id} is not allowed to play"
-                    " this game according to game_config."
-                )
+                logger.warning(f"Player {player_id} is not allowed to play this game according to game_config.")
                 raise gr.Error(
                     "Sorry, your account is not authorized to"
                     " access this game. If you think this is an error, "
@@ -212,13 +194,8 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
                 )
 
             game_config: GameConfig = state["game_config"]
-            valid_pcs, valid_npcs = game_config.get_valid_characters(
-                player_id=player_id
-            )
-            logger.debug(
-                f"Updating internal gradio state with"
-                f" {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs."
-            )
+            valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id)
+            logger.debug(f"Updating internal gradio state with {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs.")
             state["valid_pcs"]: List[tuple[str, str]] = valid_pcs
             state["valid_npcs"]: List[tuple[str, str]] = valid_npcs
             if not valid_pcs:
@@ -249,13 +226,9 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
             )
         except PermissionError as e:
             logger.warning(f"PermissionError in on_continue: {e}")
-            updated_token_error_box = gr.update(
-                visible=True, value="  Invalid access token"
-            )
+            updated_token_error_box = gr.update(visible=True, value="  Invalid access token")
         except gr.Error as e:
-            logger.error(
-                "Gradio Error while handling on_continue: {}", e, exc_info=True
-            )
+            logger.error("Gradio Error while handling on_continue: {}", e, exc_info=True)
             if "run" in state:
                 run = state["run"]
                 run.exit(reason="error")
@@ -283,9 +256,7 @@ def on_gate_continue(state: SessionState, token_value: str) -> Tuple[
 
 def on_form_submit(
     state: SessionState, *field_values: Any
-) -> Tuple[
-    SessionState, Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]
-]:
+) -> Tuple[SessionState, Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     """Handle clicking submit on the consent form.
 
     - creates player with consent data, issues access token
@@ -319,12 +290,9 @@ def on_form_submit(
     # create player with consent data, issue access token
     try:
         new_player_data: Dict[str, Dict[str, Any]] = {
-            q.key: {**q.model_dump(), "answer": value}
-            for q, value in zip(form_config.questions, field_values)
+            q.key: {**q.model_dump(), "answer": value} for q, value in zip(form_config.questions, field_values)
         }
-        player_id, access_key = dbh.create_player(
-            player_data=new_player_data, issue_access_key=True
-        )
+        player_id, access_key = dbh.create_player(player_data=new_player_data, issue_access_key=True)
         logger.debug(f"Created player {player_id} with access key.")
         updated_form_group = gr.update(visible=False)
         updated_token_group = gr.update(visible=True)
@@ -352,14 +320,11 @@ def process_new_user_chat_message(
 ) -> Iterator[str]:
     """Handle a user message sent from the chat interface."""
     logger.debug(
-        f"on_new_user_message called \nwith\nnew_user_message: {new_user_message}\n"
-        f"len(history): {len(history)}"
+        f"on_new_user_message called \nwith\nnew_user_message: {new_user_message}\nlen(history): {len(history)}"
     )
 
     if "run" not in state:
-        logger.error(
-            "on_new_user_message called but no active simulation run found in state."
-        )
+        logger.error("on_new_user_message called but no active simulation run found in state.")
         raise gr.Error(USER_FRIENDLY_EXC)
     run = state["run"]
 
@@ -376,10 +341,7 @@ def process_new_user_chat_message(
     try:
         # simulator may have exited after step()
         if run.exited:
-            logger.debug(
-                "on_new_user_message found run.exited True after step();"
-                " not streaming response"
-            )
+            logger.debug("on_new_user_message found run.exited True after step(); not streaming response")
             formatted_response = format(
                 {
                     "type": "info",
@@ -415,20 +377,14 @@ def process_new_user_chat_message(
                     logger.warning(f"DEBUG::: simulator reply: {formatted_response}")
                     yield formatted_response  # don't stream system/info messages
                 else:
-                    logger.warning(
-                        f"Unknown event type yielded from simulator: {etype}."
-                        " Skipping display."
-                    )
+                    logger.warning(f"Unknown event type yielded from simulator: {etype}. Skipping display.")
                     continue
     except Exception:
         logger.exception("Simulator step raised an exception.")
         formatted_response = format(
             {
                 "type": "error",
-                "content": (
-                    "Yikes! We couldn't generate response."
-                    " We're looking into it. Sorry about that."
-                ),
+                "content": ("Yikes! We couldn't generate response. We're looking into it. Sorry about that."),
             }
         )
         yield formatted_response
