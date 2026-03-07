@@ -69,7 +69,7 @@ def _warn_if_large_state(state: SimulationGraphState, node_name: str) -> None:
     try:
         n = byte_size_pickle(state)
         if n > LARGE_STATE_WARN_BYTES:
-            logger.warning(f"State size large: {n/1024:.1f} KB in node '{node_name}'")
+            logger.warning(f"State size large: {n / 1024:.1f} KB in node '{node_name}'")
     except Exception:
         logger.debug("State size check failed (non-serializable)")
 
@@ -108,18 +108,13 @@ def _llm_node(
                 **state,
                 "pc": runtime.context["pc"],
                 "npc": runtime.context["npc"],
-                "additional_validator_rules": runtime.context[
-                    "additional_validator_rules"
-                ],
+                "additional_validator_rules": runtime.context["additional_validator_rules"],
                 "additional_updater_rules": runtime.context["additional_updater_rules"],
                 **extra_template_kwargs,
             }
         )
     except Exception as ex:
-        raise ValueError(
-            f"Node '{node_name}' failed to render system_template "
-            f"with current state: {ex}"
-        ) from ex
+        raise ValueError(f"Node '{node_name}' failed to render system_template with current state: {ex}") from ex
 
     msgs_for_model: List[dict[str, str]] = [{"type": "system", "content": rendered_sys}]
     logger.debug(f"Node '{node_name}' called with:\n{rendered_sys}")
@@ -128,7 +123,7 @@ def _llm_node(
     try:
         m = byte_size_json(msgs_for_model)
         if m > LARGE_PROMPT_WARN_BYTES:
-            logger.warning(f"Prompt size large: {m/1024:.1f} KB in node '{node_name}'")
+            logger.warning(f"Prompt size large: {m / 1024:.1f} KB in node '{node_name}'")
     except Exception:
         logger.debug("Prompt size check failed")
 
@@ -140,20 +135,14 @@ def _llm_node(
         response = llm.invoke(input=msgs_for_model)
         elapsed = time.perf_counter() - start
         if elapsed > LONG_MODEL_WARN_SECONDS:
-            logger.warning(
-                f"Node '{node_name}' LLM call"
-                f"took {elapsed:.3f}s which is quite long."
-            )
+            logger.warning(f"Node '{node_name}' LLM calltook {elapsed:.3f}s which is quite long.")
         else:
-            logger.debug(f"Node '{node_name}' LLM call" f" took {elapsed:.3f} seconds.")
+            logger.debug(f"Node '{node_name}' LLM call took {elapsed:.3f} seconds.")
     except Exception as ex:
         # TODO: add finer-grained error handling (rate limit, timeout,
         # permissions, etc) eg. if rate limit, maybe default retries
         # instead of crash the game.
-        raise RuntimeError(
-            f"Node '{node_name}' LLM invocation failed "
-            f"(rate limit/timeout/permissions?): {ex}"
-        ) from ex
+        raise RuntimeError(f"Node '{node_name}' LLM invocation failed (rate limit/timeout/permissions?): {ex}") from ex
 
     # ----- Try to extract and merge JSON output -----
     response_text = getattr(response, "content", None)
@@ -167,8 +156,7 @@ def _llm_node(
             return {state_key: json.loads(match.group(0))}
     except Exception as ex:
         logger.warning(
-            f"Node '{node_name}' returned non-JSON or unparsable JSON; "
-            f"preserving raw text. Error: {ex}",
+            f"Node '{node_name}' returned non-JSON or unparsable JSON; preserving raw text. Error: {ex}",
         )
 
     # Fallback: preserve raw text as an error SimulationMessage
@@ -185,9 +173,7 @@ def _llm_node(
 # ---------------------------------------------------------------------------
 
 
-def validator(
-    state: SimulationGraphState, runtime: Runtime[ContextSchema]
-) -> Dict[str, Any]:
+def validator(state: SimulationGraphState, runtime: Runtime[ContextSchema]) -> Dict[str, Any]:
     """Validate the user input and return a uniform message payload."""
     logger.debug(f"{VALIDATOR_NAME} IN")
     user_input = state["user_input"]
@@ -204,20 +190,14 @@ def validator(
         state_updates = {
             "validator_response": SimulationMessage(
                 type="info",
-                content=(
-                    "User input is empty. "
-                    "No validation needed. Marking validation as passed."
-                ),
+                content=("User input is empty. No validation needed. Marking validation as passed."),
             )
         }
     elif len(user_input_content) > MAX_USER_INPUT_LENGTH:
         state_updates = {
             "validator_response": SimulationMessage(
                 type="error",
-                content=(
-                    f"User input exceeds maximum length of "
-                    f"{MAX_USER_INPUT_LENGTH} characters."
-                ),
+                content=(f"User input exceeds maximum length of {MAX_USER_INPUT_LENGTH} characters."),
             )
         }
     else:
@@ -237,9 +217,7 @@ def validator(
     return state_updates
 
 
-def updater(
-    state: SimulationGraphState, runtime: Runtime[ContextSchema]
-) -> Dict[str, Any]:
+def updater(state: SimulationGraphState, runtime: Runtime[ContextSchema]) -> Dict[str, Any]:
     """Generate an in-character response to the user input.
 
     This runs in parallel with validation, so it should not assume that
@@ -288,9 +266,7 @@ def finalizer(state: SimulationGraphState) -> Dict[str, SimulationMessage]:
     # is wired correctly, but we guard defensively.
     if validator_response is None:
         state_updates = {
-            "simulator_output": SimulationMessage(
-                type="error", content="Validation did not run or produced no result."
-            )
+            "simulator_output": SimulationMessage(type="error", content="Validation did not run or produced no result.")
         }
     elif validator_response["type"] == "error":
         # Prefer the validation error as the final outcome.
@@ -308,9 +284,7 @@ def finalizer(state: SimulationGraphState) -> Dict[str, SimulationMessage]:
         }
     else:
         # Validation passed but we have no response yet.
-        logger.warning(
-            "finalizer: validation passed but no updater_response present in state"
-        )
+        logger.warning("finalizer: validation passed but no updater_response present in state")
         state_updates = {
             "simulator_output": SimulationMessage(
                 type="error",

@@ -72,8 +72,7 @@ def make_state(overrides: dict[str, Any] | None = None) -> SimulationGraphState:
     # Prefer model fields if available (pydantic v2 or v1), else fall back to base keys.
     try:
         allowed_keys = set(
-            getattr(StateAdapter, "model_fields", None)
-            and StateAdapter.model_fields.keys()  # type: ignore
+            getattr(StateAdapter, "model_fields", None) and StateAdapter.model_fields.keys()  # type: ignore
         ) or set(getattr(StateAdapter, "__fields__", {}).keys())
         if not allowed_keys:
             allowed_keys = set(base.keys())
@@ -82,9 +81,7 @@ def make_state(overrides: dict[str, Any] | None = None) -> SimulationGraphState:
 
     unknown = set(overrides) - allowed_keys
     if unknown:
-        logger.warning(
-            "Unknown override key(s) ignored: %s", ", ".join(sorted(unknown))
-        )
+        logger.warning("Unknown override key(s) ignored: %s", ", ".join(sorted(unknown)))
         for k in unknown:
             overrides.pop(k, None)
 

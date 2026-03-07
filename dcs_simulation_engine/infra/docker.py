@@ -55,11 +55,7 @@ def check_docker_installed() -> None:
         docker.version()  # lighter than docker.info(), validates CLI availability
     except DockerException as e:
         msg = str(e).lower()
-        if (
-            "executable file not found" in msg
-            or "no such file or directory" in msg
-            or "not found" in msg
-        ):
+        if "executable file not found" in msg or "no such file or directory" in msg or "not found" in msg:
             raise DockerNotInstalled(str(e)) from e
         # If it's some other failure, we don't block here per desired behavior.
 
@@ -70,9 +66,7 @@ def get_container_ip(container_name: str) -> str:
     networks = c.network_settings.networks
 
     if len(networks) != 1:
-        raise RuntimeError(
-            f"Expected exactly 1 network, found {len(networks)}: {list(networks)}"
-        )
+        raise RuntimeError(f"Expected exactly 1 network, found {len(networks)}: {list(networks)}")
 
     return next(iter(networks.values())).ip_address
 
@@ -174,15 +168,11 @@ def ensure_mongo_service_up(*, build: bool = True) -> bool:
         try:
             compose_up(to_start, build=build)
         except ComposeUpFailed as e:
-            raise ServiceManagementError(
-                f"Failed to start services: {', '.join(to_start)}"
-            ) from e
+            raise ServiceManagementError(f"Failed to start services: {', '.join(to_start)}") from e
 
     still_down = [s for s in services if not is_service_running(s)]
     if still_down:
-        raise ServiceManagementError(
-            f"Services are not running after start attempt: {', '.join(still_down)}"
-        )
+        raise ServiceManagementError(f"Services are not running after start attempt: {', '.join(still_down)}")
 
     return bool(to_start)
 
@@ -202,14 +192,10 @@ def ensure_mongo_service_down(*, wipe: bool = False) -> bool:
         try:
             compose_down(to_stop, wipe=wipe)
         except ComposeDownFailed as e:
-            raise ServiceManagementError(
-                f"Failed to stop services: {', '.join(to_stop)}"
-            ) from e
+            raise ServiceManagementError(f"Failed to stop services: {', '.join(to_stop)}") from e
 
     still_up = [s for s in services if is_service_running(s)]
     if still_up:
-        raise ServiceManagementError(
-            f"Services are still running after stop attempt: {', '.join(still_up)}"
-        )
+        raise ServiceManagementError(f"Services are still running after stop attempt: {', '.join(still_up)}")
 
     return bool(to_stop)

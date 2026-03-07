@@ -128,10 +128,7 @@ class SimulationGraph:
             if isinstance(dest, ConditionalTo) and dest.conditional:
                 clauses = dest.conditional
                 if not isinstance(clauses, list) or not clauses:
-                    raise ValueError(
-                        f"'conditional' must be a non-empty list for "
-                        f"edge from {e.from_}"
-                    )
+                    raise ValueError(f"'conditional' must be a non-empty list for edge from {e.from_}")
                 router = cls._build_router_from_clauses(clauses)
 
                 # TODO: update functionality to make lists ifs
@@ -164,9 +161,7 @@ class SimulationGraph:
             raise ValueError(f"Unsupported 'to' value for edge from {e.from_}: {dest}")
         # Compile the graph
         cgraph = builder.compile()
-        inst = cls(
-            name=getattr(config, "name", "sim-graph") or "sim-graph", cgraph=cgraph
-        )
+        inst = cls(name=getattr(config, "name", "sim-graph") or "sim-graph", cgraph=cgraph)
         cls._log_graph_debug(cgraph)
         return inst
 
@@ -246,16 +241,12 @@ class SimulationGraph:
                     path, node_updates = None, raw_update
 
                 if not isinstance(node_updates, dict):
-                    logger.error(
-                        f"Unexpected update type from cgraph.stream: {raw_update}"
-                        f" (path={path})"
-                    )
+                    logger.error(f"Unexpected update type from cgraph.stream: {raw_update} (path={path})")
                     continue
                 # Process each node update
                 for node_name, node_update in node_updates.items():
                     logger.debug(
-                        f"SimulationGraph stream update from node '{node_name}':"
-                        f" {node_update}",
+                        f"SimulationGraph stream update from node '{node_name}': {node_update}",
                     )
                     if isinstance(node_update, dict):
                         # If node_update is a partial state for this node, merge it
@@ -277,70 +268,47 @@ class SimulationGraph:
                     # Timeout
                     if timeout is not None and (now - start) > timeout:
                         logger.warning(
-                            "SimulationGraph YIELDING timeout error"
-                            " and STOPPING (after %.2fs)",
+                            "SimulationGraph YIELDING timeout error and STOPPING (after %.2fs)",
                             now - start,
                         )
                         yield {
                             "type": "error",
-                            "content": f"Simulation timed out after "
-                            f"{timeout:.1f} seconds.",
+                            "content": f"Simulation timed out after {timeout:.1f} seconds.",
                         }
                         return  # stop whole stream
 
                     # Check events from validation nodes and stop graph run if error
                     validator_response = (
-                        node_update.get("validator_response")
-                        if isinstance(node_update, dict)
-                        else None
+                        node_update.get("validator_response") if isinstance(node_update, dict) else None
                     )
                     is_validator_node = node_name.lower() == VALIDATOR_NAME.lower()
-                    is_error = (
-                        validator_response and validator_response.get("type") == "error"
-                    )
+                    is_error = validator_response and validator_response.get("type") == "error"
                     if is_validator_node and is_error and validator_response:
                         current_state["validator_response"] = validator_response
                         # descrement user retry budget
                         if "user_retry_budget" not in current_state:
-                            logger.error(
-                                "Validator node cannot decrement user_retry_budget:"
-                                " field missing from state."
-                            )
+                            logger.error("Validator node cannot decrement user_retry_budget: field missing from state.")
                         else:
                             current_state["user_retry_budget"] -= 1
                         content = validator_response.get("content")
-                        logger.info(
-                            "SimulationGraph YIELDING validation" " error and STOPPING."
-                        )
+                        logger.info("SimulationGraph YIELDING validation error and STOPPING.")
                         if current_state.get("user_retry_budget", 0) <= 0:
-                            content += (
-                                " User retry budget exhausted; "
-                                "no further retries allowed."
-                            )
+                            content += " User retry budget exhausted; no further retries allowed."
                             current_state["exit_reason"] = "user retry budget exhausted"
                             current_state["lifecycle"] = "EXIT"
                         yield {
                             "type": "error",
-                            "content": content + " Retries left: "
-                            f"{current_state.get('user_retry_budget', 0)}",
+                            "content": content + f" Retries left: {current_state.get('user_retry_budget', 0)}",
                         }
                         return  # stop whole stream
 
                     # Check for any nodes that yield "simulator_output" messages
-                    sim_output = (
-                        node_update.get("simulator_output")
-                        if isinstance(node_update, dict)
-                        else None
-                    )
+                    sim_output = node_update.get("simulator_output") if isinstance(node_update, dict) else None
                     # we already listen to all the nodes inside the subgraph,
                     # so can skip the whole subgraph output
-                    if (
-                        sim_output is not None
-                        and node_name != "__SIMULATION_SUBGRAPH__"
-                    ):
+                    if sim_output is not None and node_name != "__SIMULATION_SUBGRAPH__":
                         logger.debug(
-                            f"SimulationGraph YIELDING update"
-                            f" from node {node_name}"
+                            f"SimulationGraph YIELDING update from node {node_name}"
                             # f"`type` field: {sim_output}",
                         )
                         yield {
@@ -349,8 +317,7 @@ class SimulationGraph:
                         }
                     else:
                         logger.debug(
-                            f"SimulationGraph NOT YIELDING update"
-                            f" from node {node_name}"
+                            f"SimulationGraph NOT YIELDING update from node {node_name}"
                             # f"`type` field: {node_updates}",
                         )
             # All durring run updates, yeilded above,
@@ -373,8 +340,7 @@ class SimulationGraph:
 
             if long_running is not None and duration > long_running:
                 logger.warning(
-                    "SimulationGraph '%s' runtime %.3fs exceeded long_running "
-                    "threshold of %.3fs.",
+                    "SimulationGraph '%s' runtime %.3fs exceeded long_running threshold of %.3fs.",
                     self.name,
                     duration,
                     long_running,
@@ -440,15 +406,10 @@ class SimulationGraph:
                         }
                     )
                 except Exception as ex:
-                    errors.append(
-                        f"{owner}.{attr}: render failed with temp_state: {ex}"
-                    )
+                    errors.append(f"{owner}.{attr}: render failed with temp_state: {ex}")
 
         if errors:
-            raise ValueError(
-                f"Node '{node.name}' has invalid template(s):\n  - "
-                + "\n  - ".join(errors)
-            )
+            raise ValueError(f"Node '{node.name}' has invalid template(s):\n  - " + "\n  - ".join(errors))
 
         # ----- Enforce Output Format presence -----
         pattern = re.compile(
@@ -467,9 +428,7 @@ class SimulationGraph:
                 f"Template:\n{sys_tmpl!r}"
             )
 
-        def node_fn(
-            state: SimulationGraphState, runtime: Runtime[ContextSchema]
-        ) -> dict[str, Any]:
+        def node_fn(state: SimulationGraphState, runtime: Runtime[ContextSchema]) -> dict[str, Any]:
             """Execute a single node.
 
             Each node takes a full SimulationGraphState and returns an updated one.
@@ -479,9 +438,7 @@ class SimulationGraph:
             try:
                 n = byte_size_pickle(state)
                 if n > LARGE_STATE_WARN_BYTES:
-                    logger.warning(
-                        f"State size large: {n/1024:.1f} KB in node '{node.name}'"
-                    )
+                    logger.warning(f"State size large: {n / 1024:.1f} KB in node '{node.name}'")
             except Exception:
                 logger.debug("State size check failed (non-serializable)")
 
@@ -497,10 +454,7 @@ class SimulationGraph:
                 # and sometimes also the current state
                 args = node.kwargs if node.kwargs is not None else {}
                 # call building with appropriate args
-                logger.debug(
-                    f"Calling builtin node function: {node.kind}"
-                    f" with arguments keys: {args.keys()}"
-                )
+                logger.debug(f"Calling builtin node function: {node.kind} with arguments keys: {args.keys()}")
                 state_updates = builtin_fn(state=state, context=runtime.context, **args)
             else:
                 # ----- Build Custom Agent Node Function -----
@@ -509,24 +463,16 @@ class SimulationGraph:
                 if node.provider == "openrouter":
                     llm: BaseChatModel = runtime.context["models"][node.model]
                 elif node.provider == "huggingface":
-                    raise NotImplementedError(
-                        f"Provider not implemented yet: {node.provider}"
-                    )
+                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
                 elif node.provider == "local":
-                    raise NotImplementedError(
-                        f"Provider not implemented yet: {node.provider}"
-                    )
+                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
                 else:
-                    raise NotImplementedError(
-                        f"Provider not implemented yet: {node.provider}"
-                    )
+                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
 
                 # ----- Render system prompt safely -----
                 msgs_for_model: List[dict[str, str]] = []
                 if node.system_template is None:
-                    raise ValueError(
-                        f"Node '{node.name}' is missing required system_template."
-                    )
+                    raise ValueError(f"Node '{node.name}' is missing required system_template.")
                 else:
                     compiled_tmpl = _jinja_env.from_string(node.system_template)
                     try:
@@ -549,9 +495,7 @@ class SimulationGraph:
                 try:
                     m = byte_size_json(msgs_for_model)
                     if m > LARGE_PROMPT_WARN_BYTES:
-                        logger.warning(
-                            f"Prompt size large: {m/1024:.1f} KB in node '{node.name}'"
-                        )
+                        logger.warning(f"Prompt size large: {m / 1024:.1f} KB in node '{node.name}'")
                 except Exception:
                     logger.debug("Prompt size check failed")
 
@@ -562,14 +506,10 @@ class SimulationGraph:
                     elapsed = time.perf_counter() - start
                     if elapsed > LONG_MODEL_WARN_SECONDS:
                         logger.warning(
-                            f"Node '{node.name}' running LLM ({node.model}) "
-                            f"took {elapsed:.3f}s which is quite long."
+                            f"Node '{node.name}' running LLM ({node.model}) took {elapsed:.3f}s which is quite long."
                         )
                     else:
-                        logger.debug(
-                            f"Node '{node.name}' running LLM ({node.model})"
-                            f" took {elapsed:.3f} seconds."
-                        )
+                        logger.debug(f"Node '{node.name}' running LLM ({node.model}) took {elapsed:.3f} seconds.")
                 except Exception as ex:
                     # TODO: add finer-grained error handling (rate limit, timeout,
                     # permissions, etc) eg. if rate limit, maybe default retries
@@ -591,8 +531,7 @@ class SimulationGraph:
                         state_updates = json.loads(match.group(0))
                 except Exception as ex:
                     logger.warning(
-                        f"Node '{node.name}' returned non-JSON or unparsable JSON;"
-                        f" preserving raw text. Error: {ex}",
+                        f"Node '{node.name}' returned non-JSON or unparsable JSON; preserving raw text. Error: {ex}",
                     )
                 # TODO: BEFORE MERGING/PATCHING, MAKE SURE MODEL ONLY
                 # RETURNED WHAT INSTRUCTIONS TOLD IT TO IN OUTPUT_FORMAT
@@ -607,9 +546,7 @@ class SimulationGraph:
         return node_fn
 
     @classmethod
-    def _build_router_from_clauses(
-        cls, clauses: List[ConditionalItem]
-    ) -> Callable[[SimulationGraphState], str]:
+    def _build_router_from_clauses(cls, clauses: List[ConditionalItem]) -> Callable[[SimulationGraphState], str]:
         """Build a router function from conditional clauses."""
 
         def router(state: SimulationGraphState) -> str:

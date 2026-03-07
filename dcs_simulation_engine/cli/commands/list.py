@@ -38,7 +38,7 @@ def list_characters(ctx: typer.Context) -> None:
         if len(chars) == 0:
             echo(
                 ctx,
-                "No characters found." " (dcs create database).",
+                "No characters found. (dcs create database).",
                 style="warning",
             )
     except Exception as e:

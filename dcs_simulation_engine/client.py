@@ -79,7 +79,6 @@ class SimulationRun:
         self._state: Dict[str, Any] = state
         self._meta: Dict[str, Any] = meta
 
-
     def __enter__(self) -> SimulationRun:
         """Enter the runtime context related to this object."""
         return self
@@ -208,7 +207,6 @@ class SimulationRun:
     def exit_reason(self) -> str:
         """The exit reason string, or empty string if not exited."""
         return self._meta.get("exit_reason", "")
-
 
 
 class DCSClient:

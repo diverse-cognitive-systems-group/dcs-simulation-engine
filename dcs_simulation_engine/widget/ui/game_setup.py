@@ -42,9 +42,7 @@ def build_game_setup(
                 )
                 spacer(12)
                 gr.Markdown("## Game Setup")
-                with gr.Group(
-                    visible=not bool(valid_pcs or valid_npcs)
-                ) as no_customization_group:
+                with gr.Group(visible=not bool(valid_pcs or valid_npcs)) as no_customization_group:
                     gr.Markdown(
                         """
                         *This game is already set up for you!* 
@@ -54,9 +52,7 @@ def build_game_setup(
                     )
                     pc_dropdown = gr.Dropdown(visible=False)
                     npc_dropdown = gr.Dropdown(visible=False)
-                with gr.Group(
-                    visible=bool(valid_pcs or valid_npcs)
-                ) as customization_group:
+                with gr.Group(visible=bool(valid_pcs or valid_npcs)) as customization_group:
                     gr.Markdown(
                         """
                         This game is configured to allow you customize the following:
@@ -71,23 +67,16 @@ def build_game_setup(
                                 label="Player Character",
                                 info="Choose the character you will be playing as.",
                                 choices=valid_pcs,
-                                value=(
-                                    random.choice(valid_pcs)[1] if valid_pcs else None
-                                ),
+                                value=(random.choice(valid_pcs)[1] if valid_pcs else None),
                                 interactive=True,
                             )
                     with gr.Group(visible=bool(valid_npcs)) as npc_dropdown_group:
                         with gr.Row():
                             npc_dropdown = gr.Dropdown(
                                 label="Non-Player Character",
-                                info=(
-                                    "Choose the character the "
-                                    "simulator will roleplay."
-                                ),
+                                info=("Choose the character the simulator will roleplay."),
                                 choices=valid_npcs,
-                                value=(
-                                    random.choice(valid_npcs)[1] if valid_npcs else None
-                                ),
+                                value=(random.choice(valid_npcs)[1] if valid_npcs else None),
                                 interactive=True,
                             )
                 spacer(8)

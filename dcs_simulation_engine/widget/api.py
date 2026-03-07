@@ -27,23 +27,15 @@ def _build_meta(run: RunManager) -> Dict[str, Any]:
         "exited": run.exited,
         "exit_reason": run.exit_reason,
         "saved": run.saved,
-        "output_path": (
-            str(run.state.get("output_path")) if run.state.get("output_path") else None
-        ),
+        "output_path": (str(run.state.get("output_path")) if run.state.get("output_path") else None),
     }
 
 
 def _build_character_summary(obj: Any) -> Dict[str, Any]:
     """Build character summary dict from various object types."""
-    hid = getattr(obj, "hid", None) or (
-        obj.get("hid") if isinstance(obj, Mapping) else None
-    )
-    name = getattr(obj, "name", None) or (
-        obj.get("name") if isinstance(obj, Mapping) else None
-    )
-    archetype = getattr(obj, "archetype", None) or (
-        obj.get("archetype") if isinstance(obj, Mapping) else None
-    )
+    hid = getattr(obj, "hid", None) or (obj.get("hid") if isinstance(obj, Mapping) else None)
+    name = getattr(obj, "name", None) or (obj.get("name") if isinstance(obj, Mapping) else None)
+    archetype = getattr(obj, "archetype", None) or (obj.get("archetype") if isinstance(obj, Mapping) else None)
     return {
         "hid": str(hid) if hid is not None else "",
         "name": name,
@@ -165,9 +157,7 @@ def play_run(
         # If last event was user, one extra step may be needed
         if not run.exited and run.state.get("events"):
             last = run.state["events"][-1]
-            if getattr(last, "type", None) == "user" or (
-                isinstance(last, dict) and last.get("type") == "user"
-            ):
+            if getattr(last, "type", None) == "user" or (isinstance(last, dict) and last.get("type") == "user"):
                 for _ in run.step(None):
                     pass
 

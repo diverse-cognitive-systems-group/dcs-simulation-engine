@@ -58,9 +58,7 @@ app.command("status")(status)
 @app.callback(invoke_without_command=False)
 def main(
     ctx: typer.Context,
-    quiet: bool = typer.Option(
-        False, "--quiet", "-q", help="Suppress non-error output."
-    ),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress non-error output."),
     verbose: int = typer.Option(
         0,
         "-v",

@@ -77,9 +77,7 @@ def build_form(access_gated: bool, form_config: Dict[str, Any]) -> FormUI:
                 )
                 spacer(8)
                 with gr.Row():
-                    token_continue_btn = gr.Button(
-                        "I have saved my token.", variant="primary"
-                    )
+                    token_continue_btn = gr.Button("I have saved my token.", variant="primary")
 
     return FormUI(
         form_group=form_group,
