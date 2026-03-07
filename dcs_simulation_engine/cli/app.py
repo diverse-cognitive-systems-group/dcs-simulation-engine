@@ -4,27 +4,55 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+import typer.rich_utils as ru
 
-from dcs_simulation_engine.cli.commands.creating import create_app
-from dcs_simulation_engine.cli.commands.deleting import delete_app
-from dcs_simulation_engine.cli.commands.listing import list_app
-from dcs_simulation_engine.cli.commands.running import run_app
-from dcs_simulation_engine.cli.commands.stopping import stop_app
-from dcs_simulation_engine.cli.commands.validating import validate_app
+from dcs_simulation_engine.cli.commands.list import list_app
+from dcs_simulation_engine.cli.commands.modify import modify_app
+from dcs_simulation_engine.cli.commands.run import run
+from dcs_simulation_engine.cli.commands.status import status
+from dcs_simulation_engine.cli.commands.stop import stop
 from dcs_simulation_engine.cli.common import GlobalOptions, version_callback
 from dcs_simulation_engine.helpers.logging_helpers import configure_logger
 
+# Default style overrides to neutral white/gray colors
+ru.STYLE_OPTION = "bold white"
+ru.STYLE_SWITCH = "bold white"
+ru.STYLE_NEGATIVE_OPTION = "bold white"
+ru.STYLE_NEGATIVE_SWITCH = "bold white"
+ru.STYLE_METAVAR = "bold white"
+ru.STYLE_METAVAR_SEPARATOR = "dim"
+ru.STYLE_USAGE = "white"
+ru.STYLE_USAGE_COMMAND = "bold"
+ru.STYLE_DEPRECATED = "white"
+ru.STYLE_DEPRECATED_COMMAND = "dim"
+ru.STYLE_HELPTEXT_FIRST_LINE = ""
+ru.STYLE_HELPTEXT = "dim"
+ru.STYLE_OPTION_HELP = ""
+ru.STYLE_OPTION_DEFAULT = "dim"
+ru.STYLE_OPTION_ENVVAR = "dim white"
+ru.STYLE_REQUIRED_SHORT = "white"
+ru.STYLE_REQUIRED_LONG = "dim white"
+ru.STYLE_OPTIONS_PANEL_BORDER = "dim"
+ru.STYLE_COMMANDS_PANEL_BORDER = "dim"
+ru.STYLE_COMMANDS_TABLE_FIRST_COLUMN = "bold white"
+ru.STYLE_ERRORS_PANEL_BORDER = "white"
+ru.STYLE_ERRORS_SUGGESTION = "dim"
+ru.STYLE_ABORTED = "white"
+
 app = typer.Typer(
+    rich_markup_mode="rich",
     add_completion=True,
     help="Command line interface for the DCS Simulation Engine.",
 )
 
+# sub-apps
 app.add_typer(list_app, name="list")
-app.add_typer(create_app, name="create")
-app.add_typer(validate_app, name="validate")
-app.add_typer(run_app, name="run")
-app.add_typer(delete_app, name="delete")
-app.add_typer(stop_app, name="stop")
+app.add_typer(modify_app, name="modify")
+
+# top level commands (no subcommand)
+app.command("run")(run)
+app.command("stop")(stop)
+app.command("status")(status)
 
 
 @app.callback(invoke_without_command=False)

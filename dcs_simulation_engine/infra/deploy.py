@@ -34,6 +34,11 @@ def deploy_app(
     )
 
 
+def destroy_deployment(app_name: str) -> None:
+    """Destroy a deployment."""
+    provider.destroy_app(app_name)
+
+
 def stop_deployment(
     *,
     deployment: str,
@@ -45,7 +50,9 @@ def stop_deployment(
     """Stop a deployment and optionally download logs + DB."""
     # best-effort logs
     if logs_out:
-        logs = provider.download_logs_json(app_name=deployment, no_tail=logs_no_tail)
+        logs = provider.download_logs_jsonl(
+            app_name=deployment, no_tail=logs_no_tail, out_path=logs_out
+        )
         logs_out.parent.mkdir(parents=True, exist_ok=True)
         logs_out.write_text(logs)
 

@@ -4,12 +4,11 @@ from types import SimpleNamespace
 from typing import Any, Dict
 
 import pytest
-from loguru import logger
-from mongomock import ObjectId
-
 from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.helpers import database_helpers as dbh
-from tests.helpers import patch_yml
+from loguru import logger
+from mongomock import ObjectId
+from tests.helpers import patch_yaml
 
 # TODO: update these tests to run the test the following character selectors instead of the ones they are currently using. Continue to use patch to modify the minimal config for each test.
 # - any pc/npc
@@ -55,10 +54,10 @@ def test_regex_and_ne(
               hid:
                 "$ne": "human-normative"
     """
-    patched_yml = patch_yml(game_config_minimal.path, patch)
-    logger.debug(f"Patched YAML path: {patched_yml.path}")
-    logger.debug(f"Patched YAML content:\n{patched_yml.data}")
-    cfg = GameConfig.from_yaml(patched_yml.path)
+    patched_yaml = patch_yaml(game_config_minimal.path, patch)
+    logger.debug(f"Patched YAML path: {patched_yaml.path}")
+    logger.debug(f"Patched YAML content:\n{patched_yaml.data}")
+    cfg = GameConfig.from_yaml(patched_yaml.path)
     assert cfg.name == "Minimal Test Game Config"
 
     # make sure human-normative is included in valid PCs
@@ -85,10 +84,10 @@ def test_select_characters_valid(
         valid:
           characters: { 'where': { hid: { $ne : 'human-normative' } } }
     """
-    patched_yml = patch_yml(game_config_minimal.path, patch)
-    logger.debug(f"Patched YAML path: {patched_yml.path}")
-    logger.debug(f"Patched YAML content:\n{patched_yml.data}")
-    cfg = GameConfig.from_yaml(patched_yml.path)
+    patched_yaml = patch_yaml(game_config_minimal.path, patch)
+    logger.debug(f"Patched YAML path: {patched_yaml.path}")
+    logger.debug(f"Patched YAML content:\n{patched_yaml.data}")
+    cfg = GameConfig.from_yaml(patched_yaml.path)
     assert cfg.name == "Minimal Test Game Config"
 
 
@@ -115,10 +114,10 @@ def test_get_valid_chars_with_valid_minus_invalid(
           # where player has played this character in a previous run of this game
           runs: { 'where': { "game_config.name": "Test Game" } }
     """
-    patched_yml = patch_yml(game_config_minimal.path, patch)
-    logger.debug(f"Patched YAML path: {patched_yml.path}")
-    logger.debug(f"Patched YAML content:\n{patched_yml.data}")
-    cfg = GameConfig.from_yaml(patched_yml.path)
+    patched_yaml = patch_yaml(game_config_minimal.path, patch)
+    logger.debug(f"Patched YAML path: {patched_yaml.path}")
+    logger.debug(f"Patched YAML content:\n{patched_yaml.data}")
+    cfg = GameConfig.from_yaml(patched_yaml.path)
 
     db = dbh.get_db()
 
@@ -178,10 +177,10 @@ def test_get_valid_chars_older_than(
         invalid: # older than 1 day
           runs: { 'where': { '_created_at': { '$lt': __delta_days-1__ } } }
     """
-    patched_yml = patch_yml(game_config_minimal.path, patch)
-    logger.debug(f"Patched YAML path: {patched_yml.path}")
-    logger.debug(f"Patched YAML content:\n{patched_yml.data}")
-    cfg = GameConfig.from_yaml(patched_yml.path)
+    patched_yaml = patch_yaml(game_config_minimal.path, patch)
+    logger.debug(f"Patched YAML path: {patched_yaml.path}")
+    logger.debug(f"Patched YAML content:\n{patched_yaml.data}")
+    cfg = GameConfig.from_yaml(patched_yaml.path)
 
     db = dbh.get_db()
     assert db.characters.count_documents({}) > 5  # sanity check

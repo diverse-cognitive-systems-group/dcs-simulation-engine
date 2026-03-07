@@ -9,6 +9,7 @@ import hmac
 import json
 import os
 import re
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import (
@@ -34,7 +35,7 @@ from pymongo.database import Database
 from pymongo.errors import CollectionInvalid, OperationFailure
 
 from dcs_simulation_engine.infra.docker import (
-    ensure_mongo_running,
+    ensure_mongo_service_up,
     get_mongodb_ip,
 )
 
@@ -96,8 +97,12 @@ def get_db() -> Database[Any]:
         return _db
 
     uri = os.getenv("MONGO_URI")
+    logger.debug(
+        f"Connecting to MongoDB with MONGO_URI={uri or 'not set, using default'}"
+    )
     if not uri:
-        ensure_mongo_running()
+        logger.debug("MONGO_URI not set")
+        ensure_mongo_service_up()
         # TODO: IP addresses can change if docker services restart, etc, this
         # may not always work as expected in all environments.
         ip = get_mongodb_ip()
@@ -216,6 +221,51 @@ def backup_root_dir(db_name: str) -> Path:
     return root
 
 
+def backup_collection_sqlite(db, coll_name: str, root: Path) -> None:
+    """Save docs into SQLite as Extended JSON so you can query locally via SQLite JSON functions."""
+    coll = db[coll_name]
+    out_path = root / f"{coll_name}.sqlite"
+
+    conn = sqlite3.connect(out_path)
+    cur = conn.cursor()
+
+    cur.execute("PRAGMA journal_mode=WAL;")
+    cur.execute("PRAGMA synchronous=NORMAL;")
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS docs (
+            _id TEXT PRIMARY KEY,
+            doc TEXT NOT NULL
+        )
+    """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_docs_id ON docs(_id)")
+
+    cursor = coll.find({}).batch_size(1000)
+    try:
+        batch = []
+        for doc in cursor:
+            doc_json = json_util.dumps(doc)  # preserves ObjectId/dates as extended JSON
+            _id = str(doc.get("_id"))
+            batch.append((_id, doc_json))
+            if len(batch) >= 1000:
+                cur.executemany(
+                    "INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch
+                )
+                conn.commit()
+                batch.clear()
+
+        if batch:
+            cur.executemany(
+                "INSERT OR REPLACE INTO docs(_id, doc) VALUES (?, ?)", batch
+            )
+            conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def backup_collection(db: Database, coll_name: str, root: Path) -> None:
     """Dump an existing collection to NDJSON + save index info."""
     coll = db[coll_name]
@@ -243,7 +293,7 @@ def load_seed_documents(path: Path) -> List[Dict[str, Any]]:
     """Load documents from a seed file."""
     text = path.read_text(encoding="utf-8").strip()
     if not text:
-        logger.warning(f"{path} is empty; skipping.")
+        logger.debug(f"{path} is empty; skipping.")
         return []
 
     if path.suffix.lower() == ".ndjson":
@@ -607,6 +657,17 @@ def list_players() -> List[Dict[str, Any]]:
     return players
 
 
+def list_runs() -> List[Dict[str, Any]]:
+    """Return list of all runs (non-PII fields only)."""
+    coll: Collection = get_db()[RUNS_COL]
+    cursor = coll.find({}, projection={"_id": 1})
+    runs = []
+    for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        runs.append(doc)
+    return runs
+
+
 def create_player(
     player_data: Dict[str, Any],
     *,
@@ -877,3 +938,37 @@ def user_matches_where(
     except Exception as e:
         logger.error(f"user_matches_where failed: {e}")
         return False
+
+
+def backup_db(outdir: Path, append_ts: bool = True) -> Path:
+    """Backup the entire MongoDB database to a directory."""
+    db = get_db()
+
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    if append_ts:
+        root = Path(outdir) / f"{ts}"
+    else:
+        root = Path(outdir) / "db"
+    root.mkdir(parents=True, exist_ok=False)
+
+    collections = sorted(db.list_collection_names())
+
+    for coll_name in collections:
+        backup_collection(db, coll_name, root)
+
+    manifest = {
+        "db_name": db.name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "collections": collections,
+        "format": {
+            "collection_dump": "<collection>.ndjson",
+            "indexes_dump": "<collection>.__indexes__.json",
+            "ndjson_encoding": "bson.json_util extended json",
+        },
+    }
+    (root / "__manifest__.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    return root

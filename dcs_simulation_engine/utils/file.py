@@ -23,3 +23,13 @@ def unique_fpath(path: Path) -> Path:
         if not candidate.exists():
             return candidate
         counter += 1
+
+
+def load_yaml(path: Path):
+    """Loads a YAML file and returns its contents as a dict."""
+    import yaml
+
+    data = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"Run config must be a YAML mapping/object: {path}")
+    return data

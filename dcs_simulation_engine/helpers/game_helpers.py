@@ -2,14 +2,55 @@
 
 from __future__ import annotations
 
+import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from loguru import logger
 from packaging.version import InvalidVersion, Version
 
 from dcs_simulation_engine.errors import GameValidationError
-from dcs_simulation_engine.utils.paths import package_games_dir
+from dcs_simulation_engine.utils.paths import package_games_dir, package_root
+
+IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
+
+
+class GameNameError(ValueError):
+    """Base class for game-name validation errors."""
+
+
+@dataclass(frozen=True)
+class BadGameNameError(GameNameError):
+    """Raised when a provided game name does not match any available games."""
+
+    game_name: str
+    available: list[str]
+
+    def __str__(self) -> str:
+        """Return a user-friendly error message."""
+        return (
+            f"Unknown game name {self.game_name!r}. "
+            f"Available games: {', '.join(self.available)}"
+        )
+
+
+def validate_game_name(game_name: Optional[str]) -> str:
+    """Validate that game name exists in list_games()."""
+    if game_name is None:
+        raise BadGameNameError(game_name="", available=[])
+
+    v = game_name.strip()
+    games = list_games()
+    available = sorted({name for (name, _author, _path, _ver, _desc) in games})
+
+    # case-insensitive match, but return canonical name
+    for name in available:
+        if name.lower() == v.lower():
+            return name
+
+    raise BadGameNameError(game_name=v, available=available)
 
 
 def validate_game_compiles(name: str) -> Path:
@@ -125,6 +166,28 @@ def list_games(
     return results
 
 
+def list_characters() -> list[dict]:
+    """Return available characters from seed data.
+
+    Useful for checking available characters when db is not live.
+    """
+    import json
+
+    pkg_root = package_root()
+    subfolder = "prod" if IS_PROD else "dev"
+    seeds_path = pkg_root.parent / "database_seeds" / subfolder / "characters.json"
+
+    if not seeds_path.exists():
+        raise FileNotFoundError(f"Character seed file not found: {seeds_path}")
+
+    data = json.loads(seeds_path.read_text(encoding="utf-8"))
+
+    if not isinstance(data, list):
+        raise ValueError("characters.json must contain a list of character objects")
+
+    return [c for c in data if isinstance(c, dict)]
+
+
 def get_game_config(game: str, version: str = "latest") -> str:
     """Return the path to a YAML game config.
 
@@ -146,7 +209,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
     """
     # First: treat `game` as a path
     possible_path = Path(game).expanduser()
-    if possible_path.is_file() and possible_path.suffix.lower() in {".yml", ".yaml"}:
+    if possible_path.is_file() and possible_path.suffix.lower() in {".yaml", ".yaml"}:
         return str(possible_path)
 
     # Otherwise: treat it as a built-in game name

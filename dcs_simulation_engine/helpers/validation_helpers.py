@@ -20,7 +20,8 @@ from typing import List
 
 def _is_yaml(p: Path) -> bool:
     """Check if a Path is a YAML file by extension."""
-    return p.is_file() and p.suffix.lower() in {".yml", ".yaml"}
+    # NOTE: intentionally reject .yml to keep consistent throughout codebase
+    return p.is_file() and p.suffix.lower() == ".yaml"
 
 
 def _match_any(name: str, patterns: List[str]) -> bool:
@@ -45,7 +46,7 @@ def _list_dir_yaml(dir_path: Path) -> List[Path]:
 #     If directory -> collect YAML files, apply include/exclude globs.
 #     Also auto-protect typical schema filenames from being validated.
 #     """
-#     schema_candidates = {schema_filename, ".schema.yml", "schema.yamale"}
+#     schema_candidates = {schema_filename, ".schema.yaml", "schema.yamale"}
 
 #     if target_path.is_file():
 #         return [target_path] if _is_yaml(target_path) else []
@@ -98,7 +99,7 @@ def _list_dir_yaml(dir_path: Path) -> List[Path]:
 #     target: str | Path,
 #     schema_path: str | Path | None = None,
 #     *,
-#     schema_filename: str = ".schema.yml",
+#     schema_filename: str = ".schema.yaml",
 #     includes: List[str] | None = None,
 #     excludes: List[str] | None = None,
 # ) -> Dict[Path, List[str]]:
@@ -150,7 +151,7 @@ def _list_dir_yaml(dir_path: Path) -> List[Path]:
 #     target: str | Path,
 #     schema_path: str | Path | None = None,
 #     *,
-#     schema_filename: str = ".schema.yml",
+#     schema_filename: str = ".schema.yaml",
 #     includes: List[str] | None = None,
 #     excludes: List[str] | None = None,
 # ) -> bool:
