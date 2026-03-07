@@ -17,10 +17,10 @@ access_settings:
 
       You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one's ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
 
-      Identifiable information is only collected for voluntary follow-up; it is otherwise anonymous. Any identifiable information will be coded. The risks involved are no greater than those involved in daily activities. You will receive one SONA credit for this study.    
+      Identifiable information is only collected for voluntary follow-up; it is otherwise anonymous. Any identifiable information will be coded. The risks involved are no greater than those involved in daily activities. You will receive one SONA credit for this study.
 
       We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact dcs@psych.gatech.edu
-      
+
       If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
     questions:
       - key: full_name
@@ -53,7 +53,7 @@ access_settings:
       - key: consent_to_followup
         label: Follow-ups
         type: checkboxes
-        options: 
+        options:
           - I consent to being contacted for a voluntary follow-up regarding this study.
         required: false
       - key: consent_signature
@@ -78,8 +78,8 @@ character_settings:
     valid:
       characters:
         where:
-          "$ne": 
-            hid: "human-normative" 
+          "$ne":
+            hid: "human-normative"
     invalid:
       runs:
         where:
@@ -89,10 +89,5 @@ character_settings:
           "context.npc.hid":
             "$exists": true
 
-graph_config:      
-  name: goal_horizon_graph
-  description: A graph for interacting with a character to understand a characters goals over multiple interactions.
-  nodes: []
-  edges:
-    - from: __START__
-      to: __END__
+### GAME CLASS ###
+game_class: dcs_simulation_engine.games.goal_horizon.GoalHorizonGame
