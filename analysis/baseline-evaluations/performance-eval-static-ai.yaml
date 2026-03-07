@@ -20,3 +20,6 @@ players:
   - id: "openrouter:anthropic-claude-2"
   - id: "openrouter:google-palm-2.0-pro"
   - id: "openrouter:deepseek-odin-1.0"
+
+# For each player complete all assignments (play all combinations of games and characters randomly shuffled)
+assignment_protocol: "static_ai_assignment_protocol.py"

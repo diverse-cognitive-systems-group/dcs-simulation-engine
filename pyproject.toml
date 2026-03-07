@@ -73,6 +73,7 @@ analysis = [
     "pandas>=3.0.1",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
+    "sentence-transformers>=5.2.3",
 ]
 
 # This allows you to defines "scripts" so that your package can install executables into the current

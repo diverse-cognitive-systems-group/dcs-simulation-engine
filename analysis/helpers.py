@@ -1,10 +1,357 @@
 """Analysis shared helper functions."""
 
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
+import requests
+from IPython.display import HTML, display
+from itables import show as _itables_show
+
+DEFAULT_MODEL = "openai/gpt-4o"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+
+def extract_feedback_per_run(runs_df: pd.DataFrame) -> pd.DataFrame:
+    """Return one row per feedback item / feedback-bearing response in runs_df.
+
+    Includes:
+    - run context: run_id, run name, player_id, timestamps
+    - character context: pc / npc ids and descriptions
+    - transcript: full state.history for the run
+    - feedback source and content:
+        * during_play_feedback from state.feedback[]
+        * completion_form answers (e.g. other_feedback, user_goal_inference)
+        * optional intake-form style fields if present on the row
+
+    Expected input:
+        runs_df produced from load_runs_ndjson(...), i.e. a normalized DataFrame
+        where nested top-level objects become dotted columns, while arrays like
+        state.history / feedback remain list-like objects.
+    """
+    out = []
+
+    def _safe_get(row, col, default=None):
+        return row[col] if col in row.index else default
+
+    def _is_nonempty(x):
+        if x is None:
+            return False
+        if isinstance(x, float) and pd.isna(x):
+            return False
+        if isinstance(x, str):
+            return x.strip() != ""
+        if isinstance(x, (list, dict, tuple, set)):
+            return len(x) > 0
+        return True
+
+    def _extract_form_answers(questions):
+        """Convert:
+            [{"key": "...", "text": "...", "answer": "..."}]
+        into:
+            [{"question_key": "...", "question_text": "...", "answer": "..."}]
+        """
+        results = []
+        if not isinstance(questions, list):
+            return results
+
+        for q in questions:
+            if not isinstance(q, dict):
+                continue
+            answer = q.get("answer")
+            if _is_nonempty(answer):
+                results.append(
+                    {
+                        "question_key": q.get("key"),
+                        "question_text": q.get("text"),
+                        "answer": answer,
+                    }
+                )
+        return results
+
+    for _, row in runs_df.iterrows():
+        run_id = _safe_get(row, "_id.$oid", _safe_get(row, "_id"))
+        transcript = _safe_get(row, "state.history", _safe_get(row, "history", []))
+
+        base = {
+            "run_id": run_id,
+            "run_name": _safe_get(row, "name"),
+            "player_id": _safe_get(row, "player_id"),
+            "start_ts": _safe_get(row, "start_ts"),
+            "end_ts": _safe_get(row, "end_ts"),
+            "start_dt": _safe_get(row, "start_dt"),
+            "end_dt": _safe_get(row, "end_dt"),
+            "runtime_seconds": _safe_get(row, "runtime_seconds"),
+            "runtime_human": _safe_get(row, "runtime_human"),
+            "turns": _safe_get(row, "turns"),
+            "exit_reason": _safe_get(row, "exit_reason", _safe_get(row, "state.exit_reason")),
+            "pc_hid": _safe_get(row, "context.pc.hid"),
+            "pc_description": _safe_get(row, "context.pc.short_description"),
+            "npc_hid": _safe_get(row, "context.npc.hid"),
+            "npc_description": _safe_get(row, "context.npc.short_description"),
+            "transcript": transcript,
+        }
+
+        # 1) During-play feedback: state.feedback or top-level feedback
+        raw_feedback = _safe_get(row, "feedback", _safe_get(row, "state.feedback", []))
+        if isinstance(raw_feedback, list):
+            for fb in raw_feedback:
+                if not isinstance(fb, dict):
+                    continue
+                content = fb.get("content")
+                if _is_nonempty(content):
+                    out.append(
+                        {
+                            **base,
+                            "feedback_source": "during_play_feedback",
+                            "feedback_key": None,
+                            "feedback_text": content,
+                            "feedback_timestamp": fb.get("timestamp"),
+                            "question_text": None,
+                        }
+                    )
+
+        # 2) Completion form answers
+        completion_questions = _safe_get(row, "state.forms.completion_form.questions", [])
+        for item in _extract_form_answers(completion_questions):
+            out.append(
+                {
+                    **base,
+                    "feedback_source": "completion_form",
+                    "feedback_key": item["question_key"],
+                    "feedback_text": item["answer"],
+                    "feedback_timestamp": None,
+                    "question_text": item["question_text"],
+                }
+            )
+
+        # 3) Optional intake / player-form text fields, if present as normalized columns
+        # Adjust/add keys here if your schema evolves.
+        optional_form_fields = [
+            "prior_experience",
+            "additional_comments",
+            "user.prior_experience",
+            "user.additional_comments",
+        ]
+        for field in optional_form_fields:
+            value = _safe_get(row, field)
+            if _is_nonempty(value):
+                out.append(
+                    {
+                        **base,
+                        "feedback_source": "intake_form",
+                        "feedback_key": field,
+                        "feedback_text": value,
+                        "feedback_timestamp": None,
+                        "question_text": None,
+                    }
+                )
+
+    return pd.DataFrame(out)
+
+
+def get_transcripts_from_runs_df(runs_df: pd.DataFrame) -> pd.DataFrame:
+    """Flatten run histories into a transcript DataFrame.
+    One row per message in state.history.
+    """
+    if "state.history" not in runs_df.columns:
+        raise ValueError("runs_df missing 'state.history' column")
+
+    run_id_col = "_id.$oid" if "_id.$oid" in runs_df.columns else "_id"
+
+    base_cols = [run_id_col, "player_id", "context.pc.hid", "context.npc.hid", "state.history"]
+    missing = [c for c in base_cols if c not in runs_df.columns]
+    if missing:
+        raise ValueError(f"runs_df missing required columns: {missing}")
+
+    df = runs_df[base_cols].copy()
+    df = df.rename(
+        columns={
+            run_id_col: "run_id",
+            "context.pc.hid": "pc",
+            "context.npc.hid": "npc",
+            "state.history": "history",
+        }
+    )
+
+    df = df.explode("history", ignore_index=True)
+
+    msg = pd.json_normalize(df["history"])
+    df = pd.concat([df.drop(columns="history"), msg], axis=1)
+
+    df = df.rename(
+        columns={
+            "type": "speaker",
+            "content": "text",
+        }
+    )
+
+    df["turn"] = df.groupby("run_id").cumcount() + 1
+
+    if "timestamp" not in df.columns:
+        df["timestamp"] = None
+
+    return df[
+        [
+            "run_id",
+            "player_id",
+            "pc",
+            "npc",
+            "turn",
+            "speaker",
+            "text",
+            "timestamp",
+        ]
+    ]
+
+
+def load_logs(logs_dir: str | Path) -> pd.DataFrame:
+    """Read every log file in a logs directory where each line is a JSON object.
+    like:
+        {"text": "...", "record": {...}}
+
+    Returns one row per log event with flattened fields so you can inspect
+    timestamps, levels, messages, file/function info, process/thread info, etc.
+    """
+    logs_dir = Path(logs_dir)
+    rows: list[dict] = []
+
+    for log_path in sorted(logs_dir.glob("*.log")):
+        with log_path.open("r", encoding="utf-8") as f:
+            for event_idx, line in enumerate(f):
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    rows.append(
+                        {
+                            "log_file": log_path.name,
+                            "log_path": str(log_path),
+                            "event_idx": event_idx,
+                            "parse_error": True,
+                            "raw_line": line,
+                        }
+                    )
+                    continue
+
+                record = obj.get("record", {}) or {}
+                level = record.get("level", {}) or {}
+                file_info = record.get("file", {}) or {}
+                process = record.get("process", {}) or {}
+                thread = record.get("thread", {}) or {}
+                elapsed = record.get("elapsed", {}) or {}
+                time_info = record.get("time", {}) or {}
+
+                row = {
+                    "log_file": log_path.name,
+                    "log_path": str(log_path),
+                    "event_idx": event_idx,
+                    "parse_error": False,
+                    "text": obj.get("text"),
+                    "message": record.get("message"),
+                    "exception": record.get("exception"),
+                    "extra": record.get("extra"),
+                    "function": record.get("function"),
+                    "module": record.get("module"),
+                    "logger_name": record.get("name"),
+                    "line": record.get("line"),
+                    "file_name": file_info.get("name"),
+                    "file_path": file_info.get("path"),
+                    "level": level.get("name"),
+                    "level_no": level.get("no"),
+                    "level_icon": level.get("icon"),
+                    "process_id": process.get("id"),
+                    "process_name": process.get("name"),
+                    "thread_id": thread.get("id"),
+                    "thread_name": thread.get("name"),
+                    "elapsed_seconds": elapsed.get("seconds"),
+                    "elapsed_repr": elapsed.get("repr"),
+                    "time_repr": time_info.get("repr"),
+                    "timestamp": time_info.get("timestamp"),
+                }
+
+                rows.append(row)
+
+    logs_df = pd.DataFrame(rows)
+
+    if logs_df.empty:
+        return logs_df
+
+    if "timestamp" in logs_df.columns:
+        logs_df["timestamp"] = pd.to_datetime(logs_df["timestamp"], unit="s", utc=True, errors="coerce")
+
+    if "time_repr" in logs_df.columns:
+        parsed = pd.to_datetime(logs_df["time_repr"], utc=True, errors="coerce")
+        logs_df["timestamp"] = logs_df["timestamp"].fillna(parsed)
+
+    logs_df = logs_df.sort_values(["log_file", "event_idx"]).reset_index(drop=True)
+    return logs_df
+
+
+def load_players_ndjson(path) -> pd.DataFrame:
+    """Load players.ndjson into a DataFrame (one row per player).
+
+    Rules:
+    - top-level scalar fields are kept as-is
+    - Mongo-style {'$oid': ...} / {'$date': ...} objects are unwrapped
+    - top-level form-field objects like {'key': ..., 'label': ..., 'answer': ...}
+      become column -> answer
+    """
+    path = Path(path)
+    rows = []
+
+    def _unwrap_special(x):
+        if isinstance(x, dict):
+            if "$oid" in x:
+                return x["$oid"]
+            if "$date" in x:
+                return pd.to_datetime(x["$date"], utc=True, errors="coerce")
+        return x
+
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            player = json.loads(line)
+            row = {}
+
+            for k, v in player.items():
+                # Mongo-style special values
+                if isinstance(v, dict) and ("$oid" in v or "$date" in v):
+                    row[k] = _unwrap_special(v)
+
+                # Form field object: use its answer
+                elif isinstance(v, dict) and "key" in v:
+                    row[k] = v.get("answer")
+
+                # Plain scalar top-level field
+                else:
+                    row[k] = v
+
+            rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def show(df: pd.DataFrame, **kwargs):
+    """Helper to show a DataFrame with nice defaults for this analysis."""
+    defaults = dict(
+        scrollY="500px",
+        scrollX=True,
+        paging=True,
+        pageLength=25,
+        columnDefs=[{"className": "dt-left", "targets": "_all"}],
+    )
+
+    options = {**defaults, **kwargs}  # kwargs override defaults
+    return _itables_show(df, **options)
 
 
 def human_duration(seconds: float) -> str:
@@ -196,41 +543,6 @@ def print_metadata_summary(path):
 
     if destroyed_dt:
         print(f"destroyed:      {destroyed_dt}")
-
-
-def load_logs(path):
-    """Load one log file or all .log files in a directory into a pandas DataFrame."""
-    path = Path(path)
-
-    if path.is_file():
-        files = [path]
-    else:
-        files = sorted(path.glob("*.log"))
-
-    rows = []
-
-    for log_file in files:
-        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
-            for i, line in enumerate(f, start=1):
-                rows.append(
-                    {
-                        "file": log_file.name,
-                        "line_no": i,
-                        "text": line.rstrip("\n"),
-                    }
-                )
-
-    return pd.DataFrame(rows)
-
-
-import os
-
-import pandas as pd
-import requests
-from IPython.display import HTML, display
-
-DEFAULT_MODEL = "openai/gpt-4o"
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 def message(
