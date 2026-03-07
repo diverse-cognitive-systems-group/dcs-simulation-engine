@@ -1,0 +1,24 @@
+# ================================================================
+#  Run Configuration — Baseline Performance Evaluation (Learning)
+# ================================================================
+#
+# This configuration specifies:
+#
+#   • No participant consent required
+#   • No expertise requirement
+#   • No pre-play form or onboarding flow
+#
+#   • Assignment protocol:
+#       - Single fixed character ID
+#       - Player may select any valid game
+#       - No character reassignment
+#
+#   • No automatic stop condition
+#
+# ================================================================
+
+players:
+  - id: "helpers.oe_player.py"
+
+# For each player, complete all assignments
+assignment_protocol: "helpers.oe_assignment_strategy.py"

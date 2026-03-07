@@ -1,0 +1,15 @@
+# ================================================================
+#  Run Configuration — Baseline Performance Evaluation (Learning Human)
+# ================================================================
+#
+# This configuration specifies:
+#
+#   • Player consent and expertise is required
+#
+#   • Assignment protocol:
+#       - Each player plays a game + character combination 3x
+#.      - Display evaluation result + feedback form after each playthrough
+#
+#   • Stop run when all games + character combinations are done
+#
+# ================================================================
