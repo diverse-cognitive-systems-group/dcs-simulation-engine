@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
 
 from loguru import logger
@@ -14,7 +15,6 @@ from pydantic import (
     model_validator,
 )
 
-from dcs_simulation_engine.core.simulation_graph import GraphConfig
 from dcs_simulation_engine.helpers import database_helpers as dbh
 from dcs_simulation_engine.utils.serde import SerdeMixin
 
@@ -152,13 +152,6 @@ VersionStr = Annotated[
 ]
 
 
-class SubgraphCustomizations(BaseModel):
-    """Customization options for the simulation subgraph."""
-
-    additional_validator_rules: Optional[str] = None
-    additional_updater_rules: Optional[str] = None
-
-
 class GameConfig(SerdeMixin, BaseModel):
     """Top-level configuration for the game."""
 
@@ -182,8 +175,16 @@ class GameConfig(SerdeMixin, BaseModel):
     # Character settings
     character_settings: CharacterSettings
 
-    subgraph_customizations: SubgraphCustomizations = Field(default_factory=SubgraphCustomizations)
-    graph_config: GraphConfig
+    # Game class: dotted import path to the Python class implementing this game,
+    # e.g. "dcs_simulation_engine.games.explore.ExploreGame"
+    game_class: str
+
+    def get_game_class_instance(self) -> Any:
+        """Dynamically import and instantiate the game class specified by game_class."""
+        module_path, class_name = self.game_class.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        cls = getattr(module, class_name)
+        return cls()
 
     def validate_mongo_queries(self) -> None:
         """Call server-side validation on all embedded selectors."""
@@ -287,7 +288,7 @@ class GameConfig(SerdeMixin, BaseModel):
     def is_player_allowed(self, player_id: Optional[str]) -> bool:
         """Check access via UNION(valid) - UNION(invalid) over `access_settings.user`.
 
-        Empty maps mean “no restriction”. If BOTH valid and invalid are empty,
+        Empty maps mean "no restriction". If BOTH valid and invalid are empty,
         allow any player (including None).
 
         Additionally: any collection with an EMPTY query (e.g. {}) matches everyone.
