@@ -1,3 +1,6 @@
+"""String constants for all game classes."""
+
+
 class Explore:
     """String constants for the Explore game."""
 
@@ -6,13 +9,17 @@ class Explore:
     There is no predefined objective or task in this game. You can just engage freely with the other character.
 
     ##### Rules
-    The only rules in this simulation are to stay within your character's abilities and make sure your inputs describe actions your character takes.
-    - For example, if your character is non-verbal, you can type actions like "I gesture towards the door" or "I point at the object".
+    The only rules in this simulation are to stay within your character's abilities and make sure
+    your inputs describe actions your character takes.
+    - For example, if your character is non-verbal, you can type actions like
+      "I gesture towards the door" or "I point at the object".
 
     ##### Commands
     Type '/help' to see this message again.
-    Type '/feedback' followed by your comments to submit feedback about the game. (Eg. '/feedback This reply doesn't make sense because...')
-    Type '/guess' when you think you understand the NPC's goal to end the interaction and submit your inference.
+    Type '/feedback' followed by your comments to submit feedback about the game.
+    (Eg. '/feedback This reply doesn't make sense because...')
+    Type '/guess' when you think you understand the NPC's goal to end the interaction
+    and submit your inference.
     Type '/exit' or '/quit' to leave the game without submitting an inference.
     Type '/abilities' to see your character's abilities.\
     """
@@ -29,7 +36,8 @@ class Explore:
     """
 
     ENTER_CONTENT = """\
-    *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*
+    *Welcome, in this game there is no predefined objective or task. You can just engage freely
+    with the other character by describing what actions your character takes.*
 
     - You are playing as: {{ pc.hid }} ({{ pc.short_description }})
     - The simulator is playing as: {{ npc.hid }} ({{ npc.short_description }})
@@ -50,7 +58,8 @@ class Foresight:
     HELP_CONTENT = """\
     Describe an action...(and optionally include a prediction about what the other character's response will be).
     - Eg. If your character can see and move you might say "I look around the room and walk to the door."
-    - Eg. If you want to include a prediction you might say "I look around the room and walk to the door, and I predict they will follow me."
+    - Eg. If you want to include a prediction you might say
+      "I look around the room and walk to the door, and I predict they will follow me."
 
     User '/complete' to end the game and submit your predictions.
 
@@ -59,7 +68,10 @@ class Foresight:
     """
 
     ENTER_CONTENT = """\
-    Welcome, in this game, you take on the role of a character whose aim is to understand the other character well enough to be able to predict their actions before they make them. Engage with the other character using your abilities and if/when you feel like you know the character well enough to predict their response well, state your prediction.
+    Welcome, in this game, you take on the role of a character whose aim is to understand the other
+    character well enough to be able to predict their actions before they make them. Engage with the
+    other character using your abilities and if/when you feel like you know the character well enough
+    to predict their response well, state your prediction.
 
     For example, you might say "I wave my hand." Or "I wave my hand and predict they will wave back."
 
@@ -91,11 +103,14 @@ class InferIntent:
 
     HELP_CONTENT = """\
     ##### Objective
-    Your task in this simulation is use your abilities to interact with another character and figure the the intention or goal they are trying to communicate. When you feel like you understand their goal, type "/guess" to end the interaction and submit your inference.
+    Your task in this simulation is use your abilities to interact with another character and figure
+    the intention or goal they are trying to communicate. When you feel like you understand their
+    goal, type "/guess" to end the interaction and submit your inference.
 
     ##### Rules
     Describe an action that makes sense in the context of the scene and uses your character's abilities.
-    - For example, if your character can see and move in a human-like way, you might say "I look around the room and walk to the door."
+    - For example, if your character can see and move in a human-like way, you might say
+      "I look around the room and walk to the door."
 
     ##### Commands
     Type '/help' to see this message again.
@@ -110,7 +125,10 @@ class InferIntent:
     """
 
     ENTER_CONTENT = """\
-    Welcome, in this game, you take on the role of a character whose aim is to use your abilities to interact with another character and figure the the intention or goal they are trying to communicate. When you feel like you understand their goal, type "/guess" to end the interaction and submit your inference.
+    Welcome, in this game, you take on the role of a character whose aim is to use your abilities
+    to interact with another character and figure the intention or goal they are trying to
+    communicate. When you feel like you understand their goal, type "/guess" to end the interaction
+    and submit your inference.
 
     Your character is: {{ pc.short_description }} {% if pc.hid != "human-normative" %}
     Abilities:

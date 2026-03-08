@@ -141,6 +141,8 @@ def llm_eval(
     stores it in state['scratchpad'][result_key].
 
     Args:
+        state: Current simulation graph state.
+        context: Runtime context schema with models and character info.
         template_name: Key into EVAL_TEMPLATES for the prompt template.
         model_key: Key into context['models'] for the LLM to use.
         guess_form: Name of the form in state['forms'] containing the guess.
