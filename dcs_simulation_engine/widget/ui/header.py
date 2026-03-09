@@ -3,8 +3,9 @@
 from typing import NamedTuple
 
 import gradio as gr
-
-from dcs_simulation_engine.core.game_config import GameConfig
+from dcs_simulation_engine.core.game_config import (
+    GameConfig,
+)
 
 
 class HeaderUI(NamedTuple):

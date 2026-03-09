@@ -7,14 +7,31 @@ functionality previously provided by the FastAPI endpoints.
 All functions return dicts that Gradio serializes to JSON automatically.
 """
 
-
-
 from typing import Any, Dict, List, Mapping, Optional
 
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
+from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.widget.services import (
+    get_registry,
+)
 from loguru import logger
 
-from dcs_simulation_engine.core.session_manager import SessionManager
-from dcs_simulation_engine.widget.services import get_registry
+# Set at widget startup via set_provider(). Required before create_run is called.
+_provider: DataProvider | None = None
+
+
+def set_provider(provider: DataProvider) -> None:
+    """Inject the data provider for all API functions."""
+    global _provider
+    _provider = provider
+
+
+def _get_provider() -> DataProvider:
+    if _provider is None:
+        raise RuntimeError("API data provider not set. Call api.set_provider() at startup.")
+    return _provider
 
 
 def _build_meta(run: SessionManager) -> Dict[str, Any]:
@@ -64,6 +81,7 @@ def create_run(
     try:
         run = SessionManager.create(
             game=game,
+            provider=_get_provider(),
             source=source,
             pc_choice=pc_choice,
             npc_choice=npc_choice,

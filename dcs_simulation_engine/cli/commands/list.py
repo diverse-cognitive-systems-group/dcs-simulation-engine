@@ -1,13 +1,14 @@
 """CLI commands for listing resources."""
 
 import typer
-from rich.table import Table
-
 from dcs_simulation_engine.cli.common import echo
 from dcs_simulation_engine.helpers.game_helpers import (
     list_characters as _list_characters,
+)
+from dcs_simulation_engine.helpers.game_helpers import (
     list_games as _list_games,
 )
+from rich.table import Table
 
 list_app = typer.Typer(help="List available games and characters.")
 

@@ -1,12 +1,12 @@
 """Consent form UI components."""
 
-
-
 from typing import Any, Dict, List, NamedTuple
 
 import gradio as gr
-
-from dcs_simulation_engine.widget.helpers import make_component, spacer
+from dcs_simulation_engine.widget.helpers import (
+    make_component,
+    spacer,
+)
 
 
 class FormUI(NamedTuple):

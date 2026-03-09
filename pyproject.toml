@@ -17,10 +17,10 @@ classifiers = [
 # ! NOTE: To change a dependency to a local version, use the following syntax:
 # "my-package @ git+file:///path/to/your/package"
 dependencies = [
+  "bcrypt (>=4.0.0,<5.0.0)",
   "dotenv (>=0.9.9,<0.10.0)",
   "gradio (==6.5.1)",
   "loguru (>=0.7.3,<0.8.0)",
-  "mnemonic (>=0.21,<0.22)",
   "openai (>=1.99.9,<2.0.0)",
   "pydantic (>=2.11.9,<3.0.0)",
   "pydantic-settings (>=2.10.1,<3.0.0)",
@@ -103,9 +103,18 @@ addopts = [
   "-x" # stop tests after first failure
 ]
 
+[tool.isort]
+combine_as_imports = true
+line_length = 60
+profile = "black"
+
+
 [tool.ruff]
 line-length = 120
 src = ["dcs_simulation_engine", "tests"]
+exclude = [
+  "**/*.ipynb", # all notebooks
+]
 
 [tool.ruff.lint]
 exclude = [
@@ -120,7 +129,9 @@ select = [
 ]
 
 [tool.ruff.lint.isort]
-combine-as-imports = true
+case-sensitive = true
+default-section = "first-party"
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

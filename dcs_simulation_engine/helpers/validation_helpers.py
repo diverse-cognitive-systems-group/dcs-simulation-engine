@@ -11,8 +11,6 @@ Generic YAML validation helpers using Yamale.
 - Returns structured results to the caller (script does the printing/exit).
 """
 
-
-
 import fnmatch
 from pathlib import Path
 from typing import List

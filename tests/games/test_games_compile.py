@@ -5,17 +5,18 @@ can be compiled (i.e., a SessionManager can be created) without raising exceptio
 Each file is shown as a separate pytest case via parametrization.
 """
 
-
-
 from pathlib import Path
 from typing import NewType
 
 import pytest
-from dcs_simulation_engine.core.game_config import GameConfig
-from dcs_simulation_engine.core.session_manager import SessionManager
-from loguru import logger
-
+from dcs_simulation_engine.core.game_config import (
+    GameConfig,
+)
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
 from helpers import discover_yaml_files
+from loguru import logger
 
 #: Strong alias for paths to game config files.
 GameConfigPath = NewType("GameConfigPath", Path)
@@ -33,7 +34,7 @@ def test_games_directory_not_empty() -> None:
 
 @pytest.mark.compile
 @pytest.mark.parametrize("cfg_path", YAML_FILES, ids=[p.name for p in YAML_FILES])
-def test_all_games_compile(cfg_path: Path) -> None:
+def test_all_games_compile(cfg_path: Path, mongo_provider) -> None:
     """For each config, ensure a SessionManager can be created successfully.
 
     Old-style YAMLs with unknown fields (graph_config, subgraph_customizations)
@@ -44,6 +45,7 @@ def test_all_games_compile(cfg_path: Path) -> None:
         game_config = GameConfig.from_yaml(cfg_path)
         SessionManager.create(
             game=game_config,
+            provider=mongo_provider,
             source="pytest",
             pc_choice=None,
             npc_choice=None,

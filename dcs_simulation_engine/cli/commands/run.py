@@ -4,10 +4,10 @@ import os
 from typing import Optional
 
 import typer
-from gradio.themes import Default
-from loguru import logger
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
+from dcs_simulation_engine.cli.bootstrap import (
+    create_provider,
+    create_provider_admin,
+)
 from dcs_simulation_engine.cli.common import console, step
 from dcs_simulation_engine.helpers.game_helpers import (
     BadGameNameError,
@@ -22,23 +22,43 @@ from dcs_simulation_engine.helpers.run_helpers import (
     update_run,
     validate_run_name,
 )
-from dcs_simulation_engine.widget.widget import build_widget_with_api
+from dcs_simulation_engine.widget import (
+    api as widget_api,
+)
+from dcs_simulation_engine.widget import (
+    handlers as widget_handlers,
+)
+from dcs_simulation_engine.widget.widget import (
+    build_widget_with_api,
+)
+from gradio.themes import Default
+from loguru import logger
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
 
-def _run_local(run_name: str, game_name: str, status: Optional[STATUS] = None) -> None:
+def _run_local(
+    run_name: str,
+    game_name: str,
+    status: Optional[STATUS] = None,
+    mongo_uri: Optional[str] = None,
+) -> None:
     """Run the simulation engine locally."""
     try:
+        provider = create_provider(mongo_uri=mongo_uri)
+
         # no existing run with this name -> must initialize db and create new run
         if not status:
             force_db_init = not IS_PROD
             with step("Starting database"):
-                dbh.init_or_seed_database(force=force_db_init)
+                create_provider_admin(provider).init_or_seed_database(force=force_db_init)
+
+        widget_handlers.set_provider(provider)
+        widget_api.set_provider(provider)
 
         # start the widget
         with step("Starting widget"):
-            gradio_app = build_widget_with_api(game_name=game_name, banner=run_name)
+            gradio_app = build_widget_with_api(game_name=game_name, banner=run_name, provider=provider)
 
             server = "127.0.0.1"
             port = 8080
@@ -89,7 +109,10 @@ def _run_local(run_name: str, game_name: str, status: Optional[STATUS] = None) -
 def _run_fly(run_name: str, game_name: str) -> None:
     """Dispatch Fly deployments for each game."""
     try:
-        from dcs_simulation_engine.infra.fly import FlyError, deploy_app
+        from dcs_simulation_engine.infra.fly import (
+            FlyError,
+            deploy_app,
+        )
     except Exception as e:
         raise typer.BadParameter(
             "Fly provider selected but Fly deployment support isn't available/importable. "
@@ -144,6 +167,8 @@ def run(
     - Running only one local instance at a time is supported.
     - Multiple remote (e.g. Fly) deployments are supported.
     """
+    mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
+
     # 0) Validate run name
     try:
         run_name = validate_run_name(run_name)
@@ -182,7 +207,7 @@ def run(
         if deploy:
             console.print("Not implemented.", style="error")
             raise typer.Exit(code=1)
-        _run_local(run_name, game_name, status=None)
+        _run_local(run_name, game_name, status=None, mongo_uri=mongo_uri)
         return
 
     # 5) Run exists -> handle status
@@ -206,7 +231,7 @@ def run(
             console.print("Not implemented.", style="error")
             raise typer.Exit(code=1)
 
-        _run_local(run_name, game_name, status=status)
+        _run_local(run_name, game_name, status=status, mongo_uri=mongo_uri)
         return
 
     console.print(f"Run '{run_name}' is in an unknown status: {status}", style="error")

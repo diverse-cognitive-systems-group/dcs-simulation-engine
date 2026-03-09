@@ -1,14 +1,26 @@
 """Helper functions for widget."""
 
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Tuple,
+)
 
 import gradio as gr
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
+from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.widget.constants import (
+    USER_FRIENDLY_EXC,
+)
+from dcs_simulation_engine.widget.session_state import (
+    SessionState,
+)
 from loguru import logger
-
-from dcs_simulation_engine.core.session_manager import SessionManager
-from dcs_simulation_engine.widget.constants import USER_FRIENDLY_EXC
-from dcs_simulation_engine.widget.session_state import SessionState
 
 
 def cleanup(state: SessionState | gr.State) -> None:
@@ -99,7 +111,7 @@ def stream_msg(message: str) -> Iterator[str]:
         yield partial
 
 
-def create_run(state: SessionState, token_value: Optional[str] = None) -> SessionManager:
+def create_run(state: SessionState, provider: DataProvider) -> SessionManager:
     """Create a new SessionManager and return it."""
     if "game_config" not in state:
         logger.error("App state missing game_config in create_run.")
@@ -116,6 +128,7 @@ def create_run(state: SessionState, token_value: Optional[str] = None) -> Sessio
     try:
         run = SessionManager.create(
             game=game_config,
+            provider=provider,
             source="widget",
             pc_choice=state["pc_choice"],
             npc_choice=state["npc_choice"],
