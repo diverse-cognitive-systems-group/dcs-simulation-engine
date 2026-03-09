@@ -10,27 +10,31 @@ This test suite validates the infer-intent game's unique mechanics:
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
-import dcs_simulation_engine.helpers.database_helpers as dbh
 import pytest
 from bson import ObjectId
-from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
+from dcs_simulation_engine.dal.mongo.const import (
+    MongoColumns,
+)
 
 # Test player ID for infer-intent tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
 
 
 @pytest.fixture(autouse=True)
-def seed_consenting_player(_isolate_db_state):
+def seed_consenting_player(_isolate_db_state, mongo_provider):
     """Seed a player with consent signature for infer-intent game access."""
-    db = dbh.get_db()
-    db[dbh.PLAYERS_COL].insert_one({
-        "_id": TEST_PLAYER_ID,
-        "consent_signature": {
-            "answer": ["I confirm that the information I have provided is true..."]
-        },
-        "full_name": "Test Player",
-        "email": "test@example.com",
-    })
+    db = mongo_provider.get_db()
+    db[MongoColumns.PLAYERS].insert_one(
+        {
+            "_id": TEST_PLAYER_ID,
+            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
+            "full_name": "Test Player",
+            "email": "test@example.com",
+        }
+    )
     yield
 
 
@@ -44,10 +48,11 @@ INFER_INTENT_TEST_INPUTS = [
 
 
 @pytest.mark.functional
-def test_infer_intent_initialization(patch_llm_client, _isolate_db_state):
+def test_infer_intent_initialization(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test infer-intent game initializes correctly with SessionManager."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -58,10 +63,11 @@ def test_infer_intent_initialization(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_state):
+def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test ENTER step produces welcome message and AI opening."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -76,10 +82,11 @@ def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_state)
 
 
 @pytest.mark.functional
-def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state):
+def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /guess command triggers goal-inference question."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -98,10 +105,11 @@ def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_infer_intent_help_command(patch_llm_client, _isolate_db_state):
+def test_infer_intent_help_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /help command returns game instructions."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -117,10 +125,11 @@ def test_infer_intent_help_command(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state):
+def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /abilities command returns character abilities."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -136,10 +145,11 @@ def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state):
+def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test multi-turn simulation accumulates events correctly."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -157,19 +167,18 @@ def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state):
         ai_events = [e for e in events if e.get("type") == "ai"]
         assert len(ai_events) > 0, f"Turn {turn_num}: Expected AI response event"
 
-        assert len(session._events) > prev_event_count, (
-            f"Turn {turn_num}: _events should grow after each step"
-        )
+        assert len(session._events) > prev_event_count, f"Turn {turn_num}: _events should grow after each step"
 
     assert not session.exited, "Session should still be active"
     assert session.turns == turns_after_enter + len(INFER_INTENT_TEST_INPUTS)
 
 
 @pytest.mark.functional
-def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state):
+def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test 2-step completion form: /guess -> goal inference -> other feedback -> exit."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -198,10 +207,11 @@ def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state):
+def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test infer-intent game sessions can be exited and saved."""
     session = SessionManager.create(
         game="Infer Intent",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),

@@ -4,12 +4,19 @@ import os
 from typing import Any, Dict
 
 import typer
+from dcs_simulation_engine.cli.common import step
+from dcs_simulation_engine.helpers.run_helpers import (
+    load_runs,
+    run_status,
+    run_uptime,
+)
+from dcs_simulation_engine.utils.misc import (
+    as_str,
+    fmt_dt,
+    parse_iso,
+)
 from rich.console import Console
 from rich.table import Table
-
-from dcs_simulation_engine.cli.common import step
-from dcs_simulation_engine.helpers.run_helpers import load_runs, run_status, run_uptime
-from dcs_simulation_engine.utils.misc import as_str, fmt_dt, parse_iso
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 console = Console()

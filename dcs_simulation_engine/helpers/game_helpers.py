@@ -1,18 +1,18 @@
 """Helpers for games."""
 
-
-
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import yaml
+from dcs_simulation_engine.errors import GameValidationError
+from dcs_simulation_engine.utils.paths import (
+    package_games_dir,
+    package_root,
+)
 from loguru import logger
 from packaging.version import InvalidVersion, Version
-
-from dcs_simulation_engine.errors import GameValidationError
-from dcs_simulation_engine.utils.paths import package_games_dir, package_root
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
@@ -52,7 +52,9 @@ def validate_game_name(game_name: Optional[str]) -> str:
 
 def validate_game_compiles(name: str) -> Path:
     """Validate that a game config compiles without errors."""
-    from dcs_simulation_engine.core.run_manager import RunManager
+    from dcs_simulation_engine.core.run_manager import (
+        RunManager,
+    )
 
     logger.debug(f"Validating game config for {name!r}")
 

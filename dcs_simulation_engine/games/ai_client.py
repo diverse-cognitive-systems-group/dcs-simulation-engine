@@ -13,10 +13,12 @@ import os
 from typing import Any
 
 import httpx
+from dcs_simulation_engine.core.constants import (
+    OPENROUTER_BASE_URL,
+)
+from dcs_simulation_engine.dal.base import CharacterRecord
 from jinja2.sandbox import SandboxedEnvironment
 from loguru import logger
-
-from dcs_simulation_engine.core.constants import OPENROUTER_BASE_URL
 
 DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
@@ -172,8 +174,8 @@ class ValidatorClient:
 class ScorerClient:
     """One-shot stateless client that scores a player's goal inference against the NPC profile."""
 
-    def __init__(self, npc: dict[str, Any], model: str = DEFAULT_MODEL) -> None:
-        """Initialise with NPC character dict and model identifier."""
+    def __init__(self, npc: CharacterRecord, model: str = DEFAULT_MODEL) -> None:
+        """Initialise with NPC character record and model identifier."""
         self._npc = npc
         self._model = model
 
@@ -183,8 +185,8 @@ class ScorerClient:
             SandboxedEnvironment()
             .from_string(_INFERENCE_SCORER_TEMPLATE)
             .render(
-                npc_long_description=self._npc.get("long_description", ""),
-                npc_abilities=self._npc.get("abilities", ""),
+                npc_long_description=self._npc.data.get("long_description", ""),
+                npc_abilities=self._npc.data.get("abilities", ""),
                 transcript=transcript,
                 guess=guess,
             )

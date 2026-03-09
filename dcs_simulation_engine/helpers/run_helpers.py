@@ -1,7 +1,5 @@
 """Helper functions for managing CLI DCS Simulation Engine run instances."""
 
-
-
 import json
 import re
 import time
@@ -9,14 +7,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from loguru import logger
-
-from dcs_simulation_engine.core.constants import OUTPUT_FPATH
+from dcs_simulation_engine.core.constants import (
+    OUTPUT_FPATH,
+)
 from dcs_simulation_engine.helpers.logging_helpers import (
     add_run_logger,
     remove_run_logger,
 )
 from dcs_simulation_engine.utils.paths import package_root
+from loguru import logger
 
 RUNS_FILE = package_root() / ".dcs_se_runs"
 RUN_FILE = "metadata.json"

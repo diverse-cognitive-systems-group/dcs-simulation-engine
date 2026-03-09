@@ -5,11 +5,13 @@ multiple conversation turns to saving, without requiring external API calls.
 """
 
 import pytest
-from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
 
 
 @pytest.mark.functional
-def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
+def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test complete simulation flow: init -> 10 turns -> save.
 
     This test validates:
@@ -26,7 +28,7 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
         -> Verify events at each step -> Exit -> Verify exited -> Save
     """
     session = SessionManager.create(
-        game="explore", pc_choice="human-normative", npc_choice="flatworm"
+        game="explore", provider=mongo_provider, pc_choice="human-normative", npc_choice="flatworm"
     )
 
     assert not session.exited, "Session should not be exited initially"
@@ -72,9 +74,7 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
         assert ai_events[0]["content"] == "The flatworm moves slowly across the surface."
 
         # Events should accumulate
-        assert len(session._events) > prev_event_count, (
-            f"Turn {turn_num}: _events should grow after each step"
-        )
+        assert len(session._events) > prev_event_count, f"Turn {turn_num}: _events should grow after each step"
 
         # Turn count should increment
         assert session.turns == turn_num + 1, (

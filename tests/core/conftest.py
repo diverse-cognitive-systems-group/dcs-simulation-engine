@@ -6,8 +6,6 @@ from typing import Callable
 
 import pytest
 
-from tests.helpers import patch_yaml
-
 
 @pytest.fixture
 def game_config_minimal(
@@ -19,19 +17,8 @@ def game_config_minimal(
     name: Minimal Test Game Config
     version: 1.0.0
     description: A minimal game config for testing.
-    access_settings:
-      user:
-        valid:
-          players: {}
     data_collection_settings:
       save_runs: False
-    character_settings:
-      pc:
-        valid:
-          characters: {}
-      npc:
-        valid:
-          characters: {}
     game_class: dcs_simulation_engine.games.explore.ExploreGame
     """
     game_config_path = base / "game_config_minimal.yaml"

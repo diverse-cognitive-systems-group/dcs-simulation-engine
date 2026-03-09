@@ -7,12 +7,7 @@ description: |
   how quickly and accurately players learn to model other cognitive systems.
 
 access_settings:
-  user:
-    valid:
-      players:
-        where:
-          consent_signature.answer:
-            "$exists": true
+  require_consent_signature: true
   new_player_form:
     preamble: |
       # Informed Consent for Research Study Participation
@@ -68,18 +63,11 @@ access_settings:
 data_collection_settings:
   save_runs: true
 
-character_settings:
+character_selection:
   pc:
-    valid:
-      characters: { "where": { "hid": "human-normative" } }
+    include_hids: [human-normative]
   npc:
-    valid:
-      characters: {}
-    invalid:
-      runs:
-        where:
-          player_id: player_id
-          game_config.name: "Foresight"
+    exclude_seen_for_game: Foresight
 
 stopping_conditions:
   runtime_seconds: [">=3600"]

@@ -19,7 +19,14 @@ x5 = X.load_yaml("system.yaml")
 """
 
 from pathlib import Path
-from typing import Any, Mapping, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Mapping,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import yaml
 from loguru import logger

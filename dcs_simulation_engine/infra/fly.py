@@ -8,13 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dotenv import dotenv_values, load_dotenv
-from loguru import logger
-
 from dcs_simulation_engine.infra.toml import (
     update_app_and_region,
     update_process_cmd,
 )
+from dotenv import dotenv_values, load_dotenv
+from loguru import logger
 
 
 class FlyError(RuntimeError):
