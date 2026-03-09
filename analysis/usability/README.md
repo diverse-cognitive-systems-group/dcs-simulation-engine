@@ -1,36 +1,48 @@
 # Usability Analysis
 
-An analysis of interfaces to ensure they are easy to use, understand, and reduce usability related confounds prior to downstream experimental usage. 
+Contains
+- thematic user analysis
+- system performance analyses (latency, failures, etc.)
+
+## Purpose
+Reduce usability related confounds prior to downstream experimental usage.
 
 ## Workflow
 
-Upon major interface changes, re-run the usability analysis as follows:
+*NOTE: this workflow is for DCS Usability Study: Component A (GUI). For component B (CLI + API), the workflow is specified in the Study document.*
 
-1) Execute the run config
+Rerun if codebase changes impact the interfaces or system process/performance.
 
-Run execution uses the installed dcs-se from this run’s environment. It produces results and metadata for reproducibility.
+1) Execute run
+
+This run config produces results for reproducibility + analysis. It specifies:
+- require participant/player consent
+- an assignment protocol: assign games + characters using random unique assignment (no player-game repeats)
+- allow each player to play 1 game max
+- stop when each game has 5 unique players
 
 ```sh
-dcs run --config run.yaml
+# Run dcs-se with usability run config
+dcs run --run-name usability-ca --game-name "infer intent" --deploy
+
+# Check status (# players, games, etc.)
+dcs status
+
+# Stop when each game has 5 unique players
+dcs stop
 ```
 
 Outputs:
-	•	results/ → full run data (ignored; may contain PII)
-	•	metrics.json → summarized results (tracked)
-	•	run.meta.json → metadata for reproducibility
+- results/ → full run data (ignored; may contain PII)
 
 ⸻
 
 2) Move results to secure storage
 
-If results contain sensitive data (PII, human consent forms, etc.), move them to secure storage and update run.meta.json with the new location.
+If results contain sensitive data (PII, human consent forms, etc.), move them to secure storage.
 
 Perform analysis from secure storage mount.
 
 4) Analyze results
 
-Analysis is executed in the same run environment (so notebooks have the right deps):
-
-```sh
-uv run jupyter lab
-```
+Run analysis notebooks from results

@@ -65,6 +65,7 @@ def add_run_logger(run_name: str, run_results_dir: Path) -> int:
 
     sink_id = logger.add(
         sink=str(run_log_path),
+        serialize=True,
         level="DEBUG",
         format=("{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"),
         rotation="00:00",

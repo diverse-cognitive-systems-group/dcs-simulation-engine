@@ -9,7 +9,7 @@ from dcs_simulation_engine.helpers.game_helpers import (
     list_games as _list_games,
 )
 
-list_app = typer.Typer(help="List resources (games, characters, players, runs).")
+list_app = typer.Typer(help="List available games and characters.")
 
 
 @list_app.command("games")

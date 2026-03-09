@@ -1,0 +1,14 @@
+# ================================================================
+#  Run Configuration — Baseline Performance Evaluation (Static Human)
+# ================================================================
+#
+# This configuration specifies:
+#
+#   • Player consent and expertise is required
+#
+#   • Assignment protocol:
+#       - Each player plays a single game + character combination
+#
+#   • Stop when all games + character combinations are done
+#
+# ================================================================
