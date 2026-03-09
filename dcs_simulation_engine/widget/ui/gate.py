@@ -3,7 +3,6 @@
 from typing import NamedTuple
 
 import gradio as gr
-
 from dcs_simulation_engine.widget.constants import GATE_MD
 from dcs_simulation_engine.widget.helpers import spacer
 

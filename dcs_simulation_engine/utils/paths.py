@@ -3,7 +3,9 @@
 from importlib import resources
 from pathlib import Path
 
-from dcs_simulation_engine.utils.package import get_package_name
+from dcs_simulation_engine.utils.package import (
+    get_package_name,
+)
 
 
 def package_root() -> Path:

@@ -11,9 +11,7 @@ GAMES_DIR = Path(__file__).parent.parent / "games"
 
 
 @pytest.fixture
-def echo_game(
-    write_yaml: Callable[[Path, str], Path], tmp_path_factory: pytest.TempPathFactory
-) -> SimpleNamespace:
+def echo_game(write_yaml: Callable[[Path, str], Path], tmp_path_factory: pytest.TempPathFactory) -> SimpleNamespace:
     """Return a yaml file of a simple echo game."""
     base = tmp_path_factory.mktemp("cfg_minimal")
     echo_yaml = """
@@ -51,7 +49,5 @@ def echo_game(
 @pytest.fixture(scope="module")
 def games_fpaths() -> list[Path]:
     """Return all yaml/yaml files under games/ sorted."""
-    files = [
-        p for p in GAMES_DIR.rglob("*") if p.is_file() and p.suffix.lower() in YAML_EXTS
-    ]
+    files = [p for p in GAMES_DIR.rglob("*") if p.is_file() and p.suffix.lower() in YAML_EXTS]
     return sorted(files)

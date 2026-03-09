@@ -6,8 +6,7 @@ not arbitrary brace sequences.
 """
 # ruff: noqa: E501  — prompt strings are intentionally long prose
 
-from typing import Any
-
+from dcs_simulation_engine.dal.base import CharacterRecord
 from jinja2.sandbox import SandboxedEnvironment
 
 _jinja_env = SandboxedEnvironment()
@@ -96,20 +95,20 @@ Output format: {
 """
 
 
-def build_updater_prompt(pc: dict[str, Any], npc: dict[str, Any], additional_rules: str = "") -> str:
-    """Render the updater system prompt from PC/NPC character dicts."""
+def build_updater_prompt(pc: CharacterRecord, npc: CharacterRecord, additional_rules: str = "") -> str:
+    """Render the updater system prompt from PC/NPC character records."""
     return _jinja_env.from_string(_UPDATER_SYSTEM_TEMPLATE).render(
-        pc_hid=pc.get("hid", ""),
-        pc_short_description=pc.get("short_description", ""),
-        npc_hid=npc.get("hid", ""),
-        npc_short_description=npc.get("short_description", ""),
-        npc_long_description=npc.get("long_description", ""),
-        npc_abilities=npc.get("abilities", ""),
+        pc_hid=pc.hid,
+        pc_short_description=pc.short_description,
+        npc_hid=npc.hid,
+        npc_short_description=npc.short_description,
+        npc_long_description=npc.data.get("long_description", ""),
+        npc_abilities=npc.data.get("abilities", ""),
         additional_updater_rules=additional_rules,
     )
 
 
-def build_validator_prompt(pc: dict[str, Any], npc: dict[str, Any], additional_rules: str = "") -> str:  # noqa: ARG001
+def build_validator_prompt(pc: CharacterRecord, npc: CharacterRecord, additional_rules: str = "") -> str:  # noqa: ARG001
     """Return the validator system prompt template string.
 
     The returned string still contains a {{ user_input }} Jinja2 placeholder
@@ -123,7 +122,7 @@ def build_validator_prompt(pc: dict[str, Any], npc: dict[str, Any], additional_r
     # Since Jinja2 variables are not brace-based, character data with literal
     # { } characters is passed through safely.
     partial = _jinja_env.from_string(_VALIDATOR_SYSTEM_TEMPLATE).render(
-        pc_abilities=pc.get("abilities", ""),
+        pc_abilities=pc.data.get("abilities", ""),
         additional_validator_rules=additional_rules,
         # Pass user_input as a Jinja2 expression that re-emits itself so the
         # returned string still has a {{ user_input }} token for ValidatorClient.

@@ -3,7 +3,6 @@
 from typing import NamedTuple
 
 import gradio as gr
-
 from dcs_simulation_engine.widget.handlers import (
     process_new_user_chat_message,
     validate_chat_input,

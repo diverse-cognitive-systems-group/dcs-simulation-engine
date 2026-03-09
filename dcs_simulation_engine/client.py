@@ -18,9 +18,8 @@ Typical usage::
 
 from typing import Any, Dict, Optional, Self
 
-from gradio_client import Client
-
 from dcs_simulation_engine.errors import DCSError
+from gradio_client import Client
 
 
 def _check_error(result: Dict[str, Any]) -> Dict[str, Any]:

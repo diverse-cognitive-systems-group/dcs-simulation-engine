@@ -38,9 +38,7 @@ extra: value
     assert "doesn't match the expected structure" in msg
     assert "Missing required field: `name`" in msg
     # accept either our friendly wording or Pydantic's native text with the location
-    assert ("Wrong type at `count`" in msg) or (
-        "Input should be a valid integer" in msg and "at `count`" in msg
-    )
+    assert ("Wrong type at `count`" in msg) or ("Input should be a valid integer" in msg and "at `count`" in msg)
     assert "Unknown field at `extra`" in msg
     # sanity check that tip line shows up
     assert "Tip:" in msg

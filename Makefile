@@ -4,15 +4,18 @@
 
 # Run all linting checks (on the dcs_simulation_engine/ package here).
 lint:
-	uv run ruff check dcs_simulation_engine/
+	uv run ruff check
+
+lint-fix:
+	uv run ruff check --fix
 
 # format code in place (on the dcs_simulation_engine/ package here).
 fmt:
-	uv run ruff format dcs_simulation_engine/
+	uv run ruff format && uv run ruff check --select I --fix
 
 # Run test suite quietly (currently only functional tests work)
 test:
-	uv run pytest -q
+	uv run pytest
 
 # Build documentation (MkDocs in this example).
 docs:

@@ -3,12 +3,20 @@
 from enum import StrEnum
 from typing import Any, AsyncIterator
 
-from loguru import logger
-
 from dcs_simulation_engine.core.game import Game, GameEvent
-from dcs_simulation_engine.games.ai_client import UpdaterClient, ValidatorClient
-from dcs_simulation_engine.games.const import ForesightV2 as C
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
+from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.games.ai_client import (
+    UpdaterClient,
+    ValidatorClient,
+)
+from dcs_simulation_engine.games.const import (
+    ForesightV2 as C,
+)
+from dcs_simulation_engine.games.prompts import (
+    build_updater_prompt,
+    build_validator_prompt,
+)
+from loguru import logger
 
 
 class Command(StrEnum):
@@ -26,8 +34,8 @@ class ForesightGame(Game):
 
     def __init__(
         self,
-        pc: dict[str, Any],
-        npc: dict[str, Any],
+        pc: CharacterRecord,
+        npc: CharacterRecord,
         updater: UpdaterClient,
         validator: ValidatorClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
@@ -48,7 +56,7 @@ class ForesightGame(Game):
         self._completion_notes = ""
 
     @classmethod
-    def create_from_context(cls, pc: dict[str, Any], npc: dict[str, Any], **kwargs: Any) -> "ForesightGame":
+    def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
         """Factory called by SessionManager. Builds clients from character dicts.
 
         Accepted kwargs:
@@ -104,8 +112,8 @@ class ForesightGame(Game):
             yield GameEvent(
                 type="info",
                 content=C.ENTER_CONTENT.format(
-                    pc_hid=self._pc.get("hid", ""),
-                    pc_short_description=self._pc.get("short_description", ""),
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
                 ),
             )
             opening = await self._updater.chat(None)

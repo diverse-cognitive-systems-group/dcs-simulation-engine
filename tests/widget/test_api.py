@@ -1,21 +1,29 @@
 """Tests for the Gradio API functions."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from dcs_simulation_engine.widget import api
-from dcs_simulation_engine.widget.services import RunRegistry, get_registry
+from dcs_simulation_engine.widget.services import (
+    RunRegistry,
+    get_registry,
+)
 
 
 @pytest.fixture
-def mock_registry():
+def mock_provider():
+    """Provide a mock DataProvider for API tests."""
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_registry(mock_provider):
     """Provide a fresh registry for each test."""
     registry = RunRegistry()
     with patch("dcs_simulation_engine.widget.api.get_registry", return_value=registry):
-        with patch(
-            "dcs_simulation_engine.widget.services.get_registry", return_value=registry
-        ):
-            yield registry
+        with patch("dcs_simulation_engine.widget.services.get_registry", return_value=registry):
+            with patch("dcs_simulation_engine.widget.api._get_provider", return_value=mock_provider):
+                yield registry
 
 
 @pytest.fixture
@@ -74,6 +82,7 @@ class TestCreateRun:
 
             mock_create.assert_called_once_with(
                 game="test-game",
+                provider=ANY,
                 source="test",
                 pc_choice="pc-1",
                 npc_choice="npc-1",

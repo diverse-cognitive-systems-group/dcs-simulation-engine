@@ -11,13 +11,19 @@ import random
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional
 
-from loguru import logger
-
 from dcs_simulation_engine.core.game import Game, GameEvent
-from dcs_simulation_engine.core.game_config import GameConfig
-from dcs_simulation_engine.helpers import database_helpers as dbh
-from dcs_simulation_engine.helpers.game_helpers import get_game_config
+from dcs_simulation_engine.core.game_config import (
+    GameConfig,
+)
+from dcs_simulation_engine.dal.base import (
+    CharacterRecord,
+    DataProvider,
+)
+from dcs_simulation_engine.helpers.game_helpers import (
+    get_game_config,
+)
 from dcs_simulation_engine.utils.file import safe_timestamp
+from loguru import logger
 
 
 class SessionManager:
@@ -39,6 +45,7 @@ class SessionManager:
         name: str,
         game: Game,
         game_config: GameConfig,
+        provider: DataProvider,
         source: str = "unknown",
         player_id: Optional[str] = None,
         stopping_conditions: Optional[Dict[str, List[str]]] = None,
@@ -47,6 +54,7 @@ class SessionManager:
         self.name = name
         self.game = game
         self.game_config = game_config
+        self._provider = provider
         self.source = source
         self.player_id = player_id
         self.feedback: List[Dict[str, Any]] = []
@@ -66,6 +74,7 @@ class SessionManager:
     def create(
         cls,
         game: "str | GameConfig",
+        provider: DataProvider,
         source: str = "unknown",
         pc_choice: Optional[str] = None,
         npc_choice: Optional[str] = None,
@@ -74,16 +83,16 @@ class SessionManager:
         """Create a new SessionManager, mirroring RunManager.create()."""
         if isinstance(game, str):
             game_config_fpath = get_game_config(game)
-            game_config = GameConfig.from_yaml(game_config_fpath)
+            game_config = GameConfig.load(game_config_fpath)
         elif isinstance(game, GameConfig):
             game_config = game
         else:
             raise TypeError(f"Invalid game parameter type: {type(game)}")
 
-        if not game_config.is_player_allowed(player_id):
+        if not game_config.is_player_allowed(player_id=player_id, provider=provider):
             raise PermissionError(f"Player '{player_id}' is not allowed to access this game.")
 
-        valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id)
+        valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id, provider=provider)
         valid_pc_hids = [hid for _, hid in valid_pcs]
         valid_npc_hids = [hid for _, hid in valid_npcs]
 
@@ -100,8 +109,8 @@ class SessionManager:
         pc_hid = pc_choice or random.choice(valid_pc_hids)
         npc_hid = npc_choice or random.choice(valid_npc_hids)
 
-        pc = dbh.get_character_from_hid(hid=pc_hid)
-        npc = dbh.get_character_from_hid(hid=npc_hid)
+        pc: CharacterRecord = provider.get_character(hid=pc_hid)
+        npc: CharacterRecord = provider.get_character(hid=npc_hid)
 
         module_path, class_name = game_config.game_class.rsplit(".", 1)
         module = importlib.import_module(module_path)
@@ -115,6 +124,7 @@ class SessionManager:
             name=name,
             game=game_instance,
             game_config=game_config,
+            provider=provider,
             source=source,
             player_id=player_id,
             stopping_conditions=stopping or None,
@@ -162,15 +172,22 @@ class SessionManager:
             logger.debug("save_runs not enabled; skipping persistence.")
             return
 
+        _pc = getattr(self.game, "_pc", None)
+        _npc = getattr(self.game, "_npc", None)
+        pc_hid = getattr(_pc, "hid", None)
+        npc_hid = getattr(_npc, "hid", None)
         context = {
-            "pc": getattr(self.game, "_pc", {}),
-            "npc": getattr(self.game, "_npc", {}),
+            "pc": _pc._asdict() if _pc is not None else {},
+            "npc": _npc._asdict() if _npc is not None else {},
         }
         run_data = {
             "name": self.name,
+            "game_name": self.game_config.name,
             "game_config": self.game_config.model_dump(mode="json"),
             "source": self.source,
             "player_id": self.player_id,
+            "pc_hid": pc_hid,
+            "npc_hid": npc_hid,
             "start_ts": self.start_ts.isoformat(),
             "end_ts": self.end_ts.isoformat() if self.end_ts else None,
             "exit_reason": self.exit_reason,
@@ -181,9 +198,9 @@ class SessionManager:
             "context": context,
         }
         try:
-            doc_id = dbh.save_run_data(self.player_id, run_data)
+            record = self._provider.save_run(self.player_id, run_data)
             self._saved = True
-            logger.info(f"Session saved to database: {doc_id}")
+            logger.info(f"Session saved to database: {record.id}")
         except Exception as exc:
             logger.error(f"Failed to save session to database: {exc}")
 

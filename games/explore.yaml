@@ -4,10 +4,7 @@ authors: ["DCS"]
 description: |
   A lightweight interaction sandbox that allows users/players to freely explore and interact with characters. There are no goals, no data collection, and no extra mechanics. Useful for demos and open-ended play. (New-style Game implementation — no LangGraph.)
 
-access_settings:
-  user:
-    valid:
-      players: {}  # open to any players
+access_settings: {}
 
 data_collection_settings:
   save_runs: true
@@ -15,12 +12,11 @@ data_collection_settings:
 character_settings:
   display_pc_choice_as: "{hid} - {short_description}"
   display_npc_choice_as: "{hid} - {short_description}"
+
+character_selection:
   pc:
-    valid:
-      characters: { "where": { "common_descriptors": { "$regex": "human-?like-cognition", "$options": "i" } } }
-  npc:
-    valid:
-      characters: {}
+    descriptor: human-like-cognition
+  npc: {}
 
 stopping_conditions:
   runtime_seconds: [">=600"]

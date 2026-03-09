@@ -3,8 +3,6 @@
 This will run before any tests are executed when `import pytest` is called.
 """
 
-
-
 import logging
 import os
 import textwrap
@@ -13,9 +11,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
-import dcs_simulation_engine.helpers.database_helpers as dbh
 import mongomock
 import pytest
+from dcs_simulation_engine.dal.mongo import MongoProvider
+from dcs_simulation_engine.dal.mongo.const import (
+    MongoColumns,
+)
+from dcs_simulation_engine.dal.mongo.util import (
+    ensure_default_indexes,
+)
 from loguru import logger
 from openai import OpenAI
 from pymongo.database import Database
@@ -49,18 +53,14 @@ def _setup_logging() -> None:
                 level = logger.level(record.levelname).name
             except ValueError:
                 level = logging.getLevelName(record.levelno)
-            logger.opt(depth=6, exception=record.exc_info, colors=False).log(
-                level, record.getMessage()
-            )
+            logger.opt(depth=6, exception=record.exc_info, colors=False).log(level, record.getMessage())
 
     # Force stdlib logging to go through our intercept handler
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
 
-
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook to add a file sink to default pytest logging."""
-
     # Ensure import-time logging is set up
     _setup_logging()
 
@@ -107,51 +107,37 @@ def client() -> OpenAI:
     return client
 
 
-
 @pytest.fixture(autouse=True)
-def _isolate_db_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+def _isolate_db_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[Database[Any]]:
     """Automatically isolate DB state for each test.
 
-    - Forces the helpers module to use `mongomock.MongoClient` instead of a real MongoDB.
-    - Creates a unique database name per test by setting MONGODB_URI.
-    - Clears the helpers' module-level singletons before and after each test.
+    - Creates a unique in-memory mongomock database per test.
+    - Exposes a matching MONGO_URI value for any code paths that still read it.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture for environment and attribute overrides.
 
     Yields:
-        None. The fixture simply prepares and cleans up per-test DB state.
+        Database handle for the isolated test DB.
     """
     dbname = f"testdb_{uuid.uuid4().hex}"
 
-    # Route helpers to a throwaway DB for this test
     monkeypatch.setenv("MONGO_URI", f"mongodb://localhost:27017/{dbname}")
-    # Optional: set pepper if you want to test HMAC mode
     monkeypatch.setenv("ACCESS_KEY_PEPPER", "")
 
-    # Make the helpers use mongomock instead of the real PyMongo client
-    monkeypatch.setattr(dbh, "MongoClient", mongomock.MongoClient, raising=True)
-
-    # Reset cached singletons
-    dbh._client = None
-    dbh._db = None
+    client = mongomock.MongoClient(tz_aware=True)
+    db = client[dbname]
+    ensure_default_indexes(db)
 
     try:
-        yield
+        yield db
     finally:
-        # Ensure isolation on teardown as well
-        dbh._client = None
-        dbh._db = None
+        client.close()
 
 
 def _collection_name_from_stem(stem: str) -> str:
-    """Map a file stem.
-
-    Eg. 'runs' to a collection name.
-    If dbh exposes a constant like RUNS_COL, prefer that.
-    """
-    const = f"{stem.upper()}_COL"
-    return getattr(dbh, const, stem)
+    """Map a file stem to a collection name."""
+    return stem
 
 
 def _load_json_file(path: Path) -> list[dict]:
@@ -200,39 +186,48 @@ def _seed_from_dir(db: Database[Any], seed_dir: Path) -> None:
             continue
 
         colname = _collection_name_from_stem(file.stem)
-        logger.debug(
-            f"Seeding {len(docs)} docs into collection '{colname}' from {file.name} to run tests."
-        )
+        logger.debug(f"Seeding {len(docs)} docs into collection '{colname}' from {file.name} to run tests.")
         db[colname].insert_many(docs)
 
 
 @pytest.fixture(autouse=True)
-def _seed_db_from_json(_isolate_db_state: None) -> None:
+def _seed_db_from_json(_isolate_db_state: Database[Any]) -> None:
     """Auto-seed the mocked DB from JSON files after isolation.
 
     Looks for JSON files in:
       1) TEST_SEED_DIR env var, if set
       2) <repo_root>/tests/seeds/   (default)
     """
-    db = dbh.get_db()
+    db = _isolate_db_state
     default_dir = Path(__file__).resolve().parent.parent / "database_seeds" / "dev"
     seed_dir = Path(os.getenv("TEST_SEED_DIR", default_dir))
     _seed_from_dir(db, seed_dir)
 
 
 @pytest.fixture
-def seed_runs_from_json() -> Callable[[str], None]:
+def seed_runs_from_json(mongo_provider: MongoProvider) -> Callable[[str], None]:
     """Seeds the mocked runs collection with data from a JSON file."""
-    db = dbh.get_db()
+    db = mongo_provider.get_db()
 
     def _load(path: str) -> None:
         docs = _load_json_file(Path(path))
         if not docs:
             return
-        colname = getattr(dbh, "RUNS_COL", "runs")
+        colname = MongoColumns.RUNS
         db[colname].insert_many(docs)
 
     return _load
+
+
+# ============================================================================
+# DAL Provider Fixture
+# ============================================================================
+
+
+@pytest.fixture
+def mongo_provider(_isolate_db_state: Database[Any]) -> MongoProvider:
+    """Return a MongoProvider wired to the mongomock DB for this test."""
+    return MongoProvider(db=_isolate_db_state)
 
 
 # ============================================================================

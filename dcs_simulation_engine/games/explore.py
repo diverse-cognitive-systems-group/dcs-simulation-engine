@@ -3,12 +3,18 @@
 from enum import StrEnum
 from typing import Any, AsyncIterator
 
-from loguru import logger
-
 from dcs_simulation_engine.core.game import Game, GameEvent
-from dcs_simulation_engine.games.ai_client import UpdaterClient, ValidatorClient
+from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.games.ai_client import (
+    UpdaterClient,
+    ValidatorClient,
+)
 from dcs_simulation_engine.games.const import ExploreV2 as C
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
+from dcs_simulation_engine.games.prompts import (
+    build_updater_prompt,
+    build_validator_prompt,
+)
+from loguru import logger
 
 
 class Command(StrEnum):
@@ -26,8 +32,8 @@ class ExploreGame(Game):
 
     def __init__(
         self,
-        pc: dict[str, Any],
-        npc: dict[str, Any],
+        pc: CharacterRecord,
+        npc: CharacterRecord,
         updater: UpdaterClient,
         validator: ValidatorClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
@@ -45,7 +51,7 @@ class ExploreGame(Game):
         self._exit_reason = ""
 
     @classmethod
-    def create_from_context(cls, pc: dict[str, Any], npc: dict[str, Any], **kwargs: Any) -> "ExploreGame":
+    def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ExploreGame":
         """Factory called by SessionManager. Builds clients from character dicts.
 
         Accepted kwargs:
@@ -92,10 +98,10 @@ class ExploreGame(Game):
             yield GameEvent(
                 type="info",
                 content=C.ENTER_CONTENT.format(
-                    pc_hid=self._pc.get("hid", ""),
-                    pc_short_description=self._pc.get("short_description", ""),
-                    npc_hid=self._npc.get("hid", ""),
-                    npc_short_description=self._npc.get("short_description", ""),
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                    npc_short_description=self._npc.short_description,
                 ),
             )
             opening = await self._updater.chat(None)
@@ -150,12 +156,12 @@ class ExploreGame(Game):
             return GameEvent(
                 type="info",
                 content=C.ABILITIES_CONTENT.format(
-                    pc_hid=self._pc.get("hid", ""),
-                    pc_short_description=self._pc.get("short_description", ""),
-                    pc_abilities=self._pc.get("abilities", ""),
-                    npc_hid=self._npc.get("hid", ""),
-                    npc_short_description=self._npc.get("short_description", ""),
-                    npc_abilities=self._npc.get("abilities", ""),
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    pc_abilities=self._pc.data.get("abilities", ""),
+                    npc_hid=self._npc.hid,
+                    npc_short_description=self._npc.short_description,
+                    npc_abilities=self._npc.data.get("abilities", ""),
                 ),
             )
 

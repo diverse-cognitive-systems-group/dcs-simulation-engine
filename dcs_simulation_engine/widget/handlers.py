@@ -4,17 +4,15 @@ Send → enqueue → sim.play consumes → timer polls state → new messages ap
 
 """
 
-
-
 import random
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Tuple
 
 import gradio as gr
-from loguru import logger
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
-from dcs_simulation_engine.core.game_config import GameConfig
+from dcs_simulation_engine.core.game_config import (
+    GameConfig,
+)
+from dcs_simulation_engine.dal.base import DataProvider
 from dcs_simulation_engine.widget.constants import (
     MAX_INPUT_LENGTH,
     USER_FRIENDLY_EXC,
@@ -25,7 +23,25 @@ from dcs_simulation_engine.widget.helpers import (
     format,
     stream_msg,
 )
-from dcs_simulation_engine.widget.session_state import SessionState
+from dcs_simulation_engine.widget.session_state import (
+    SessionState,
+)
+from loguru import logger
+
+# Set at widget startup via set_provider(). Required before any handler is called.
+_provider: DataProvider | None = None
+
+
+def set_provider(provider: DataProvider) -> None:
+    """Inject the data provider for all widget handlers."""
+    global _provider
+    _provider = provider
+
+
+def _get_provider() -> DataProvider:
+    if _provider is None:
+        raise RuntimeError("Widget data provider not set. Call handlers.set_provider() at startup.")
+    return _provider
 
 
 def validate_chat_input(user_input: str) -> Any:
@@ -80,7 +96,7 @@ def setup_simulation(
         logger.debug("Creating simulation run.")
         state["pc_choice"] = pc_choice
         state["npc_choice"] = npc_choice
-        run = create_run(state)
+        run = create_run(state, _get_provider())
         state["run"] = run
         logger.debug("Stepping simulation to get opener.")
         initial_history = []
@@ -149,7 +165,8 @@ def on_gate_continue(
     else:
         try:
             logger.debug("Trying to get player ID from access token.")
-            player_id = dbh.get_player_id_from_access_key(token_value)
+            record = _get_provider().get_players(access_key=token_value)
+            player_id = record.id if record else None
             if not player_id:
                 raise PermissionError("  Invalid access token: no such player.")
             logger.debug("Access token valid.")
@@ -162,7 +179,8 @@ def on_gate_continue(
                                   required to get characters."""
                 )
 
-            if not state["game_config"].is_player_allowed(player_id=player_id):
+            provider = _get_provider()
+            if not state["game_config"].is_player_allowed(player_id=player_id, provider=provider):
                 logger.warning(f"Player {player_id} is not allowed to play this game according to game_config.")
                 raise gr.Error(
                     "Sorry, your account is not authorized to"
@@ -183,7 +201,7 @@ def on_gate_continue(
                 )
 
             game_config: GameConfig = state["game_config"]
-            valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id)
+            valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id, provider=provider)
             logger.debug(f"Updating internal gradio state with {len(valid_pcs)} PCs and {len(valid_npcs)} NPCs.")
             state["valid_pcs"]: List[tuple[str, str]] = valid_pcs
             state["valid_npcs"]: List[tuple[str, str]] = valid_npcs
@@ -281,7 +299,8 @@ def on_form_submit(
         new_player_data: Dict[str, Dict[str, Any]] = {
             q.key: {**q.model_dump(), "answer": value} for q, value in zip(form_config.questions, field_values)
         }
-        player_id, access_key = dbh.create_player(player_data=new_player_data, issue_access_key=True)
+        player_record, access_key = _get_provider().create_player(player_data=new_player_data, issue_access_key=True)
+        player_id = player_record.id
         logger.debug(f"Created player {player_id} with access key.")
         updated_form_group = gr.update(visible=False)
         updated_token_group = gr.update(visible=True)
