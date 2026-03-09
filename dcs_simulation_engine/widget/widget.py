@@ -1,23 +1,38 @@
 """Gradio widget construction."""
 
-
-
 from typing import Any, Dict
 
 import gradio as gr
-from loguru import logger
-
-from dcs_simulation_engine.core.game_config import GameConfig
-from dcs_simulation_engine.helpers.game_helpers import get_game_config
-from dcs_simulation_engine.widget import api as widget_api
+from dcs_simulation_engine.core.game_config import (
+    GameConfig,
+)
+from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.helpers.game_helpers import (
+    get_game_config,
+)
+from dcs_simulation_engine.widget import (
+    api as widget_api,
+)
+from dcs_simulation_engine.widget import (
+    handlers as widget_handlers,
+)
 from dcs_simulation_engine.widget.helpers import cleanup
-from dcs_simulation_engine.widget.session_state import SessionState
+from dcs_simulation_engine.widget.session_state import (
+    SessionState,
+)
 from dcs_simulation_engine.widget.ui.chat import build_chat
 from dcs_simulation_engine.widget.ui.form import build_form
-from dcs_simulation_engine.widget.ui.game_setup import build_game_setup
+from dcs_simulation_engine.widget.ui.game_setup import (
+    build_game_setup,
+)
 from dcs_simulation_engine.widget.ui.gate import build_gate
-from dcs_simulation_engine.widget.ui.header import build_header
-from dcs_simulation_engine.widget.wiring import wire_handlers
+from dcs_simulation_engine.widget.ui.header import (
+    build_header,
+)
+from dcs_simulation_engine.widget.wiring import (
+    wire_handlers,
+)
+from loguru import logger
 
 MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 
@@ -25,23 +40,27 @@ MAX_TTL_SECONDS = 24 * 3600  # 24 hours
 def build_widget(
     game_name: str = "explore",
     banner: str | None = None,
+    provider: DataProvider | None = None,
 ) -> gr.Blocks:
     """Build the Gradio UI for running simulations."""
     logger.info(f"Building Gradio widget for game '{game_name}'")
+    if provider is None:
+        raise ValueError("provider is required to build widget")
+    widget_handlers.set_provider(provider)
 
     ### LOAD GAME CONFIGS/SETTINGS ###
 
     try:
         logger.debug(f"Loading game config for game '{game_name}'")
         game_config_path = get_game_config(game_name)
-        game_config = GameConfig.from_yaml(game_config_path)
+        game_config = GameConfig.load(game_config_path)
     except Exception as e:
         gr.Error(f"Failed to load game config: {e}")
         raise e  # terminate build
 
     try:
         logger.debug("Checking if access should be gated")
-        access_gated = not bool(game_config.is_player_allowed(player_id=None))
+        access_gated = not bool(game_config.is_player_allowed(player_id=None, provider=provider))
         logger.debug(f"Access gate required: {access_gated}")
         if access_gated:
             if game_config.access_settings is None:
@@ -50,7 +69,7 @@ def build_widget(
                 raise ValueError("Game config requires access gating but no new player form provided")
         else:
             logger.debug("No access gating required. Prepopulating valid characters.")
-            valid_pcs, valid_npcs = game_config.get_valid_characters()
+            valid_pcs, valid_npcs = game_config.get_valid_characters(provider=provider)
             logger.info(f"Found {len(valid_pcs)} valid PCs and {len(valid_npcs)} valid NPCs.")
             if not valid_pcs:
                 logger.warning("No valid PCs found for game.")
@@ -227,17 +246,23 @@ def build_api_blocks() -> gr.Blocks:
 def build_widget_with_api(
     game_name: str = "explore",
     banner: str | None = None,
+    provider: DataProvider | None = None,
 ) -> gr.Blocks:
     """Build a combined Gradio app with both UI widget and API endpoints.
 
     Args:
         game_name: The game configuration to load.
         banner: Optional banner text.
+        provider: DataProvider instance required to back the API endpoints.
 
     Returns:
         A gr.Blocks instance with both UI and API.
     """
-    widget = build_widget(game_name=game_name, banner=banner)
+    if provider is None:
+        raise ValueError("provider is required to build widget with API")
+    widget_api.set_provider(provider)
+    widget_handlers.set_provider(provider)
+    widget = build_widget(game_name=game_name, banner=banner, provider=provider)
     api = build_api_blocks()
 
     # Combine into a single app with tabs

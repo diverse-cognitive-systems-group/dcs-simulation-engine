@@ -6,12 +6,7 @@ description: |
   Useful for measuring how quickly a player can understand the intention of another character.
 
 access_settings:
-  user:
-    valid:
-      players:
-        where:
-          consent_signature.answer:
-            "$exists": true
+  require_consent_signature: true
   new_player_form:
     preamble: |
       # Informed Consent for Research Study Participation
@@ -70,23 +65,13 @@ data_collection_settings:
 character_settings:
   display_pc_choice_as: "{hid} - {short_description}"
   display_npc_choice_as: "Character details hidden"
+
+character_selection:
   pc:
-    valid:
-      characters:
-        where:
-          hid: "human-normative"
+    include_hids: [human-normative]
   npc:
-    valid:
-      characters:
-        where:
-          hid:
-            "$ne": "human-normative"
-    invalid:
-      runs:
-        where:
-          player_id: player_id
-          game_config.name: "Infer Intent"
-          context.npc.hid: context.npc.hid
+    exclude_hids: [human-normative]
+    exclude_seen_for_game: Infer Intent
 
 stopping_conditions:
   turns: [">=30"]

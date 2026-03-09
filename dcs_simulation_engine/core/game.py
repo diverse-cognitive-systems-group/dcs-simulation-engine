@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
 
+from dcs_simulation_engine.dal.base import CharacterRecord
+
 
 @dataclass
 class GameEvent:
@@ -44,10 +46,10 @@ class Game:
         raise NotImplementedError
 
     @classmethod
-    def create_from_context(cls, pc: dict[str, Any], npc: dict[str, Any], **kwargs: Any) -> "Game":
+    def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "Game":
         """Factory method called by SessionManager.
 
-        Receives character dicts loaded from the DB and any additional
+        Receives character records loaded from the DB and any additional
         kwargs (e.g. model names). Returns a fully initialised Game instance.
         """
         raise NotImplementedError

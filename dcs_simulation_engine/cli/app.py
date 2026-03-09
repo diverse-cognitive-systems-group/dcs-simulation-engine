@@ -5,14 +5,20 @@ from typing import Optional
 
 import typer
 import typer.rich_utils as ru
-
 from dcs_simulation_engine.cli.commands.list import list_app
-from dcs_simulation_engine.cli.commands.modify import modify_app
+from dcs_simulation_engine.cli.commands.modify import (
+    modify_app,
+)
 from dcs_simulation_engine.cli.commands.run import run
 from dcs_simulation_engine.cli.commands.status import status
 from dcs_simulation_engine.cli.commands.stop import stop
-from dcs_simulation_engine.cli.common import GlobalOptions, version_callback
-from dcs_simulation_engine.helpers.logging_helpers import configure_logger
+from dcs_simulation_engine.cli.common import (
+    GlobalOptions,
+    version_callback,
+)
+from dcs_simulation_engine.helpers.logging_helpers import (
+    configure_logger,
+)
 
 # Default style overrides to neutral white/gray colors
 ru.STYLE_OPTION = "bold white"
@@ -88,9 +94,15 @@ def main(
         callback=version_callback,
         is_eager=True,
     ),
+    mongo_uri: Optional[str] = typer.Option(
+        None,
+        "--mongo-uri",
+        envvar="MONGO_URI",
+        help="MongoDB connection URI. Overrides MONGO_URI environment value.",
+    ),
 ) -> None:
     """Initialize global CLI options and context."""
-    ctx.obj = GlobalOptions(quiet=quiet, yes=yes, config=config)
+    ctx.obj = GlobalOptions(quiet=quiet, yes=yes, config=config, mongo_uri=mongo_uri)
     configure_logger(source="dcs-cli", quiet=quiet, verbose=verbose)
 
 

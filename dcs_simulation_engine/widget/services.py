@@ -4,11 +4,11 @@ This module provides shared services accessible to both the widget UI handlers
 and the programmatic API functions.
 """
 
-
-
 from typing import Dict, Optional
 
-from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
 
 
 class RunRegistry:

@@ -8,25 +8,27 @@ This test suite validates the goal-horizon game's mechanics:
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
-import dcs_simulation_engine.helpers.database_helpers as dbh
 import pytest
 from bson import ObjectId
-from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
+from dcs_simulation_engine.dal.mongo.const import (
+    MongoColumns,
+)
 
 # Test player ID for goal-horizon tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
 
 
 @pytest.fixture(autouse=True)
-def seed_consenting_player(_isolate_db_state):
+def seed_consenting_player(_isolate_db_state, mongo_provider):
     """Seed a player with consent signature for goal-horizon game access."""
-    db = dbh.get_db()
-    db[dbh.PLAYERS_COL].insert_one(
+    db = mongo_provider.get_db()
+    db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": TEST_PLAYER_ID,
-            "consent_signature": {
-                "answer": ["I confirm that the information I have provided is true..."]
-            },
+            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
             "full_name": "Test Player",
             "email": "test@example.com",
         }
@@ -35,10 +37,11 @@ def seed_consenting_player(_isolate_db_state):
 
 
 @pytest.mark.functional
-def test_goal_horizon_initialization(patch_llm_client, _isolate_db_state):
+def test_goal_horizon_initialization(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test goal-horizon game initializes correctly with SessionManager."""
     session = SessionManager.create(
         game="Goal Horizon",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -49,10 +52,11 @@ def test_goal_horizon_initialization(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state):
+def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test enter step produces events and session state is valid."""
     session = SessionManager.create(
         game="Goal Horizon",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
@@ -65,10 +69,11 @@ def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state):
 
 
 @pytest.mark.functional
-def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state):
+def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test goal-horizon game sessions can be exited and saved."""
     session = SessionManager.create(
         game="Goal Horizon",
+        provider=mongo_provider,
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),

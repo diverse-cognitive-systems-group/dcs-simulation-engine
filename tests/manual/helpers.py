@@ -5,20 +5,26 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import dcs_simulation_engine.helpers.database_helpers as dbh
+import dcs_simulation_engine.dal.mongo as mongo
 import mongomock
+from dcs_simulation_engine.dal.mongo.util import (
+    ensure_default_indexes,
+)
 from loguru import logger
 from pymongo.database import Database
+
+_manual_client: mongomock.MongoClient | None = None
+_manual_db: Database[Any] | None = None
 
 
 def _collection_name_from_stem(stem: str) -> str:
     """Map a file stem.
 
     Eg. 'runs' to a collection name.
-    If dbh exposes a constant like RUNS_COL, prefer that.
+    If mongo exposes a constant like RUNS_COL, prefer that.
     """
     const = f"{stem.upper()}_COL"
-    return getattr(dbh, const, stem)
+    return getattr(mongo, const, stem)
 
 
 def _load_json_file(path: Path) -> list[dict]:
@@ -66,23 +72,25 @@ def _seed_from_dir(db: Database[Any], seed_dir: Path) -> None:
             continue
 
         colname = _collection_name_from_stem(file.stem)
-        logger.debug(
-            f"Seeding {len(docs)} docs into collection '{colname}' from {file.name} to run tests."
-        )
+        logger.debug(f"Seeding {len(docs)} docs into collection '{colname}' from {file.name} to run tests.")
         db[colname].insert_many(docs)
 
 
 def use_mongomock_for_db(seed_data: bool = False) -> None:
     """A helper to call in manual nb tests to make sure they use mongomock."""
-    os.environ["MONGODB_URI"] = f"mongodb://localhost:27017/testdb_{uuid.uuid4().hex}"
+    global _manual_client, _manual_db
+
+    os.environ["MONGO_URI"] = f"mongodb://localhost:27017/testdb_{uuid.uuid4().hex}"
     os.environ["ACCESS_KEY_PEPPER"] = ""
-    dbh.MongoClient = mongomock.MongoClient  # type: ignore[attr-defined]
-    dbh._client = None
-    dbh._db = None
+
+    dbname = os.environ["MONGO_URI"].rsplit("/", 1)[-1]
+    _manual_client = mongomock.MongoClient(tz_aware=True)
+    _manual_db = _manual_client[dbname]
+    ensure_default_indexes(_manual_db)
 
     if seed_data:
-        seed_path = Path(__file__).parent.parent.parent / "database_seeds"
+        seed_path = Path(__file__).parent.parent.parent / "database_seeds" / "dev"
         if seed_path.exists():
-            _seed_from_dir(dbh.get_db(), seed_path)
+            _seed_from_dir(_manual_db, seed_path)
         else:
             raise FileNotFoundError(f"Seed data directory not found: {seed_path}")

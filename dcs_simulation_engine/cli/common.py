@@ -8,11 +8,14 @@ from pathlib import Path
 from typing import Literal, Optional, Tuple
 
 import typer
+from dcs_simulation_engine.helpers.run_helpers import (
+    load_runs,
+)
+from dcs_simulation_engine.utils.package import (
+    get_package_version,
+)
 from rich.console import Console
 from rich.theme import Theme
-
-from dcs_simulation_engine.helpers.run_helpers import load_runs
-from dcs_simulation_engine.utils.package import get_package_version
 
 cli_theme = Theme(
     {
@@ -33,6 +36,7 @@ class GlobalOptions:
     quiet: bool = False
     yes: bool = False
     config: Optional[Path] = None
+    mongo_uri: Optional[str] = None
 
 
 def echo(ctx: Optional[typer.Context], message: str, style: str = "white") -> None:

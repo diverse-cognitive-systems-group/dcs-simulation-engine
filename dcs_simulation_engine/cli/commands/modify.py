@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
+from dcs_simulation_engine.cli.bootstrap import (
+    create_provider,
+)
 from dcs_simulation_engine.cli.common import console, echo
 from dcs_simulation_engine.errors import DCSError
 from dcs_simulation_engine.helpers.game_helpers import (
@@ -115,15 +116,13 @@ def modify_character(
     delete: bool = typer.Option(False, "--delete", help="Delete the character by --id."),
 ) -> None:
     """Create/update (upsert) or delete a character."""
+    provider = create_provider()
+
     if delete:
         if not character_id:
             raise typer.BadParameter("--id is required with --delete.")
-        delete_fn = getattr(dbh, "delete_character", None)
-        if not callable(delete_fn):
-            echo(ctx, "Character delete not supported.", style="error")
-            raise typer.Exit(code=2)
         try:
-            delete_fn(character_id)
+            provider.delete_character(character_id)
         except Exception as e:
             echo(ctx, f"Failed to delete character: {e}", style="error")
             raise typer.Exit(code=1)
@@ -150,15 +149,8 @@ def modify_character(
         resolved_name = typer.prompt("Character name")
     data["name"] = resolved_name
 
-    upsert_fn = getattr(dbh, "create_character", None) or getattr(dbh, "upsert_character", None)
-    if not callable(upsert_fn):
-        echo(ctx, "Character modify not implemented.", style="error")
-        raise typer.Exit(code=2)
-
     try:
-        created_id = upsert_fn(data, character_id=character_id)
-    except TypeError:
-        created_id = upsert_fn(data)
+        created_id = provider.upsert_character(data, character_id=character_id)
     except Exception as e:
         echo(ctx, f"Failed to modify character: {e}", style="error")
         raise typer.Exit(code=1)
@@ -189,15 +181,13 @@ def modify_player(
     delete: bool = typer.Option(False, "--delete", help="Delete the player by --id."),
 ) -> None:
     """Create/update (upsert) or delete a player."""
+    provider = create_provider()
+
     if delete:
         if not player_id:
             raise typer.BadParameter("--id is required with --delete.")
-        delete_fn = getattr(dbh, "delete_player", None)
-        if not callable(delete_fn):
-            echo(ctx, "Player delete not supported.", style="error")
-            raise typer.Exit(code=2)
         try:
-            delete_fn(player_id)
+            provider.delete_player(player_id)
         except Exception as e:
             echo(ctx, f"Failed to delete player: {e}", style="error")
             raise typer.Exit(code=1)
@@ -220,11 +210,12 @@ def modify_player(
     data["name"] = resolved_name
 
     try:
-        created_id, raw_key = dbh.create_player(
-            data,
+        player_record, raw_key = provider.create_player(
+            player_data=data,
             player_id=player_id,
             issue_access_key=not no_key,
         )
+        created_id = player_record.id
     except Exception as e:
         echo(ctx, f"Failed to modify player: {e}", style="error")
         raise typer.Exit(code=1)

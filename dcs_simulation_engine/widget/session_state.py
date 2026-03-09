@@ -4,8 +4,12 @@ from queue import Queue
 from threading import Thread
 from typing import TypedDict
 
-from dcs_simulation_engine.core.game_config import GameConfig
-from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.core.game_config import (
+    GameConfig,
+)
+from dcs_simulation_engine.core.session_manager import (
+    SessionManager,
+)
 
 
 class SessionState(TypedDict, total=False):

@@ -1,7 +1,6 @@
 """Wiring of event handlers to widget components."""
 
 import gradio as gr
-
 from dcs_simulation_engine.widget.handlers import (
     handle_chat_feedback,
     on_form_submit,
@@ -10,7 +9,9 @@ from dcs_simulation_engine.widget.handlers import (
 )
 from dcs_simulation_engine.widget.ui.chat import ChatUI
 from dcs_simulation_engine.widget.ui.form import FormUI
-from dcs_simulation_engine.widget.ui.game_setup import GameSetupUI
+from dcs_simulation_engine.widget.ui.game_setup import (
+    GameSetupUI,
+)
 from dcs_simulation_engine.widget.ui.gate import GateUI
 
 

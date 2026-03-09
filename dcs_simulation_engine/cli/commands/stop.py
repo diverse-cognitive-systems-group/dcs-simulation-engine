@@ -4,17 +4,25 @@ import os
 from typing import Optional
 
 import typer
-
-from dcs_simulation_engine.cli.common import console, select_run, step
-from dcs_simulation_engine.core.constants import OUTPUT_FPATH
-from dcs_simulation_engine.helpers import database_helpers as dbh
+from dcs_simulation_engine.cli.bootstrap import (
+    create_provider,
+    create_provider_admin,
+    teardown_local_backend,
+)
+from dcs_simulation_engine.cli.common import (
+    console,
+    select_run,
+    step,
+)
+from dcs_simulation_engine.core.constants import (
+    OUTPUT_FPATH,
+)
 from dcs_simulation_engine.helpers.run_helpers import (
     STATUS,
     local_run_name,
     run_status,
     update_run,
 )
-from dcs_simulation_engine.infra.docker import ensure_mongo_service_down
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
@@ -67,7 +75,7 @@ def stop(
         console.print(f"Destroying run instance: '{selected_run}'")
         try:
             with step("Saving db"):
-                dbh.backup_db(run_results_dir, append_ts=False)
+                create_provider_admin(create_provider()).backup_db(run_results_dir, append_ts=False)
             with step("Saving metadata"):
                 update_run(selected_run, status=STATUS.DESTROYED)
         except Exception as e:
@@ -86,7 +94,7 @@ def stop(
                     )
                     raise typer.Exit(code=1)
                 else:  # status is stopped
-                    ensure_mongo_service_down(wipe=True)
+                    teardown_local_backend(wipe=True)
             else:  # remote run
                 console.log("Destroying remote runs not implemented yet.", style="error")
 
