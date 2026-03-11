@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from dcs_simulation_engine.errors import GameValidationError
 from dcs_simulation_engine.utils.paths import (
     package_games_dir,
     package_root,
@@ -50,36 +49,6 @@ def validate_game_name(game_name: Optional[str]) -> str:
     raise BadGameNameError(game_name=v, available=available)
 
 
-def validate_game_compiles(name: str) -> Path:
-    """Validate that a game config compiles without errors."""
-    from dcs_simulation_engine.core.run_manager import (
-        RunManager,
-    )
-
-    logger.debug(f"Validating game config for {name!r}")
-
-    try:
-        game_config_path = Path(get_game_config(name))
-
-        RunManager.create(
-            game=game_config_path,
-            source="validation",
-            pc_choice=None,
-            npc_choice=None,
-            access_key=None,
-        )
-    except Exception as e:
-        logger.debug(
-            f"Game validation failed for {name!r}",
-            name,
-            game_config_path,
-            exc_info=True,
-        )
-        raise GameValidationError(f"Validation failed for game {name!r}: {e}") from e
-
-    return game_config_path.resolve()
-
-
 def create_game_from_template(name: str, template: str | Path | None = None) -> Path:
     """Copy a game into ./games from a template game file."""
     games_dir = Path.cwd() / "games"
@@ -110,7 +79,9 @@ def list_games(
 ) -> list[tuple[str, str, Path, str | None, str | None]]:
     """Return available games."""
     pkg_dir = package_games_dir()
-    user_dir = (Path.cwd() / "games") if directory is None else Path(directory).expanduser()
+
+    # TODO: Make this a param or env
+    user_dir = Path.home() / "games"
 
     if not user_dir.exists() or not user_dir.is_dir():
         raise FileNotFoundError(f"Provided games directory {user_dir!s} not found or invalid.")

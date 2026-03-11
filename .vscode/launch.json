@@ -17,14 +17,27 @@
             "cwd": "${workspaceFolder}",
         },
         {
-            "name": "dcs run game: Infer Intent V2",
+            "name": "dcs list game",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
             "args": [
-                "run",
-                "--run-name", "my-run",
-                "--game-name", "Infer Intent V2",
+                "list",
+                "games",
+            ],
+            "cwd": "${workspaceFolder}",
+            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
+            "preLaunchTask": "docker-compose-up",
+            "postDebugTask": "docker-compose-down",
+        },
+        {
+            "name": "dcs server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
+            "args": [
+                "server",
+                "--mongo-seed-dir=database_seeds/dev",
             ],
             "cwd": "${workspaceFolder}",
             // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build

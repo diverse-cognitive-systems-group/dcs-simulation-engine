@@ -16,4 +16,4 @@ def package_root() -> Path:
 
 def package_games_dir() -> Path:
     """Returns the path to the package's games directory."""
-    return package_root() / "games"
+    return package_root().parent / "games"

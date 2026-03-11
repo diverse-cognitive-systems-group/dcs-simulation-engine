@@ -4,15 +4,13 @@ import os
 from typing import Optional
 
 import typer
+from dcs_simulation_engine.api.app import create_app
 from dcs_simulation_engine.cli.bootstrap import (
     create_provider,
     create_provider_admin,
 )
 from dcs_simulation_engine.cli.common import console, step
-from dcs_simulation_engine.helpers.game_helpers import (
-    BadGameNameError,
-    validate_game_name,
-)
+from dcs_simulation_engine.games import ai_client
 from dcs_simulation_engine.helpers.run_helpers import (
     STATUS,
     BadRunNameError,
@@ -22,16 +20,6 @@ from dcs_simulation_engine.helpers.run_helpers import (
     update_run,
     validate_run_name,
 )
-from dcs_simulation_engine.widget import (
-    api as widget_api,
-)
-from dcs_simulation_engine.widget import (
-    handlers as widget_handlers,
-)
-from dcs_simulation_engine.widget.widget import (
-    build_widget_with_api,
-)
-from gradio.themes import Default
 from loguru import logger
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
@@ -39,12 +27,13 @@ IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
 
 def _run_local(
     run_name: str,
-    game_name: str,
     status: Optional[STATUS] = None,
     mongo_uri: Optional[str] = None,
 ) -> None:
-    """Run the simulation engine locally."""
+    """Run the FastAPI server locally."""
     try:
+        import uvicorn
+
         provider = create_provider(mongo_uri=mongo_uri)
 
         # no existing run with this name -> must initialize db and create new run
@@ -53,57 +42,39 @@ def _run_local(
             with step("Starting database"):
                 create_provider_admin(provider).init_or_seed_database(force=force_db_init)
 
-        widget_handlers.set_provider(provider)
-        widget_api.set_provider(provider)
-
-        # start the widget
-        with step("Starting widget"):
-            gradio_app = build_widget_with_api(game_name=game_name, banner=run_name, provider=provider)
-
-            server = "127.0.0.1"
-            port = 8080
-            base_url = f"http://{server}:{port}"
-            launch_info = gradio_app.launch(
-                server_name=server,
-                server_port=port,
-                quiet=True,
-                prevent_thread_lock=True,
-                theme=Default(primary_hue="violet"),
+        with step("Starting API server"):
+            ai_client.validate_openrouter_configuration()
+            server = os.getenv("DCS_SERVER_HOST", "127.0.0.1")
+            port = int(os.getenv("DCS_SERVER_PORT", "8080"))
+            ttl_seconds = int(os.getenv("DCS_SESSION_TTL_SECONDS", str(24 * 3600)))
+            sweep_interval_seconds = int(os.getenv("DCS_SESSION_SWEEP_INTERVAL_SECONDS", "60"))
+            app = create_app(
+                provider=provider,
+                session_ttl_seconds=ttl_seconds,
+                sweep_interval_seconds=sweep_interval_seconds,
             )
+            base_url = f"http://{server}:{port}"
             update_run(run_name, status=STATUS.RUNNING, link=base_url)
 
-        console.print(f"Simulation engine is running at {base_url}", style="success")
-
-        public_url = getattr(launch_info, "share_url", None) if launch_info is not None else None
-        if public_url:
-            typer.echo(f"Public link: {public_url}")
-
+        console.print(f"Simulation engine API is running at {base_url}", style="success")
         typer.echo()
         typer.secho("Press Ctrl+C to stop.")
         typer.echo()
-
-        import time
-
-        while True:
-            time.sleep(1)
+        uvicorn.run(app, host=server, port=port, loop="uvloop", workers=1)
 
     except KeyboardInterrupt:
         logger.info("Received interrupt. Shutting down...")
         raise typer.Exit(code=130)
     except Exception:
-        logger.exception("Failed while building, launching, or running widgets")
+        logger.exception("Failed while building, launching, or running API server")
         raise typer.Exit(code=1)
     finally:
         try:
             logger.debug("Cleaning up resources and stopping run...")
             update_run(run_name, status=STATUS.STOPPED)
-            gradio_app.close()
             logger.debug("Run stopped and resources cleaned up.")
         except Exception:
-            logger.debug(
-                "Suppressing exception during gradio_app.close() and update_run()",
-                exc_info=True,
-            )
+            logger.debug("Suppressing exception during update_run()", exc_info=True)
 
 
 def _run_fly(run_name: str, game_name: str) -> None:
@@ -158,7 +129,7 @@ def run(
         None,
         "--game-name",
         "-g",
-        prompt="Game name",
+        help="Deprecated. Ignored by the FastAPI server.",
     ),
 ) -> None:
     """Start simulation engine.
@@ -182,12 +153,8 @@ def run(
     except RunNotFoundError:
         status = None  # means run "doesn't exist"
 
-    # 2) Validate game name (required for both create and restart)
-    try:
-        game_name = validate_game_name(game_name)
-    except BadGameNameError as e:
-        console.print(str(e), style="error")
-        raise typer.Exit(code=1)
+    if game_name:
+        console.print("`--game-name` is deprecated and ignored by the FastAPI server.", style="warning")
 
     # 3) Only one local instance total, regardless of name.
     # If some *other* local run is already running, we cannot start/restart this one.
@@ -207,7 +174,7 @@ def run(
         if deploy:
             console.print("Not implemented.", style="error")
             raise typer.Exit(code=1)
-        _run_local(run_name, game_name, status=None, mongo_uri=mongo_uri)
+        _run_local(run_name, status=None, mongo_uri=mongo_uri)
         return
 
     # 5) Run exists -> handle status
@@ -231,7 +198,7 @@ def run(
             console.print("Not implemented.", style="error")
             raise typer.Exit(code=1)
 
-        _run_local(run_name, game_name, status=status, mongo_uri=mongo_uri)
+        _run_local(run_name, status=status, mongo_uri=mongo_uri)
         return
 
     console.print(f"Run '{run_name}' is in an unknown status: {status}", style="error")
