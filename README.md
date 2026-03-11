@@ -101,7 +101,13 @@ uv run pytest -m functional
 
 #### API Usage
 
-The engine also exposes a REST API via gradio's built in API server. While these are not automated yet, we have included examples here in `tests/api_manual` of how to call the api using the `gradio_client` library. it is possible to call the API using REST calls directly as well, but this is much more tedious so we recommend using the client library.
+Programmatic API access is provided by the FastAPI + WebSocket `dcs-server`.
+
+- Start server: `uv run dcs-server`
+- Docs: `http://localhost:8000/docs`
+- Python client: `dcs_simulation_engine.client.DCSClient`
+
+Manual usage examples are in `tests/api_manual`.
 
 
 ### Researchers

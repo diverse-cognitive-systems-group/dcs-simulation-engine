@@ -22,7 +22,6 @@ from dcs_simulation_engine.dal.mongo.util import (
 )
 from dcs_simulation_engine.utils.auth import (
     generate_access_key,
-    verify_key,
 )
 from loguru import logger
 from pymongo.database import Database
@@ -159,17 +158,15 @@ class MongoProvider(DataProvider):
         player_id: str | None = None,
         issue_access_key: bool = False,
     ) -> tuple[PlayerRecord, str | None]:
-        """Create or upsert a player, optionally issuing a hashed access key."""
+        """Create or upsert a player, optionally issuing a raw access key."""
         sanitized = sanitize_player_data(player_data)
 
         raw_key: str | None = None
         if issue_access_key:
-            raw_key, key_hash = generate_access_key()
-            prefix_fragment = raw_key[:_KEY_PREFIX_LEN]
+            raw_key = generate_access_key()
             sanitized.update(
                 {
-                    "access_key_hash": key_hash,
-                    "access_key_prefix": prefix_fragment,
+                    "access_key": raw_key,
                     "access_key_revoked": False,
                     "last_key_issued_at": now(),
                 }
@@ -202,28 +199,24 @@ class MongoProvider(DataProvider):
             key = access_key.strip()
             if not key:
                 return None
-            prefix_fragment = key[:_KEY_PREFIX_LEN]
             try:
                 coll = self._db[MongoColumns.PLAYERS]
-                candidates = list(
-                    coll.find(
-                        {
-                            "access_key_prefix": prefix_fragment,
-                            "access_key_revoked": {"$ne": True},
-                        },
-                    )
+                doc = coll.find_one(
+                    {
+                        "access_key": key,
+                        "access_key_revoked": {"$ne": True},
+                    },
+                    projection={"access_key": 0},
                 )
-                for doc in candidates:
-                    stored_hash = doc.get("access_key_hash", "")
-                    if stored_hash and verify_key(key, stored_hash):
-                        doc["id"] = str(doc.pop("_id"))
-                        return player_doc_to_record(doc)
+                if doc:
+                    doc["id"] = str(doc.pop("_id"))
+                    return player_doc_to_record(doc)
             except Exception as exc:
                 logger.error("get_players(access_key=...) failed: %s", exc)
             return None
 
         players = []
-        for doc in self._db[MongoColumns.PLAYERS].find({}, projection={"access_key_hash": 0}):
+        for doc in self._db[MongoColumns.PLAYERS].find({}, projection={"access_key": 0}):
             doc["id"] = str(doc.pop("_id"))
             players.append(player_doc_to_record(doc))
         return players

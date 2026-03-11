@@ -17,8 +17,7 @@ class PlayerRecord(NamedTuple):
 
     id: str
     created_at: Any
-    access_key_hash: Optional[str]
-    access_key_prefix: Optional[str]
+    access_key: Optional[str]
     data: dict[str, Any]
 
 

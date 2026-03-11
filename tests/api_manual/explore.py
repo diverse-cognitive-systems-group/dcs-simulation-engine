@@ -14,8 +14,9 @@ def _pprint(data):
 
 
 client = DCSClient("http://localhost:8080")
+access_key = "dev"
 
-with client.create_run(game="explore", pc="human-non-hearing", npc="thermostat") as run:
+with client.start_game(game="explore", pc="human-non-hearing", npc="thermostat", access_key=access_key) as run:
     print(f"Run created: {run!r}")
 
     print("\nStepping run (initial):")
