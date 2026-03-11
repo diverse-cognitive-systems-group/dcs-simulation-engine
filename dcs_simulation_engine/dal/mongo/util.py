@@ -73,8 +73,8 @@ def player_id_variants(player_id: str | Any | None) -> list[Any]:
 
 def ensure_default_indexes(db: Database[Any]) -> None:
     """Create baseline indexes used by runtime and tests."""
-    db[MongoColumns.PLAYERS].create_index("access_key_hash")
-    db[MongoColumns.PLAYERS].create_index([("access_key_revoked", ASCENDING), ("access_key_prefix", ASCENDING)])
+    db[MongoColumns.PLAYERS].create_index("access_key", unique=True, sparse=True)
+    db[MongoColumns.PLAYERS].create_index([("access_key_revoked", ASCENDING)])
     db[MongoColumns.RUNS].create_index(
         [
             ("player_id", ASCENDING),
@@ -114,7 +114,6 @@ def sanitize_player_data(player_data: dict[str, Any]) -> dict[str, Any]:
     for k in (
         "access_key",
         "access_key_hash",
-        "access_key_prefix",
         "access_key_revoked",
     ):
         data.pop(k, None)
@@ -207,11 +206,10 @@ def save_run_data(
 
 def player_doc_to_record(doc: dict[str, Any]) -> PlayerRecord:
     """Convert a raw MongoDB player document to a PlayerRecord."""
-    known = {"id", "_id", "created_at", "access_key_hash", "access_key_prefix"}
+    known = {"id", "_id", "created_at", "access_key"}
     return PlayerRecord(
         id=doc.get("id") or str(doc.get("_id", "")),
         created_at=doc.get("created_at"),
-        access_key_hash=doc.get("access_key_hash"),
-        access_key_prefix=doc.get("access_key_prefix"),
+        access_key=doc.get("access_key"),
         data={k: v for k, v in doc.items() if k not in known},
     )

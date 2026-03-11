@@ -51,6 +51,7 @@ class ForesightGame(Game):
         self._entered = False
         self._exited = False
         self._exit_reason = ""
+
         # Completion flow state: set True after /complete, cleared after answer collected.
         self._awaiting_completion_notes = False
         self._completion_notes = ""

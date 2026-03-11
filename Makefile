@@ -1,6 +1,6 @@
 # .PHONY tells make that these aren't real files — they're just task names.
 # Without this, make might skip a task if a file with the same name exists.
-.PHONY: lint test docs ci
+.PHONY: ci docs fmt lint lint-fix test
 
 # Run all linting checks (on the dcs_simulation_engine/ package here).
 lint:

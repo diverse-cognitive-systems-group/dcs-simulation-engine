@@ -11,15 +11,11 @@ from dcs_simulation_engine.dal.mongo.const import (
     DEFAULT_MONGO_URI,
 )
 from dcs_simulation_engine.dal.mongo.util import connect_db
-from dcs_simulation_engine.infra.docker import (
-    ensure_mongo_service_down,
-    ensure_mongo_service_up,
-    get_mongodb_ip,
-)
+from loguru import logger
 
 
 def _resolve_mongo_uri(*, mongo_uri: str | None = None) -> str:
-    """Resolve the Mongo URI from explicit input, env, or local docker fallback."""
+    """Resolve the Mongo URI from explicit input, env, or localhost fallback."""
     if mongo_uri:
         return mongo_uri
 
@@ -27,11 +23,15 @@ def _resolve_mongo_uri(*, mongo_uri: str | None = None) -> str:
     if env_uri:
         return env_uri
 
-    ensure_mongo_service_up()
-    ip = get_mongodb_ip()
-    if ip:
-        return f"mongodb://{ip}:27017/"
-    return DEFAULT_MONGO_URI
+    # For local host processes (especially macOS Docker Desktop), the container
+    # bridge IP is often unreachable from host. Prefer published localhost port.
+    localhost_uri = "mongodb://127.0.0.1:27017/"
+    try:
+        connect_db(uri=localhost_uri)
+        return localhost_uri
+    except Exception:
+        logger.debug("Localhost Mongo probe failed; falling back to default URI.", exc_info=True)
+        return DEFAULT_MONGO_URI
 
 
 def create_provider(*, mongo_uri: str | None = None) -> DataProvider:
@@ -48,8 +48,3 @@ def create_provider_admin(provider: DataProvider) -> MongoAdmin:
     if not isinstance(provider, MongoProvider):
         raise TypeError(f"create_provider_admin requires MongoProvider, got {type(provider).__name__}")
     return MongoAdmin(provider.get_db())
-
-
-def teardown_local_backend(*, wipe: bool = False) -> bool:
-    """Tear down local backend resources."""
-    return ensure_mongo_service_down(wipe=wipe)

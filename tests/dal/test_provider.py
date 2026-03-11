@@ -54,8 +54,7 @@ def test_create_player_with_access_key(mongo_provider):
     assert isinstance(record, PlayerRecord)
     assert raw_key is not None
     assert raw_key.startswith("dcs-ak-")
-    assert record.access_key_hash is not None
-    assert record.access_key_prefix is not None
+    assert record.access_key == raw_key
 
 
 @pytest.mark.unit
@@ -86,6 +85,21 @@ def test_get_players_by_access_key_wrong_key_returns_none(mongo_provider):
     """get_players(access_key=...) returns None for an invalid key."""
     result = mongo_provider.get_players(access_key="ak-not-a-real-key")
     assert result is None
+
+
+@pytest.mark.unit
+def test_get_players_hard_cutover_rejects_legacy_hashed_only(mongo_provider):
+    """Hashed-only legacy rows are not supported after raw-key cutover."""
+    db = mongo_provider.get_db()
+    db[MongoColumns.PLAYERS].insert_one(
+        {
+            "name": "Legacy",
+            "access_key_hash": "legacy-hash",
+            "access_key_revoked": False,
+            "created_at": datetime.now(timezone.utc),
+        }
+    )
+    assert mongo_provider.get_players(access_key="any-key") is None
 
 
 @pytest.mark.unit

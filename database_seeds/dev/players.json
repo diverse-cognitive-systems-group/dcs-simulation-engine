@@ -2,27 +2,26 @@
   {
     "_id": {"$oid": "000000000000000000000001"},
     "created_at": {"$date": "2026-01-01T00:00:00.000Z"},
-    "access_key_hash": "ef260e9aa3c673af240d17a2660480361a8e081d1ffeca2a5ed0e3219fc18567",
-    "access_key_prefix": "",
+    "access_key": "dev",
     "access_key_revoked": false,
     "full_name": {
       "key": "full_name",
       "type": "text",
-      "label": "Full Name",
+      "label": "Student Developer",
       "required": true,
       "pii": true
     },
     "email": {
       "key": "email",
       "type": "email",
-      "label": "Email address",
+      "label": "student@gatech.edu",
       "required": true,
       "pii": true
     },
     "phone_number": {
       "key": "phone_number",
       "type": "phone",
-      "label": "Phone number",
+      "label": "123-456-7890",
       "required": true,
       "pii": true
     },

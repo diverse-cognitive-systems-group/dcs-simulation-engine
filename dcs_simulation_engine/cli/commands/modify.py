@@ -10,46 +10,12 @@ from dcs_simulation_engine.cli.bootstrap import (
     create_provider,
 )
 from dcs_simulation_engine.cli.common import console, echo
-from dcs_simulation_engine.errors import DCSError
 from dcs_simulation_engine.helpers.game_helpers import (
     create_game_from_template,
-    validate_game_compiles,
 )
 from dcs_simulation_engine.utils.misc import parse_kv
 
 modify_app = typer.Typer(help="Modify games or characters available for use.")
-
-
-def _validate_game(ctx: typer.Context, name: str) -> None:
-    echo(ctx, f"Validating game configuration [bold]{name}[/bold]...", style="info")
-
-    try:
-        path = validate_game_compiles(name)
-    except DCSError as e:
-        typer.secho(str(e), fg=typer.colors.RED, err=True)
-        raise typer.Exit(1)
-
-    typer.secho(
-        "Warning: This validation only checks configuration and graph compilation. "
-        "It does not test gameplay behavior, branching logic, or node execution.",
-        fg=typer.colors.YELLOW,
-    )
-
-    echo(
-        ctx,
-        f"Game configuration [bold]{name}[/bold] is valid.\nConfig path: {path}",
-        style="success",
-    )
-
-
-def _validate_character(ctx: typer.Context, character_id: str) -> None:
-    echo(ctx, f"Validating character [bold]{character_id}[/bold]...", style="info")
-    echo(ctx, "Character validation not implemented.", style="warning")
-
-
-def _validate_player(ctx: typer.Context, player_id: str) -> None:
-    echo(ctx, f"Validating player [bold]{player_id}[/bold]...", style="info")
-    echo(ctx, "Player validation not implemented.", style="warning")
 
 
 @modify_app.command("game")
@@ -86,9 +52,6 @@ def modify_game(
             err=True,
         )
         raise typer.Exit(code=1)
-
-    # VALIDATION
-    _validate_game(ctx, name)
 
     echo(
         ctx,
@@ -155,8 +118,6 @@ def modify_character(
         echo(ctx, f"Failed to modify character: {e}", style="error")
         raise typer.Exit(code=1)
 
-    _validate_character(ctx, str(created_id))
-
     console.print(f"id={created_id}")
 
 
@@ -219,8 +180,6 @@ def modify_player(
     except Exception as e:
         echo(ctx, f"Failed to modify player: {e}", style="error")
         raise typer.Exit(code=1)
-
-    _validate_player(ctx, str(created_id))
 
     console.print(f"id={created_id}")
     console.print(f"access_key={raw_key if raw_key else 'None'}")

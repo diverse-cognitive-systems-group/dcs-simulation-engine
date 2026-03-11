@@ -22,17 +22,40 @@ from loguru import logger
 
 DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
+_FAKE_AI_RESPONSE: str | None = None
+
+
+def set_fake_ai_response(value: str | None) -> None:
+    """Set a process-local override returned by _call_openrouter when configured."""
+    global _FAKE_AI_RESPONSE
+    _FAKE_AI_RESPONSE = value
+
+
+def validate_openrouter_configuration() -> None:
+    """Validate runtime configuration needed for live OpenRouter requests."""
+    if _FAKE_AI_RESPONSE is not None:
+        return
+
+    key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError(
+            "OPENROUTER_API_KEY is required to start the server. "
+            "Set it in the environment, or use --fake-ai-response for local mock mode."
+        )
 
 
 def _get_api_key() -> str:
-    key = os.getenv("OPENROUTER_API_KEY", "")
+    key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not key:
-        logger.warning("OPENROUTER_API_KEY not set; API calls will likely fail.")
+        raise RuntimeError("OPENROUTER_API_KEY is missing.")
     return key
 
 
 async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
     """Send a chat completions request and return the assistant's reply text."""
+    if _FAKE_AI_RESPONSE is not None:
+        return _FAKE_AI_RESPONSE
+
     api_key = _get_api_key()
     async with httpx.AsyncClient() as client:
         response = await client.post(
