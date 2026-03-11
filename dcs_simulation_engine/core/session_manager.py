@@ -27,18 +27,7 @@ from loguru import logger
 
 
 class SessionManager:
-    """Manages a single session of a new-style Game.
-
-    External interface mirrors RunManager so the widget layer needs no changes:
-    - step(user_input) -> Iterator[dict]
-    - exit(reason)
-    - exited: bool
-    - exit_reason: str
-    - player_id: str | None
-    - feedback: list
-    - turns: int
-    - runtime_seconds: int
-    """
+    """Manages a single session of a Game."""
 
     def __init__(
         self,
@@ -205,23 +194,29 @@ class SessionManager:
             logger.error(f"Failed to save session to database: {exc}")
 
     def step(self, user_input: Optional[str] = None) -> Iterator[Dict[str, Any]]:
-        """Advance the game one turn, yielding widget-compatible event dicts.
+        """Advance one turn synchronously for legacy/widget callers.
 
-        Mirrors RunManager.step(): handles session-level commands (/exit, /feedback),
-        enforces stopping conditions, then delegates to the async game.step().
-        Each yielded dict has 'type' and 'content' keys, matching what the
-        widget handlers already expect from RunManager.
+        For async server paths, use `await step_async(...)` to avoid nested loop issues.
         """
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            events = asyncio.run(self.step_async(user_input))
+        else:
+            raise RuntimeError("SessionManager.step() cannot run inside an active event loop; use await step_async().")
+
+        yield from events
+
+    async def step_async(self, user_input: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Advance one turn asynchronously and return normalized event dicts."""
         # Already ended — emit a single info message and stop.
         if self.exited:
-            yield {"type": "info", "content": f"Session has ended. ({self.exit_reason})"}
-            return
+            return [{"type": "info", "content": f"Session has ended. ({self.exit_reason})"}]
 
         # Check time/turn limits before doing any work this turn.
         self._ensure_stopping_conditions()
         if self.exited:
-            yield {"type": "info", "content": f"Session ended: {self.exit_reason}"}
-            return
+            return [{"type": "info", "content": f"Session ended: {self.exit_reason}"}]
 
         # Session-level command handling (mirrors RunManager.step).
         # Game-specific commands (/help, /abilities, etc.) are handled inside
@@ -232,45 +227,41 @@ class SessionManager:
 
             if cmd in ("quit", "stop", "exit"):
                 self.exit("received exit command")
-                yield {"type": "info", "content": f"Session exited: {self.exit_reason}"}
-                return
+                return [{"type": "info", "content": f"Session exited: {self.exit_reason}"}]
 
             if cmd in ("feedback", "fb"):
                 fb = parts[1] if len(parts) > 1 else ""
                 if fb:
                     self.feedback.append({"timestamp": datetime.now().isoformat(), "content": fb})
-                yield {
-                    "type": "info",
-                    "content": (
-                        "Feedback received, thank you."
-                        if fb
-                        else "No feedback content provided. Type '/feedback <your comments here>'"
-                    ),
-                }
-                return
+                return [
+                    {
+                        "type": "info",
+                        "content": (
+                            "Feedback received, thank you."
+                            if fb
+                            else "No feedback content provided. Type '/feedback <your comments here>'"
+                        ),
+                    }
+                ]
             # Unrecognised commands fall through to the game so it can handle them.
 
-        # Drive the async game.step() synchronously by collecting all events
-        # into a list, then yielding them as plain dicts.
-        events: List[GameEvent] = asyncio.run(self._collect_events(user_input))
-
+        events = await self._collect_events(user_input)
+        emitted: List[Dict[str, Any]] = []
         yielded_ai = False
+
         for event in events:
             if event.type == "ai":
                 # Count a turn only when the AI has actually responded.
                 yielded_ai = True
-            self._events.append({"type": event.type, "content": event.content})
-            yield {"type": event.type, "content": event.content}
+            payload = {"type": event.type, "content": event.content}
+            self._events.append(payload)
+            emitted.append(payload)
 
         if yielded_ai:
             self._turn_count += 1
 
-        # Sync exit state from the game in case it ended during this step.
-        if self.game.exited and not self._exited:
-            self._exited = True
-            self._exit_reason = self.game.exit_reason
-            self.end_ts = datetime.now()
-            self.save()
+        self._sync_exit_state()
+        return emitted
 
     async def _collect_events(self, user_input: Optional[str]) -> List[GameEvent]:
         """Collect all events from a single async game.step() call."""
@@ -278,6 +269,14 @@ class SessionManager:
         async for event in self.game.step(user_input):
             events.append(event)
         return events
+
+    def _sync_exit_state(self) -> None:
+        """Sync local session exit state from the game and persist if needed."""
+        if self.game.exited and not self._exited:
+            self._exited = True
+            self._exit_reason = self.game.exit_reason
+            self.end_ts = datetime.now()
+            self.save()
 
     def _ensure_stopping_conditions(self) -> None:
         """Exit the session if any configured stopping condition is met."""

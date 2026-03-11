@@ -8,7 +8,6 @@ from dcs_simulation_engine.dal.mongo import MongoAdmin
 from dcs_simulation_engine.dal.mongo.const import (
     MongoColumns,
 )
-from dcs_simulation_engine.utils.auth import verify_key
 
 
 @pytest.mark.unit
@@ -25,7 +24,7 @@ def test_database_is_seeded(mongo_provider):
 
 @pytest.mark.unit
 def test_create_player_persists_fields(mongo_provider):
-    """create_player persists data and hashed access key fields."""
+    """create_player persists data and raw access key fields."""
     record, raw_key = mongo_provider.create_player(
         player_data={"email": "alice@example.com"},
         issue_access_key=True,
@@ -38,7 +37,7 @@ def test_create_player_persists_fields(mongo_provider):
     doc = db[MongoColumns.PLAYERS].find_one({"_id": ObjectId(record.id)})
 
     assert doc is not None
-    assert verify_key(raw_key, doc.get("access_key_hash"))
+    assert doc.get("access_key") == raw_key
     assert doc.get("access_key_revoked") is False
     assert MongoColumns.CREATED_AT in doc
 
@@ -71,13 +70,20 @@ def test_save_run_persists_fields(mongo_provider):
 
 
 @pytest.mark.unit
-def test_init_or_seed_database_non_empty_returns_not_seeded(mongo_provider):
-    """init_or_seed_database reports no-op when DB already has collections and force=False."""
-    result = MongoAdmin(db=mongo_provider.get_db()).init_or_seed_database(force=False)
+def test_seed_database_drops_and_replaces_collections(mongo_provider, tmp_path):
+    """seed_database drops existing collections and inserts documents from seed files."""
+    db = mongo_provider.get_db()
+    db["widgets"].insert_many([{"x": 1}, {"x": 2}])
+    assert db["widgets"].count_documents({}) == 2
 
-    assert result["seeded"] is False
-    assert result["reason"] == "db_not_empty"
-    assert result["db_name"]
+    seed_file = tmp_path / "widgets.json"
+    seed_file.write_text('[{"x": 99}]', encoding="utf-8")
+
+    total = MongoAdmin(db=db).seed_database(seed_dir=tmp_path)
+
+    assert total == 1
+    assert db["widgets"].count_documents({}) == 1
+    assert db["widgets"].find_one({})["x"] == 99
 
 
 @pytest.mark.unit

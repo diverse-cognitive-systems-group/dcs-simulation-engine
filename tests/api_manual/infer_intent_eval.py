@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""Manual test for Infer Intent evaluation scoring.
-
-Runs 3 hardcoded turns, submits a hardcoded guess, answers the completion
-form, then validates that the llm_eval node produces a score.
-
-NOTE: Requires a player with consent_signature. Use player_id="000000000000000000000001"
-with access_key="dev" against a local dev server.
-"""
+"""Manual test for Infer Intent flow through the FastAPI/WS server."""
 
 import json
 
@@ -20,17 +13,15 @@ def _pprint(data):
     print(highlight(json.dumps(data, indent=2, default=str), JsonLexer(), TerminalFormatter()))
 
 
-player_id = "000000000000000000000001"
 access_key = "dev"
 
 client = DCSClient("http://localhost:8080")
 
-with client.create_run(
+with client.start_game(
     game="Infer Intent",
     pc="human-normative",
     npc="flatworm",
     access_key=access_key,
-    player_id=player_id,
 ) as run:
     print(f"Run created: {run!r}")
 
@@ -69,17 +60,6 @@ with client.create_run(
     run.step(feedback_text)
     print(f"[Simulator] {run.simulator_output}")
     print(f"  lifecycle={run.lifecycle}, is_complete={run.is_complete}")
-
-    # Evaluation result
-    print("Evaluation Result")
-    if run.evaluation:
-        print(f"  Tier:      {run.evaluation.get('tier')} / 3")
-        print(f"  Score:     {run.evaluation.get('score')} / 100")
-        print(f"  Reasoning: {run.evaluation.get('reasoning')}")
-        if run.evaluation.get("error"):
-            print(f"  [!] Scoring error: {run.evaluation['error']}")
-    else:
-        print("  No evaluation found in state (scoring may not have run).")
 
     print(f"\n  Exit reason: {run.exit_reason}")
     print(f"  Total turns: {run.turns}")

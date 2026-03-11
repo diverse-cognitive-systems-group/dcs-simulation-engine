@@ -4,14 +4,11 @@ import json
 import os
 import shutil
 import subprocess
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from dcs_simulation_engine.infra.toml import (
-    update_app_and_region,
-    update_process_cmd,
-)
 from dotenv import dotenv_values, load_dotenv
 from loguru import logger
 
@@ -34,6 +31,87 @@ class LoadedEnv:
     """Merged env + captured dotenv key/values (for forwarding to flyctl --env)."""
 
     dotenv_vars: Dict[str, str]
+
+
+def _toml_escape(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _toml_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return f'"{_toml_escape(value)}"'
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_value(item) for item in value) + "]"
+    if value is None:
+        raise ValueError("TOML does not support null values.")
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    raise TypeError(f"Unsupported TOML value type: {type(value)!r}")
+
+
+def _write_table(lines: list[str], key_path: list[str], table: dict[str, Any]) -> None:
+    scalar_items: list[tuple[str, Any]] = []
+    table_items: list[tuple[str, dict[str, Any]]] = []
+    array_table_items: list[tuple[str, list[dict[str, Any]]]] = []
+
+    for key, value in table.items():
+        if isinstance(value, dict):
+            table_items.append((key, value))
+        elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            array_table_items.append((key, value))
+        else:
+            scalar_items.append((key, value))
+
+    if key_path:
+        lines.append(f"[{'.'.join(key_path)}]")
+    for key, value in scalar_items:
+        lines.append(f"{key} = {_toml_value(value)}")
+    if key_path:
+        lines.append("")
+
+    for key, value in table_items:
+        _write_table(lines, [*key_path, key], value)
+
+    for key, value in array_table_items:
+        full_key = ".".join([*key_path, key])
+        for idx, item in enumerate(value):
+            lines.append(f"[[{full_key}]]")
+            for item_key, item_value in item.items():
+                if isinstance(item_value, dict):
+                    raise TypeError(f"Nested table inside array-of-tables is unsupported ({full_key}.{item_key}).")
+                lines.append(f"{item_key} = {_toml_value(item_value)}")
+            if idx != len(value) - 1:
+                lines.append("")
+        lines.append("")
+
+
+def update_fly_toml(*, original_toml: str, app_name: str, process_cmd: str, region: Optional[str] = None) -> str:
+    """Update app/process settings in fly.toml using TOML parsing and serialization."""
+    data = tomllib.loads(original_toml)
+    if not isinstance(data, dict):
+        raise RuntimeError("fly.toml root must be a table.")
+
+    data["app"] = app_name
+    if region is not None:
+        data["primary_region"] = region
+
+    processes = data.get("processes")
+    if processes is None:
+        data["processes"] = {"web": process_cmd}
+    elif isinstance(processes, dict):
+        processes["web"] = process_cmd
+    else:
+        raise RuntimeError("[processes] must be a table in fly.toml.")
+
+    lines: list[str] = []
+    _write_table(lines, [], data)
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines) + "\n"
 
 
 def destroy_app(app_name: str) -> None:
@@ -210,8 +288,12 @@ def deploy_app(
 
     try:
         original = fly_toml.read_text()
-        updated = update_app_and_region(original, app_name=app_name, region=region)
-        updated = update_process_cmd(updated, process_cmd)
+        updated = update_fly_toml(
+            original_toml=original,
+            app_name=app_name,
+            process_cmd=process_cmd,
+            region=region,
+        )
         fly_toml.write_text(updated)
     except FileNotFoundError as e:
         raise FlyError(f"fly.toml not found at: {fly_toml}") from e

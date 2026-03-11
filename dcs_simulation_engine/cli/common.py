@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Literal, Optional, Tuple
 
 import typer
+from dcs_simulation_engine.api.client import APIClient
+from dcs_simulation_engine.cli.bootstrap import create_provider, create_provider_admin
 from dcs_simulation_engine.helpers.run_helpers import (
     load_runs,
 )
@@ -37,6 +39,15 @@ class GlobalOptions:
     yes: bool = False
     config: Optional[Path] = None
     mongo_uri: Optional[str] = None
+    server_url: str = "http://localhost:8000"
+
+
+def get_client(ctx: Optional[typer.Context]) -> APIClient:
+    """Return an APIClient configured from the CLI context."""
+    url = "http://localhost:8000"
+    if ctx is not None and isinstance(getattr(ctx, "obj", None), GlobalOptions):
+        url = ctx.obj.server_url
+    return APIClient(url=url)
 
 
 def echo(ctx: Optional[typer.Context], message: str, style: str = "white") -> None:
@@ -141,3 +152,16 @@ def select_run(
         raise typer.Exit(code=1)
 
     return names[choice - 1]
+
+
+def seed_database(ctx: typer.Context, seed_dir: Path) -> None:
+    """Seed the database from JSON/NDJSON files."""
+    mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
+    try:
+        provider = create_provider(mongo_uri=mongo_uri)
+        admin = create_provider_admin(provider)
+        result = admin.seed_database(seed_dir=seed_dir)
+    except Exception as e:
+        echo(ctx, str(e), style="error")
+        raise typer.Exit(code=1)
+    echo(ctx, f"Seeded: {result}")

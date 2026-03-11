@@ -7,7 +7,6 @@ from typing import Any, Sequence
 
 from bson import json_util
 from dcs_simulation_engine.dal.mongo.const import (
-    DEFAULT_SEEDS_DIR,
     INDEX_DEFS,
 )
 from loguru import logger
@@ -22,45 +21,6 @@ class MongoAdmin:
     def __init__(self, db: Database[Any]) -> None:
         """Bind admin operations to the given database handle."""
         self._db = db
-
-    def init_or_seed_database(
-        self,
-        *,
-        seeds_dir: Path | None = None,
-        force: bool = False,
-    ) -> dict[str, Any]:
-        """Seed configured DB from seed files, optionally replacing existing data."""
-        db = self._db
-
-        if seeds_dir is None:
-            seeds_dir = DEFAULT_SEEDS_DIR
-
-        if not seeds_dir.exists() or not seeds_dir.is_dir():
-            raise ValueError(f"Seeds directory not found: {seeds_dir}")
-
-        seed_paths = self.discover_seed_files(seeds_dir)
-        if not seed_paths:
-            raise ValueError(f"No seed files found in {seeds_dir} (expected *.json or *.ndjson).")
-
-        existing = db.list_collection_names()
-        if existing and not force:
-            return {
-                "seeded": False,
-                "reason": "db_not_empty",
-                "db_name": db.name,
-                "existing_collections": existing,
-                "seeds_dir": str(seeds_dir),
-                "seed_files": [p.name for p in seed_paths],
-            }
-
-        self.seed_database(db, seed_paths)
-        return {
-            "seeded": True,
-            "db_name": db.name,
-            "existing_collections": existing,
-            "seeds_dir": str(seeds_dir),
-            "seed_files": [p.name for p in seed_paths],
-        }
 
     def backup_db(self, outdir: Path, *, append_ts: bool = True) -> Path:
         """Backup entire DB to a directory. Returns the path written."""
@@ -91,10 +51,6 @@ class MongoAdmin:
         )
 
         return root
-
-    def discover_seed_files(self, seeds_dir: Path) -> list[Path]:
-        """Return sorted .json/.ndjson files found directly in seeds_dir."""
-        return [p for p in sorted(seeds_dir.iterdir()) if p.is_file() and p.suffix.lower() in {".json", ".ndjson"}]
 
     def load_seed_documents(self, path: Path) -> list[dict[str, Any]]:
         """Parse a seed file (.json or .ndjson) and return a list of documents."""
@@ -178,23 +134,18 @@ class MongoAdmin:
             coll.create_index(fields, unique=unique)
             logger.info("Created index on %s: %s (unique=%s)", coll.name, fields, unique)
 
-    def seed_database(self, db: Database[Any], seed_files: Sequence[Path]) -> None:
-        """Seed all collections from seed_files, backing up any that already exist."""
-        existing = set(db.list_collection_names())
-        backup_root: Path | None = None
+    def seed_database(self, seed_dir: Path) -> int:
+        """Seed all collections from seed_dir. Existing collections are dropped and replaced."""
+        seed_files = list(seed_dir.glob("**/*.json")) + list(seed_dir.glob("**/*.ndjson"))
 
-        for f in seed_files:
-            collection_name = f.stem
+        total_inserted = 0
+        for seed_file in seed_files:
+            collection_name = seed_file.stem
+            logger.info(f"Seeding collection '{collection_name}' from {seed_file.name}")
+            docs = self.load_seed_documents(seed_file)
+            num_inserted = self.seed_collection(self._db[collection_name], docs)
+            logger.info(f"Inserted {num_inserted} document(s) into '{collection_name}'")
+            self.create_indices(self._db[collection_name])
+            total_inserted += num_inserted
 
-            if collection_name in existing:
-                if backup_root is None:
-                    backup_root = self.backup_root_dir(db.name)
-                    logger.info(f"Backing up existing collections to {backup_root}")
-                logger.info(f"Backing up existing '{collection_name}'...")
-                self.backup_collection(db, collection_name, backup_root)
-
-            logger.info(f"Seeding collection '{collection_name}' from {f.name}")
-            docs = self.load_seed_documents(f)
-            inserted = self.seed_collection(db[collection_name], docs)
-            logger.info(f"Inserted {inserted} document(s) into '{collection_name}'")
-            self.create_indices(db[collection_name])
+        return total_inserted

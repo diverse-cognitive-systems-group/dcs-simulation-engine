@@ -1,9 +1,9 @@
 """Errors for DCS Simulation Engine."""
 
 
-class DCSError(RuntimeError):
+class APIRequestError(RuntimeError):
     """Base class for all domain errors."""
 
 
-class GameValidationError(DCSError):
+class GameValidationError(APIRequestError):
     """Raised when a game config fails validation."""
