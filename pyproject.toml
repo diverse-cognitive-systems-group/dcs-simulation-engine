@@ -49,7 +49,7 @@ version = "0.1.0"
 # the package "deploys".
 [project.optional-dependencies]
 dev = [
-  "black>=25.1.0,<26.0.0",
+  "black>=25.1.0,<27.0.0",
   "httpx>=0.28.1,<0.29.0",
   "ipykernel>=6.30.1,<7.0.0",
   "isort>=6.0.1,<7.0.0",
