@@ -283,9 +283,6 @@ def patch_llm_client(mock_llm_client, monkeypatch):
 
     # Patch where ChatOpenRouter is imported (used), not where it's defined
     monkeypatch.setattr(
-        "dcs_simulation_engine.core.run_manager.ChatOpenRouter", mock_chat_open_router
-    )
-    monkeypatch.setattr(
         "dcs_simulation_engine.core.simulation_graph.subgraph.ChatOpenRouter", mock_chat_open_router
     )
     yield mock_llm_client

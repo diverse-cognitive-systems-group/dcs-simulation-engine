@@ -2,9 +2,13 @@
 # Without this, make might skip a task if a file with the same name exists.
 .PHONY: lint test docs ci
 
-# Run all linting/formatting checks (on the dcs_simulation_engine/ package here).
+# Run all linting checks (on the dcs_simulation_engine/ package here).
 lint:
 	uv run ruff check dcs_simulation_engine/
+
+# format code in place (on the dcs_simulation_engine/ package here).
+fmt:
+	uv run ruff format dcs_simulation_engine/
 
 # Run test suite quietly (currently only functional tests work)
 test:
