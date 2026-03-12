@@ -1,15 +1,14 @@
 """Tests for database helpers."""
 
-from __future__ import annotations
+
 
 import time
 from typing import Any, Dict, List
 
+import dcs_simulation_engine.helpers.database_helpers as dbh
 import pytest
 from bson import ObjectId
 from loguru import logger
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
 
 
 @pytest.mark.unit

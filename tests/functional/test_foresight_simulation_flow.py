@@ -3,18 +3,16 @@
 This test suite validates the foresight game's unique mechanics:
 1. Prediction parsing - validator allows predictions in user input
 2. Prediction ignoring - updater processes only the action, not the prediction
-3. Completion form - custom additional_notes field for research data
+3. Completion notes - /complete triggers a question, next input is collected
 4. Multi-turn simulation flow with prediction-containing inputs
 
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
+import dcs_simulation_engine.helpers.database_helpers as dbh
 import pytest
 from bson import ObjectId
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
-from dcs_simulation_engine.core.run_manager import RunManager
-
+from dcs_simulation_engine.core.session_manager import SessionManager
 
 # Test player ID for foresight tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
@@ -22,11 +20,7 @@ TEST_PLAYER_ID = ObjectId()
 
 @pytest.fixture(autouse=True)
 def seed_consenting_player(_isolate_db_state):
-    """Seed a player with consent signature for foresight game access.
-
-    The foresight game requires players to have consent_signature.answer
-    in their player document. This fixture creates such a player.
-    """
+    """Seed a player with consent signature for foresight game access."""
     db = dbh.get_db()
     db[dbh.PLAYERS_COL].insert_one({
         "_id": TEST_PLAYER_ID,
@@ -39,7 +33,6 @@ def seed_consenting_player(_isolate_db_state):
     yield
 
 
-# Test inputs with mixed prediction formats
 FORESIGHT_TEST_INPUTS = [
     "I wave my hand and predict they will wave back",
     "I look around",
@@ -56,180 +49,142 @@ FORESIGHT_TEST_INPUTS = [
 
 @pytest.mark.functional
 def test_foresight_initialization(patch_llm_client, _isolate_db_state):
-    """Test foresight game initializes correctly with RunManager.
-
-    Verifies:
-    - RunManager.create works with game="foresight"
-    - PC must be human-normative
-    - Initial lifecycle is ENTER
-    - Initial history is empty
-    """
-    run = RunManager.create(
+    """Test foresight game initializes correctly with SessionManager."""
+    session = SessionManager.create(
         game="foresight",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    assert run.state["lifecycle"] == "ENTER", "Initial lifecycle should be ENTER"
-    assert len(run.state["history"]) == 0, "Initial history should be empty"
+    assert not session.exited, "Session should not be exited initially"
+    assert session._events == [], "Initial events should be empty"
 
 
 @pytest.mark.functional
 def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_state):
-    """Test ENTER lifecycle produces welcome message and transitions to UPDATE.
-
-    Verifies:
-    - run.step("") produces info event with welcome content
-    - Lifecycle transitions to UPDATE
-    - History has 2 messages after ENTER
-    """
-    run = RunManager.create(
+    """Test ENTER step produces welcome message and AI opening."""
+    session = SessionManager.create(
         game="foresight",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    enter_events = list(run.step(""))
+    enter_events = list(session.step(""))
 
-    # Verify welcome message
     info_events = [e for e in enter_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected welcome message with type 'info'"
 
-    # Verify lifecycle transition
-    assert (
-        run.state["lifecycle"] == "UPDATE"
-    ), "After ENTER step, lifecycle should transition to UPDATE"
+    ai_events = [e for e in enter_events if e.get("type") == "ai"]
+    assert len(ai_events) > 0, "Expected AI opening response after welcome"
 
-    # Verify history
-    assert len(run.state["history"]) == 2, "After ENTER, history should have 2 messages"
-    assert run.turns == 1, "After ENTER, turns should be 1"
+    assert session.turns == 1, "After ENTER, turns should be 1"
 
 
 @pytest.mark.functional
 def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state):
-    """Test multi-turn simulation with prediction-containing inputs.
-
-    Verifies:
-    - Validator accepts prediction syntax without rejection
-    - Each turn produces AI response events
-    - History accumulates correctly (2 messages per turn)
-    - Updater responses focus on action only (mock returns action-focused response)
-    """
-    run = RunManager.create(
+    """Test multi-turn simulation with prediction-containing inputs."""
+    session = SessionManager.create(
         game="foresight",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
-    enter_step_message_count = len(run.state["history"])
+    list(session.step(""))
+    turns_after_enter = session.turns
 
-    # Execute 10 turns with prediction inputs
     for idx, user_input in enumerate(FORESIGHT_TEST_INPUTS):
         turn_num = idx + 1
+        events = list(session.step(user_input))
 
-        events = list(run.step(user_input))
-
-        # Verify AI response (validator accepted the input)
         ai_events = [e for e in events if e.get("type") == "ai"]
-        assert len(ai_events) > 0, f"Turn {turn_num}: Expected AI response event (validator should accept prediction syntax)"
+        assert len(ai_events) > 0, (
+            f"Turn {turn_num}: Expected AI response event (validator should accept prediction syntax)"
+        )
 
-        # Verify response focuses on action (mock returns NPC behavior, not prediction acknowledgment)
-        ai_response = ai_events[0]
-        assert "predict" not in ai_response["content"].lower(), (
+        assert "predict" not in ai_events[0]["content"].lower(), (
             f"Turn {turn_num}: Updater response should not acknowledge predictions"
         )
 
-        # Verify history accumulates correctly
-        expected_history_length = enter_step_message_count + (turn_num * 2)
-        actual_history_length = len(run.state["history"])
-        assert actual_history_length == expected_history_length, (
-            f"Turn {turn_num}: History should have {expected_history_length} messages "
-            f"(got {actual_history_length})"
+        assert session.turns == turns_after_enter + turn_num, (
+            f"Turn {turn_num}: turns should be {turns_after_enter + turn_num} "
+            f"(got {session.turns})"
         )
 
-        # Verify turn count
-        expected_turn_count = (enter_step_message_count + turn_num * 2) // 2
-        assert run.turns == expected_turn_count, (
-            f"Turn {turn_num}: run.turns should be {expected_turn_count} "
-            f"(got {run.turns})"
-        )
-
-    # Verify final state
-    expected_final_turns = (enter_step_message_count + 10 * 2) // 2
-    assert run.turns == expected_final_turns, (
-        f"Should have completed {expected_final_turns} turns (got {run.turns})"
-    )
-    assert run.state["lifecycle"] == "UPDATE", "Should still be in UPDATE lifecycle"
+    assert not session.exited, "Session should still be active after 10 turns"
 
 
 @pytest.mark.functional
 def test_foresight_complete_command(patch_llm_client, _isolate_db_state):
-    """Test /complete command triggers COMPLETE lifecycle transition.
-
-    Verifies:
-    - /complete command transitions lifecycle to COMPLETE
-    - Completion form includes additional_notes field
-    """
-    run = RunManager.create(
+    """Test /complete command triggers completion-notes question."""
+    session = SessionManager.create(
         game="foresight",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
-    assert run.state["lifecycle"] == "UPDATE"
+    list(session.step(""))
+    list(session.step("I wave my hand"))
+    list(session.step("I look around"))
 
-    # Execute a few turns
-    list(run.step("I wave my hand"))
-    list(run.step("I look around"))
+    complete_events = list(session.step("/complete"))
 
-    # Execute /complete command
-    list(run.step("/complete"))
-
-    # Verify lifecycle transition
-    assert run.state["lifecycle"] == "COMPLETE", (
-        "After /complete command, lifecycle should transition to COMPLETE"
+    # /complete should yield an info event asking for notes
+    info_events = [e for e in complete_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected an info event asking for completion notes"
+    assert "prediction" in info_events[0]["content"].lower() or "notes" in info_events[0]["content"].lower(), (
+        "Completion question should ask about predictions or notes"
     )
 
-    # Verify completion form has additional_notes field
-    completion_form = run.state.get("forms", {}).get("completion_form", {})
-    questions = completion_form.get("questions", [])
-    question_keys = [q.get("key") for q in questions]
-    assert "additional_notes" in question_keys, (
-        "Completion form should include additional_notes question"
+    # Session should NOT be exited yet — waiting for the answer
+    assert not session.exited, "Session should not exit until completion notes are provided"
+
+
+@pytest.mark.functional
+def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_state):
+    """Test that the answer after /complete is collected and game exits."""
+    session = SessionManager.create(
+        game="foresight",
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
+
+    list(session.step(""))
+    list(session.step("I wave my hand"))
+    list(session.step("/complete"))
+
+    # Provide the completion notes
+    notes_events = list(session.step("My notes about my predictions."))
+
+    info_events = [e for e in notes_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected confirmation info event after notes submitted"
+
+    # Game should exit after notes collected
+    assert session.exited, "Session should be exited after completion notes provided"
+    assert session.game.completion_notes == "My notes about my predictions."
 
 
 @pytest.mark.functional
 def test_foresight_run_save(patch_llm_client, _isolate_db_state):
-    """Test foresight game runs can be saved to database.
-
-    Verifies:
-    - run.save() returns non-None path after gameplay
-    """
-    run = RunManager.create(
+    """Test foresight game sessions can be saved to database."""
+    session = SessionManager.create(
         game="foresight",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER and a few turns
-    list(run.step(""))
-    list(run.step("I wave my hand and predict they will respond"))
-    list(run.step("I look around"))
-    list(run.step("I observe the flatworm"))
+    list(session.step(""))
+    list(session.step("I wave my hand and predict they will respond"))
+    list(session.step("I look around"))
+    list(session.step("I observe the flatworm"))
 
-    # Exit and save
-    run.exit(reason="test complete")
-    assert run.state["lifecycle"] == "EXIT", "Lifecycle should be EXIT after exit()"
+    session.exit(reason="test complete")
+    assert session.exited, "Session should be exited after exit()"
 
-    saved = run.save()
-    assert saved is not None, "run.save() should return a path on success"
+    # save() is called by exit(); calling again is a no-op (idempotent)
+    session.save()

@@ -1,9 +1,10 @@
 name: Infer Intent
 version: 1.0.0
-authors:
-  - DCS
+authors: ["DCS"]
 description: |
-  A game where players engage with a human character and then report what goal the NPC was trying to communicate. It is useful for measuring how quickly in a single interaction with no background a player can understand the intention of another character as that characters abilities changes.
+  A game where players engage with a character and then report what goal the NPC was trying to communicate.
+  Useful for measuring how quickly a player can understand the intention of another character.
+
 access_settings:
   user:
     valid:
@@ -62,8 +63,10 @@ access_settings:
         options:
           - I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature.
         required: true
+
 data_collection_settings:
   save_runs: true
+
 character_settings:
   display_pc_choice_as: "{hid} - {short_description}"
   display_npc_choice_as: "Character details hidden"
@@ -75,10 +78,10 @@ character_settings:
   npc:
     valid:
       characters:
-        where: # character hid isn't human-normative
+        where:
           hid:
             "$ne": "human-normative"
-    invalid: # invalid where this player has already played this game with this character
+    invalid:
       runs:
         where:
           player_id: player_id
@@ -88,5 +91,4 @@ character_settings:
 stopping_conditions:
   turns: [">=30"]
 
-### GAME CLASS ###
 game_class: dcs_simulation_engine.games.infer_intent.InferIntentGame

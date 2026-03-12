@@ -5,15 +5,15 @@ one can be loaded by `GameConfig.load_from_yaml(...)`. Each file is shown
 as a separate pytest case (pass/fail) via parametrization.
 """
 
-from __future__ import annotations
+
 
 from pathlib import Path
 
 import pytest
-from helpers import discover_yaml_files
+from dcs_simulation_engine.core.game_config import GameConfig
 from loguru import logger
 
-from dcs_simulation_engine.core.game_config import GameConfig
+from helpers import discover_yaml_files
 
 YAML_FILES = discover_yaml_files()
 

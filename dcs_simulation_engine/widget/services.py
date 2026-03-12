@@ -4,17 +4,17 @@ This module provides shared services accessible to both the widget UI handlers
 and the programmatic API functions.
 """
 
-from __future__ import annotations
+
 
 from typing import Dict, Optional
 
-from dcs_simulation_engine.core.run_manager import RunManager
+from dcs_simulation_engine.core.session_manager import SessionManager
 
 
 class RunRegistry:
-    """In-memory registry of RunManager instances.
+    """In-memory registry of SessionManager instances.
 
-    Provides storage and retrieval of live RunManager objects keyed by run ID.
+    Provides storage and retrieval of live SessionManager objects keyed by run ID.
     The registry is shared between UI handlers and API functions.
 
     Notes:
@@ -24,19 +24,19 @@ class RunRegistry:
 
     def __init__(self) -> None:
         """Initialize the registry."""
-        self._store: Dict[str, RunManager] = {}
+        self._store: Dict[str, SessionManager] = {}
 
-    def add(self, run_id: str, run: RunManager) -> None:
-        """Add a RunManager to the registry.
+    def add(self, run_id: str, run: SessionManager) -> None:
+        """Add a SessionManager to the registry.
 
         Args:
             run_id: Identifier for the run.
-            run: The RunManager instance to store.
+            run: The SessionManager instance to store.
         """
         self._store[run_id] = run
 
-    def get(self, run_id: str) -> Optional[RunManager]:
-        """Retrieve a RunManager by ID.
+    def get(self, run_id: str) -> Optional[SessionManager]:
+        """Retrieve a SessionManager by ID.
 
         Args:
             run_id: Identifier assigned at creation.
@@ -47,7 +47,7 @@ class RunRegistry:
         return self._store.get(run_id)
 
     def remove(self, run_id: str) -> None:
-        """Remove a RunManager by ID.
+        """Remove a SessionManager by ID.
 
         Args:
             run_id: Identifier assigned at creation.

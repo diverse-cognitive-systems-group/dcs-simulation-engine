@@ -5,11 +5,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import dcs_simulation_engine.helpers.database_helpers as dbh
 import mongomock
 from loguru import logger
 from pymongo.database import Database
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
 
 
 def _collection_name_from_stem(stem: str) -> str:

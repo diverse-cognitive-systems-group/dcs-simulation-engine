@@ -2,7 +2,9 @@ name: Foresight
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A game where players have to predict the next action of another character based on their experiential knowledge of that character. This is useful for measuring how quickly and accurately players learn to model other cognitive systems that are different from their own.
+  A game where players interact with another character and learn to predict their responses.
+  Players may optionally include predictions alongside their actions. Useful for measuring
+  how quickly and accurately players learn to model other cognitive systems.
 
 access_settings:
   user:
@@ -69,15 +71,18 @@ data_collection_settings:
 character_settings:
   pc:
     valid:
-      characters: { "where": { "hid": 'human-normative' } }
+      characters: { "where": { "hid": "human-normative" } }
   npc:
     valid:
       characters: {}
-    invalid: # invalid if the npc has been used by this player in this game before
+    invalid:
       runs:
         where:
           player_id: player_id
           game_config.name: "Foresight"
 
-### GAME CLASS ###
+stopping_conditions:
+  runtime_seconds: [">=3600"]
+  turns: [">=500"]
+
 game_class: dcs_simulation_engine.games.foresight.ForesightGame

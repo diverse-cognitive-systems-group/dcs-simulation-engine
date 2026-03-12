@@ -7,27 +7,25 @@ functionality previously provided by the FastAPI endpoints.
 All functions return dicts that Gradio serializes to JSON automatically.
 """
 
-from __future__ import annotations
 
-from typing import Any, Dict, List, Mapping, Optional, Union
+
+from typing import Any, Dict, List, Mapping, Optional
 
 from loguru import logger
 
-from dcs_simulation_engine.core.run_manager import RunManager
+from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.widget.services import get_registry
 
 
-def _build_meta(run: RunManager) -> Dict[str, Any]:
-    """Build metadata dict from a RunManager."""
+def _build_meta(run: SessionManager) -> Dict[str, Any]:
+    """Build metadata dict from a SessionManager."""
     return {
         "name": run.name,
         "turns": run.turns,
         "runtime_seconds": run.runtime_seconds,
-        "runtime_string": run.runtime_string,
         "exited": run.exited,
         "exit_reason": run.exit_reason,
-        "saved": run.saved,
-        "output_path": (str(run.state.get("output_path")) if run.state.get("output_path") else None),
+        "saved": run._saved,
     }
 
 
@@ -48,7 +46,6 @@ def create_run(
     source: str = "api",
     pc_choice: Optional[str] = None,
     npc_choice: Optional[str] = None,
-    access_key: Optional[str] = None,
     player_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a new simulation run.
@@ -58,27 +55,25 @@ def create_run(
         source: Origin tag used in run naming. Defaults to "api".
         pc_choice: Player character HID (optional).
         npc_choice: NPC HID (optional).
-        access_key: Access key used to resolve player_id (optional).
-        player_id: Explicit Player ID, overrides access_key (optional).
+        player_id: Explicit Player ID (optional).
 
     Returns:
         Dict containing run_id, game_name, pc, npc, and meta.
         On error, returns dict with "error" key.
     """
     try:
-        run = RunManager.create(
+        run = SessionManager.create(
             game=game,
             source=source,
             pc_choice=pc_choice,
             npc_choice=npc_choice,
-            access_key=access_key,
             player_id=player_id,
         )
         registry = get_registry()
         registry.add(run.name, run)
 
-        pc = run.context.get("pc")
-        npc = run.context.get("npc")
+        pc = getattr(run.game, "_pc", {})
+        npc = getattr(run.game, "_npc", {})
 
         return {
             "run_id": run.name,
@@ -94,16 +89,16 @@ def create_run(
 
 def step_run(
     run_id: str,
-    user_input: Optional[Union[str, Dict[str, Any]]] = None,
+    user_input: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Advance a simulation by one step.
 
     Args:
         run_id: Identifier of the run to step.
-        user_input: Optional text or mapping to pass as input.
+        user_input: Optional text to pass as input.
 
     Returns:
-        Dict containing state and meta.
+        Dict containing events and meta.
         On error, returns dict with "error" key.
     """
     registry = get_registry()
@@ -113,12 +108,10 @@ def step_run(
         return {"error": f"Run not found: {run_id}"}
 
     try:
-        # run.step() is a generator, must consume it to execute
         for _ in run.step(user_input=user_input):
             pass
-        state = run.state or {}
         return {
-            "state": state,
+            "state": {"events": run._events},
             "meta": _build_meta(run),
         }
     except Exception as e:
@@ -150,19 +143,11 @@ def play_run(
         for text in inputs:
             if run.exited:
                 break
-            # run.step() is a generator, must consume it to execute
             for _ in run.step(user_input=text):
                 pass
 
-        # If last event was user, one extra step may be needed
-        if not run.exited and run.state.get("events"):
-            last = run.state["events"][-1]
-            if getattr(last, "type", None) == "user" or (isinstance(last, dict) and last.get("type") == "user"):
-                for _ in run.step(None):
-                    pass
-
         return {
-            "final_state": run.state or {},
+            "final_state": {"events": run._events},
             "meta": _build_meta(run),
         }
     except Exception as e:
@@ -187,23 +172,19 @@ def get_state(run_id: str) -> Dict[str, Any]:
         return {"error": f"Run not found: {run_id}"}
 
     return {
-        "state": run.state or {},
+        "state": {"events": run._events},
         "meta": _build_meta(run),
     }
 
 
-def save_run(
-    run_id: str,
-    output_dir: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Save run outputs to filesystem.
+def save_run(run_id: str) -> Dict[str, Any]:
+    """Save run to database.
 
     Args:
         run_id: Identifier of the run.
-        output_dir: Optional directory or path hint.
 
     Returns:
-        Dict containing saved, output_path, and files.
+        Dict containing saved status.
         On error, returns dict with "error" key.
     """
     registry = get_registry()
@@ -213,13 +194,8 @@ def save_run(
         return {"error": f"Run not found: {run_id}"}
 
     try:
-        out_path = run.save(path=output_dir) if output_dir else run.save()
-        files = [str(out_path)] if out_path else []
-        return {
-            "saved": True,
-            "output_path": str(out_path) if out_path else None,
-            "files": files,
-        }
+        run.save()
+        return {"saved": run._saved}
     except Exception as e:
         logger.exception("Save failed")
         return {"error": str(e)}

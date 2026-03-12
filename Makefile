@@ -12,7 +12,7 @@ fmt:
 
 # Run test suite quietly (currently only functional tests work)
 test:
-	uv run pytest -m functional -q 
+	uv run pytest -q
 
 # Build documentation (MkDocs in this example).
 docs:

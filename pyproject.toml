@@ -19,10 +19,6 @@ classifiers = [
 dependencies = [
   "dotenv (>=0.9.9,<0.10.0)",
   "gradio (==6.5.1)",
-  "grandalf (>=0.8,<0.9)",
-  "langchain (>=0.3.27,<0.4.0)",
-  "langchain-openai (>=0.3.30,<0.4.0)",
-  "langgraph (>=0.6.4,<0.7.0)",
   "loguru (>=0.7.3,<0.8.0)",
   "mnemonic (>=0.21,<0.22)",
   "openai (>=1.99.9,<2.0.0)",
@@ -31,7 +27,7 @@ dependencies = [
   "pymongo (>=4.15.3,<5.0.0)",
   "python-on-whales (>=0.80.0,<0.81.0)",
   "pyyaml (>=6.0.2,<7.0.0)",
-  "rich (>=14.1.0,<15.0.0)"
+  "rich (>=14.1.0,<15.0.0)",
 ]
 
 description = "A textual environment for simulating diverse cognitive systems."
@@ -62,7 +58,8 @@ dev = [
   "pytest>=8.4.1,<9.0.0",
   "ruff>=0.12.10,<0.13.0",
   "types-pyyaml>=6.0.12.20250822",
-  "yamale>=6.0.0,<7.0.0"
+  "yamale>=6.0.0,<7.0.0",
+  "pytest-cov>=7.0.0",
 ]
 analysis = [
     "ipykernel>=6.31.0",
@@ -90,19 +87,19 @@ Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engi
 # Pytest configuration
 # https://docs.pytest.org/en/stable/customize.html#pyproject-toml
 [tool.pytest.ini_options]
+markers = [
+  "functional: end-to-end functional tests (may require DB/LLM mocks)",
+  "unit: fast isolated unit tests",
+  "compile: game config compilation tests",
+  "slow: mark test as slow (longer running)"
+]
 addopts = [
-  # "--black",
   "--cache-clear",
   "--cov-report=term",
   # "--numprocesses=auto", # multiprocessing
   "--cov-report=xml",
-  "--cov=trajectory_core",
   "--durations=0",
-  # "--isort",
   "--verbose",
-  # "--disable-warnings", # disable warnings
-  # "--pylint-rcfile=.pylintrc", # uncomment to enable pylint during unit tests
-  # "--pylint",
   "-x" # stop tests after first failure
 ]
 

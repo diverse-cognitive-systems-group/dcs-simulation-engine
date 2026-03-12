@@ -2,20 +2,18 @@
 
 This test suite validates the infer-intent game's unique mechanics:
 1. PC is fixed to human-normative, NPC excludes human-normative
-2. /guess command triggers COMPLETE lifecycle (for goal inference submission)
+2. /guess command triggers a 2-step completion form (goal inference + feedback)
 3. /help and /abilities command handlers
 4. Goal-aligned NPC responses
-5. Completion form with user_goal_inference field
+5. Completion form collects goal_inference and other_feedback, then scores and exits
 
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
+import dcs_simulation_engine.helpers.database_helpers as dbh
 import pytest
 from bson import ObjectId
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
-from dcs_simulation_engine.core.run_manager import RunManager
-
+from dcs_simulation_engine.core.session_manager import SessionManager
 
 # Test player ID for infer-intent tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
@@ -23,11 +21,7 @@ TEST_PLAYER_ID = ObjectId()
 
 @pytest.fixture(autouse=True)
 def seed_consenting_player(_isolate_db_state):
-    """Seed a player with consent signature for infer-intent game access.
-
-    The infer-intent game requires players to have consent_signature.answer
-    in their player document. This fixture creates such a player.
-    """
+    """Seed a player with consent signature for infer-intent game access."""
     db = dbh.get_db()
     db[dbh.PLAYERS_COL].insert_one({
         "_id": TEST_PLAYER_ID,
@@ -40,7 +34,6 @@ def seed_consenting_player(_isolate_db_state):
     yield
 
 
-# Test inputs for multi-turn simulation
 INFER_INTENT_TEST_INPUTS = [
     "I look at the creature",
     "I wave my hand",
@@ -52,245 +45,174 @@ INFER_INTENT_TEST_INPUTS = [
 
 @pytest.mark.functional
 def test_infer_intent_initialization(patch_llm_client, _isolate_db_state):
-    """Test infer-intent game initializes correctly with RunManager.
-
-    Verifies:
-    - RunManager.create works with game="Infer Intent"
-    - PC must be human-normative
-    - Initial lifecycle is ENTER
-    - Initial history is empty
-    """
-    run = RunManager.create(
+    """Test infer-intent game initializes correctly with SessionManager."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    assert run.state["lifecycle"] == "ENTER", "Initial lifecycle should be ENTER"
-    assert len(run.state["history"]) == 0, "Initial history should be empty"
+    assert not session.exited, "Session should not be exited initially"
+    assert session._events == [], "Initial events should be empty"
 
 
 @pytest.mark.functional
 def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_state):
-    """Test ENTER lifecycle produces welcome message and transitions to UPDATE.
-
-    Verifies:
-    - run.step("") produces info event with welcome content
-    - Lifecycle transitions to UPDATE
-    """
-    run = RunManager.create(
+    """Test ENTER step produces welcome message and AI opening."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    enter_events = list(run.step(""))
+    enter_events = list(session.step(""))
 
-    # Verify welcome message
     info_events = [e for e in enter_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected welcome message with type 'info'"
 
-    # Verify lifecycle transition
-    assert (
-        run.state["lifecycle"] == "UPDATE"
-    ), "After ENTER step, lifecycle should transition to UPDATE"
+    assert not session.exited, "Session should not be exited after ENTER"
 
 
 @pytest.mark.functional
 def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state):
-    """Test /guess command triggers COMPLETE lifecycle transition.
-
-    Verifies:
-    - /guess command transitions lifecycle to COMPLETE
-    """
-    run = RunManager.create(
+    """Test /guess command triggers goal-inference question."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
-    assert run.state["lifecycle"] == "UPDATE"
+    list(session.step(""))
+    list(session.step("I look around"))
 
-    # Execute a turn first
-    list(run.step("I look around"))
+    guess_events = list(session.step("/guess"))
 
-    # Execute /guess command
-    list(run.step("/guess"))
+    info_events = [e for e in guess_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event asking for goal inference"
 
-    # Verify lifecycle transition
-    assert run.state["lifecycle"] == "COMPLETE", (
-        "After /guess command, lifecycle should transition to COMPLETE"
-    )
+    # Session should NOT exit yet — awaiting goal inference answer
+    assert not session.exited, "Session should not exit after /guess"
 
 
 @pytest.mark.functional
 def test_infer_intent_help_command(patch_llm_client, _isolate_db_state):
-    """Test /help command returns game instructions.
-
-    Verifies:
-    - /help returns info event
-    - Lifecycle remains UPDATE
-    """
-    run = RunManager.create(
+    """Test /help command returns game instructions."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
-    assert run.state["lifecycle"] == "UPDATE"
+    list(session.step(""))
 
-    # Execute /help command
-    help_events = list(run.step("/help"))
+    help_events = list(session.step("/help"))
 
-    # Verify info event returned
     info_events = [e for e in help_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected info event from /help command"
-
-    # Verify lifecycle remains UPDATE
-    assert run.state["lifecycle"] == "UPDATE", (
-        "After /help command, lifecycle should remain UPDATE"
-    )
+    assert not session.exited, "Session should remain active after /help"
 
 
 @pytest.mark.functional
 def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state):
-    """Test /abilities command returns character abilities.
-
-    Verifies:
-    - /abilities returns info event
-    - Lifecycle remains UPDATE
-    """
-    run = RunManager.create(
+    """Test /abilities command returns character abilities."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
-    assert run.state["lifecycle"] == "UPDATE"
+    list(session.step(""))
 
-    # Execute /abilities command
-    abilities_events = list(run.step("/abilities"))
+    abilities_events = list(session.step("/abilities"))
 
-    # Verify info event returned
     info_events = [e for e in abilities_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected info event from /abilities command"
-
-    # Verify lifecycle remains UPDATE
-    assert run.state["lifecycle"] == "UPDATE", (
-        "After /abilities command, lifecycle should remain UPDATE"
-    )
+    assert not session.exited, "Session should remain active after /abilities"
 
 
 @pytest.mark.functional
 def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state):
-    """Test multi-turn simulation accumulates history correctly.
-
-    Verifies:
-    - Multiple turns produce AI response events
-    - History accumulates correctly (2 messages per turn)
-    """
-    run = RunManager.create(
+    """Test multi-turn simulation accumulates events correctly."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
-    enter_step_message_count = len(run.state["history"])
+    list(session.step(""))
+    turns_after_enter = session.turns
 
-    # Execute multiple turns
     for idx, user_input in enumerate(INFER_INTENT_TEST_INPUTS):
         turn_num = idx + 1
+        prev_event_count = len(session._events)
 
-        events = list(run.step(user_input))
+        events = list(session.step(user_input))
 
-        # Verify AI response
         ai_events = [e for e in events if e.get("type") == "ai"]
         assert len(ai_events) > 0, f"Turn {turn_num}: Expected AI response event"
 
-        # Verify history accumulates correctly
-        expected_history_length = enter_step_message_count + (turn_num * 2)
-        actual_history_length = len(run.state["history"])
-        assert actual_history_length == expected_history_length, (
-            f"Turn {turn_num}: History should have {expected_history_length} messages "
-            f"(got {actual_history_length})"
+        assert len(session._events) > prev_event_count, (
+            f"Turn {turn_num}: _events should grow after each step"
         )
 
-    # Verify still in UPDATE lifecycle
-    assert run.state["lifecycle"] == "UPDATE", "Should still be in UPDATE lifecycle"
+    assert not session.exited, "Session should still be active"
+    assert session.turns == turns_after_enter + len(INFER_INTENT_TEST_INPUTS)
 
 
 @pytest.mark.functional
 def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state):
-    """Test completion form includes user_goal_inference field.
-
-    Verifies:
-    - After /guess, completion form has user_goal_inference question
-    """
-    run = RunManager.create(
+    """Test 2-step completion form: /guess -> goal inference -> other feedback -> exit."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER step
-    list(run.step(""))
+    list(session.step(""))
+    list(session.step("I observe the creature"))
 
-    # Execute a turn
-    list(run.step("I observe the creature"))
+    # Step 1: /guess triggers goal inference question
+    guess_events = list(session.step("/guess"))
+    assert any(e["type"] == "info" for e in guess_events), "Expected info event from /guess"
+    assert not session.exited
 
-    # Execute /guess command
-    list(run.step("/guess"))
+    # Step 2: provide goal inference — triggers other feedback question
+    inference_events = list(session.step("The creature is trying to find food."))
+    assert any(e["type"] == "info" for e in inference_events), "Expected follow-up question"
+    assert not session.exited, "Session should not exit after first answer"
+    assert session.game.goal_inference == "The creature is trying to find food."
 
-    # Verify lifecycle is COMPLETE
-    assert run.state["lifecycle"] == "COMPLETE"
-
-    # Verify completion form has user_goal_inference field
-    completion_form = run.state.get("forms", {}).get("completion_form", {})
-    questions = completion_form.get("questions", [])
-    question_keys = [q.get("key") for q in questions]
-    assert "user_goal_inference" in question_keys, (
-        "Completion form should include user_goal_inference question"
-    )
+    # Step 3: provide other feedback — scores and exits
+    feedback_events = list(session.step("Interesting behavior overall."))
+    assert any(e["type"] == "info" for e in feedback_events), "Expected completion confirmation"
+    assert session.exited, "Session should exit after second answer"
+    assert session.game.other_feedback == "Interesting behavior overall."
+    assert session.game.evaluation != {}, "Evaluation should be populated after scoring"
 
 
 @pytest.mark.functional
 def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state):
-    """Test infer-intent game runs can be exited and saved to database.
-
-    Verifies:
-    - run.exit() transitions lifecycle to EXIT
-    - run.save() returns non-None path after exit
-    """
-    run = RunManager.create(
+    """Test infer-intent game sessions can be exited and saved."""
+    session = SessionManager.create(
         game="Infer Intent",
         pc_choice="human-normative",
         npc_choice="flatworm",
         player_id=str(TEST_PLAYER_ID),
     )
 
-    # Execute ENTER and a few turns
-    list(run.step(""))
-    list(run.step("I wave my hand"))
-    list(run.step("I look around"))
+    list(session.step(""))
+    list(session.step("I wave my hand"))
+    list(session.step("I look around"))
 
-    # Exit and save
-    run.exit(reason="test complete")
-    assert run.state["lifecycle"] == "EXIT", "Lifecycle should be EXIT after exit()"
+    session.exit(reason="test complete")
+    assert session.exited, "Session should be exited after exit()"
 
-    saved = run.save()
-    assert saved is not None, "run.save() should return a path on success"
+    # save() is called internally by exit(); calling again is a no-op
+    session.save()

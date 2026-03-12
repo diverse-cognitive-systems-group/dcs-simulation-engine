@@ -4,14 +4,13 @@ Send → enqueue → sim.play consumes → timer polls state → new messages ap
 
 """
 
-from __future__ import annotations
+
 
 import random
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Tuple
 
 import gradio as gr
-from langchain_core.messages import AIMessage, HumanMessage
 from loguru import logger
 
 import dcs_simulation_engine.helpers.database_helpers as dbh
@@ -86,17 +85,7 @@ def setup_simulation(
         logger.debug("Stepping simulation to get opener.")
         initial_history = []
         for e in run.step():
-            if isinstance(e, AIMessage):
-                formatted_response_partial = format(
-                    {
-                        "type": "ai",
-                        "content": e.content,
-                    }
-                )  # type: ignore
-                initial_history.append({"role": "assistant", "content": formatted_response_partial})
-            elif isinstance(e, HumanMessage):
-                initial_history.append({"role": "user", "content": e.content})  # type: ignore
-            elif isinstance(e, dict) and "type" in e and "content" in e:
+            if isinstance(e, dict) and "type" in e and "content" in e:
                 formatted_response = format(e)
                 initial_history.append({"role": "assistant", "content": formatted_response})
             else:
