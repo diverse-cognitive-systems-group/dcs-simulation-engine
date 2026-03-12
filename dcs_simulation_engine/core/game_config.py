@@ -1,6 +1,6 @@
 """Base game config module."""
 
-from __future__ import annotations
+
 
 import importlib
 from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
@@ -81,7 +81,7 @@ class AccessSettings(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     user: ValiditySelector
-    new_player_form: Optional[Form] = Field(default=None)
+    new_player_form: Optional["Form"] = Field(default=None)
 
 
 class Form(BaseModel):
@@ -89,7 +89,7 @@ class Form(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     preamble: Optional[str] = None
-    questions: List[FormQuestion] = Field(default_factory=list)
+    questions: List["FormQuestion"] = Field(default_factory=list)
 
 
 class FormQuestion(BaseModel):

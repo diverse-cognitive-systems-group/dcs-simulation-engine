@@ -1,46 +1,29 @@
-### METADATA ###
 name: Explore
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A lightweight interaction sandbox that allows users/players to freely explore and interact with characters. There are no goals, no data collection, and no extra mechanics. Useful for demos and open-ended play.
+  A lightweight interaction sandbox that allows users/players to freely explore and interact with characters. There are no goals, no data collection, and no extra mechanics. Useful for demos and open-ended play. (New-style Game implementation — no LangGraph.)
 
-### ACCESS SETTINGS ###
-# Defines who may access/play using a MongoDB-style query on players.
-# Examples:
-#   - Anyone may play: {}
-#   - Players must have a player_id: { "where": { "player_id": { "$exists": true } } }
-#   - Only with consent: { "consent_given": true }
-#   - Only with expertise data: { "expertise": { "$exists": true } }
 access_settings:
   user:
     valid:
       players: {}  # open to any players
 
-### DATA COLLECTION SETTINGS ###
-# Defines what data is collected during and after game play.
 data_collection_settings:
   save_runs: true
 
-### CHARACTER SELECTION SETTINGS ###
-# Defines what characters may be used for the user/player character (PC) and non-player character (NPC) using a MongoDB-style query on collections characters, players or runs.
-# NOTE: if the interface allows users to select PC and NPC characters thats fine, their selection will just be validated against these criteria. If no selection is provided and the query returns multiple characters one will be selected at random. If one character is returned it will be used.
 character_settings:
-  # A wide range of PC and NPC characters are allowed. PC can be any character with human-like-cognition and NPC can be any other character.
   display_pc_choice_as: "{hid} - {short_description}"
   display_npc_choice_as: "{hid} - {short_description}"
   pc:
     valid:
       characters: { "where": { "common_descriptors": { "$regex": "human-?like-cognition", "$options": "i" } } }
-      # characters: { 'where': { hid: 'human-normative' } } # allow only normative human PC
   npc:
     valid:
-      characters: {} # allow any NPC character
+      characters: {}
 
-### ADDITIONAL STOPPING CRITERIA ###
 stopping_conditions:
-  runtime_seconds: [">=600"] # stop after 10 minutes
-  turns: [">=50"]    # stop after 50 total turns
+  runtime_seconds: [">=600"]
+  turns: [">=50"]
 
-### GAME CLASS ###
 game_class: dcs_simulation_engine.games.explore.ExploreGame

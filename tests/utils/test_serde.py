@@ -3,9 +3,8 @@
 from typing import Optional
 
 import pytest
-from pydantic import ConfigDict
-
 from dcs_simulation_engine.utils.serde import SerdeMixin
+from pydantic import ConfigDict
 
 
 class ATestClass(SerdeMixin):

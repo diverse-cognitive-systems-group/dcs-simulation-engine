@@ -8,6 +8,7 @@ from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.helpers import database_helpers as dbh
 from loguru import logger
 from mongomock import ObjectId
+
 from tests.helpers import patch_yaml
 
 # TODO: update these tests to run the test the following character selectors instead of the ones they are currently using. Continue to use patch to modify the minimal config for each test.

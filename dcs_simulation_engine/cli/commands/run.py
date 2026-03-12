@@ -124,7 +124,6 @@ def run(
         False,
         "--deploy",
         help="Deploy publicly instead of running locally.",
-        is_flag=True,
     ),
     run_name: Optional[str] = typer.Option(
         None,

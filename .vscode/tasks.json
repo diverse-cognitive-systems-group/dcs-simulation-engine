@@ -5,7 +5,7 @@
         {
             "label": "docker-compose-up",
             "type": "shell",
-            "command": "docker compose -f compose.yaml up --detach",
+            "command": "rm dcs_simulation_engine/.dcs_se_runs && docker compose -f compose.yaml up --detach",
             "group": {
                 "kind": "build",
                 "isDefault": true

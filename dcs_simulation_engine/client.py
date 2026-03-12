@@ -16,9 +16,7 @@ Typical usage::
     # run is automatically deleted on context exit
 """
 
-from __future__ import annotations
-
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional, Self
 
 from gradio_client import Client
 
@@ -62,7 +60,7 @@ class SimulationRun:
 
     def __init__(
         self,
-        client: DCSClient,
+        client: "DCSClient",
         run_id: str,
         game_name: str,
         pc: Dict[str, Any],
@@ -79,7 +77,7 @@ class SimulationRun:
         self._state: Dict[str, Any] = state
         self._meta: Dict[str, Any] = meta
 
-    def __enter__(self) -> SimulationRun:
+    def __enter__(self) -> Self:
         """Enter the runtime context related to this object."""
         return self
 
@@ -90,7 +88,7 @@ class SimulationRun:
         except Exception:
             pass  # don't mask the original exception with a cleanup error
 
-    def step(self, user_input: str = "") -> SimulationRun:
+    def step(self, user_input: str = "") -> Self:
         """Advance the simulation by one step.
 
         Args:
@@ -108,7 +106,7 @@ class SimulationRun:
         self._meta = result["meta"]
         return self
 
-    def get_state(self) -> SimulationRun:
+    def get_state(self) -> Self:
         """Fetch the current server-side state without advancing the simulation.
 
         Useful when you need to verify state without triggering a step, or after
@@ -190,7 +188,7 @@ class SimulationRun:
         return msg.get("content") if msg else None
 
     @property
-    def history(self) -> List[Dict[str, Any]]:
+    def history(self) -> list[dict[str, Any]]:
         """The full message history from state.
 
         Each entry is a LangChain message dict with at minimum "type" and

@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest  # noqa: F401
-
 from dcs_simulation_engine.utils.file import unique_fpath
 
 

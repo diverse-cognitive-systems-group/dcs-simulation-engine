@@ -10,11 +10,10 @@ with access_key="dev" against a local dev server.
 
 import json
 
+from dcs_simulation_engine.client import DCSClient
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer
-
-from dcs_simulation_engine.client import DCSClient
 
 
 def _pprint(data):
