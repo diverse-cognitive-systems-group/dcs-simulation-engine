@@ -8,6 +8,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from loguru import logger
 from tomlkit import key
 
+from dcs_simulation_engine.core.simulation_graph.constants import EVAL_TEMPLATES
 from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
 from dcs_simulation_engine.core.simulation_graph.state import (
     SimulationGraphState,
@@ -122,6 +123,101 @@ def command_filter(state: SimulationGraphState, context: ContextSchema, command_
         state_updates[state_key] = val
     logger.debug(f"Command '{command}' matched; applying state updates: {state_updates}.")
     return state_updates
+
+
+def llm_eval(
+    state: SimulationGraphState,
+    context: ContextSchema,
+    template_name: str,
+    model_key: str,
+    guess_form: str,
+    guess_key: str,
+    result_key: str,
+    display_result: bool = False,
+) -> dict[str, Any]:
+    """Builtin LLM evaluation node function.
+
+    Renders an eval template, calls the LLM, parses the JSON result, and
+    stores it in state['scratchpad'][result_key].
+
+    Args:
+        state: Current simulation graph state.
+        context: Runtime context schema with models and character info.
+        template_name: Key into EVAL_TEMPLATES for the prompt template.
+        model_key: Key into context['models'] for the LLM to use.
+        guess_form: Name of the form in state['forms'] containing the guess.
+        guess_key: Question key within that form whose answer is the guess.
+        result_key: Key under which to store the parsed result in scratchpad.
+        display_result: If True, also set simulator_output to the result summary.
+    """
+    # Look up the template
+    template_str = EVAL_TEMPLATES.get(template_name)
+    if template_str is None:
+        raise ValueError(f"llm_eval: unknown template_name '{template_name}'. Available: {list(EVAL_TEMPLATES)}")
+
+    # Extract the guess from the completed form
+    forms = state.get("forms") or {}
+    form_data = forms.get(guess_form)
+    if form_data is None:
+        raise ValueError(f"llm_eval: form '{guess_form}' not found in state['forms']")
+
+    guess: str = ""
+    for q in form_data.get("questions", []):
+        if q.get("key") == guess_key:
+            guess = q.get("answer") or ""
+            break
+    if not guess:
+        logger.warning(f"llm_eval: no answer found for key '{guess_key}' in form '{guess_form}'")
+
+    # Build transcript from history
+    transcript_parts: list[str] = []
+    for msg in state.get("history") or []:
+        role = getattr(msg, "type", "unknown")
+        content = getattr(msg, "content", "")
+        transcript_parts.append(f"{role}: {content}")
+    transcript = "\n".join(transcript_parts)
+
+    # Render the prompt template
+    tmpl = _jinja_env.from_string(template_str)
+    prompt = tmpl.render(
+        **state,
+        pc=context["pc"],
+        npc=context["npc"],
+        transcript=transcript,
+        guess=guess,
+    )
+
+    # Call the LLM
+    llm = context["models"].get(model_key)
+    if llm is None:
+        raise ValueError(f"llm_eval: model_key '{model_key}' not found in context['models']")
+
+    logger.debug(f"llm_eval: calling model '{model_key}' with template '{template_name}'")
+    response = llm.invoke([{"role": "user", "content": prompt}])
+    raw = response.content if hasattr(response, "content") else str(response)
+
+    # Parse JSON result
+    result: dict[str, Any] = {}
+    try:
+        # Strip markdown code fences if present
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE)
+        result = json.loads(cleaned)
+    except Exception as exc:
+        logger.error(f"llm_eval: failed to parse LLM response as JSON: {exc}\nRaw: {raw!r}")
+        result = {"error": str(exc), "raw": raw}
+
+    logger.debug(f"llm_eval: result for key '{result_key}': {result}")
+
+    # Merge into scratchpad
+    scratchpad = dict(state.get("scratchpad") or {})
+    scratchpad[result_key] = result
+
+    updates: dict[str, Any] = {"scratchpad": scratchpad}
+    if display_result:
+        summary = f"Score: {result.get('score', '?')}/100 (Tier {result.get('tier', '?')})"
+        updates["simulator_output"] = {"type": "info", "content": summary}
+
+    return updates
 
 
 def form(state: SimulationGraphState, context: ContextSchema, form_name: str) -> dict[str, Any]:
