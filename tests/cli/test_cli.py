@@ -6,9 +6,9 @@ import pytest
 @pytest.mark.unit
 def test_can_import_cli() -> None:
     """Ensure the main CLI module can be imported."""
-    import dcs_simulation_engine.cli.runner as r
+    import dcs_simulation_engine.cli.app as a
 
-    assert r.run_cli
+    assert a.app
 
 
 @pytest.mark.skip(reason="CLI startup test not implemented yet")

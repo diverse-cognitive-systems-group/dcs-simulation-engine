@@ -1,175 +1,218 @@
-"""Infer Intent game class."""
+"""Infer Intent game — new-style implementation."""
 
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.runtime import Runtime
+from enum import StrEnum
+from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.simulation_graph.builtins import (
-    command_filter,
-    form,
-    llm_eval,
-    raise_error,
-    update_state,
-)
-from dcs_simulation_engine.core.simulation_graph.conditions import predicate
-from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
-from dcs_simulation_engine.core.simulation_graph.state import SimulationGraphState
-from dcs_simulation_engine.games.const import InferIntent as C
+from loguru import logger
 
-_SUBGRAPH_NODE = "__SIMULATION_SUBGRAPH__"
-
-_COMMAND_HANDLERS = {
-    "help": {"simulator_output": {"type": "info", "content": C.HELP_CONTENT}},
-    "abilities": {"simulator_output": {"type": "info", "content": C.ABILITIES_CONTENT}},
-    "guess": {"lifecycle": "COMPLETE"},
-}
-
-_STATE_OVERRIDES = {
-    "user_retry_budget": 3,
-    "forms": {
-        "completion_form": {
-            "questions": [
-                {
-                    "key": "user_goal_inference",
-                    "text": (
-                        "What do you think the NPC's goal or intention was during this interaction?"
-                        " Please describe in a few sentences."
-                    ),
-                    "answer": "",
-                },
-                {
-                    "key": "other_feedback",
-                    "text": "Do you have any other feedback about this experience?",
-                    "answer": "",
-                },
-            ]
-        }
-    },
-}
+from dcs_simulation_engine.core.game import Game, GameEvent
+from dcs_simulation_engine.games.ai_client import ScorerClient, UpdaterClient, ValidatorClient
+from dcs_simulation_engine.games.const import InferIntentV2 as C
+from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
 
 
-def _node_command_filter(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return command_filter(state=state, context=runtime.context, command_handlers=_COMMAND_HANDLERS)
+class Command(StrEnum):
+    """Game-level slash commands recognised by InferIntentGame."""
+
+    HELP = "help"
+    ABILITIES = "abilities"
+    GUESS = "guess"
 
 
-def _node_enter_message(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return update_state(
-        state=state,
-        context=runtime.context,
-        state_updates={
-            "simulator_output": {"type": "info", "content": C.ENTER_CONTENT},
-            "lifecycle": "UPDATE",
-        },
-    )
+class InferIntentGame(Game):
+    """Infer Intent game: player interacts with NPC and infers their hidden goal."""
 
+    DEFAULT_RETRY_BUDGET = 3
+    DEFAULT_MAX_INPUT_LENGTH = 350
 
-def _node_exit_message(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return update_state(
-        state=state,
-        context=runtime.context,
-        state_updates={"simulator_output": {"type": "info", "content": C.EXIT_CONTENT}},
-    )
+    def __init__(
+        self,
+        pc: dict[str, Any],
+        npc: dict[str, Any],
+        updater: UpdaterClient,
+        validator: ValidatorClient,
+        scorer: ScorerClient,
+        retry_budget: int = DEFAULT_RETRY_BUDGET,
+        max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+    ) -> None:
+        """Initialise the game. Use create_from_context() as the public entry point."""
+        self._pc = pc
+        self._npc = npc
+        self._updater = updater
+        self._validator = validator
+        self._scorer = scorer
+        self._retry_budget = retry_budget
+        self._max_input_length = max_input_length
+        self._entered = False
+        self._exited = False
+        self._exit_reason = ""
+        # Completion flow state
+        self._awaiting_goal_inference = False
+        self._awaiting_other_feedback = False
+        self._goal_inference = ""
+        self._other_feedback = ""
+        self._evaluation: dict[str, Any] = {}
 
+    @classmethod
+    def create_from_context(cls, pc: dict[str, Any], npc: dict[str, Any], **kwargs: Any) -> "InferIntentGame":
+        """Factory called by SessionManager. Builds clients from character dicts.
 
-def _node_completion_form(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return form(state=state, context=runtime.context, form_name="completion_form")
-
-
-def _node_score_inference(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return llm_eval(
-        state=state,
-        context=runtime.context,
-        template_name="inference_scorer",
-        model_key="llm_eval",
-        guess_form="completion_form",
-        guess_key="user_goal_inference",
-        result_key="evaluation",
-        display_result=False,
-    )
-
-
-def _node_error_in_lifecycle(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return raise_error(state=state, context=runtime.context, message=C.ERROR_IN_LIFECYCLE)
-
-
-def _route_start(state: SimulationGraphState) -> str:
-    if predicate("state['simulator_output']", state):
-        return "__END__"
-    if predicate("state['lifecycle'] == 'ENTER'", state):
-        return "enter_message"
-    if predicate("state['lifecycle'] == 'EXIT'", state):
-        return "exit_message"
-    if predicate("state['lifecycle'] == 'COMPLETE'", state):
-        return "completion_form"
-    if predicate("state['lifecycle'] == 'UPDATE'", state):
-        return "command_filter"
-    return "error_in_lifecycle"
-
-
-def _route_command_filter(state: SimulationGraphState) -> str:
-    if predicate("state['simulator_output']", state):
-        return "__END__"
-    if predicate("state['lifecycle'] == 'COMPLETE'", state):
-        return "completion_form"
-    return _SUBGRAPH_NODE
-
-
-def _route_completion_form(state: SimulationGraphState) -> str:
-    if predicate("state['lifecycle'] == 'EXIT'", state):
-        return "score_inference"
-    return "__END__"
-
-
-class InferIntentGame:
-    """Game class for the Infer Intent game."""
-
-    additional_validator_rules: str = ""
-    additional_updater_rules: str = C.ADDITIONAL_UPDATER_RULES
-    state_overrides: dict = _STATE_OVERRIDES
-
-    def build_graph(self, subgraph: CompiledStateGraph) -> CompiledStateGraph:
-        """Build the outer LangGraph for the Infer Intent game, wrapping the simulation subgraph."""
-        builder = StateGraph(SimulationGraphState, context_schema=ContextSchema)
-
-        builder.add_node("command_filter", _node_command_filter)
-        builder.add_node("enter_message", _node_enter_message)
-        builder.add_node("exit_message", _node_exit_message)
-        builder.add_node("completion_form", _node_completion_form)
-        builder.add_node("score_inference", _node_score_inference)
-        builder.add_node("error_in_lifecycle", _node_error_in_lifecycle)
-        builder.add_node(_SUBGRAPH_NODE, subgraph)
-
-        builder.add_conditional_edges(
-            START,
-            _route_start,
-            {
-                "__END__": END,
-                "enter_message": "enter_message",
-                "exit_message": "exit_message",
-                "completion_form": "completion_form",
-                "command_filter": "command_filter",
-                "error_in_lifecycle": "error_in_lifecycle",
-            },
+        Accepted kwargs:
+            retry_budget (int): overrides DEFAULT_RETRY_BUDGET
+            max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+        """
+        updater = UpdaterClient(
+            system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)
         )
-        builder.add_edge("enter_message", _SUBGRAPH_NODE)
-        builder.add_edge("exit_message", END)
-        builder.add_conditional_edges(
-            "command_filter",
-            _route_command_filter,
-            {
-                "__END__": END,
-                "completion_form": "completion_form",
-                _SUBGRAPH_NODE: _SUBGRAPH_NODE,
-            },
+        validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
+        scorer = ScorerClient(npc=npc)
+        return cls(
+            pc=pc,
+            npc=npc,
+            updater=updater,
+            validator=validator,
+            scorer=scorer,
+            retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
+            max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
         )
-        builder.add_conditional_edges(
-            "completion_form",
-            _route_completion_form,
-            {
-                "score_inference": "score_inference",
-                "__END__": END,
-            },
-        )
-        builder.add_edge("score_inference", "exit_message")
 
-        return builder.compile()
+    def exit(self, reason: str) -> None:
+        """Mark the game as ended."""
+        if self._exited:
+            return
+        self._exited = True
+        self._exit_reason = reason
+        logger.info(f"InferIntentGame exited: {reason}")
+
+    @property
+    def exited(self) -> bool:
+        """True if the game has ended."""
+        return self._exited
+
+    @property
+    def exit_reason(self) -> str:
+        """Reason the game ended, or empty string."""
+        return self._exit_reason
+
+    @property
+    def goal_inference(self) -> str:
+        """Player's goal inference, or empty string."""
+        return self._goal_inference
+
+    @property
+    def other_feedback(self) -> str:
+        """Player's other feedback, or empty string."""
+        return self._other_feedback
+
+    @property
+    def evaluation(self) -> dict[str, Any]:
+        """LLM scoring result, or empty dict."""
+        return self._evaluation
+
+    async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
+        """Advance the game one turn, yielding one or more GameEvents."""
+        if self._exited:
+            return
+
+        # ENTER: first call — emit welcome message then generate the opening scene.
+        if not self._entered:
+            self._entered = True
+            yield GameEvent(
+                type="info",
+                content=C.ENTER_CONTENT.format(
+                    pc_hid=self._pc.get("hid", ""),
+                    pc_short_description=self._pc.get("short_description", ""),
+                ),
+            )
+            opening = await self._updater.chat(None)
+            yield GameEvent(type="ai", content=opening)
+            return
+
+        if not user_input:
+            return
+
+        # GOAL INFERENCE: first answer after /guess.
+        if self._awaiting_goal_inference:
+            self._goal_inference = user_input
+            self._awaiting_goal_inference = False
+            self._awaiting_other_feedback = True
+            yield GameEvent(type="info", content=C.OTHER_FEEDBACK_QUESTION)
+            return
+
+        # OTHER FEEDBACK: second answer — then score and exit.
+        if self._awaiting_other_feedback:
+            self._other_feedback = user_input
+            self._awaiting_other_feedback = False
+            transcript = _build_transcript(self._updater.history)
+            self._evaluation = await self._scorer.score(transcript, self._goal_inference)
+            logger.debug(f"Evaluation: {self._evaluation}")
+            self.exit("game completed")
+            yield GameEvent(type="info", content="Thank you. Game complete.")
+            return
+
+        # Game-level commands (/help, /abilities, /guess). Session-level commands
+        # (/exit, /quit, /feedback) are already handled by SessionManager.
+        command_event = self._handle_command(user_input)
+        if command_event is not None:
+            yield command_event
+            return
+
+        if len(user_input) > self._max_input_length:
+            yield GameEvent(
+                type="error",
+                content=f"Input exceeds maximum length of {self._max_input_length} characters.",
+            )
+            return
+
+        # Validate before advancing the scene.
+        validation = await self._validator.validate(user_input)
+        if validation.get("type") == "error":
+            self._retry_budget -= 1
+            logger.debug(f"Validation failed. Retry budget remaining: {self._retry_budget}")
+            if self._retry_budget <= 0:
+                self.exit("retry budget exhausted")
+                yield GameEvent(type="error", content=validation.get("content", "Invalid action."))
+                yield GameEvent(type="info", content="You have used all your allowed retries. The game is ending.")
+                return
+            yield GameEvent(type="error", content=validation.get("content", "Invalid action."))
+            return
+
+        reply = await self._updater.chat(user_input)
+        yield GameEvent(type="ai", content=reply)
+
+    def _handle_command(self, user_input: str) -> GameEvent | None:
+        """Return a GameEvent for recognised game-level commands, or None to continue."""
+        stripped = user_input.strip()
+        if not stripped.startswith(("/", "\\")):
+            return None
+
+        cmd = stripped.lstrip("/\\").split()[0].lower()
+
+        if cmd == Command.HELP:
+            return GameEvent(type="info", content=C.HELP_CONTENT)
+
+        if cmd == Command.ABILITIES:
+            return GameEvent(
+                type="info",
+                content=C.ABILITIES_CONTENT.format(pc_abilities=self._pc.get("abilities", "")),
+            )
+
+        if cmd == Command.GUESS:
+            self._awaiting_goal_inference = True
+            return GameEvent(type="info", content=C.GOAL_INFERENCE_QUESTION)
+
+        # Unrecognised — return None so SessionManager can handle it.
+        return None
+
+
+def _build_transcript(history: list[dict[str, str]]) -> str:
+    """Format UpdaterClient history into a readable transcript string."""
+    lines: list[str] = []
+    for msg in history:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role == "user":
+            lines.append(f"Player: {content}")
+        elif role == "assistant":
+            lines.append(f"NPC: {content}")
+    return "\n".join(lines)

@@ -18,8 +18,6 @@ x5 = X.load_yaml("system.yaml")
 
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Mapping, TypeVar, Union, get_args, get_origin
 

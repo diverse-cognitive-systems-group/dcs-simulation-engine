@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import gradio as gr
 from loguru import logger
 
-from dcs_simulation_engine.core.run_manager import RunManager
+from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.widget.constants import USER_FRIENDLY_EXC
 from dcs_simulation_engine.widget.session_state import SessionState
 
@@ -99,8 +99,8 @@ def stream_msg(message: str) -> Iterator[str]:
         yield partial
 
 
-def create_run(state: SessionState, token_value: Optional[str] = None) -> RunManager:
-    """Create a new RunManager and return it."""
+def create_run(state: SessionState, token_value: Optional[str] = None) -> SessionManager:
+    """Create a new SessionManager and return it."""
     if "game_config" not in state:
         logger.error("App state missing game_config in create_run.")
         raise gr.Error(USER_FRIENDLY_EXC)
@@ -110,16 +110,19 @@ def create_run(state: SessionState, token_value: Optional[str] = None) -> RunMan
         state["pc_choice"] = None
     if "npc_choice" not in state:
         state["npc_choice"] = None
+
+    game_config = state["game_config"]
+
     try:
-        run = RunManager.create(
-            game=state["game_config"].name,
+        run = SessionManager.create(
+            game=game_config,
             source="widget",
             pc_choice=state["pc_choice"],
             npc_choice=state["npc_choice"],
             player_id=state["player_id"],
         )
     except Exception as e:
-        logger.error(f"Error creating RunManager in create_run: {e}", exc_info=True)
+        logger.error(f"Error creating run in create_run: {e}", exc_info=True)
         raise gr.Error(USER_FRIENDLY_EXC)
     return run
 

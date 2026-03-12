@@ -1,9 +1,11 @@
 name: Goal Horizon
 version: 1.0.0
-authors:
-  - DCS
+authors: ["DCS"]
 description: |
-  A game where players engage with a character over multiple interactions and report on their understanding of the character including their goal types/bounds and structure. It is useful for studying how well a player can understand the bounds of another characters goals.
+  A game where players engage with a character over multiple interactions and report on their understanding
+  of the character including their goal types/bounds and structure. Useful for studying how well a player
+  can understand the bounds of another character's goals.
+
 access_settings:
   user:
     valid:
@@ -62,32 +64,29 @@ access_settings:
         options:
           - I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature.
         required: true
+
 data_collection_settings:
   save_runs: true
 
-# This game is about interacting with a single character over multiple interactions and scenes to get a braod spectrum understanding of their goalspace so we need to keep PCs as human-normative for consistency and NPC's should be any character that has been played before in this game where the lifecycle status is not complete. Or if there are none, then any new character that has not been played before in this game.
 character_settings:
   pc:
     valid:
       characters: {}
-        # where:
-        #   "$or":
-        #     - { "hid": "human-normative" }
-        #     - { "common_descriptors": { "$regex": /human/i } }
   npc:
     valid:
       characters:
         where:
-          "$ne":
-            hid: "human-normative"
+          hid:
+            "$ne": "human-normative"
     invalid:
       runs:
         where:
-          player_id: "player_id"
-          lifecycle_status: "COMPLETE"
-          "game_config.name": "Goal Horizon"
-          "context.npc.hid":
-            "$exists": true
+          player_id: player_id
+          game_config.name: "Goal Horizon"
+          context.npc.hid: context.npc.hid
 
-### GAME CLASS ###
+stopping_conditions:
+  runtime_seconds: [">=3600"]
+  turns: [">=500"]
+
 game_class: dcs_simulation_engine.games.goal_horizon.GoalHorizonGame

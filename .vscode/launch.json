@@ -17,14 +17,14 @@
             "cwd": "${workspaceFolder}",
         },
         {
-            "name": "dcs run game: explore",
+            "name": "dcs run game: Infer Intent V2",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
             "args": [
                 "run",
-                "game",
-                "Foresight",
+                "--run-name", "my-run",
+                "--game-name", "Infer Intent V2",
             ],
             "cwd": "${workspaceFolder}",
             // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build

@@ -8,11 +8,10 @@ or use an existing player_id that has completed the consent form.
 
 import json
 
+from dcs_simulation_engine.client import DCSClient
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import JsonLexer
-
-from dcs_simulation_engine.client import APIClient
 
 
 def _pprint(data):
@@ -22,7 +21,7 @@ def _pprint(data):
 player_id = "000000000000000000000001"
 access_key = "dev"
 
-client = APIClient("http://localhost:8080")
+client = DCSClient("http://localhost:8080")
 
 with client.create_run(
     game="Infer Intent",
