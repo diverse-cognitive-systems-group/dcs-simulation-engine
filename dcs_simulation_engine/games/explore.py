@@ -1,110 +1,163 @@
-"""Explore game class."""
+"""Explore game — new-style implementation."""
 
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.runtime import Runtime
+from enum import StrEnum
+from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.simulation_graph.builtins import (
-    command_filter,
-    raise_error,
-    update_state,
-)
-from dcs_simulation_engine.core.simulation_graph.conditions import predicate
-from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
-from dcs_simulation_engine.core.simulation_graph.state import SimulationGraphState
-from dcs_simulation_engine.games.const import Explore as C
+from loguru import logger
 
-_SUBGRAPH_NODE = "__SIMULATION_SUBGRAPH__"
-
-_COMMAND_HANDLERS = {
-    "help": {"simulator_output": {"type": "info", "content": C.HELP_CONTENT}},
-    "abilities": {"simulator_output": {"type": "info", "content": C.ABILITIES_CONTENT}},
-}
+from dcs_simulation_engine.core.game import Game, GameEvent
+from dcs_simulation_engine.games.ai_client import UpdaterClient, ValidatorClient
+from dcs_simulation_engine.games.const import ExploreV2 as C
+from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
 
 
-def _node_command_filter(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return command_filter(state=state, context=runtime.context, command_handlers=_COMMAND_HANDLERS)
+class Command(StrEnum):
+    """Game-level slash commands recognised by ExploreGame."""
+
+    HELP = "help"
+    ABILITIES = "abilities"
 
 
-def _node_enter_message(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return update_state(
-        state=state,
-        context=runtime.context,
-        state_updates={
-            "simulator_output": {"type": "info", "content": C.ENTER_CONTENT},
-            "lifecycle": "UPDATE",
-        },
-    )
+class ExploreGame(Game):
+    """Free-form exploration game: player describes actions, NPC reacts, no predefined goals."""
 
+    DEFAULT_RETRY_BUDGET = 10
+    DEFAULT_MAX_INPUT_LENGTH = 350
 
-def _node_exit_message(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return update_state(
-        state=state,
-        context=runtime.context,
-        state_updates={"simulator_output": {"type": "info", "content": C.EXIT_CONTENT}},
-    )
+    def __init__(
+        self,
+        pc: dict[str, Any],
+        npc: dict[str, Any],
+        updater: UpdaterClient,
+        validator: ValidatorClient,
+        retry_budget: int = DEFAULT_RETRY_BUDGET,
+        max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+    ) -> None:
+        """Initialise the game. Use create_from_context() as the public entry point."""
+        self._pc = pc
+        self._npc = npc
+        self._updater = updater
+        self._validator = validator
+        self._retry_budget = retry_budget
+        self._max_input_length = max_input_length
+        self._entered = False
+        self._exited = False
+        self._exit_reason = ""
 
+    @classmethod
+    def create_from_context(cls, pc: dict[str, Any], npc: dict[str, Any], **kwargs: Any) -> "ExploreGame":
+        """Factory called by SessionManager. Builds clients from character dicts.
 
-def _node_error_in_lifecycle(state: SimulationGraphState, runtime: Runtime[ContextSchema]):
-    return raise_error(state=state, context=runtime.context, message=C.ERROR_IN_LIFECYCLE)
-
-
-def _route_start(state: SimulationGraphState) -> str:
-    if predicate("state['simulator_output']", state):
-        return "__END__"
-    if predicate("state['lifecycle'] == 'ENTER'", state):
-        return "enter_message"
-    if predicate("state['lifecycle'] == 'EXIT'", state):
-        return "exit_message"
-    if predicate("state['lifecycle'] == 'UPDATE'", state):
-        return "command_filter"
-    return "error_in_lifecycle"
-
-
-def _route_command_filter(state: SimulationGraphState) -> str:
-    if predicate("state['simulator_output']", state):
-        return "__END__"
-    return _SUBGRAPH_NODE
-
-
-class ExploreGame:
-    """Game class for the Explore game."""
-
-    additional_validator_rules: str = ""
-    additional_updater_rules: str = ""
-    state_overrides: dict = {"user_retry_budget": 10}
-
-    def build_graph(self, subgraph: CompiledStateGraph) -> CompiledStateGraph:
-        """Build the outer LangGraph for the Explore game, wrapping the simulation subgraph."""
-        builder = StateGraph(SimulationGraphState, context_schema=ContextSchema)
-
-        builder.add_node("command_filter", _node_command_filter)
-        builder.add_node("enter_message", _node_enter_message)
-        builder.add_node("exit_message", _node_exit_message)
-        builder.add_node("error_in_lifecycle", _node_error_in_lifecycle)
-        builder.add_node(_SUBGRAPH_NODE, subgraph)
-
-        builder.add_conditional_edges(
-            START,
-            _route_start,
-            {
-                "__END__": END,
-                "enter_message": "enter_message",
-                "exit_message": "exit_message",
-                "command_filter": "command_filter",
-                "error_in_lifecycle": "error_in_lifecycle",
-            },
+        Accepted kwargs:
+            retry_budget (int): overrides DEFAULT_RETRY_BUDGET
+            max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+        """
+        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc))
+        validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
+        return cls(
+            pc=pc,
+            npc=npc,
+            updater=updater,
+            validator=validator,
+            retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
+            max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
         )
-        builder.add_edge("enter_message", _SUBGRAPH_NODE)
-        builder.add_edge("exit_message", END)
-        builder.add_conditional_edges(
-            "command_filter",
-            _route_command_filter,
-            {
-                "__END__": END,
-                _SUBGRAPH_NODE: _SUBGRAPH_NODE,
-            },
-        )
-        builder.add_edge(_SUBGRAPH_NODE, END)
 
-        return builder.compile()
+    def exit(self, reason: str) -> None:
+        """Mark the game as ended."""
+        if self._exited:
+            return
+        self._exited = True
+        self._exit_reason = reason
+        logger.info(f"ExploreGame exited: {reason}")
+
+    @property
+    def exited(self) -> bool:
+        """True if the game has ended."""
+        return self._exited
+
+    @property
+    def exit_reason(self) -> str:
+        """Reason the game ended, or empty string."""
+        return self._exit_reason
+
+    async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
+        """Advance the game one turn, yielding one or more GameEvents."""
+        if self._exited:
+            return
+
+        # ENTER: first call — emit welcome message then generate the opening scene.
+        if not self._entered:
+            self._entered = True
+            yield GameEvent(
+                type="info",
+                content=C.ENTER_CONTENT.format(
+                    pc_hid=self._pc.get("hid", ""),
+                    pc_short_description=self._pc.get("short_description", ""),
+                    npc_hid=self._npc.get("hid", ""),
+                    npc_short_description=self._npc.get("short_description", ""),
+                ),
+            )
+            opening = await self._updater.chat(None)
+            yield GameEvent(type="ai", content=opening)
+            return
+
+        if not user_input:
+            return
+
+        # Game-level commands (/help, /abilities). Session-level commands
+        # (/exit, /quit, /feedback) are already handled by SessionManager.
+        command_event = self._handle_command(user_input)
+        if command_event is not None:
+            yield command_event
+            return
+
+        if len(user_input) > self._max_input_length:
+            yield GameEvent(
+                type="error",
+                content=f"Input exceeds maximum length of {self._max_input_length} characters.",
+            )
+            return
+
+        # Validate before advancing the scene.
+        validation = await self._validator.validate(user_input)
+        if validation.get("type") == "error":
+            self._retry_budget -= 1
+            logger.debug(f"Validation failed. Retry budget remaining: {self._retry_budget}")
+            if self._retry_budget <= 0:
+                self.exit("retry budget exhausted")
+                yield GameEvent(type="error", content=validation.get("content", "Invalid action."))
+                yield GameEvent(type="info", content="You have used all your allowed retries. The game is ending.")
+                return
+            yield GameEvent(type="error", content=validation.get("content", "Invalid action."))
+            return
+
+        reply = await self._updater.chat(user_input)
+        yield GameEvent(type="ai", content=reply)
+
+    def _handle_command(self, user_input: str) -> GameEvent | None:
+        """Return a GameEvent for recognised game-level commands, or None to continue."""
+        stripped = user_input.strip()
+        if not stripped.startswith(("/", "\\")):
+            return None
+
+        cmd = stripped.lstrip("/\\").split()[0].lower()
+
+        if cmd == Command.HELP:
+            return GameEvent(type="info", content=C.HELP_CONTENT)
+
+        if cmd == Command.ABILITIES:
+            return GameEvent(
+                type="info",
+                content=C.ABILITIES_CONTENT.format(
+                    pc_hid=self._pc.get("hid", ""),
+                    pc_short_description=self._pc.get("short_description", ""),
+                    pc_abilities=self._pc.get("abilities", ""),
+                    npc_hid=self._npc.get("hid", ""),
+                    npc_short_description=self._npc.get("short_description", ""),
+                    npc_abilities=self._npc.get("abilities", ""),
+                ),
+            )
+
+        # Unrecognised — return None so SessionManager can handle it.
+        return None

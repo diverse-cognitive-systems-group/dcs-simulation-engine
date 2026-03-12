@@ -3,7 +3,7 @@
 This will run before any tests are executed when `import pytest` is called.
 """
 
-from __future__ import annotations
+
 
 import logging
 import os
@@ -12,15 +12,13 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterator
-from unittest.mock import MagicMock
 
+import dcs_simulation_engine.helpers.database_helpers as dbh
 import mongomock
 import pytest
 from loguru import logger
 from openai import OpenAI
 from pymongo.database import Database
-
-import dcs_simulation_engine.helpers.database_helpers as dbh
 
 LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"
 
@@ -108,18 +106,6 @@ def client() -> OpenAI:
     client = OpenAI(api_key=api_key, base_url=base_url)
     return client
 
-
-@pytest.fixture(scope="module")
-def mock_client() -> MagicMock:
-    """Mocked OpenAI client for testing without real API calls."""
-    mock = MagicMock()
-
-    # Example: mock a completion endpoint call
-    mock.chat.completions.create.return_value = {
-        "choices": [{"message": {"type": "assistant", "content": "Mocked response"}}]
-    }
-
-    return mock
 
 
 @pytest.fixture(autouse=True)
@@ -253,36 +239,29 @@ def seed_runs_from_json() -> Callable[[str], None]:
 # Mock LLM Fixtures for E2E Testing
 # ============================================================================
 
-
-@pytest.fixture
-def mock_llm_client():
-    """Mock LLM client with default responses.
-
-    Returns a MockChatModel that replaces ChatOpenRouter calls with
-    deterministic responses. Useful for testing without real API calls.
-    """
-    from tests.mocks.mock_llm import MockChatModel
-
-    return MockChatModel()
-
+_MOCK_AI_RESPONSE = '{"type": "ai", "content": "The flatworm moves slowly across the surface."}'
+_MOCK_VALIDATOR_RESPONSE = '{"type": "info", "content": "Action accepted."}'
 
 
 @pytest.fixture
-def patch_llm_client(mock_llm_client, monkeypatch):
-    """Patch ChatOpenRouter to use mock client.
+def patch_llm_client(monkeypatch):
+    """Patch ai_client._call_openrouter with a deterministic mock.
 
-    This fixture automatically replaces all ChatOpenRouter instances with
-    the mock client, allowing E2E tests to run without real LLM API calls.
-
-    Note: We patch where ChatOpenRouter is imported/used, not where it's defined.
+    Returns a JSON string matching the updater prompt's expected format.
+    The validator also returns a valid acceptance response.
+    Scorer returns a fixed tier/score result.
     """
+    import dcs_simulation_engine.games.ai_client as ai_client
 
-    # Patch the ChatOpenRouter class to return our mock
-    def mock_chat_open_router(*args, **kwargs):
-        return mock_llm_client
+    async def mock_call_openrouter(messages, model):
+        # Scorer sends a single user message with the scoring prompt
+        if len(messages) == 1 and messages[0].get("role") == "user":
+            return '{"tier": 2, "score": 65, "reasoning": "Partial match."}'
+        # Validator sends only a system message (no conversation history)
+        if len(messages) == 1 and messages[0].get("role") == "system":
+            return _MOCK_VALIDATOR_RESPONSE
+        # Updater sends system + conversation history (2+ messages)
+        return _MOCK_AI_RESPONSE
 
-    # Patch where ChatOpenRouter is imported (used), not where it's defined
-    monkeypatch.setattr(
-        "dcs_simulation_engine.core.simulation_graph.subgraph.ChatOpenRouter", mock_chat_open_router
-    )
-    yield mock_llm_client
+    monkeypatch.setattr(ai_client, "_call_openrouter", mock_call_openrouter)
+    yield

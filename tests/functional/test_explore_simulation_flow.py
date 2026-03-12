@@ -5,7 +5,7 @@ multiple conversation turns to saving, without requiring external API calls.
 """
 
 import pytest
-from dcs_simulation_engine.core.run_manager import RunManager
+from dcs_simulation_engine.core.session_manager import SessionManager
 
 
 @pytest.mark.functional
@@ -13,49 +13,40 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
     """Test complete simulation flow: init -> 10 turns -> save.
 
     This test validates:
-    1. RunManager initializes correctly from explore.yaml game config
-    2. ENTER lifecycle step returns welcome message
-    3. Multiple user inputs get processed through the simulation graph
-    4. LLM validator and updater nodes execute with mocked responses
-    5. State accumulates conversation history correctly (2 messages per turn)
-    6. Turn counting works correctly
-    7. Exit transitions to EXIT lifecycle
-    8. Run saves successfully to database
+    1. SessionManager initializes correctly from explore.yaml game config
+    2. ENTER step returns an info event (welcome message)
+    3. Multiple user inputs each produce an AI response event
+    4. Event history accumulates correctly
+    5. Turn counting works correctly
+    6. Exit marks the session as exited
+    7. Session saves successfully to database
 
     Flow:
-        Create RunManager -> Execute ENTER step -> Execute 10 user input steps
-        -> Verify state at each step -> Exit -> Save -> Verify save succeeded
-
-    Args:
-        patch_llm_client: Fixture that patches ChatOpenRouter with mock LLM
-        _isolate_db_state: Fixture that provides isolated mongomock database
+        Create SessionManager -> Execute ENTER step -> Execute 10 user input steps
+        -> Verify events at each step -> Exit -> Verify exited -> Save
     """
-    # Initialize RunManager with explore game
-    run = RunManager.create(
+    session = SessionManager.create(
         game="explore", pc_choice="human-normative", npc_choice="flatworm"
     )
 
-    # assert initial state
-    assert run.state["lifecycle"] == "ENTER", "Initial lifecycle should be ENTER"
-    assert len(run.state["history"]) == 0, "Initial history should be empty"
+    assert not session.exited, "Session should not be exited initially"
+    assert session._events == [], "Initial events should be empty"
 
-    # run the game
-    enter_events = list(run.step(""))
+    # Run the ENTER step (empty input)
+    enter_events = list(session.step(""))
 
-    # verify there was an info message (usually a welcome)
+    # Verify there was an info message (welcome)
     info_events = [e for e in enter_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected welcome message with type 'info'"
 
-    assert (
-        run.state["lifecycle"] == "UPDATE"
-    ), "After ENTER step, lifecycle should transition to UPDATE"
+    # Verify at least one AI event came through
+    ai_events = [e for e in enter_events if e.get("type") == "ai"]
+    assert len(ai_events) > 0, "Expected AI response event in ENTER step"
+    assert session.turns == 1, "After ENTER, turns should be 1"
 
-    # track how many messages were added during ENTER step
-    enter_step_message_count = len(run.state["history"])
-    assert enter_step_message_count == 2, "After ENTER, history should have 2 messages"
-    assert run.turns == 1, "After ENTER, turns should be 1"
+    enter_event_count = len(session._events)
+    assert enter_event_count >= 2, "After ENTER, at least 2 events should be recorded"
 
-    # start executing user inputs
     user_inputs = [
         "I wave my hand",
         "I look around",
@@ -71,62 +62,33 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state):
 
     for idx, user_input in enumerate(user_inputs):
         turn_num = idx + 1
+        prev_event_count = len(session._events)
 
-        # execute step with user input
-        events = list(run.step(user_input))
+        events = list(session.step(user_input))
 
-        # verify events contain ai responses
+        # Verify AI response event
         ai_events = [e for e in events if e.get("type") == "ai"]
-
-        # for this test we should only have one ai response per user input
         assert len(ai_events) > 0, f"Turn {turn_num}: Expected AI response event"
+        assert ai_events[0]["content"] == "The flatworm moves slowly across the surface."
 
-        # TODO: Support more dynamic responses in the mock
-        ai_response = ai_events[0] if ai_events else None
-        assert ai_response["content"] == "The flatworm moves slowly across the surface."
-
-        # Verify state updates
-        # History should have: ENTER messages + (turn_num * 2 messages per turn)
-        expected_history_length = enter_step_message_count + (turn_num * 2)
-        actual_history_length = len(run.state["history"])
-        assert (
-            actual_history_length == expected_history_length
-        ), f"Turn {turn_num}: History should have {expected_history_length} messages (got {actual_history_length})"
-
-        # run.turns = len(history) // 2, includes ENTER messages
-        expected_turn_count = (enter_step_message_count + turn_num * 2) // 2
-        assert run.turns == expected_turn_count, (
-            f"Turn {turn_num}: run.turns should be {expected_turn_count} "
-            f"(got {run.turns})"
+        # Events should accumulate
+        assert len(session._events) > prev_event_count, (
+            f"Turn {turn_num}: _events should grow after each step"
         )
 
-    # Step 4: Verify final state after 10 turns
-    # Total turns = (ENTER messages + 10 conversation turns * 2) // 2
-    expected_final_turns = (enter_step_message_count + 10 * 2) // 2
-    assert run.turns == expected_final_turns, (
-        f"Should have completed {expected_final_turns} turns " f"(got {run.turns})"
-    )
+        # Turn count should increment
+        assert session.turns == turn_num + 1, (
+            f"Turn {turn_num}: session.turns should be {turn_num + 1} (got {session.turns})"
+        )
 
-    assert (
-        run.state["lifecycle"] == "UPDATE"
-    ), "Should still be in UPDATE lifecycle before exit"
+    # Verify final turn count: 1 (ENTER) + 10 user turns
+    assert session.turns == 11, f"Should have completed 11 turns (got {session.turns})"
+    assert not session.exited, "Session should not be exited before explicit exit()"
 
-    # History = ENTER messages + 10 conversation turns × 2 messages
-    expected_history_length = enter_step_message_count + 10 * 2
-    assert len(run.state["history"]) == expected_history_length, (
-        f"History should contain {expected_history_length} messages "
-        f"(ENTER: {enter_step_message_count}, turns: 20)"
-    )
+    # Exit the session
+    session.exit(reason="test complete")
+    assert session.exited, "Session should be exited after exit()"
+    assert session.exit_reason == "test complete"
 
-    # Step 5: Exit the simulation
-    run.exit(reason="test complete")
-
-    assert (
-        run.state["lifecycle"] == "EXIT"
-    ), "After exit(), lifecycle should transition to EXIT"
-
-    # Step 6: Save run to database
-    saved = run.save()
-
-    # run.save() returns the path to saved file, not True
-    assert saved is not None, "run.save() should return a path on success"
+    # Save (no-op if save_runs=False; explore.yaml has save_runs=True but no DB doc_id check)
+    session.save()

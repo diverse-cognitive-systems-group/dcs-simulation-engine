@@ -1,8 +1,8 @@
 """Tests for the Gradio API functions."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from dcs_simulation_engine.widget import api
 from dcs_simulation_engine.widget.services import RunRegistry, get_registry
 
@@ -20,17 +20,18 @@ def mock_registry():
 
 @pytest.fixture
 def mock_run_manager():
-    """Create a mock RunManager."""
+    """Create a mock SessionManager."""
     mock = MagicMock()
     mock.name = "test-run-123"
     mock.turns = 0
     mock.runtime_seconds = 0
-    mock.runtime_string = "00:00:00"
     mock.exited = False
     mock.exit_reason = ""
-    mock.saved = False
-    mock.state = {}
-    mock.context = {"pc": {"hid": "pc-1", "name": "Player"}, "npc": {"hid": "npc-1", "name": "NPC"}}
+    mock._saved = False
+    mock._events = []
+    mock.game = MagicMock()
+    mock.game._pc = {"hid": "pc-1", "name": "Player"}
+    mock.game._npc = {"hid": "npc-1", "name": "NPC"}
     mock.game_config = MagicMock()
     mock.game_config.name = "test-game"
     return mock
@@ -43,7 +44,7 @@ class TestCreateRun:
     def test_create_run_success(self, mock_registry, mock_run_manager):
         """Test successful run creation."""
         with patch(
-            "dcs_simulation_engine.widget.api.RunManager.create",
+            "dcs_simulation_engine.widget.api.SessionManager.create",
             return_value=mock_run_manager,
         ):
             result = api.create_run(game="test-game")
@@ -60,7 +61,7 @@ class TestCreateRun:
     def test_create_run_with_options(self, mock_registry, mock_run_manager):
         """Test run creation with all optional parameters."""
         with patch(
-            "dcs_simulation_engine.widget.api.RunManager.create",
+            "dcs_simulation_engine.widget.api.SessionManager.create",
             return_value=mock_run_manager,
         ) as mock_create:
             result = api.create_run(
@@ -68,7 +69,6 @@ class TestCreateRun:
                 source="test",
                 pc_choice="pc-1",
                 npc_choice="npc-1",
-                access_key="key123",
                 player_id="player-1",
             )
 
@@ -77,7 +77,6 @@ class TestCreateRun:
                 source="test",
                 pc_choice="pc-1",
                 npc_choice="npc-1",
-                access_key="key123",
                 player_id="player-1",
             )
             assert "error" not in result
@@ -86,7 +85,7 @@ class TestCreateRun:
     def test_create_run_error(self, mock_registry):
         """Test error handling when run creation fails."""
         with patch(
-            "dcs_simulation_engine.widget.api.RunManager.create",
+            "dcs_simulation_engine.widget.api.SessionManager.create",
             side_effect=ValueError("Invalid game config"),
         ):
             result = api.create_run(game="nonexistent-game")
@@ -150,9 +149,10 @@ class TestPlayRun:
         """Test stopping when simulation exits."""
         mock_registry.add("test-run", mock_run_manager)
 
-        # Simulate exit after first step
+        # Simulate exit after first step (step returns an iterable)
         def side_effect(*args, **kwargs):
             mock_run_manager.exited = True
+            return iter([])
 
         mock_run_manager.step.side_effect = side_effect
 
@@ -176,13 +176,13 @@ class TestGetState:
     @pytest.mark.unit
     def test_get_state_success(self, mock_registry, mock_run_manager):
         """Test retrieving run state."""
-        mock_run_manager.state = {"key": "value"}
+        mock_run_manager._events = [{"type": "ai", "content": "hello"}]
         mock_registry.add("test-run", mock_run_manager)
 
         result = api.get_state(run_id="test-run")
 
         assert "state" in result
-        assert result["state"] == {"key": "value"}
+        assert result["state"] == {"events": [{"type": "ai", "content": "hello"}]}
         assert "meta" in result
         assert "error" not in result
 
@@ -199,26 +199,24 @@ class TestSaveRun:
 
     @pytest.mark.unit
     def test_save_run_default_path(self, mock_registry, mock_run_manager):
-        """Test saving with default path."""
-        mock_run_manager.save.return_value = "/tmp/output/run.json"
+        """Test saving a run."""
+        mock_run_manager._saved = True
         mock_registry.add("test-run", mock_run_manager)
 
         result = api.save_run(run_id="test-run")
 
         mock_run_manager.save.assert_called_once()
         assert result["saved"] is True
-        assert result["output_path"] == "/tmp/output/run.json"
         assert "error" not in result
 
     @pytest.mark.unit
-    def test_save_run_custom_path(self, mock_registry, mock_run_manager):
-        """Test saving with custom path."""
-        mock_run_manager.save.return_value = "/custom/path/run.json"
+    def test_save_run_idempotent(self, mock_registry, mock_run_manager):
+        """Test that save_run can be called multiple times."""
+        mock_run_manager._saved = True
         mock_registry.add("test-run", mock_run_manager)
 
-        result = api.save_run(run_id="test-run", output_dir="/custom/path")
+        result = api.save_run(run_id="test-run")
 
-        mock_run_manager.save.assert_called_once_with(path="/custom/path")
         assert result["saved"] is True
         assert "error" not in result
 
