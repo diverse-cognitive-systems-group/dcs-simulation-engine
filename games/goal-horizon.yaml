@@ -63,12 +63,6 @@ access_settings:
 data_collection_settings:
   save_runs: true
 
-character_selection:
-  pc: {}
-  npc:
-    exclude_hids: [human-normative]
-    exclude_seen_for_game: Goal Horizon
-
 stopping_conditions:
   runtime_seconds: [">=3600"]
   turns: [">=500"]

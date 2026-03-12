@@ -43,8 +43,11 @@ You must classify EVERY HSN ability as either:
 - "divergent"
 
 Decision rule:
-- "normative" = the character can perform or satisfy the assumption in a way that fits the assumption.
-- "divergent" = the character cannot perform it, can only partially perform it, performs it unreliably, fluctuates too much, or requires significant adaptation such that the baseline assumption does not hold.
+- "normative" = the character can perform or satisfy the assumption in a way
+  that fits the assumption.
+- "divergent" = the character cannot perform it, can only partially perform it,
+  performs it unreliably, fluctuates too much, or requires significant
+  adaptation such that the baseline assumption does not hold.
 
 Important:
 - Judge against the baseline assumption itself, not whether the character can compensate in another way.
@@ -101,7 +104,11 @@ def build_hsn_divergence_df(
     characters_abilities_df,
     hsn_abilities_df,
 ):
-    """Build a DataFrame where each row is a character x HSN ability, with columns for the character's hid, the HSN category and assumption, and the classification result (normative/divergent) and reason."""
+    """Build a DataFrame with one row per character x HSN ability.
+
+    Columns include character hid, HSN category/assumption, score
+    (normative/divergent), and explanation.
+    """
     rows = []
 
     for hid in characters_df["hid"].tolist():

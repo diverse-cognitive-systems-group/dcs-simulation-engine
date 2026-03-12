@@ -62,17 +62,6 @@ access_settings:
 data_collection_settings:
   save_runs: true
 
-character_settings:
-  display_pc_choice_as: "{hid} - {short_description}"
-  display_npc_choice_as: "Character details hidden"
-
-character_selection:
-  pc:
-    include_hids: [human-normative]
-  npc:
-    exclude_hids: [human-normative]
-    exclude_seen_for_game: Infer Intent
-
 stopping_conditions:
   turns: [">=30"]
 

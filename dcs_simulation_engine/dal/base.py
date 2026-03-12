@@ -50,13 +50,8 @@ class DataProvider:
         """Return all characters, or a single character if hid is given."""
         raise NotImplementedError
 
-    def list_characters(
-        self,
-        *,
-        descriptor: str | None = None,
-        exclude_hids: set[str] | None = None,
-    ) -> list[CharacterRecord]:
-        """Return characters with optional backend-neutral filters."""
+    def list_characters(self) -> list[CharacterRecord]:
+        """Return all characters."""
         raise NotImplementedError
 
     def get_player(self, *, player_id: str) -> PlayerRecord | None:

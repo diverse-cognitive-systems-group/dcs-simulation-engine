@@ -15,15 +15,6 @@ access_settings:
 data_collection_settings:
   save_runs: false
 
-### CHARACTER SELECTION SETTINGS ###
-character_settings:
-  pc:
-    valid:
-      characters: { "where": { "hid": "human-normative" } }
-  npc:
-    valid:
-      characters: { "where": { "hid": "human-new" } }
-
 ### ADDITIONAL STOPPING CRITERIA ###
 stopping_conditions:
   runtime_seconds: [">=300"] # stop after 5 minutes
@@ -334,4 +325,3 @@ graph_config:
           - if: "{{ state['event_draft']['type'] == 'ai' }}"
             then: update
           - else: error_in_checkpoint
-

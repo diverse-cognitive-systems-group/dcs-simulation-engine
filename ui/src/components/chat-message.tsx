@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 // muted bubble style (applied in the JSX below) is used instead.
 const EVENT_STYLES: Record<EventType, string> = {
   ai: '',
-  info: 'opacity-70',
+  info: 'opacity-85',
   error: 'bg-destructive/10 border border-destructive/30 text-destructive rounded-md px-3 py-2',
   warning: 'bg-yellow-50 border border-yellow-300 text-yellow-900 rounded-md px-3 py-2',
 }
