@@ -317,5 +317,3 @@ class DCSClient:
             kwargs["output_dir"] = output_dir
         result = self._gradio.predict(**kwargs)
         return _check_error(result)
-
-

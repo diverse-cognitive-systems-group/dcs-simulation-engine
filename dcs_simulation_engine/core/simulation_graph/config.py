@@ -16,7 +16,6 @@ from pydantic import (
 )
 
 from dcs_simulation_engine.core.simulation_graph import builtins
-from dcs_simulation_engine.utils.serde import SerdeMixin
 
 
 class Node(BaseModel):
@@ -195,7 +194,7 @@ class Edge(BaseModel):
     to: Union[str, ConditionalTo]
 
 
-class GraphConfig(SerdeMixin, BaseModel):
+class GraphConfig(BaseModel):
     """Configuration for the entire simulation graph."""
 
     name: Optional[str] = Field(default="graph-config")

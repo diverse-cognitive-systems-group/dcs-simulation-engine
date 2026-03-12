@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Union
 
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
@@ -26,10 +25,12 @@ from dcs_simulation_engine.core.simulation_graph.constants import (
     VALIDATOR_NAME,
 )
 from dcs_simulation_engine.core.simulation_graph.context import ContextSchema
-from dcs_simulation_engine.core.simulation_graph.subgraph import init_subgraph_context
+from dcs_simulation_engine.core.simulation_graph.subgraph import (
+    build_simulation_subgraph,
+    init_subgraph_context,
+)
 from dcs_simulation_engine.helpers import database_helpers as dbh
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
-from dcs_simulation_engine.utils.chat import ChatOpenRouter
 from dcs_simulation_engine.utils.file import safe_timestamp, unique_fpath
 from dcs_simulation_engine.utils.misc import dict_to_markdown
 
@@ -198,12 +199,15 @@ class RunManager(BaseModel):
             logger.error(f"Failed to load characters: {e}")
             raise
 
+        # Instantiate the game class
+        game_instance = game_config.get_game_class_instance()
+
         # Initialize empty state
         try:
             state: SimulationGraphState = make_state()
-            if game_config.graph_config.state_overrides:
-                logger.debug(f"Applying state overrides: {game_config.graph_config.state_overrides}")
-                state.update(**game_config.graph_config.state_overrides)
+            if game_instance.state_overrides:
+                logger.debug(f"Applying state overrides: {game_instance.state_overrides}")
+                state.update(**game_instance.state_overrides)
             else:
                 logger.debug("No state overrides to apply.")
 
@@ -230,28 +234,11 @@ class RunManager(BaseModel):
             additional_validator_rules="",
             additional_updater_rules="",
         )
-        for node in game_config.graph_config.nodes:
-            if node.provider:  # only setup nodes with a provider
-                if node.model is None:
-                    raise ValueError(f"Model must be specified for provider {node.provider}")
-                if node.additional_kwargs is None:
-                    node.additional_kwargs = {}
-                if node.provider == "openrouter":
-                    llm: BaseChatModel = ChatOpenRouter(model=node.model, **node.additional_kwargs)
-                    context["models"][node.model] = llm
-                elif node.provider == "huggingface":
-                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
-                elif node.provider == "local":
-                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
-                else:
-                    raise NotImplementedError(f"Provider not implemented yet: {node.provider}")
-
         # if subgraph customizations exist, add them to context
-        if game_config.subgraph_customizations:
-            if game_config.subgraph_customizations.additional_validator_rules:
-                context["additional_validator_rules"] = game_config.subgraph_customizations.additional_validator_rules
-            if game_config.subgraph_customizations.additional_updater_rules:
-                context["additional_updater_rules"] = game_config.subgraph_customizations.additional_updater_rules
+        if game_instance.additional_validator_rules:
+            context["additional_validator_rules"] = game_instance.additional_validator_rules
+        if game_instance.additional_updater_rules:
+            context["additional_updater_rules"] = game_instance.additional_updater_rules
 
         # add subgraph models
         subgraph_models = init_subgraph_context()
@@ -259,9 +246,11 @@ class RunManager(BaseModel):
         context["models"][UPDATER_NAME] = subgraph_models[UPDATER_NAME]
         context["models"][EVAL_NAME] = subgraph_models[EVAL_NAME]
 
-        # Compile the simulation graph
+        # Build and compile the simulation graph
         try:
-            sim_graph: SimulationGraph = SimulationGraph.compile(config=game_config.graph_config)
+            subgraph = build_simulation_subgraph()
+            cgraph = game_instance.build_graph(subgraph)
+            sim_graph = SimulationGraph(name=game_config.name, cgraph=cgraph)
         except Exception as e:
             logger.error(f"Failed to compile simulation graph: {e}")
             raise

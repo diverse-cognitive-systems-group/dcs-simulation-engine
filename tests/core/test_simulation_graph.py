@@ -1,58 +1,120 @@
 """Tests for the SimGraph module."""
 
-import textwrap
-from pathlib import Path
-from typing import Callable
-
 import pytest
 from dcs_simulation_engine.core.simulation_graph import (
-    GraphConfig,
     SimulationGraph,
     SimulationGraphState,
+)
+from dcs_simulation_engine.core.simulation_graph.config import (
+    ConditionalTo,
+    Edge,
+    ElseOnly,
+    GraphConfig,
+    IfThen,
+    Node,
 )
 from langchain_core.messages import HumanMessage
 from langgraph.graph.state import CompiledStateGraph
 from loguru import logger
 
-# @pytest.mark.unit
-# def test_schema_fields_sync() -> None:
-#     """Ensure SimulationGraphState and NodeOutputSchema have the same fields."""
-#     state_fields = set(SimulationGraphState.__annotations__.keys())
-#     node_output_fields = set(SimulationGraph.NodeOutputSchema.__annotations__.keys())
-#     assert state_fields == node_output_fields
 
+# ---------- Helper: build common GraphConfig objects ----------
+
+_SIMPLE_OUTPUT_FORMAT = (
+    'Output Format: {"events": [{"type": "assistant", "content": "<your reply here>"}]}'
+)
+
+
+def _simple_graph_config() -> GraphConfig:
+    """Simple 2-node linear graph."""
+    return GraphConfig(
+        name="simple-test-graph",
+        nodes=[
+            Node(
+                name="agent1",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template=f"Reply with 'H' ONLY.\n{_SIMPLE_OUTPUT_FORMAT}",
+            ),
+            Node(
+                name="agent2",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template=(
+                    "What is the letter is in the agent_artifacts text field? "
+                    f"Reply with the letter ONLY.\n{_SIMPLE_OUTPUT_FORMAT}"
+                ),
+            ),
+        ],
+        edges=[
+            Edge(**{"from": "__START__", "to": "agent1"}),
+            Edge(**{"from": "agent1", "to": "agent2"}),
+            Edge(**{"from": "agent2", "to": "__END__"}),
+        ],
+    )
+
+
+def _conditional_graph_config() -> GraphConfig:
+    """Conditional graph routing based on len(messages)."""
+    return GraphConfig(
+        name="conditional-test-graph",
+        nodes=[
+            Node(
+                name="agentA",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template=f"Reply with '37' ONLY.\n{_SIMPLE_OUTPUT_FORMAT}",
+            ),
+            Node(
+                name="agentB",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template=f"Reply with '92' ONLY.\n{_SIMPLE_OUTPUT_FORMAT}",
+            ),
+        ],
+        edges=[
+            Edge(**{"from": "__START__", "to": ConditionalTo(conditional=[
+                IfThen(**{"if": "len(messages) == 0", "then": "agentA"}),
+                ElseOnly(**{"else": "agentB"}),
+            ])}),
+            Edge(**{"from": "agentA", "to": "__END__"}),
+            Edge(**{"from": "agentB", "to": "__END__"}),
+        ],
+    )
+
+
+# ---------- Validation tests ----------
 
 @pytest.mark.unit
-def test_compile_fails_on_missing_node(write_yaml: Callable[[str, str], Path]) -> None:
+def test_compile_fails_on_missing_node() -> None:
     """Should throw LangGraph error when an edge references a node that doesn't exist.
 
     Note: This check ONLY LangGraph's built-in checks (no custom validation needed).
     """
-    yaml = """
-    name: invalid-missing-node
-    nodes:
-      - name: agentA
-        kind: custom
-        provider: openrouter
-        model: openai/gpt-oss-20b:free
-        additional_kwargs: {}
-        system_template: |
-          Reply with 'A' ONLY.
-          Output Format: {
-              "events": [
-                {
-                  "type": "assistant",
-                  "content": "<your reply here>"
-                }
-              ]
-            }
-    edges:
-      - from: __START__
-        to: agentB   # <-- missing node on purpose
-    """
-    p = write_yaml("invalid-missing-node.yaml", yaml)
-    graph_config = GraphConfig.from_yaml(p)
-    # make sure graph_config is loaded correctly
+    graph_config = GraphConfig(
+        name="invalid-missing-node",
+        nodes=[
+            Node(
+                name="agentA",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template="Reply with 'A' ONLY.",
+            ),
+        ],
+        edges=[
+            Edge(**{"from": "__START__", "to": "agentB"}),  # agentB doesn't exist
+        ],
+    )
     assert graph_config.name == "invalid-missing-node"
 
     with pytest.raises(ValueError):
@@ -60,96 +122,38 @@ def test_compile_fails_on_missing_node(write_yaml: Callable[[str, str], Path]) -
 
 
 @pytest.mark.skip(reason="TODO - fails because langgraph autopatches???")
-def test_compile_fails_when_end_unreachable(
-    write_yaml: Callable[[str, str], Path],
-) -> None:
+def test_compile_fails_when_end_unreachable() -> None:
     """Custom validation: END must be reachable from START.
 
-    YAML has a START edge but no path to __end__.
+    Graph has a START edge but no path to __end__.
     """
-    yaml = """
-    name: invalid-end-unreachable
-    nodes:
-      - name: agentA
-        provider: openrouter
-        model: openai/gpt-oss-20b:free
-        additional_kwargs: {}
-        system_prompt_template: "Reply with 'A' ONLY."
-    edges:
-      - from: __start__
-        to: agentA
-      # (no edges to __end__)
-    """
-    p = write_yaml("invalid-end-unreachable.yaml", yaml)
-    graph_config = GraphConfig.from_yaml(p)
+    graph_config = GraphConfig(
+        name="invalid-end-unreachable",
+        nodes=[
+            Node(
+                name="agentA",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template="Reply with 'A' ONLY.",
+            ),
+        ],
+        edges=[
+            Edge(**{"from": "__START__", "to": "agentA"}),
+            # (no edges to __END__)
+        ],
+    )
     assert graph_config.name == "invalid-end-unreachable"
 
     with pytest.raises(ValueError):
         SimulationGraph.compile(graph_config)
 
 
-# ---------- Simple graph ----------
-
-
-def _write_simple_yaml(path: Path) -> None:
-    """Simple 2-node linear graph using the new schema."""
-    cfg = textwrap.dedent(
-        """
-        name: simple-test-graph
-        nodes:
-          - name: agent1
-            kind: custom
-            provider: openrouter
-            model: openai/gpt-oss-20b:free
-            additional_kwargs: {}
-            system_template: |
-              Reply with 'H' ONLY.
-              Output Format: {
-                "events": [
-                  {
-                    "type": "assistant",
-                    "content": "<your reply here>"
-                  }
-                ]
-              }
-          - name: agent2
-            kind: custom
-            provider: openrouter
-            model: openai/gpt-oss-20b:free
-            additional_kwargs: {}
-            system_template: |
-              What is the letter is in the agent_artifacts text field? 
-              Reply with the letter ONLY.
-              Output Format: {
-                "events": [
-                  {
-                    "type": "assistant",
-                    "content": "<your reply here>"
-                  }
-                ]
-              }
-        edges:
-          - from: __START__
-            to: agent1
-          - from: agent1
-            to: agent2
-          - from: agent2
-            to: __END__
-        """
-    ).strip()
-    path.write_text(cfg, encoding="utf-8")
-
-
 @pytest.mark.unit
-def test_simple_graph(tmp_path: Path) -> None:
-    """Builds a simple 2-node linear graph (new schema) and compiles.
-
-    It and outputs the correct letter "I"
-    """
-    path = tmp_path / "graph-simple.yaml"
-    _write_simple_yaml(path)
-
-    graph_config = GraphConfig.from_yaml(path)
+def test_simple_graph() -> None:
+    """Builds a simple 2-node linear graph and compiles."""
+    graph_config = _simple_graph_config()
     logger.debug(f"graph_config: {graph_config}")
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
@@ -166,7 +170,7 @@ def test_simple_graph(tmp_path: Path) -> None:
 
 
 @pytest.mark.slow
-def test_invoke_simple(tmp_path: Path) -> None:
+def test_invoke_simple() -> None:
     """Invokes the simple graph and verifies the output."""
     logger.warning(
         "NOTE: this makes a live call to a free model on OpenRouter \
@@ -175,9 +179,7 @@ def test_invoke_simple(tmp_path: Path) -> None:
                    something is wrong with the code"
     )
 
-    path = tmp_path / "graph-simple.yaml"
-    _write_simple_yaml(path)
-    graph_config = GraphConfig.from_yaml(path)
+    graph_config = _simple_graph_config()
     graph = SimulationGraph.compile(graph_config)
 
     out = graph.cgraph.invoke({"messages": []})
@@ -191,67 +193,10 @@ def test_invoke_simple(tmp_path: Path) -> None:
 # ---------- Conditional graph ----------
 
 
-def _write_conditional_yaml(path: Path) -> None:
-    """Conditional graph using the new schema. Routing is based on len(messages)."""
-    cfg = textwrap.dedent(
-        """
-        name: conditional-test-graph
-        nodes:
-          - name: agentA
-            kind: custom
-            provider: openrouter
-            model: openai/gpt-oss-20b:free
-            additional_kwargs: {}
-            system_template: |
-              Reply with '37' ONLY.
-              Output Format: {
-                "events": [
-                  {
-                    "type": "assistant",
-                    "content": "<your reply here>"
-                  }
-                ]
-              }
-          - name: agentB
-            kind: custom
-            provider: openrouter
-            model: openai/gpt-oss-20b:free
-            additional_kwargs: {}
-            system_template: |
-              Reply with '92' ONLY.
-              Output Format: {
-                "events": [
-                  {
-                    "type": "assistant",
-                    "content": "<your reply here>"
-                  }
-                ]
-              }
-        edges:
-          - from: __START__
-            to:
-              conditional:
-                - if: "len(messages) == 0"
-                  then: agentA
-                - else: agentB
-
-          # Keep end routing simple (no custom functions required)
-          - from: agentA
-            to: __END__
-          - from: agentB
-            to: __END__
-        """
-    ).strip()
-    path.write_text(cfg, encoding="utf-8")
-
-
 @pytest.mark.unit
-def test_conditional_graph(tmp_path: Path) -> None:
-    """Compiles a graph with conditional edges (new schema) and verifies topology."""
-    path = tmp_path / "graph-conditional.yaml"
-    _write_conditional_yaml(path)
-
-    graph_config = GraphConfig.from_yaml(path)
+def test_conditional_graph() -> None:
+    """Compiles a graph with conditional edges and verifies topology."""
+    graph_config = _conditional_graph_config()
     assert graph_config.name == "conditional-test-graph"
 
     graph = SimulationGraph.compile(graph_config)
@@ -269,12 +214,9 @@ def test_conditional_graph(tmp_path: Path) -> None:
 
 
 @pytest.mark.slow
-def test_invoke_conditional(tmp_path: Path) -> None:
+def test_invoke_conditional() -> None:
     """Invokes the conditional graph through correct branches."""
-    path = tmp_path / "graph-conditional.yaml"
-    _write_conditional_yaml(path)
-    graph_config = GraphConfig.from_yaml(path)
-
+    graph_config = _conditional_graph_config()
     graph = SimulationGraph.compile(graph_config)
 
     # Branch: len(messages) == 0 -> agentA -> __end__
@@ -283,7 +225,6 @@ def test_invoke_conditional(tmp_path: Path) -> None:
     assert isinstance(out_empty, dict)
     assert "messages" in out_empty and isinstance(out_empty["messages"], list)
     assert all(hasattr(m, "content") for m in out_empty["messages"])
-    # make sure 37 is in the messages
     assert any("37" in m.content for m in out_empty["messages"])
 
     # Branch: len(messages) > 0 -> agentB -> __end__
@@ -293,41 +234,36 @@ def test_invoke_conditional(tmp_path: Path) -> None:
     assert isinstance(out_nonempty, dict)
     assert "messages" in out_nonempty and isinstance(out_nonempty["messages"], list)
     assert all(hasattr(m, "content") for m in out_nonempty["messages"])
-    # make sure 92 is in the messages
     assert any("92" in m.content for m in out_nonempty["messages"])
 
 
-@pytest.mark.slow
-def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
-    """Verifies system_prompt_template with JINJA variables are rendered from state.
+# ---------- Jinja tests (slow, live LLM calls) ----------
 
-    Example: Reply with '{{ pc.name }}' ONLY. -> 'MW'
-    """
+@pytest.mark.slow
+def test_jinja_populates() -> None:
+    """Verifies system_template with Jinja variables are rendered from state."""
     logger.warning(
         "This test makes a live call to OpenRouter free model, so may be flaky. "
         "If the test fails, try running it again....doesn't necessarily mean "
         "something is wrong with the code."
     )
-    yaml = """
-    name: jinja-test-graph
-    nodes:
-      - name: echoChar
-        provider: openrouter
-        model: openai/gpt-oss-20b:free
-        additional_kwargs: {}
-        state_permissions:
-          read: ["messages", "pc"]
-          write: ["messages"]
-        system_prompt_template: |
-          Reply with '{{ pc.name }}' ONLY.
-    edges:
-      - from: __start__
-        to: echoChar
-      - from: echoChar
-        to: __end__
-    """
-    p = write_yaml("graph-jinja.yaml", yaml)
-    graph_config = GraphConfig.from_yaml(p)
+    graph_config = GraphConfig(
+        name="jinja-test-graph",
+        nodes=[
+            Node(
+                name="echoChar",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template="Reply with '{{ pc.name }}' ONLY.\n" + _SIMPLE_OUTPUT_FORMAT,
+            ),
+        ],
+        edges=[
+            Edge(**{"from": "__START__", "to": "echoChar"}),
+            Edge(**{"from": "echoChar", "to": "__END__"}),
+        ],
+    )
 
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
@@ -344,7 +280,6 @@ def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
     assert isinstance(out, dict)
     assert "messages" in out and isinstance(out["messages"], list)
     assert all(hasattr(m, "content") for m in out["messages"])
-    # Ensure the rendered value appears in the final messages
     assert any("JANIE" in m.content for m in out["messages"])
 
 
@@ -352,41 +287,38 @@ def test_jinja_populates(write_yaml: Callable[[str, str], Path]) -> None:
 
 
 @pytest.mark.slow
-def test_jinja_works_with_dynamic_input(write_yaml: Callable[[str, str], Path]) -> None:
-    """Verifies system_prompt_template with JINJA variables are rendered from state.
-
-    Example: Reply with '{{ pc.name }}' ONLY. -> 'MW'
-    """
+def test_jinja_works_with_dynamic_input() -> None:
+    """Verifies system_template with Jinja conditionals render correctly."""
     logger.warning(
         "This test makes a live call to OpenRouter free model, so may be flaky. "
         "If the test fails, try running it again....doesn't necessarily mean "
         "something is wrong with the code."
     )
-    yaml = """
-    name: jinja-test-graph
-    nodes:
-      - name: echoChar
-        provider: openrouter
-        model: openai/gpt-oss-20b:free
-        additional_kwargs: {}
-        state_permissions:
-          read: ["messages", "pc", "extras"]
-          write: ["messages"]
-        system_prompt_template: |
-          Reply with
-          {% if extras.conditional_flag %}
-          'TRUE' ONLY.
-          {% else %}
-          'FALSE' ONLY.
-          {% endif %}
-    edges:
-      - from: __start__
-        to: echoChar
-      - from: echoChar
-        to: __end__
-    """
-    p = write_yaml("graph-jinja.yaml", yaml)
-    graph_config = GraphConfig.from_yaml(p)
+    graph_config = GraphConfig(
+        name="jinja-test-graph",
+        nodes=[
+            Node(
+                name="echoChar",
+                kind="custom",
+                provider="openrouter",
+                model="openai/gpt-oss-20b:free",
+                additional_kwargs={},
+                system_template=(
+                    "Reply with\n"
+                    "{% if extras.conditional_flag %}\n"
+                    "'TRUE' ONLY.\n"
+                    "{% else %}\n"
+                    "'FALSE' ONLY.\n"
+                    "{% endif %}\n"
+                    + _SIMPLE_OUTPUT_FORMAT
+                ),
+            ),
+        ],
+        edges=[
+            Edge(**{"from": "__START__", "to": "echoChar"}),
+            Edge(**{"from": "echoChar", "to": "__END__"}),
+        ],
+    )
 
     graph = SimulationGraph.compile(graph_config)
     assert isinstance(graph.cgraph, CompiledStateGraph)
@@ -406,7 +338,6 @@ def test_jinja_works_with_dynamic_input(write_yaml: Callable[[str, str], Path]) 
     assert isinstance(out, dict)
     assert "messages" in out and isinstance(out["messages"], list)
     assert all(hasattr(m, "content") for m in out["messages"])
-    # Ensure the rendered value appears in the final messages
     assert any("FALSE" in m.content for m in out["messages"])
     state["extras"]["conditional_flag"] = True
     out = graph.cgraph.invoke(state)
