@@ -97,7 +97,7 @@ class GoalHorizonGame(Game):
         # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
-            yield GameEvent(
+            yield GameEvent.now(
                 type="info",
                 content=C.ENTER_CONTENT.format(
                     pc_hid=self._pc.hid,
@@ -107,7 +107,7 @@ class GoalHorizonGame(Game):
                 ),
             )
             opening = await self._updater.chat(None)
-            yield GameEvent(type="ai", content=opening)
+            yield GameEvent.now(type="ai", content=opening)
             return
 
         if not user_input:
@@ -121,7 +121,7 @@ class GoalHorizonGame(Game):
             return
 
         if len(user_input) > self._max_input_length:
-            yield GameEvent(
+            yield GameEvent.now(
                 type="error",
                 content=f"Input exceeds maximum length of {self._max_input_length} characters.",
             )
@@ -134,14 +134,14 @@ class GoalHorizonGame(Game):
             logger.debug(f"Validation failed. Retry budget remaining: {self._retry_budget}")
             if self._retry_budget <= 0:
                 self.exit("retry budget exhausted")
-                yield GameEvent(type="error", content=validation.get("content", "Invalid action."))
-                yield GameEvent(type="info", content="You have used all your allowed retries. The game is ending.")
+                yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
+                yield GameEvent.now(type="info", content="You have used all your allowed retries. The game is ending.")
                 return
-            yield GameEvent(type="error", content=validation.get("content", "Invalid action."))
+            yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
             return
 
         reply = await self._updater.chat(user_input)
-        yield GameEvent(type="ai", content=reply)
+        yield GameEvent.now(type="ai", content=reply)
 
     def _handle_command(self, user_input: str) -> GameEvent | None:
         """Return a GameEvent for recognised game-level commands, or None to continue."""
@@ -152,10 +152,10 @@ class GoalHorizonGame(Game):
         cmd = stripped.lstrip("/\\").split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent(type="info", content=C.HELP_CONTENT)
+            return GameEvent.now(type="info", content=C.HELP_CONTENT)
 
         if cmd == Command.ABILITIES:
-            return GameEvent(
+            return GameEvent.now(
                 type="info",
                 content=C.ABILITIES_CONTENT.format(
                     pc_hid=self._pc.hid,

@@ -10,13 +10,11 @@ from dcs_simulation_engine.cli.commands import server as server_command
 @pytest.mark.unit
 def test_server_wires_fake_ai_response(monkeypatch: pytest.MonkeyPatch) -> None:
     """Server command should pass fake_ai_response into ai_client override setter."""
-    provider = object()
     app = object()
     set_fake = MagicMock()
     validate_config = MagicMock()
     run_server = MagicMock()
 
-    monkeypatch.setattr(server_command, "create_provider", lambda **_kwargs: provider)
     monkeypatch.setattr(server_command, "create_app", lambda **_kwargs: app)
     monkeypatch.setattr(server_command.ai_client, "set_fake_ai_response", set_fake)
     monkeypatch.setattr(server_command.ai_client, "validate_openrouter_configuration", validate_config)

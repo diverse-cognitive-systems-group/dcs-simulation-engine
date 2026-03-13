@@ -9,6 +9,8 @@ This test suite validates the foresight game's unique mechanics:
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
+import asyncio
+
 import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import (
@@ -54,12 +56,14 @@ FORESIGHT_TEST_INPUTS = [
 @pytest.mark.functional
 def test_foresight_initialization(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test foresight game initializes correctly with SessionManager."""
-    session = SessionManager.create(
-        game="foresight",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="foresight",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     assert not session.exited, "Session should not be exited initially"
@@ -69,12 +73,14 @@ def test_foresight_initialization(patch_llm_client, _isolate_db_state, mongo_pro
 @pytest.mark.functional
 def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test ENTER step produces welcome message and AI opening."""
-    session = SessionManager.create(
-        game="foresight",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="foresight",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     enter_events = list(session.step(""))
@@ -91,12 +97,14 @@ def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_state, mo
 @pytest.mark.functional
 def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test multi-turn simulation with prediction-containing inputs."""
-    session = SessionManager.create(
-        game="foresight",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="foresight",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -125,12 +133,14 @@ def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state, mong
 @pytest.mark.functional
 def test_foresight_complete_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /complete command triggers completion-notes question."""
-    session = SessionManager.create(
-        game="foresight",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="foresight",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -153,12 +163,14 @@ def test_foresight_complete_command(patch_llm_client, _isolate_db_state, mongo_p
 @pytest.mark.functional
 def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test that the answer after /complete is collected and game exits."""
-    session = SessionManager.create(
-        game="foresight",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="foresight",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -179,12 +191,14 @@ def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_stat
 @pytest.mark.functional
 def test_foresight_run_save(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test foresight game sessions can be saved to database."""
-    session = SessionManager.create(
-        game="foresight",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="foresight",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))

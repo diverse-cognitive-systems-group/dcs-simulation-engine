@@ -9,6 +9,9 @@ from bson import json_util
 from dcs_simulation_engine.dal.mongo.const import (
     INDEX_DEFS,
 )
+from dcs_simulation_engine.dal.mongo.util import (
+    ensure_default_indexes,
+)
 from loguru import logger
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -148,4 +151,6 @@ class MongoAdmin:
             self.create_indices(self._db[collection_name])
             total_inserted += num_inserted
 
+        # Reapply baseline runtime indexes after any collection drops during seeding.
+        ensure_default_indexes(self._db)
         return total_inserted

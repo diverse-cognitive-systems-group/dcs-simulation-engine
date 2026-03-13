@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from dcs_simulation_engine.api.app import create_app
@@ -52,6 +52,14 @@ class DummySessionManager:
         self._exited = True
         self._exit_reason = reason
 
+    async def exit_async(self, reason: str) -> None:
+        """Async close shim used by websocket route tests."""
+        self.exit(reason)
+
+    async def start_persistence(self, *, session_id: str) -> None:
+        """No-op persistence hook for API tests."""
+        _ = session_id
+
 
 def _player(player_id: str) -> PlayerRecord:
     """Create a lightweight player record for test provider responses."""
@@ -96,6 +104,22 @@ def client(mock_provider: MagicMock) -> TestClient:
 
 
 @pytest.mark.unit
+def test_app_lifespan_preloads_game_configs(mock_provider: MagicMock) -> None:
+    """App startup should preload game configs into SessionManager cache."""
+    app = create_app(
+        provider=mock_provider,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+
+    with patch("dcs_simulation_engine.api.app.SessionManager.preload_game_configs") as preload_mock:
+        with TestClient(app):
+            pass
+
+    preload_mock.assert_called_once_with()
+
+
+@pytest.mark.unit
 def test_registration_returns_player_and_api_key(client: TestClient, mock_provider: MagicMock) -> None:
     """Registration creates player data and returns issued API key."""
     payload = {
@@ -134,7 +158,10 @@ def test_auth_success_and_failure(client: TestClient) -> None:
 def test_create_game_and_list_sessions(client: TestClient) -> None:
     """Play creation registers an in-memory session visible in list endpoint."""
     manager = DummySessionManager()
-    with patch("dcs_simulation_engine.api.routers.play.SessionManager.create", return_value=manager):
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
         create_resp = client.post(
             "/api/play/game",
             json={
@@ -164,7 +191,10 @@ def test_create_game_and_list_sessions(client: TestClient) -> None:
 def test_websocket_open_advance_status_close(client: TestClient) -> None:
     """WebSocket endpoint supports opening turn, advance, status, and close frames."""
     manager = DummySessionManager()
-    with patch("dcs_simulation_engine.api.routers.play.SessionManager.create", return_value=manager):
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
         create_resp = client.post(
             "/api/play/game",
             json={"api_key": "valid-key", "game": "explore", "source": "api"},
@@ -207,7 +237,10 @@ def test_websocket_open_advance_status_close(client: TestClient) -> None:
 def test_websocket_rejects_wrong_owner(client: TestClient) -> None:
     """WebSocket connection is rejected when API key owner doesn't own session."""
     manager = DummySessionManager()
-    with patch("dcs_simulation_engine.api.routers.play.SessionManager.create", return_value=manager):
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
         create_resp = client.post(
             "/api/play/game",
             json={"api_key": "valid-key", "game": "explore", "source": "api"},
@@ -232,8 +265,10 @@ def test_setup_options_returns_allowed_choices(client: TestClient) -> None:
     )
 
     with (
-        patch("dcs_simulation_engine.api.routers.play.get_game_config", return_value="/tmp/explore.yaml"),
-        patch("dcs_simulation_engine.api.routers.play.GameConfig.load", return_value=setup_config),
+        patch(
+            "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
+            return_value=setup_config,
+        ),
     ):
         response = client.get(
             "/api/play/setup/explore",
@@ -262,8 +297,10 @@ def test_setup_options_denies_unauthorized_player(client: TestClient) -> None:
     )
 
     with (
-        patch("dcs_simulation_engine.api.routers.play.get_game_config", return_value="/tmp/foresight.yaml"),
-        patch("dcs_simulation_engine.api.routers.play.GameConfig.load", return_value=setup_config),
+        patch(
+            "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
+            return_value=setup_config,
+        ),
     ):
         response = client.get(
             "/api/play/setup/foresight",
@@ -287,8 +324,10 @@ def test_setup_options_handles_missing_valid_characters(client: TestClient) -> N
     )
 
     with (
-        patch("dcs_simulation_engine.api.routers.play.get_game_config", return_value="/tmp/explore.yaml"),
-        patch("dcs_simulation_engine.api.routers.play.GameConfig.load", return_value=setup_config),
+        patch(
+            "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
+            return_value=setup_config,
+        ),
     ):
         response = client.get(
             "/api/play/setup/explore",
@@ -301,3 +340,21 @@ def test_setup_options_handles_missing_valid_characters(client: TestClient) -> N
     assert response.json()["denial_reason"] == "no_valid_pc"
     assert response.json()["pcs"] == []
     assert response.json()["npcs"] == [{"hid": "npc-2", "label": "NPC Beta"}]
+
+
+@pytest.mark.unit
+def test_session_reconstruction_endpoint_returns_payload(client: TestClient, mock_provider: MagicMock) -> None:
+    """Reconstruction endpoint returns session metadata and ordered events."""
+    mock_provider.get_session_reconstruction.return_value = {
+        "session": {"session_id": "s1", "player_id": "player-owner", "status": "closed"},
+        "events": [{"session_id": "s1", "seq": 1, "content": "hello"}],
+    }
+
+    response = client.get(
+        "/api/sessions/s1/reconstruction",
+        headers={"Authorization": "Bearer valid-key"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["session"]["session_id"] == "s1"
+    assert response.json()["events"][0]["seq"] == 1

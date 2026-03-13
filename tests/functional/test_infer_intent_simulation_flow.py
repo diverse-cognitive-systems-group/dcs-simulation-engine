@@ -10,6 +10,8 @@ This test suite validates the infer-intent game's unique mechanics:
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
+import asyncio
+
 import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import (
@@ -50,12 +52,14 @@ INFER_INTENT_TEST_INPUTS = [
 @pytest.mark.functional
 def test_infer_intent_initialization(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test infer-intent game initializes correctly with SessionManager."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     assert not session.exited, "Session should not be exited initially"
@@ -65,12 +69,14 @@ def test_infer_intent_initialization(patch_llm_client, _isolate_db_state, mongo_
 @pytest.mark.functional
 def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test ENTER step produces welcome message and AI opening."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     enter_events = list(session.step(""))
@@ -84,12 +90,14 @@ def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_state,
 @pytest.mark.functional
 def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /guess command triggers goal-inference question."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -107,12 +115,14 @@ def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state, mongo_p
 @pytest.mark.functional
 def test_infer_intent_help_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /help command returns game instructions."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -127,12 +137,14 @@ def test_infer_intent_help_command(patch_llm_client, _isolate_db_state, mongo_pr
 @pytest.mark.functional
 def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test /abilities command returns character abilities."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -147,12 +159,14 @@ def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state, mon
 @pytest.mark.functional
 def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test multi-turn simulation accumulates events correctly."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -176,12 +190,14 @@ def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state, mong
 @pytest.mark.functional
 def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test 2-step completion form: /guess -> goal inference -> other feedback -> exit."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))
@@ -209,12 +225,14 @@ def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state, mongo
 @pytest.mark.functional
 def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test infer-intent game sessions can be exited and saved."""
-    session = SessionManager.create(
-        game="Infer Intent",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Infer Intent",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))

@@ -6,7 +6,8 @@ import pytest
 from dcs_simulation_engine.dal.base import (
     CharacterRecord,
     PlayerRecord,
-    RunRecord,
+    SessionEventRecord,
+    SessionRecord,
 )
 from dcs_simulation_engine.dal.mongo.const import (
     MongoColumns,
@@ -88,52 +89,9 @@ def test_get_players_by_access_key_wrong_key_returns_none(mongo_provider):
 
 
 @pytest.mark.unit
-def test_get_players_hard_cutover_rejects_legacy_hashed_only(mongo_provider):
-    """Hashed-only legacy rows are not supported after raw-key cutover."""
-    db = mongo_provider.get_db()
-    db[MongoColumns.PLAYERS].insert_one(
-        {
-            "name": "Legacy",
-            "access_key_hash": "legacy-hash",
-            "access_key_revoked": False,
-            "created_at": datetime.now(timezone.utc),
-        }
-    )
-    assert mongo_provider.get_players(access_key="any-key") is None
-
-
-@pytest.mark.unit
 def test_get_players_by_access_key_empty_returns_none(mongo_provider):
     """get_players(access_key=...) returns None for empty input."""
     assert mongo_provider.get_players(access_key="") is None
-
-
-@pytest.mark.unit
-def test_save_run_returns_record(mongo_provider):
-    """save_run returns a RunRecord with the assigned id."""
-    run_data = {
-        "name": "test-run",
-        "game_config": {"name": "Explore"},
-        "events": [],
-    }
-    record = mongo_provider.save_run("player-1", run_data)
-
-    assert isinstance(record, RunRecord)
-    assert record.id
-    assert record.game_name == "Explore"
-    assert record.player_id == "player-1"
-
-
-@pytest.mark.unit
-def test_get_runs_returns_records(mongo_provider):
-    """get_runs returns RunRecords for all saved runs."""
-    mongo_provider.save_run("player-1", {"name": "run-a", "game_config": {"name": "Explore"}, "events": []})
-    mongo_provider.save_run("player-1", {"name": "run-b", "game_config": {"name": "Foresight"}, "events": []})
-
-    runs = mongo_provider.get_runs()
-
-    assert len(runs) >= 2
-    assert all(isinstance(r, RunRecord) for r in runs)
 
 
 @pytest.mark.unit
@@ -149,43 +107,57 @@ def test_get_players_returns_records(mongo_provider):
 
 
 @pytest.mark.unit
-def test_list_runs_normalizes_legacy_npc_hid(mongo_provider):
-    """list_runs populates npc_hid from legacy context.npc.hid when needed."""
-    player, _ = mongo_provider.create_player(player_data={"name": "Legacy"})
-    from bson import ObjectId
-
+def test_get_session_returns_session_record(mongo_provider):
+    """get_session returns a SessionRecord when the session exists."""
     db = mongo_provider.get_db()
-    db[MongoColumns.RUNS].insert_one(
+    db[MongoColumns.SESSIONS].insert_one(
         {
-            "player_id": ObjectId(player.id),
-            "game_config": {"name": "Legacy Game"},
-            "context": {"npc": {"hid": "flatworm"}},
+            "session_id": "s-1",
+            "player_id": "p-1",
+            "game_name": "Explore",
+            "status": "active",
             "created_at": datetime.now(timezone.utc),
+            "source": "test",
         }
     )
 
-    runs = mongo_provider.list_runs(player_id=player.id, game_name="Legacy Game")
-    assert runs
-    assert runs[0].data.get("npc_hid") == "flatworm"
+    session = mongo_provider.get_session(session_id="s-1", player_id="p-1")
+    assert isinstance(session, SessionRecord)
+    assert session.session_id == "s-1"
+    assert session.player_id == "p-1"
+    assert session.data["source"] == "test"
 
 
 @pytest.mark.unit
-def test_list_runs_prefers_top_level_npc_hid_over_legacy(mongo_provider):
-    """list_runs uses top-level npc_hid when both modern and legacy fields exist."""
-    player, _ = mongo_provider.create_player(player_data={"name": "Modern"})
-    from bson import ObjectId
-
+def test_list_session_events_returns_session_event_records(mongo_provider):
+    """list_session_events returns ordered SessionEventRecord rows."""
     db = mongo_provider.get_db()
-    db[MongoColumns.RUNS].insert_one(
-        {
-            "player_id": ObjectId(player.id),
-            "game_name": "Modern Game",
-            "npc_hid": "modern-hid",
-            "context": {"npc": {"hid": "legacy-hid"}},
-            "created_at": datetime.now(timezone.utc),
-        }
+    db[MongoColumns.SESSION_EVENTS].insert_many(
+        [
+            {
+                "session_id": "s-2",
+                "seq": 2,
+                "event_id": "e-2",
+                "event_ts": datetime.now(timezone.utc),
+                "direction": "outbound",
+                "kind": "assistant_message",
+                "role": "assistant",
+                "content": "two",
+            },
+            {
+                "session_id": "s-2",
+                "seq": 1,
+                "event_id": "e-1",
+                "event_ts": datetime.now(timezone.utc),
+                "direction": "inbound",
+                "kind": "user_input",
+                "role": "user",
+                "content": "one",
+            },
+        ]
     )
 
-    runs = mongo_provider.list_runs(player_id=player.id, game_name="Modern Game")
-    assert runs
-    assert runs[0].data.get("npc_hid") == "modern-hid"
+    events = mongo_provider.list_session_events(session_id="s-2")
+    assert isinstance(events, list)
+    assert all(isinstance(event, SessionEventRecord) for event in events)
+    assert [event.seq for event in events] == [1, 2]
