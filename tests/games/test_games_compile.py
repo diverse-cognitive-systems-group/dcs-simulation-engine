@@ -5,6 +5,7 @@ can be compiled (i.e., a SessionManager can be created) without raising exceptio
 Each file is shown as a separate pytest case via parametrization.
 """
 
+import asyncio
 from pathlib import Path
 from typing import NewType
 
@@ -43,13 +44,15 @@ def test_all_games_compile(cfg_path: Path, mongo_provider) -> None:
     """
     try:
         game_config = GameConfig.from_yaml(cfg_path)
-        SessionManager.create(
-            game=game_config,
-            provider=mongo_provider,
-            source="pytest",
-            pc_choice=None,
-            npc_choice=None,
-            player_id=None,
+        asyncio.run(
+            SessionManager.create_async(
+                game=game_config,
+                provider=mongo_provider,
+                source="pytest",
+                pc_choice=None,
+                npc_choice=None,
+                player_id=None,
+            )
         )
         logger.debug("SessionManager created successfully")
     except PermissionError:

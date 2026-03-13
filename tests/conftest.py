@@ -3,6 +3,8 @@
 This will run before any tests are executed when `import pytest` is called.
 """
 
+import asyncio
+import inspect
 import logging
 import os
 import textwrap
@@ -13,10 +15,7 @@ from typing import Any, Callable, Iterator
 
 import mongomock
 import pytest
-from dcs_simulation_engine.dal.mongo import MongoProvider
-from dcs_simulation_engine.dal.mongo.const import (
-    MongoColumns,
-)
+from dcs_simulation_engine.dal.mongo import AsyncMongoProvider
 from dcs_simulation_engine.dal.mongo.util import (
     ensure_default_indexes,
 )
@@ -204,19 +203,34 @@ def _seed_db_from_json(_isolate_db_state: Database[Any]) -> None:
     _seed_from_dir(db, seed_dir)
 
 
-@pytest.fixture
-def seed_runs_from_json(mongo_provider: MongoProvider) -> Callable[[str], None]:
-    """Seeds the mocked runs collection with data from a JSON file."""
-    db = mongo_provider.get_db()
+class SyncAsyncProviderAdapter:
+    """Sync adapter around AsyncMongoProvider for sync-style tests."""
 
-    def _load(path: str) -> None:
-        docs = _load_json_file(Path(path))
-        if not docs:
-            return
-        colname = MongoColumns.RUNS
-        db[colname].insert_many(docs)
+    def __init__(self, provider: AsyncMongoProvider) -> None:
+        """Store the wrapped async provider."""
+        self._provider = provider
 
-    return _load
+    def get_db(self) -> Database[Any]:
+        """Return underlying DB handle."""
+        return self._provider.get_db()
+
+    def __getattr__(self, name: str) -> Any:
+        """Run awaitable provider methods to completion for sync tests."""
+        attr = getattr(self._provider, name)
+        if not callable(attr):
+            return attr
+
+        def _wrapped(*args: Any, **kwargs: Any) -> Any:
+            result = attr(*args, **kwargs)
+            if inspect.isawaitable(result):
+                try:
+                    asyncio.get_running_loop()
+                except RuntimeError:
+                    return asyncio.run(result)
+                return result
+            return result
+
+        return _wrapped
 
 
 # ============================================================================
@@ -225,9 +239,9 @@ def seed_runs_from_json(mongo_provider: MongoProvider) -> Callable[[str], None]:
 
 
 @pytest.fixture
-def mongo_provider(_isolate_db_state: Database[Any]) -> MongoProvider:
-    """Return a MongoProvider wired to the mongomock DB for this test."""
-    return MongoProvider(db=_isolate_db_state)
+def mongo_provider(_isolate_db_state: Database[Any]) -> SyncAsyncProviderAdapter:
+    """Return sync adapter over AsyncMongoProvider wired to mongomock."""
+    return SyncAsyncProviderAdapter(AsyncMongoProvider(db=_isolate_db_state))
 
 
 # ============================================================================

@@ -4,8 +4,6 @@ This module is intentionally stateless. Connection ownership is handled by
 bootstrap/runtime wiring and passed into DAL objects explicitly.
 """
 
-import re
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from bson import ObjectId
@@ -15,38 +13,11 @@ from dcs_simulation_engine.dal.mongo.const import (
     INDEX_DEFS,
     MongoColumns,
 )
-from loguru import logger
-from pymongo import ASCENDING, DESCENDING, MongoClient
+from dcs_simulation_engine.utils.time import utc_now
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, MongoClient
+from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.collection import Collection
 from pymongo.database import Database
-
-
-def now(delta: str | int = 0) -> datetime:
-    """UTC now, with +/- flexible units if delta is a string."""
-    base = datetime.now(timezone.utc)
-
-    if isinstance(delta, int):
-        return base + timedelta(days=delta)
-
-    if not isinstance(delta, str):
-        raise TypeError(f"delta must be str or int, got {type(delta).__name__}")
-
-    m = re.fullmatch(r"\s*([+-]\d+)([smdwy])\s*", delta)
-    if not m:
-        raise ValueError(f"bad delta: {delta!r}")
-
-    n = int(m.group(1))
-    u = m.group(2).lower()
-    if u == "y":
-        return base + timedelta(days=365 * n)  # rough year
-
-    unit_to_kwarg = {
-        "s": "seconds",
-        "m": "minutes",
-        "d": "days",
-        "w": "weeks",
-    }
-    return base + timedelta(**{unit_to_kwarg[u]: n})
 
 
 def player_id_variants(player_id: str | Any | None) -> list[Any]:
@@ -74,22 +45,51 @@ def player_id_variants(player_id: str | Any | None) -> list[Any]:
 def ensure_default_indexes(db: Database[Any]) -> None:
     """Create baseline indexes used by runtime and tests."""
     db[MongoColumns.PLAYERS].create_index("access_key", unique=True, sparse=True)
-    db[MongoColumns.PLAYERS].create_index([("access_key_revoked", ASCENDING)])
-    db[MongoColumns.RUNS].create_index(
-        [
-            ("player_id", ASCENDING),
-            (MongoColumns.CREATED_AT, DESCENDING),
-            (MongoColumns.UPDATED_AT, DESCENDING),
-        ]
+    db[MongoColumns.PII].create_index(MongoColumns.PLAYER_ID, unique=True)
+    db[MongoColumns.SESSIONS].create_index(MongoColumns.SESSION_ID, unique=True)
+    db[MongoColumns.SESSIONS].create_index(
+        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)]
     )
-    db[MongoColumns.RUNS].create_index([("player_id", ASCENDING), ("played_at", DESCENDING)])
-    db[MongoColumns.RUNS].create_index([("game_name", ASCENDING), ("player_id", ASCENDING)])
-    db[MongoColumns.RUNS].create_index([("game_config.name", ASCENDING), ("player_id", ASCENDING)])
+    db[MongoColumns.SESSIONS].create_index([(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)])
+    db[MongoColumns.SESSION_EVENTS].create_index(
+        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.SEQ, ASCENDING)],
+        unique=True,
+    )
+    db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
+    db[MongoColumns.SESSION_EVENTS].create_index(
+        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS_NS, ASCENDING)]
+    )
 
     for collection_name, defs in INDEX_DEFS.items():
         coll = db[collection_name]
         for spec in defs:
             coll.create_index(spec["fields"], unique=spec.get("unique", False))
+
+
+async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
+    """Create baseline indexes used by async runtime paths."""
+    await db[MongoColumns.PLAYERS].create_index("access_key", unique=True, sparse=True)
+    await db[MongoColumns.PII].create_index(MongoColumns.PLAYER_ID, unique=True)
+    await db[MongoColumns.SESSIONS].create_index(MongoColumns.SESSION_ID, unique=True)
+    await db[MongoColumns.SESSIONS].create_index(
+        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)]
+    )
+    await db[MongoColumns.SESSIONS].create_index(
+        [(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)]
+    )
+    await db[MongoColumns.SESSION_EVENTS].create_index(
+        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.SEQ, ASCENDING)],
+        unique=True,
+    )
+    await db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
+    await db[MongoColumns.SESSION_EVENTS].create_index(
+        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS_NS, ASCENDING)]
+    )
+
+    for collection_name, defs in INDEX_DEFS.items():
+        coll = db[collection_name]
+        for spec in defs:
+            await coll.create_index(spec["fields"], unique=spec.get("unique", False))
 
 
 def connect_db(
@@ -107,18 +107,32 @@ def connect_db(
     return db
 
 
+async def connect_db_async(
+    *,
+    uri: str,
+    db_name: str = DEFAULT_DB_NAME,
+    client_factory: Any | None = None,
+) -> AsyncDatabase[Any]:
+    """Create an async MongoDB DB handle from an explicit URI."""
+    factory = client_factory or AsyncMongoClient
+    client = factory(uri, tz_aware=True)
+    await client.admin.command("ping")
+    db = client[db_name]
+    await ensure_default_indexes_async(db)
+    return db
+
+
 def sanitize_player_data(player_data: dict[str, Any]) -> dict[str, Any]:
     """Remove access-key fields from player_data and set a default created_at."""
     data = dict(player_data)
 
     for k in (
         "access_key",
-        "access_key_hash",
         "access_key_revoked",
     ):
         data.pop(k, None)
 
-    data.setdefault(MongoColumns.CREATED_AT, now())
+    data.setdefault(MongoColumns.CREATED_AT, utc_now())
     return data
 
 
@@ -164,44 +178,17 @@ def write_pii_fields(db: Database[Any], player_id: str, pii_fields: dict[str, An
 
     pii_coll: Collection[Any] = db[MongoColumns.PII]
     pii_coll.update_one(
-        {"player_id": player_id},
+        {MongoColumns.PLAYER_ID: player_id},
         {
             "$set": {
-                "player_id": player_id,
-                "fields": pii_fields,
-                "updated_at": now(),
+                MongoColumns.PLAYER_ID: player_id,
+                MongoColumns.FIELDS: pii_fields,
+                MongoColumns.UPDATED_AT: utc_now(),
             },
-            "$setOnInsert": {"created_at": now()},
+            "$setOnInsert": {MongoColumns.CREATED_AT: utc_now()},
         },
         upsert=True,
     )
-
-
-def save_run_data(
-    db: Database[Any],
-    player_id: str | Any,
-    run_data: dict[str, Any],
-    *,
-    run_id: str | Any | None = None,
-    timestamp_field: str = MongoColumns.CREATED_AT,
-) -> str:
-    """Persist run_data for a player; upsert if run_id is given, else insert. Returns run id."""
-    if not isinstance(run_data, dict):
-        raise ValueError("run_data must be a dict")
-
-    data = dict(run_data)
-    data["player_id"] = player_id
-    data.setdefault(timestamp_field, now())
-
-    coll: Collection[Any] = db[MongoColumns.RUNS]
-    if run_id is not None:
-        coll.update_one({"_id": run_id}, {"$set": data}, upsert=True)
-        rid = str(run_id)
-    else:
-        rid = str(coll.insert_one(data).inserted_id)
-
-    logger.debug(f"Saved run {rid} for player {player_id}")
-    return rid
 
 
 def player_doc_to_record(doc: dict[str, Any]) -> PlayerRecord:

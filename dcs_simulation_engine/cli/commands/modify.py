@@ -1,5 +1,6 @@
 """CLI commands for modifying resources."""
 
+import asyncio
 import json
 import shutil
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import List, Optional
 
 import typer
 from dcs_simulation_engine.cli.bootstrap import (
-    create_provider,
+    create_async_provider,
 )
 from dcs_simulation_engine.cli.common import console, echo
 from dcs_simulation_engine.helpers.game_helpers import (
@@ -16,6 +17,11 @@ from dcs_simulation_engine.helpers.game_helpers import (
 from dcs_simulation_engine.utils.misc import parse_kv
 
 modify_app = typer.Typer(help="Modify games or characters available for use.")
+
+
+def _run_async(coro):
+    """Execute an async coroutine from sync CLI command handlers."""
+    return asyncio.run(coro)
 
 
 @modify_app.command("game")
@@ -79,13 +85,14 @@ def modify_character(
     delete: bool = typer.Option(False, "--delete", help="Delete the character by --id."),
 ) -> None:
     """Create/update (upsert) or delete a character."""
-    provider = create_provider()
+    mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
+    provider = _run_async(create_async_provider(mongo_uri=mongo_uri))
 
     if delete:
         if not character_id:
             raise typer.BadParameter("--id is required with --delete.")
         try:
-            provider.delete_character(character_id)
+            _run_async(provider.delete_character(character_id))
         except Exception as e:
             echo(ctx, f"Failed to delete character: {e}", style="error")
             raise typer.Exit(code=1)
@@ -113,7 +120,7 @@ def modify_character(
     data["name"] = resolved_name
 
     try:
-        created_id = provider.upsert_character(data, character_id=character_id)
+        created_id = _run_async(provider.upsert_character(data, character_id=character_id))
     except Exception as e:
         echo(ctx, f"Failed to modify character: {e}", style="error")
         raise typer.Exit(code=1)
@@ -142,13 +149,14 @@ def modify_player(
     delete: bool = typer.Option(False, "--delete", help="Delete the player by --id."),
 ) -> None:
     """Create/update (upsert) or delete a player."""
-    provider = create_provider()
+    mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
+    provider = _run_async(create_async_provider(mongo_uri=mongo_uri))
 
     if delete:
         if not player_id:
             raise typer.BadParameter("--id is required with --delete.")
         try:
-            provider.delete_player(player_id)
+            _run_async(provider.delete_player(player_id))
         except Exception as e:
             echo(ctx, f"Failed to delete player: {e}", style="error")
             raise typer.Exit(code=1)
@@ -171,10 +179,12 @@ def modify_player(
     data["name"] = resolved_name
 
     try:
-        player_record, raw_key = provider.create_player(
-            player_data=data,
-            player_id=player_id,
-            issue_access_key=not no_key,
+        player_record, raw_key = _run_async(
+            provider.create_player(
+                player_data=data,
+                player_id=player_id,
+                issue_access_key=not no_key,
+            )
         )
         created_id = player_record.id
     except Exception as e:

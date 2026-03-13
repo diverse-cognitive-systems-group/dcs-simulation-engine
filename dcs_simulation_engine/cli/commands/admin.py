@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import typer
-from dcs_simulation_engine.cli.bootstrap import create_provider, create_provider_admin
+from dcs_simulation_engine.cli.bootstrap import create_provider_admin
 from dcs_simulation_engine.cli.common import echo, seed_database
 
 admin_app = typer.Typer(help="Database administration commands.")
@@ -30,8 +30,7 @@ def backup(
     """Backup the entire database to a directory."""
     mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
     try:
-        provider = create_provider(mongo_uri=mongo_uri)
-        admin = create_provider_admin(provider)
+        admin = create_provider_admin(mongo_uri=mongo_uri)
         result = admin.backup_db(outdir)
     except Exception as e:
         echo(ctx, str(e), style="error")

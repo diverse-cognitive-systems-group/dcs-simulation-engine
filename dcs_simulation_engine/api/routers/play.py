@@ -1,14 +1,18 @@
 """Gameplay session creation and WebSocket interaction endpoints."""
 
+import asyncio
+from contextlib import suppress
+from typing import Any
+
 from dcs_simulation_engine.api.auth import (
     api_key_from_request,
     api_key_from_websocket,
-    authenticate_player,
     get_provider_from_request,
     get_provider_from_websocket,
     get_registry_from_request,
     get_registry_from_websocket,
-    require_player,
+    maybe_await,
+    require_player_async,
 )
 from dcs_simulation_engine.api.models import (
     CharacterChoice,
@@ -25,10 +29,7 @@ from dcs_simulation_engine.api.models import (
     parse_ws_auth,
     parse_ws_request,
 )
-from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.core.session_manager import SessionManager
-from dcs_simulation_engine.dal.base import DataProvider
-from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from loguru import logger
 
@@ -79,22 +80,63 @@ async def _send_status(websocket: WebSocket, session_id: str, *, status_value: s
     await websocket.send_json(frame.model_dump(mode="json"))
 
 
-def _build_setup_options(
-    *,
-    game_name: str,
-    player_id: str,
-    provider: DataProvider,
-) -> GameSetupOptionsResponse:
-    """Compute setup authorization + character choices for one player and game."""
+async def _finalize_exit_with_retry(*, manager: Any, reason: str, session_id: str, max_attempts: int = 3) -> None:
+    """Attempt session finalization with bounded retries."""
+    delay_s = 0.2
+    for attempt in range(1, max_attempts + 1):
+        try:
+            exit_async = getattr(manager, "exit_async", None)
+            if callable(exit_async):
+                await exit_async(reason)
+            else:
+                await maybe_await(manager.exit(reason))
+            return
+        except Exception:
+            logger.exception(
+                "Session finalize failed for {} (attempt {}/{})",
+                session_id,
+                attempt,
+                max_attempts,
+            )
+            if attempt == max_attempts:
+                return
+            await asyncio.sleep(delay_s)
+            delay_s *= 2
+
+
+def _spawn_background_finalize(*, manager: Any, reason: str, session_id: str) -> asyncio.Task[None]:
+    """Run finalize-with-retry in background so close ACK isn't blocked by durability."""
+    task = asyncio.create_task(_finalize_exit_with_retry(manager=manager, reason=reason, session_id=session_id))
+
+    def _on_done(done_task: asyncio.Task[None]) -> None:
+        with suppress(asyncio.CancelledError):
+            exc = done_task.exception()
+            if exc is not None:
+                logger.error("Background finalize task crashed for {}: {}", session_id, exc)
+
+    task.add_done_callback(_on_done)
+    return task
+
+
+@router.get("/setup/{game_name}", response_model=GameSetupOptionsResponse)
+async def setup_options(game_name: str, request: Request) -> GameSetupOptionsResponse:
+    """Return setup-ready authorization and valid character choices for a game."""
+    provider = get_provider_from_request(request)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+
     try:
-        game_config_path = get_game_config(game_name)
-        game_config = GameConfig.load(game_config_path)
+        game_config = SessionManager.get_game_config_cached(game_name)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    if not game_config.is_player_allowed(player_id=player_id, provider=provider):
+    is_allowed = getattr(game_config, "is_player_allowed_async", None)
+    if is_allowed is None:
+        allowed = await maybe_await(game_config.is_player_allowed(player_id=player.id, provider=provider))
+    else:
+        allowed = await maybe_await(is_allowed(player_id=player.id, provider=provider))
+    if not allowed:
         return GameSetupOptionsResponse(
             game=game_config.name,
             allowed=False,
@@ -105,7 +147,13 @@ def _build_setup_options(
             npcs=[],
         )
 
-    valid_pcs, valid_npcs = game_config.get_valid_characters(player_id=player_id, provider=provider)
+    get_valid = getattr(game_config, "get_valid_characters_async", None)
+    if get_valid is None:
+        valid_pcs, valid_npcs = await maybe_await(
+            game_config.get_valid_characters(player_id=player.id, provider=provider)
+        )
+    else:
+        valid_pcs, valid_npcs = await maybe_await(get_valid(player_id=player.id, provider=provider))
     pcs = [CharacterChoice(hid=hid, label=label) for label, hid in valid_pcs]
     npcs = [CharacterChoice(hid=hid, label=label) for label, hid in valid_npcs]
 
@@ -119,7 +167,6 @@ def _build_setup_options(
             pcs=pcs,
             npcs=npcs,
         )
-
     if not npcs:
         return GameSetupOptionsResponse(
             game=game_config.name,
@@ -142,23 +189,15 @@ def _build_setup_options(
     )
 
 
-@router.get("/setup/{game_name}", response_model=GameSetupOptionsResponse)
-def setup_options(game_name: str, request: Request) -> GameSetupOptionsResponse:
-    """Return setup-ready authorization and valid character choices for a game."""
-    provider = get_provider_from_request(request)
-    player = require_player(provider=provider, api_key=api_key_from_request(request))
-    return _build_setup_options(game_name=game_name, player_id=player.id, provider=provider)
-
-
 @router.post("/game", response_model=CreateGameResponse)
-def create_game(body: CreateGameRequest, request: Request) -> CreateGameResponse:
+async def create_game(body: CreateGameRequest, request: Request) -> CreateGameResponse:
     """Create a session-owned game instance and return websocket connect info."""
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
-    player = require_player(provider=provider, api_key=body.api_key)
+    player = await require_player_async(provider=provider, api_key=body.api_key)
 
     try:
-        manager = SessionManager.create(
+        manager = await SessionManager.create_async(
             game=body.game,
             provider=provider,
             source=body.source,
@@ -175,6 +214,10 @@ def create_game(body: CreateGameRequest, request: Request) -> CreateGameResponse
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     entry = registry.add(player_id=player.id, game_name=manager.game_config.name, manager=manager)
+    start_hook = getattr(manager, "start_persistence", None)
+    if start_hook is not None:
+        await maybe_await(start_hook(session_id=entry.session_id))
+
     return CreateGameResponse(
         session_id=entry.session_id,
         status="active",
@@ -199,7 +242,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             if auth_frame is not None:
                 api_key = auth_frame.api_key
 
-        player = authenticate_player(provider=provider, api_key=api_key)
+        player = await require_player_async(provider=provider, api_key=api_key)
         if player is None:
             await _send_error(websocket, "Invalid access key")
             await websocket.close()
@@ -271,13 +314,28 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
             if isinstance(req, WSCloseRequest):
                 if not entry.manager.exited:
-                    entry.manager.exit("received close request")
+                    _spawn_background_finalize(
+                        manager=entry.manager,
+                        reason="received close request",
+                        session_id=session_id,
+                    )
                 registry.close(session_id)
                 await websocket.send_json({"type": "closed", "session_id": session_id})
                 await websocket.close()
                 return
 
     except WebSocketDisconnect as exc:
+        entry = registry.get(session_id)
+        if entry is not None and not entry.manager.exited:
+            try:
+                await _finalize_exit_with_retry(
+                    manager=entry.manager,
+                    reason="websocket_disconnect",
+                    session_id=session_id,
+                )
+                registry.close(session_id)
+            except Exception:
+                logger.exception("Failed to finalize session after websocket disconnect: {}", session_id)
         logger.info(
             "WebSocket disconnected for session {} (code={}, reason={})",
             session_id,
@@ -286,6 +344,17 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
         )
 
     except Exception:
+        entry = registry.get(session_id)
+        if entry is not None and not entry.manager.exited:
+            try:
+                await _finalize_exit_with_retry(
+                    manager=entry.manager,
+                    reason="server_error",
+                    session_id=session_id,
+                )
+                registry.close(session_id)
+            except Exception:
+                logger.exception("Failed to finalize session after internal websocket error: {}", session_id)
         logger.exception("Unhandled websocket error for session {}", session_id)
         try:
             await _send_error(websocket, "Internal server error")

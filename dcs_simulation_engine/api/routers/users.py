@@ -4,7 +4,8 @@ from typing import Any
 
 from dcs_simulation_engine.api.auth import (
     get_provider_from_request,
-    require_player,
+    maybe_await,
+    require_player_async,
 )
 from dcs_simulation_engine.api.models import (
     AuthRequest,
@@ -100,12 +101,12 @@ def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
 
 
 @router.post("/registration", response_model=RegistrationResponse)
-def register_user(body: RegistrationRequest, request: Request) -> RegistrationResponse:
+async def register_user(body: RegistrationRequest, request: Request) -> RegistrationResponse:
     """Register a new player record and return a newly issued API key."""
     provider = get_provider_from_request(request)
     player_data = _registration_to_player_data(body)
 
-    record, api_key = provider.create_player(player_data=player_data, issue_access_key=True)
+    record, api_key = await maybe_await(provider.create_player(player_data=player_data, issue_access_key=True))
     if api_key is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to issue access key")
 
@@ -113,9 +114,9 @@ def register_user(body: RegistrationRequest, request: Request) -> RegistrationRe
 
 
 @router.post("/auth", response_model=AuthResponse)
-def auth_user(body: AuthRequest, request: Request) -> AuthResponse:
+async def auth_user(body: AuthRequest, request: Request) -> AuthResponse:
     """Authenticate a user API key and return the associated player id."""
     provider = get_provider_from_request(request)
-    player = require_player(provider=provider, api_key=body.api_key)
+    player = await require_player_async(provider=provider, api_key=body.api_key)
     full_name = player.data.get("full_name", {}).get("answer", "")
     return AuthResponse(player_id=player.id, full_name=full_name, authenticated=True)
