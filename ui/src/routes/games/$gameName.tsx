@@ -28,11 +28,6 @@ interface CharacterChoice {
   label: string
 }
 
-interface SetupCharacterChoice extends CharacterChoice {
-  name: string
-  description: string | null
-}
-
 interface GameSetupOptionsResponse {
   game: string
   allowed: boolean
@@ -43,25 +38,19 @@ interface GameSetupOptionsResponse {
   npcs: CharacterChoice[]
 }
 
+interface CharactersListResponse {
+  characters: Array<{
+    hid: string
+    short_description: string
+  }>
+}
+
 function randomPick<T>(arr: T[]): T | undefined {
   if (!arr.length) return undefined
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-function parseCharacterLabel(choice: CharacterChoice): SetupCharacterChoice {
-  const [rawName, ...rest] = choice.label.split(' - ')
-  const name = (rawName || '').trim() || choice.hid
-  const description = rest.join(' - ').trim()
-  return {
-    ...choice,
-    name,
-    description: description.length > 0 ? description : null,
-  }
-}
-
 function GameSetupPage() {
-  // useParams reads the dynamic segment from the URL; the `from` option gives TypeScript
-  // the correct type for the params object.
   const { gameName } = useParams({ from: '/games/$gameName' })
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
@@ -78,13 +67,37 @@ function GameSetupPage() {
       httpClient<GameSetupOptionsResponse>(`/api/play/setup/${encodeURIComponent(gameName)}`),
   })
 
-  const pcs = useMemo(() => (setupData?.pcs ?? []).map(parseCharacterLabel), [setupData?.pcs])
-  const npcs = useMemo(() => (setupData?.npcs ?? []).map(parseCharacterLabel), [setupData?.npcs])
+  const { data: charactersData } = useQuery({
+    queryKey: ['characters-list'],
+    queryFn: () => httpClient<CharactersListResponse>('/api/characters/list'),
+  })
 
-  // useMemo recomputes only when pcs/npcs length changes, not on every render.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-pick only when list size changes, not on reference identity
+  const characterDescriptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const character of charactersData?.characters ?? []) {
+      const description = character.short_description?.trim()
+      if (description) map.set(character.hid, description)
+    }
+    return map
+  }, [charactersData?.characters])
+
+  const pcs = useMemo(() => {
+    return (setupData?.pcs ?? []).map((choice) => ({
+      hid: choice.hid,
+      description: characterDescriptions.get(choice.hid) ?? null,
+    }))
+  }, [setupData?.pcs, characterDescriptions])
+
+  const npcs = useMemo(() => {
+    return (setupData?.npcs ?? []).map((choice) => ({
+      hid: choice.hid,
+      description: characterDescriptions.get(choice.hid) ?? null,
+    }))
+  }, [setupData?.npcs, characterDescriptions])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-pick only when list size changes
   const defaultPc = useMemo(() => randomPick(pcs)?.hid ?? '', [pcs.length])
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-pick only when list size changes, not on reference identity
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-pick only when list size changes
   const defaultNpc = useMemo(() => randomPick(npcs)?.hid ?? '', [npcs.length])
 
   const [pcChoice, setPcChoice] = useState<string>('')
@@ -233,7 +246,7 @@ function GameSetupPage() {
                 <SelectContent>
                   {pcs.map((c) => (
                     <SelectItem key={c.hid} value={c.hid}>
-                      {c.name}
+                      {c.hid}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -254,7 +267,7 @@ function GameSetupPage() {
                 <SelectContent>
                   {npcs.map((c) => (
                     <SelectItem key={c.hid} value={c.hid}>
-                      {c.name}
+                      {c.hid}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -279,7 +292,7 @@ function GameSetupPage() {
             {isPending ? 'Starting…' : 'Play'}
           </Button>
 
-          <Button variant="ghost" className="w-full" onClick={() => navigate({ to: '/games' })}>
+          <Button variant="outline" className="w-full" onClick={() => navigate({ to: '/games' })}>
             Back to Games
           </Button>
         </CardContent>

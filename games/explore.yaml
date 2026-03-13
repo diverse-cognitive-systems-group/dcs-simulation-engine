@@ -9,15 +9,6 @@ access_settings: {}
 data_collection_settings:
   save_runs: true
 
-character_settings:
-  display_pc_choice_as: "{hid} - {short_description}"
-  display_npc_choice_as: "{hid} - {short_description}"
-
-character_selection:
-  pc:
-    descriptor: human-like-cognition
-  npc: {}
-
 stopping_conditions:
   runtime_seconds: [">=600"]
   turns: [">=50"]

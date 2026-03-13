@@ -92,6 +92,7 @@ function SignupPage() {
   // after they've left a field, not on initial load.
   const [touched, setTouched] = useState<Partial<Record<FormFields, boolean>>>({})
   const [consentRead, setConsentRead] = useState(false)
+  const [consentScrolledToBottom, setConsentScrolledToBottom] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   // issuedKey is set after successful registration; its presence switches the page
@@ -156,6 +157,14 @@ function SignupPage() {
     await navigator.clipboard.writeText(issuedKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  function handleConsentScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (consentScrolledToBottom) return
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
+    if (scrollTop + clientHeight >= scrollHeight - 8) {
+      setConsentScrolledToBottom(true)
+    }
   }
 
   // Swap to the key-display view once registration succeeds.
@@ -275,13 +284,100 @@ function SignupPage() {
               </Label>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="space-y-2">
+              <Label htmlFor="consent_text">Consent Form</Label>
+              <div
+                id="consent_text"
+                onScroll={handleConsentScroll}
+                className="h-48 overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm leading-6"
+              >
+                <h4 className="font-semibold">Terms of Use</h4>
+                <p className="mt-2">
+                  This platform hosts research studies conducted by independent researchers. By
+                  accessing or participating in studies on this site, you agree to use the platform
+                  in a responsible manner.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Acceptable Use:</span> You may not attempt to
+                  interfere with the operation of the platform or any studies hosted on it. This
+                  includes attempting to access data that does not belong to you, using automated
+                  scripts or bots to complete studies, attempting to reverse engineer study
+                  materials, or otherwise disrupting the system.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Independent Researchers:</span> Studies hosted on
+                  this platform are created and managed by independent researchers. These
+                  researchers are responsible for the design of their studies, obtaining appropriate
+                  ethical approval (such as IRB approval), and providing informed consent
+                  information to participants.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Research Participation:</span> Participation in any
+                  study is voluntary. Each study will provide its own informed consent document
+                  describing the purpose of the research, procedures, risks, benefits, and data
+                  handling practices.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Platform Availability:</span> The platform is
+                  provided for research purposes and may occasionally be unavailable due to
+                  maintenance, updates, or technical issues.
+                </p>
+
+                <h4 className="mt-4 font-semibold">Privacy Notice</h4>
+                <p className="mt-2">
+                  This platform hosts research studies conducted by independent researchers.
+                  Individual studies may collect research data as described in their informed
+                  consent documents.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Platform Data:</span> To operate the platform and
+                  support research integrity, the system may collect limited technical information
+                  such as timestamps, browser or device information, IP address, and interaction
+                  logs related to study participation.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Research Data:</span> Data collected within a study
+                  is determined by the researcher conducting that study and will be described in the
+                  study&apos;s informed consent document.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Use of Information:</span> Platform data is used to
+                  operate the system, troubleshoot technical issues, and help ensure the quality and
+                  integrity of research data.
+                </p>
+                <p className="mt-2">
+                  <span className="font-medium">Contact:</span> Questions about a specific study
+                  should be directed to the researcher listed in that study&apos;s consent form.
+                </p>
+              </div>
+              {!consentScrolledToBottom && (
+                <p className="text-xs text-muted-foreground">
+                  Scroll to the bottom of the consent form to enable acknowledgment.
+                </p>
+              )}
+            </div>
+
+            <div
+              className={`flex items-center gap-2 transition-opacity ${
+                consentScrolledToBottom ? 'opacity-100' : 'opacity-50'
+              }`}
+            >
               <Checkbox
                 id="consent_read"
                 checked={consentRead}
-                onCheckedChange={(v) => setConsentRead(Boolean(v))}
+                onCheckedChange={(v) => {
+                  if (consentScrolledToBottom) {
+                    setConsentRead(Boolean(v))
+                  }
+                }}
+                disabled={!consentScrolledToBottom}
               />
-              <Label htmlFor="consent_read" className="font-normal">
+              <Label
+                htmlFor="consent_read"
+                className={`font-normal ${
+                  consentScrolledToBottom ? '' : 'cursor-not-allowed text-muted-foreground'
+                }`}
+              >
                 I have read and understood the consent form.
               </Label>
             </div>

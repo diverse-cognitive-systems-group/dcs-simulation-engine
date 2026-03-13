@@ -55,6 +55,7 @@ class InferIntentGame(Game):
         self._entered = False
         self._exited = False
         self._exit_reason = ""
+
         # Completion flow state
         self._awaiting_goal_inference = False
         self._awaiting_other_feedback = False
