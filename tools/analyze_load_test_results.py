@@ -26,8 +26,12 @@ def _load_results(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _load_metrics_csv(path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load flattened metrics CSV emitted by tests/manual/load_test.py."""
+def _load_metrics_csv(path: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load flattened metrics CSV emitted by tests/manual/load_test.py.
+
+    Returns:
+        game_df, wait_turn_df, wait_opening_df, wait_close_df
+    """
     df = pd.read_csv(path)
     required = {"metric", "value_ms", "client_id", "game_number"}
     missing = required - set(df.columns)
@@ -37,17 +41,27 @@ def _load_metrics_csv(path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     game_df = df[df["metric"] == "game_duration_ms"].copy()
     wait_df = df[df["metric"] == "wait_response_duration_ms"].copy()
+    if "phase" in wait_df.columns:
+        wait_turn_df = wait_df[wait_df["phase"] == "turn"].copy()
+        wait_opening_df = wait_df[wait_df["phase"] == "opening"].copy()
+        wait_close_df = wait_df[wait_df["phase"] == "close"].copy()
+    else:
+        wait_turn_df = wait_df.copy()
+        wait_opening_df = pd.DataFrame(columns=wait_df.columns)
+        wait_close_df = pd.DataFrame(columns=wait_df.columns)
 
     if not game_df.empty:
         game_df["game_duration_ms"] = game_df["value_ms"].astype(float)
         game_df["game_label"] = "g" + game_df["game_number"].astype(str)
         game_df["client_game"] = "c" + game_df["client_id"].astype(str) + "-g" + game_df["game_number"].astype(str)
-    if not wait_df.empty:
-        wait_df["wait_response_duration_ms"] = wait_df["value_ms"].astype(float)
-        wait_df["game_label"] = "g" + wait_df["game_number"].astype(str)
-        wait_df["client_game"] = "c" + wait_df["client_id"].astype(str) + "-g" + wait_df["game_number"].astype(str)
+    for frame in (wait_turn_df, wait_opening_df, wait_close_df):
+        if frame.empty:
+            continue
+        frame["wait_response_duration_ms"] = frame["value_ms"].astype(float)
+        frame["game_label"] = "g" + frame["game_number"].astype(str)
+        frame["client_game"] = "c" + frame["client_id"].astype(str) + "-g" + frame["game_number"].astype(str)
 
-    return game_df, wait_df
+    return game_df, wait_turn_df, wait_opening_df, wait_close_df
 
 
 def _flatten(payload: dict[str, Any], include_failed: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -120,7 +134,7 @@ def _plot_game_duration_by_client(game_df: pd.DataFrame, output: Path) -> None:
     plt.close()
 
 
-def _plot_wait_by_client(wait_df: pd.DataFrame, output: Path) -> None:
+def _plot_wait_by_client(wait_df: pd.DataFrame, output: Path, *, phase_label: str = "turn") -> None:
     """Violin plot: wait_response_duration_ms grouped by client_id."""
     if wait_df.empty:
         return
@@ -132,7 +146,7 @@ def _plot_wait_by_client(wait_df: pd.DataFrame, output: Path) -> None:
         inner="quartile",
         cut=0,
     )
-    plt.title("Wait Response Duration by Client")
+    plt.title(f"Wait Response Duration by Client ({phase_label})")
     plt.xlabel("Client ID")
     plt.ylabel("wait_response_duration_ms")
     plt.tight_layout()
@@ -140,12 +154,12 @@ def _plot_wait_by_client(wait_df: pd.DataFrame, output: Path) -> None:
     plt.close()
 
 
-def _plot_wait_by_client_and_game(wait_df: pd.DataFrame, output: Path) -> None:
+def _plot_wait_by_client_and_game(wait_df: pd.DataFrame, output: Path, *, phase_label: str = "turn") -> None:
     """Violin plot: wait_response_duration_ms grouped by client_id and game_number."""
     if wait_df.empty:
         return
     plt.figure(figsize=(14, 7))
-    sns.violinplot(
+    ax = sns.violinplot(
         data=wait_df,
         x="client_id",
         y="wait_response_duration_ms",
@@ -154,10 +168,12 @@ def _plot_wait_by_client_and_game(wait_df: pd.DataFrame, output: Path) -> None:
         cut=0,
         dodge=True,
     )
-    plt.title("Wait Response Duration by Client and Game Number")
+    plt.title(f"Wait Response Duration by Client and Game Number ({phase_label})")
     plt.xlabel("Client ID")
     plt.ylabel("wait_response_duration_ms")
-    plt.legend(title="Game #", bbox_to_anchor=(1.02, 1), loc="upper left")
+    legend = ax.get_legend()
+    if legend is not None:
+        legend.remove()
     plt.tight_layout()
     plt.savefig(output, dpi=150)
     plt.close()
@@ -186,7 +202,7 @@ def _plot_mixed_game_duration_hist_density(game_df: pd.DataFrame, output: Path) 
     plt.close()
 
 
-def _plot_mixed_wait_response_hist_density(wait_df: pd.DataFrame, output: Path) -> None:
+def _plot_mixed_wait_response_hist_density(wait_df: pd.DataFrame, output: Path, *, phase_label: str = "turn") -> None:
     """Histogram + KDE for wait_response_duration_ms with all clients/games mixed."""
     if wait_df.empty or "wait_response_duration_ms" not in wait_df.columns:
         return
@@ -201,7 +217,7 @@ def _plot_mixed_wait_response_hist_density(wait_df: pd.DataFrame, output: Path) 
         alpha=0.3,
     )
     _add_distribution_reference_lines(wait_df["wait_response_duration_ms"].to_numpy(dtype=float))
-    plt.title("Wait Response Histogram + KDE (All Clients/Games Combined)")
+    plt.title(f"Wait Response Histogram + KDE ({phase_label}; all clients/games)")
     plt.xlabel("Duration (ms)")
     plt.ylabel("Density")
     plt.tight_layout()
@@ -263,36 +279,50 @@ def main(
 
     sns.set_theme(style=style)
     if input_path.suffix.lower() == ".csv":
-        game_df, wait_df = _load_metrics_csv(input_path)
+        game_df, wait_df, wait_opening_df, wait_close_df = _load_metrics_csv(input_path)
     else:
         payload = _load_results(input_path)
         game_rows, wait_rows = _flatten(payload, include_failed=include_failed)
         game_df = pd.DataFrame(game_rows)
         wait_df = pd.DataFrame(wait_rows)
+        wait_opening_df = pd.DataFrame()
+        wait_close_df = pd.DataFrame()
 
     game_rows = len(game_df)
     wait_rows = len(wait_df)
 
     plot1 = output_dir / "violin_game_duration_by_client.png"
-    plot2 = output_dir / "violin_wait_response_by_client.png"
-    plot3 = output_dir / "violin_wait_response_by_client_and_game.png"
+    plot2 = output_dir / "violin_wait_response_turn_by_client.png"
+    plot3 = output_dir / "violin_wait_response_turn_by_client_and_game.png"
     plot4 = output_dir / "hist_kde_mixed_game_duration_ms.png"
-    plot5 = output_dir / "hist_kde_mixed_wait_response_duration_ms.png"
+    plot5 = output_dir / "hist_kde_mixed_wait_response_turn_duration_ms.png"
+    plot6 = output_dir / "hist_kde_mixed_wait_response_opening_duration_ms.png"
+    plot7 = output_dir / "hist_kde_mixed_wait_response_close_duration_ms.png"
 
     _plot_game_duration_by_client(game_df, plot1)
-    _plot_wait_by_client(wait_df, plot2)
-    _plot_wait_by_client_and_game(wait_df, plot3)
+    _plot_wait_by_client(wait_df, plot2, phase_label="turn")
+    _plot_wait_by_client_and_game(wait_df, plot3, phase_label="turn")
     _plot_mixed_game_duration_hist_density(game_df, plot4)
-    _plot_mixed_wait_response_hist_density(wait_df, plot5)
+    _plot_mixed_wait_response_hist_density(wait_df, plot5, phase_label="turn")
+    _plot_mixed_wait_response_hist_density(wait_opening_df, plot6, phase_label="opening")
+    _plot_mixed_wait_response_hist_density(wait_close_df, plot7, phase_label="close")
 
     print(f"Input: {input_path}")
     print(f"Game rows: {game_rows}")
-    print(f"Wait rows: {wait_rows}")
+    print(f"Wait rows (turn): {wait_rows}")
+    if not wait_opening_df.empty:
+        print(f"Wait rows (opening): {len(wait_opening_df)}")
+    if not wait_close_df.empty:
+        print(f"Wait rows (close): {len(wait_close_df)}")
     print(f"Wrote: {plot1}")
     print(f"Wrote: {plot2}")
     print(f"Wrote: {plot3}")
     print(f"Wrote: {plot4}")
     print(f"Wrote: {plot5}")
+    if not wait_opening_df.empty:
+        print(f"Wrote: {plot6}")
+    if not wait_close_df.empty:
+        print(f"Wrote: {plot7}")
 
 
 if __name__ == "__main__":

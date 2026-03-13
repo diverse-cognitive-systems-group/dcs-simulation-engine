@@ -1,17 +1,22 @@
 """Base classes for new-style game implementations."""
 
-from dataclasses import dataclass
-from typing import Any, AsyncIterator
+import time
+from typing import Any, AsyncIterator, NamedTuple
 
 from dcs_simulation_engine.dal.base import CharacterRecord
 
 
-@dataclass
-class GameEvent:
+class GameEvent(NamedTuple):
     """A single event yielded by a game step."""
 
     type: str  # "ai" | "info" | "error" | "warning"
     content: str
+    event_ts_ns: int
+
+    @classmethod
+    def now(cls, *, type: str, content: str) -> "GameEvent":
+        """Build an event stamped with the current wall-clock time in ns."""
+        return cls(type=type, content=content, event_ts_ns=time.time_ns())
 
 
 class Game:

@@ -8,6 +8,8 @@ This test suite validates the goal-horizon game's mechanics:
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
+import asyncio
+
 import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import (
@@ -39,12 +41,14 @@ def seed_consenting_player(_isolate_db_state, mongo_provider):
 @pytest.mark.functional
 def test_goal_horizon_initialization(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test goal-horizon game initializes correctly with SessionManager."""
-    session = SessionManager.create(
-        game="Goal Horizon",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Goal Horizon",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     assert not session.exited, "Session should not be exited initially"
@@ -54,12 +58,14 @@ def test_goal_horizon_initialization(patch_llm_client, _isolate_db_state, mongo_
 @pytest.mark.functional
 def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test enter step produces events and session state is valid."""
-    session = SessionManager.create(
-        game="Goal Horizon",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Goal Horizon",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     events = list(session.step(""))
@@ -71,12 +77,14 @@ def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state, mongo_prov
 @pytest.mark.functional
 def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state, mongo_provider):
     """Test goal-horizon game sessions can be exited and saved."""
-    session = SessionManager.create(
-        game="Goal Horizon",
-        provider=mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="Goal Horizon",
+            provider=mongo_provider,
+            pc_choice="human-normative",
+            npc_choice="flatworm",
+            player_id=str(TEST_PLAYER_ID),
+        )
     )
 
     list(session.step(""))

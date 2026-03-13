@@ -4,6 +4,8 @@ This test validates the core simulation flow from initialization through
 multiple conversation turns to saving, without requiring external API calls.
 """
 
+import asyncio
+
 import pytest
 from dcs_simulation_engine.core.session_manager import (
     SessionManager,
@@ -27,8 +29,10 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, 
         Create SessionManager -> Execute ENTER step -> Execute 10 user input steps
         -> Verify events at each step -> Exit -> Verify exited -> Save
     """
-    session = SessionManager.create(
-        game="explore", provider=mongo_provider, pc_choice="human-normative", npc_choice="flatworm"
+    session = asyncio.run(
+        SessionManager.create_async(
+            game="explore", provider=mongo_provider, pc_choice="human-normative", npc_choice="flatworm"
+        )
     )
 
     assert not session.exited, "Session should not be exited initially"

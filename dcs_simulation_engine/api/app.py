@@ -9,7 +9,8 @@ from dcs_simulation_engine.api.routers import (
     sessions_router,
     users_router,
 )
-from dcs_simulation_engine.cli.bootstrap import create_provider
+from dcs_simulation_engine.cli.bootstrap import create_async_provider
+from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import DataProvider
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,25 +28,28 @@ CORS_ORIGINS = [
 
 def create_app(
     *,
-    provider: DataProvider | None = None,
+    provider: DataProvider | object | None = None,
     mongo_uri: str | None = None,
     session_ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
     sweep_interval_seconds: int = DEFAULT_SWEEP_INTERVAL_SECONDS,
     cors_origins: list[str] | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI server application."""
-    bound_provider = provider or create_provider(mongo_uri=mongo_uri)
     registry = SessionRegistry(ttl_seconds=session_ttl_seconds, sweep_interval_seconds=sweep_interval_seconds)
+    app = FastAPI(title="DCS Server")
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        if app.state.provider is None:
+            app.state.provider = await create_async_provider(mongo_uri=mongo_uri)
+        SessionManager.preload_game_configs()
         await registry.start()
         try:
             yield
         finally:
             await registry.stop()
 
-    app = FastAPI(title="DCS Server", lifespan=lifespan)
+    app.router.lifespan_context = lifespan
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins if cors_origins is not None else CORS_ORIGINS,
@@ -53,7 +57,7 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.state.provider = bound_provider
+    app.state.provider = provider
     app.state.registry = registry
 
     app.include_router(users_router)
