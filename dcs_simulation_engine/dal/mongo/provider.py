@@ -61,20 +61,9 @@ class MongoProvider(DataProvider):
 
         return self.list_characters()
 
-    def list_characters(
-        self,
-        *,
-        descriptor: str | None = None,
-        exclude_hids: set[str] | None = None,
-    ) -> list[CharacterRecord]:
-        """Return characters with optional filters."""
-        filt: dict[str, Any] = {}
-        if descriptor:
-            filt["common_descriptors"] = {"$regex": descriptor, "$options": "i"}
-        if exclude_hids:
-            filt["hid"] = {"$nin": sorted(exclude_hids)}
-
-        docs = self._db[MongoColumns.CHARACTERS].find(filt, projection={"_id": 0})
+    def list_characters(self) -> list[CharacterRecord]:
+        """Return all characters."""
+        docs = self._db[MongoColumns.CHARACTERS].find({}, projection={"_id": 0})
         return [_to_character_record(doc) for doc in docs]
 
     def get_player(self, *, player_id: str) -> PlayerRecord | None:

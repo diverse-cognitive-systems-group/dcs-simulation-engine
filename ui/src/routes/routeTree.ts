@@ -8,11 +8,13 @@ import { indexRoute } from './index'
 import { loginRoute } from './login'
 import { playRoute } from './play/$sessionId'
 import { signupRoute } from './signup'
+import { termsRoute } from './terms'
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   signupRoute,
+  termsRoute,
   gamesRoute,
   gameSetupRoute,
   playRoute,

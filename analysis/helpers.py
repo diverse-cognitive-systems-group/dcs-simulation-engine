@@ -48,7 +48,8 @@ def extract_feedback_per_run(runs_df: pd.DataFrame) -> pd.DataFrame:
         return True
 
     def _extract_form_answers(questions):
-        """Convert:
+        """Convert question entries to normalized answer objects.
+
             [{"key": "...", "text": "...", "answer": "..."}]
         into:
             [{"question_key": "...", "question_text": "...", "answer": "..."}]
@@ -154,6 +155,7 @@ def extract_feedback_per_run(runs_df: pd.DataFrame) -> pd.DataFrame:
 
 def get_transcripts_from_runs_df(runs_df: pd.DataFrame) -> pd.DataFrame:
     """Flatten run histories into a transcript DataFrame.
+
     One row per message in state.history.
     """
     if "state.history" not in runs_df.columns:
@@ -209,6 +211,7 @@ def get_transcripts_from_runs_df(runs_df: pd.DataFrame) -> pd.DataFrame:
 
 def load_logs(logs_dir: str | Path) -> pd.DataFrame:
     """Read every log file in a logs directory where each line is a JSON object.
+
     like:
         {"text": "...", "record": {...}}
 
@@ -405,6 +408,7 @@ def load_runs_ndjson(path) -> pd.DataFrame:
 
 def run_summary(run: dict) -> dict:
     """Minimal, analysis-friendly summary for one run dict.
+
     (Return dict so you can print it, put it in a df, or JSON-dump it.)
     """
     start_dt = parse_dt(run.get("start_ts"))
@@ -415,7 +419,7 @@ def run_summary(run: dict) -> dict:
     # Pull transcript (state.history)
     history = ((run.get("state") or {}).get("history")) or []
     n_msgs = len(history)
-    nhuman = sum(1 for m in history if (m.get("type") == "human"))
+    n_human = sum(1 for m in history if (m.get("type") == "human"))
     n_ai = sum(1 for m in history if (m.get("type") == "ai"))
 
     # Completion form answers, if present
@@ -449,6 +453,7 @@ def run_summary(run: dict) -> dict:
 
 def load_transcripts_df(path) -> pd.DataFrame:
     """One row per message across all runs, for transcript review + turn timing stats later.
+
     Columns include run_id, player_id, run_name, msg_idx, speaker, content, msg_id.
     """
     path = Path(path)
