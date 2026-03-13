@@ -103,6 +103,13 @@ function LoginPage() {
                 Register here
               </Link>
             </p>
+            <p className="text-center text-xs text-muted-foreground">
+              By continuing, you agree to the{' '}
+              <Link to="/terms" className="underline underline-offset-4 hover:text-primary">
+                Terms of Use and Privacy Notice
+              </Link>
+              .
+            </p>
           </form>
         </CardContent>
       </Card>
