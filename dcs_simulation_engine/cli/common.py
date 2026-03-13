@@ -9,7 +9,7 @@ from typing import Literal, Optional, Tuple
 
 import typer
 from dcs_simulation_engine.api.client import APIClient
-from dcs_simulation_engine.cli.bootstrap import create_provider, create_provider_admin
+from dcs_simulation_engine.cli.bootstrap import create_provider_admin
 from dcs_simulation_engine.helpers.run_helpers import (
     load_runs,
 )
@@ -158,8 +158,7 @@ def seed_database(ctx: typer.Context, seed_dir: Path) -> None:
     """Seed the database from JSON/NDJSON files."""
     mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
     try:
-        provider = create_provider(mongo_uri=mongo_uri)
-        admin = create_provider_admin(provider)
+        admin = create_provider_admin(mongo_uri=mongo_uri)
         result = admin.seed_database(seed_dir=seed_dir)
     except Exception as e:
         echo(ctx, str(e), style="error")

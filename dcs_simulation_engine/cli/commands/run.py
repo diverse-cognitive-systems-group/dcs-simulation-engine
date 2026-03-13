@@ -6,7 +6,6 @@ from typing import Optional
 import typer
 from dcs_simulation_engine.api.app import create_app
 from dcs_simulation_engine.cli.bootstrap import (
-    create_provider,
     create_provider_admin,
 )
 from dcs_simulation_engine.cli.common import console, step
@@ -34,13 +33,13 @@ def _run_local(
     try:
         import uvicorn
 
-        provider = create_provider(mongo_uri=mongo_uri)
-
         # no existing run with this name -> must initialize db and create new run
         if not status:
             force_db_init = not IS_PROD
             with step("Starting database"):
-                create_provider_admin(provider).init_or_seed_database(force=force_db_init)
+                _ = force_db_init
+                # Ensure DB is reachable and default indexes exist.
+                create_provider_admin(mongo_uri=mongo_uri)
 
         with step("Starting API server"):
             ai_client.validate_openrouter_configuration()
@@ -49,7 +48,8 @@ def _run_local(
             ttl_seconds = int(os.getenv("DCS_SESSION_TTL_SECONDS", str(24 * 3600)))
             sweep_interval_seconds = int(os.getenv("DCS_SESSION_SWEEP_INTERVAL_SECONDS", "60"))
             app = create_app(
-                provider=provider,
+                provider=None,
+                mongo_uri=mongo_uri,
                 session_ttl_seconds=ttl_seconds,
                 sweep_interval_seconds=sweep_interval_seconds,
             )

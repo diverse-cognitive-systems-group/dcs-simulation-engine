@@ -11,7 +11,6 @@ from dcs_simulation_engine.api.app import (
     DEFAULT_SWEEP_INTERVAL_SECONDS,
     create_app,
 )
-from dcs_simulation_engine.cli.bootstrap import create_provider
 from dcs_simulation_engine.cli.common import console, seed_database
 from dcs_simulation_engine.games import ai_client
 
@@ -65,9 +64,9 @@ def server(
         seed_database(ctx, mongo_seed_dir)
 
     try:
-        provider = create_provider(mongo_uri=mongo_uri)
         app = create_app(
-            provider=provider,
+            provider=None,
+            mongo_uri=mongo_uri,
             session_ttl_seconds=ttl_seconds,
             sweep_interval_seconds=sweep_interval_seconds,
         )

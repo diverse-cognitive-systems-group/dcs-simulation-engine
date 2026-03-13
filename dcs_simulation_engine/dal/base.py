@@ -21,13 +21,28 @@ class PlayerRecord(NamedTuple):
     data: dict[str, Any]
 
 
-class RunRecord(NamedTuple):
-    """A persisted game run."""
+class SessionRecord(NamedTuple):
+    """A persisted chat session header record."""
 
-    id: str
+    session_id: str
     player_id: str
     game_name: str
+    status: str
     created_at: Any
+    data: dict[str, Any]
+
+
+class SessionEventRecord(NamedTuple):
+    """A persisted event row for a session transcript."""
+
+    session_id: str
+    seq: int
+    event_id: str
+    event_ts: Any
+    direction: str
+    kind: str
+    role: str
+    content: str
     data: dict[str, Any]
 
 
@@ -58,15 +73,6 @@ class DataProvider:
         """Return a single player by id, or None if not found."""
         raise NotImplementedError
 
-    def list_runs(
-        self,
-        *,
-        player_id: str | None = None,
-        game_name: str | None = None,
-    ) -> list[RunRecord]:
-        """Return runs, optionally filtered by player id and/or game name."""
-        raise NotImplementedError
-
     def create_player(
         self,
         *,
@@ -85,20 +91,6 @@ class DataProvider:
         """Return all players, or a single player by access key."""
         raise NotImplementedError
 
-    def save_run(
-        self,
-        player_id: str,
-        run_data: dict[str, Any],
-        *,
-        run_id: str | None = None,
-    ) -> RunRecord:
-        """Persist a game run and return its record."""
-        raise NotImplementedError
-
-    def get_runs(self) -> list[RunRecord]:
-        """Return all run records."""
-        return self.list_runs()
-
     def upsert_character(self, data: dict[str, Any], *, character_id: str | None = None) -> str:
         """Create or update a character. Returns the character's id string."""
         raise NotImplementedError
@@ -109,4 +101,12 @@ class DataProvider:
 
     def delete_player(self, player_id: str) -> None:
         """Delete a player by id."""
+        raise NotImplementedError
+
+    def get_session(self, *, session_id: str, player_id: str) -> SessionRecord | None:
+        """Return one persisted session header for a player."""
+        raise NotImplementedError
+
+    def list_session_events(self, *, session_id: str) -> list[SessionEventRecord]:
+        """Return ordered persisted events for a session."""
         raise NotImplementedError

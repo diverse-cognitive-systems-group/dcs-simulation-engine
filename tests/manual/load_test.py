@@ -53,7 +53,7 @@ class GameResult:
     game: str
     success: bool
     game_duration_ms: float
-    wait_response_duration_ms: list[float]
+    wait_samples: list[dict[str, Any]]
     turns: int
     error: str | None = None
 
@@ -211,14 +211,20 @@ async def _play_single_game(
 
     start_ns = time.perf_counter_ns()
     turns_seen = 0
-    wait_response_duration_ms: list[float] = []
+    wait_samples: list[dict[str, Any]] = []
     ws_url = _ws_url(base_url, session_id)
     async with connect(ws_url) as ws:
         await ws.send(WSAuthRequest(type="auth", api_key=api_key).model_dump_json())
 
         wait_start_ns = time.perf_counter_ns()
         _, opening_end = await _recv_until_turn_end(ws)
-        wait_response_duration_ms.append((time.perf_counter_ns() - wait_start_ns) / 1_000_000)
+        wait_samples.append(
+            {
+                "phase": "opening",
+                "duration_ms": (time.perf_counter_ns() - wait_start_ns) / 1_000_000,
+                "turn_index": 0,
+            }
+        )
         if isinstance(opening_end, WSTurnEndFrame):
             turns_seen = opening_end.turns
         else:
@@ -229,7 +235,13 @@ async def _play_single_game(
             await ws.send(WSAdvanceRequest(type="advance", text=action).model_dump_json())
             wait_start_ns = time.perf_counter_ns()
             _, turn_end = await _recv_until_turn_end(ws)
-            wait_response_duration_ms.append((time.perf_counter_ns() - wait_start_ns) / 1_000_000)
+            wait_samples.append(
+                {
+                    "phase": "turn",
+                    "duration_ms": (time.perf_counter_ns() - wait_start_ns) / 1_000_000,
+                    "turn_index": turn_idx + 1,
+                }
+            )
             if isinstance(turn_end, WSClosedFrame):
                 break
             turns_seen = turn_end.turns
@@ -239,7 +251,13 @@ async def _play_single_game(
         await ws.send(WSCloseRequest(type="close").model_dump_json())
         wait_start_ns = time.perf_counter_ns()
         closed = await _recv_frame(ws)
-        wait_response_duration_ms.append((time.perf_counter_ns() - wait_start_ns) / 1_000_000)
+        wait_samples.append(
+            {
+                "phase": "close",
+                "duration_ms": (time.perf_counter_ns() - wait_start_ns) / 1_000_000,
+                "turn_index": turns_seen,
+            }
+        )
         if not isinstance(closed, WSClosedFrame):
             raise RuntimeError(f"Expected closed frame, got: {closed}")
 
@@ -250,7 +268,7 @@ async def _play_single_game(
         game=game_name,
         success=True,
         game_duration_ms=game_duration_ms,
-        wait_response_duration_ms=wait_response_duration_ms,
+        wait_samples=wait_samples,
         turns=turns_seen,
     )
 
@@ -312,7 +330,7 @@ async def run_client(
                 game=forced_game or "<auto>",
                 success=False,
                 game_duration_ms=0.0,
-                wait_response_duration_ms=[],
+                wait_samples=[],
                 turns=0,
                 error=str(exc),
             )
@@ -370,7 +388,11 @@ def _print_summary(results: list[ClientResult], elapsed_s: float) -> None:
     successful = [gr for gr in game_results if gr.success]
     failed = [gr for gr in game_results if not gr.success]
     durations_ms = [gr.game_duration_ms for gr in successful]
-    wait_samples_ms = [sample for gr in successful for sample in gr.wait_response_duration_ms]
+    wait_samples = [sample for gr in successful for sample in gr.wait_samples]
+    wait_samples_ms = [float(sample["duration_ms"]) for sample in wait_samples]
+    wait_turn_ms = [float(sample["duration_ms"]) for sample in wait_samples if sample.get("phase") == "turn"]
+    wait_opening_ms = [float(sample["duration_ms"]) for sample in wait_samples if sample.get("phase") == "opening"]
+    wait_close_ms = [float(sample["duration_ms"]) for sample in wait_samples if sample.get("phase") == "close"]
 
     print("\n=== Load Test Summary ===")
     print(f"Clients: {len(results)}")
@@ -391,13 +413,35 @@ def _print_summary(results: list[ClientResult], elapsed_s: float) -> None:
 
     if wait_samples_ms:
         print(
-            "Wait-for-response duration (ms): "
+            "Wait-for-response duration (all phases, ms): "
             f"min={min(wait_samples_ms):.3f} "
             f"mean={statistics.fmean(wait_samples_ms):.3f} "
             f"max={max(wait_samples_ms):.3f}"
         )
     else:
         print("Wait-for-response duration (ms): n/a")
+
+    if wait_turn_ms:
+        print(
+            "Wait-for-response duration (turn phase, ms): "
+            f"min={min(wait_turn_ms):.3f} "
+            f"mean={statistics.fmean(wait_turn_ms):.3f} "
+            f"max={max(wait_turn_ms):.3f}"
+        )
+    if wait_opening_ms:
+        print(
+            "Wait-for-response duration (opening phase, ms): "
+            f"min={min(wait_opening_ms):.3f} "
+            f"mean={statistics.fmean(wait_opening_ms):.3f} "
+            f"max={max(wait_opening_ms):.3f}"
+        )
+    if wait_close_ms:
+        print(
+            "Wait-for-response duration (close phase, ms): "
+            f"min={min(wait_close_ms):.3f} "
+            f"mean={statistics.fmean(wait_close_ms):.3f} "
+            f"max={max(wait_close_ms):.3f}"
+        )
 
     print("\nGames per client:")
     for client in sorted(results, key=lambda r: r.client_id):
@@ -442,13 +486,18 @@ def _build_metrics_dataframe(results: list[ClientResult]) -> pd.DataFrame:
                     "value_ms": float(game_result.game_duration_ms),
                 }
             )
-            for sample_idx, wait_ms in enumerate(game_result.wait_response_duration_ms, start=1):
+            for sample_idx, wait_sample in enumerate(game_result.wait_samples, start=1):
+                phase = str(wait_sample.get("phase", "unknown"))
+                turn_index = int(wait_sample.get("turn_index", 0))
+                wait_ms = float(wait_sample.get("duration_ms", 0.0))
                 rows.append(
                     {
                         **common,
                         "metric": "wait_response_duration_ms",
+                        "phase": phase,
+                        "turn_index": turn_index,
                         "sample_index": sample_idx,
-                        "value_ms": float(wait_ms),
+                        "value_ms": wait_ms,
                     }
                 )
     return pd.DataFrame(rows)

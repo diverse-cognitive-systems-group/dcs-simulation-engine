@@ -14,6 +14,7 @@ from typing import (
 from dcs_simulation_engine.dal.base import (
     DataProvider,
 )
+from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.serde import SerdeMixin
 from pydantic import (
     BaseModel,
@@ -138,6 +139,26 @@ class GameConfig(SerdeMixin, BaseModel):
             return bool(answer)
         return bool(consent_signature)
 
+    async def is_player_allowed_async(self, *, player_id: Optional[str], provider: Any) -> bool:
+        """Async-safe variant of is_player_allowed for async provider implementations."""
+        access = self.access_settings
+        if not access or not access.require_consent_signature:
+            return True
+        if not player_id:
+            return False
+
+        player = await maybe_await(provider.get_player(player_id=player_id))
+        if player is None:
+            return False
+
+        consent_signature = player.data.get("consent_signature")
+        if isinstance(consent_signature, dict):
+            answer = consent_signature.get("answer")
+            if isinstance(answer, list):
+                return any(str(item).strip() for item in answer)
+            return bool(answer)
+        return bool(consent_signature)
+
     def get_valid_characters(
         self,
         *,
@@ -148,5 +169,18 @@ class GameConfig(SerdeMixin, BaseModel):
         # Character filtering and display formatting are disabled globally.
         _ = player_id
         all_chars = list(provider.get_characters())  # type: ignore[arg-type]
+        choices = [(record.hid, record.hid) for record in all_chars]
+        return list(choices), list(choices)
+
+    async def get_valid_characters_async(
+        self,
+        *,
+        player_id: Optional[str] = None,
+        provider: Any,
+    ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+        """Async-safe variant of get_valid_characters for async providers."""
+        _ = player_id
+        chars = await maybe_await(provider.get_characters())
+        all_chars = list(chars)
         choices = [(record.hid, record.hid) for record in all_chars]
         return list(choices), list(choices)
