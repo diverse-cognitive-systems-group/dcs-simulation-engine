@@ -48,7 +48,8 @@ function PlayPage() {
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     // Enter alone submits; Shift+Enter inserts a newline.
-    if (e.key === 'Enter' && !e.shiftKey) {
+    const canSubmit = !waiting && !exited && wsState === 'ready' && !!input.trim()
+    if (e.key === 'Enter' && !e.shiftKey && canSubmit) {
       e.preventDefault()
       submitInput()
     }
@@ -62,8 +63,10 @@ function PlayPage() {
   const isConnecting = wsState === 'connecting' || wsState === 'auth'
   const isError = wsState === 'error'
   const isClosed = wsState === 'closed' || exited
-  // Disable input while connecting, errored, closed, or awaiting the AI response.
-  const inputDisabled = isClosed || isError || isConnecting || waiting
+  // Allow drafting at all times except terminal states (closed/error).
+  const inputDisabled = isClosed || isError
+  // Send is blocked while waiting so users can draft the next turn without double-submitting.
+  const sendDisabled = !input.trim() || inputDisabled || waiting
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -145,7 +148,7 @@ function PlayPage() {
             {input.length}/{MAX_INPUT_LENGTH}
           </p>
         </div>
-        <Button type="submit" className="self-center" disabled={!input.trim() || inputDisabled}>
+        <Button type="submit" className="self-center" disabled={sendDisabled}>
           Send
         </Button>
       </form>
