@@ -152,7 +152,7 @@ class GoalHorizonGame(Game):
         cmd = stripped.lstrip("/\\").split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT)
+            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
@@ -165,6 +165,7 @@ class GoalHorizonGame(Game):
                     npc_short_description=self._npc.short_description,
                     npc_abilities=self._npc.data.get("abilities", ""),
                 ),
+                command_response=True,
             )
 
         # Unrecognised — return None so SessionManager can handle it.

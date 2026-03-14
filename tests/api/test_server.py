@@ -18,6 +18,7 @@ class DummySessionManager:
         self._turns = 0
         self._exited = False
         self._exit_reason = ""
+        self.flush_calls = 0
         self.game_config = SimpleNamespace(name="Explore")
 
     @property
@@ -42,10 +43,10 @@ class DummySessionManager:
 
         if user_input is None:
             self._turns += 1
-            return [{"type": "ai", "content": "opening"}]
+            return [{"type": "ai", "content": "opening", "event_id": "evt-opening"}]
 
         self._turns += 1
-        return [{"type": "ai", "content": f"echo:{user_input}"}]
+        return [{"type": "ai", "content": f"echo:{user_input}", "event_id": f"evt-{self._turns}"}]
 
     def exit(self, reason: str) -> None:
         """Close the session manager."""
@@ -59,6 +60,10 @@ class DummySessionManager:
     async def start_persistence(self, *, session_id: str) -> None:
         """No-op persistence hook for API tests."""
         _ = session_id
+
+    async def flush_persistence_async(self) -> None:
+        """Track explicit feedback flushes for live sessions."""
+        self.flush_calls += 1
 
 
 def _player(player_id: str) -> PlayerRecord:
@@ -210,6 +215,7 @@ def test_websocket_open_advance_status_close(client: TestClient) -> None:
         assert opening_event["type"] == "event"
         assert opening_event["event_type"] == "ai"
         assert opening_event["content"] == "opening"
+        assert opening_event["event_id"] == "evt-opening"
         assert opening_turn_end["type"] == "turn_end"
         assert opening_turn_end["turns"] == 1
 
@@ -219,6 +225,7 @@ def test_websocket_open_advance_status_close(client: TestClient) -> None:
 
         assert advance_event["type"] == "event"
         assert advance_event["content"] == "echo:hello"
+        assert advance_event["event_id"] == "evt-2"
         assert advance_turn_end["type"] == "turn_end"
         assert advance_turn_end["turns"] == 2
 
@@ -358,3 +365,119 @@ def test_session_reconstruction_endpoint_returns_payload(client: TestClient, moc
     assert response.status_code == 200
     assert response.json()["session"]["session_id"] == "s1"
     assert response.json()["events"][0]["seq"] == 1
+
+
+@pytest.mark.unit
+def test_session_event_feedback_submit_flushes_live_session_and_persists(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Feedback submit uses the live registry session, flushes pending writes, and persists feedback."""
+    manager = DummySessionManager()
+    mock_provider.set_session_event_feedback = AsyncMock(
+        return_value={
+            "liked": True,
+            "comment": "Helpful answer",
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = client.post(
+            "/api/play/game",
+            json={"api_key": "valid-key", "game": "explore", "source": "api"},
+        )
+
+    session_id = create_resp.json()["session_id"]
+
+    response = client.post(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": "Bearer valid-key"},
+        json={"liked": True, "comment": "Helpful answer"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session_id"] == session_id
+    assert payload["event_id"] == "evt-opening"
+    assert payload["feedback"]["liked"] is True
+    assert payload["feedback"]["comment"] == "Helpful answer"
+    assert manager.flush_calls == 1
+
+    kwargs = mock_provider.set_session_event_feedback.await_args.kwargs
+    assert kwargs["session_id"] == session_id
+    assert kwargs["player_id"] == "player-owner"
+    assert kwargs["event_id"] == "evt-opening"
+    assert kwargs["feedback"]["comment"] == "Helpful answer"
+
+
+@pytest.mark.unit
+def test_session_event_feedback_submit_returns_not_found_for_non_owner(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Feedback submit does not expose session ownership to other authenticated players."""
+    manager = DummySessionManager()
+    mock_provider.set_session_event_feedback = AsyncMock(return_value=None)
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = client.post(
+            "/api/play/game",
+            json={"api_key": "valid-key", "game": "explore", "source": "api"},
+        )
+
+    session_id = create_resp.json()["session_id"]
+
+    response = client.post(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": "Bearer other-key"},
+        json={"liked": False, "comment": "Wrong owner"},
+    )
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit
+def test_session_event_feedback_clear_flushes_live_session_and_persists(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Clearing feedback unsets it on the original assistant message row."""
+    manager = DummySessionManager()
+    mock_provider.clear_session_event_feedback = AsyncMock(return_value=True)
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = client.post(
+            "/api/play/game",
+            json={"api_key": "valid-key", "game": "explore", "source": "api"},
+        )
+
+    session_id = create_resp.json()["session_id"]
+
+    response = client.delete(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": "Bearer valid-key"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "session_id": session_id,
+        "event_id": "evt-opening",
+        "cleared": True,
+    }
+    assert manager.flush_calls == 1
+
+    kwargs = mock_provider.clear_session_event_feedback.await_args.kwargs
+    assert kwargs["session_id"] == session_id
+    assert kwargs["player_id"] == "player-owner"
+    assert kwargs["event_id"] == "evt-opening"

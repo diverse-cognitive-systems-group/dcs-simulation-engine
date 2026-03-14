@@ -2,11 +2,14 @@
 # ruff: noqa: D102,D103,D105,D107
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
-from dcs_simulation_engine.core.session_event_recorder import SessionEventRecorder
+from dcs_simulation_engine.core.session_event_recorder import (
+    SessionEventRecorder,
+    _validate_event_classification,
+)
 from dcs_simulation_engine.dal.mongo.async_writer import AsyncMongoWriter
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 
@@ -107,9 +110,7 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
         "pc_hid": "human-normative",
         "npc_hid": "flatworm",
         "session_started_at": started_at,
-        "session_started_at_ns": int(started_at.timestamp() * 1_000_000_000),
         "session_ended_at": None,
-        "session_ended_at_ns": None,
         "termination_reason": None,
         "status": "active",
         "turns_completed": 0,
@@ -120,18 +121,31 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
         "updated_at": started_at,
     }
 
-    explicit_event_ns = int(started_at.timestamp() * 1_000_000_000) + 123_456
+    explicit_event_ts = started_at + timedelta(microseconds=123)
 
     async with SessionEventRecorder(db=db, session_doc=session_doc, flush_interval_ms=10) as recorder:
-        await recorder.record_inbound(content="/help", turn_index=1)
-        await recorder.record_outbound(
-            event_type="info",
+        inbound = await recorder.record_inbound(
+            content="/help",
+            turn_index=1,
+            event_type="command",
+            command_name="help",
+            command_args="",
+        )
+        info_outbound = await recorder.record_outbound(
+            event_type="command",
+            event_source="system",
             content="help text",
             turn_index=1,
-            command_context=True,
-            event_ts_ns=explicit_event_ns,
+            command_name="help",
+            command_args="",
+            event_ts=explicit_event_ts,
         )
-        await recorder.record_outbound(event_type="ai", content="scene", turn_index=1, command_context=False)
+        ai_outbound = await recorder.record_outbound(
+            event_type="message",
+            event_source="npc",
+            content="scene",
+            turn_index=1,
+        )
         await recorder.finalize(termination_reason="user_exit_command", status="closed", turns_completed=1)
 
     sessions_docs = db[MongoColumns.SESSIONS].docs
@@ -148,8 +162,69 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
     assert len(events_docs) >= 4
     seqs = [doc["seq"] for doc in events_docs]
     assert seqs == sorted(seqs)
-    assert events_docs[0]["kind"] == "command_input"
-    assert events_docs[1]["kind"] == "command_output"
-    assert events_docs[1]["event_ts_ns"] == explicit_event_ns
-    assert any(doc["kind"] == "assistant_message" for doc in events_docs)
-    assert any(doc["kind"] == "session_marker" for doc in events_docs)
+    assert events_docs[0]["direction"] == "inbound"
+    assert events_docs[0]["event_type"] == "command"
+    assert events_docs[0]["event_source"] == "user"
+    assert events_docs[0]["event_id"] == inbound.event_id
+    assert events_docs[1]["direction"] == "outbound"
+    assert events_docs[1]["event_type"] == "command"
+    assert events_docs[1]["event_source"] == "system"
+    assert events_docs[1]["event_id"] == info_outbound.event_id
+    assert events_docs[1]["event_ts"] == explicit_event_ts
+    assistant_doc = next(
+        doc
+        for doc in events_docs
+        if doc["direction"] == "outbound" and doc["event_type"] == "message" and doc["event_source"] == "npc"
+    )
+    assert assistant_doc["event_id"] == ai_outbound.event_id
+    assert (
+        any(
+            doc["direction"] == "internal" and doc["event_type"] == "session_start" and doc["event_source"] == "system"
+            for doc in events_docs
+        )
+        is False
+    )
+    assert any(
+        doc["direction"] == "internal" and doc["event_type"] == "session_end" and doc["event_source"] == "system"
+        for doc in events_docs
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("direction", "event_source", "event_type", "is_valid"),
+    [
+        ("internal", "system", "session_start", True),
+        ("internal", "system", "session_end", True),
+        ("inbound", "user", "message", True),
+        ("inbound", "user", "command", True),
+        ("outbound", "npc", "message", True),
+        ("outbound", "system", "command", True),
+        ("outbound", "system", "info", True),
+        ("outbound", "system", "error", True),
+        ("outbound", "npc", "info", False),
+        ("inbound", "user", "error", False),
+        ("internal", "system", "info", False),
+    ],
+)
+def test_validate_event_classification_accepts_only_supported_combinations(
+    direction: str,
+    event_source: str,
+    event_type: str,
+    is_valid: bool,
+) -> None:
+    """Only the normalized session-event taxonomy is accepted."""
+    if is_valid:
+        _validate_event_classification(
+            direction=direction,
+            event_source=event_source,
+            event_type=event_type,
+        )
+        return
+
+    with pytest.raises(ValueError):
+        _validate_event_classification(
+            direction=direction,
+            event_source=event_source,
+            event_type=event_type,
+        )

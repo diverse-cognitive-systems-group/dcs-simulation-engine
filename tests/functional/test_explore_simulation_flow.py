@@ -4,16 +4,15 @@ This test validates the core simulation flow from initialization through
 multiple conversation turns to saving, without requiring external API calls.
 """
 
-import asyncio
-
 import pytest
 from dcs_simulation_engine.core.session_manager import (
     SessionManager,
 )
 
+pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 
-@pytest.mark.functional
-def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, mongo_provider):
+
+async def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test complete simulation flow: init -> 10 turns -> save.
 
     This test validates:
@@ -29,17 +28,18 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, 
         Create SessionManager -> Execute ENTER step -> Execute 10 user input steps
         -> Verify events at each step -> Exit -> Verify exited -> Save
     """
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="explore", provider=mongo_provider, pc_choice="human-normative", npc_choice="flatworm"
-        )
+    session = await SessionManager.create_async(
+        game="explore",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
     )
 
     assert not session.exited, "Session should not be exited initially"
     assert session._events == [], "Initial events should be empty"
 
     # Run the ENTER step (empty input)
-    enter_events = list(session.step(""))
+    enter_events = await session.step_async("")
 
     # Verify there was an info message (welcome)
     info_events = [e for e in enter_events if e.get("type") == "info"]
@@ -70,7 +70,7 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, 
         turn_num = idx + 1
         prev_event_count = len(session._events)
 
-        events = list(session.step(user_input))
+        events = await session.step_async(user_input)
 
         # Verify AI response event
         ai_events = [e for e in events if e.get("type") == "ai"]
@@ -90,7 +90,7 @@ def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_state, 
     assert not session.exited, "Session should not be exited before explicit exit()"
 
     # Exit the session
-    session.exit(reason="test complete")
+    await session.exit_async("test complete")
     assert session.exited, "Session should be exited after exit()"
     assert session.exit_reason == "test complete"
 

@@ -26,7 +26,7 @@ def test_games_directory_not_empty() -> None:
 
 @pytest.mark.unit
 @pytest.mark.parametrize("cfg_path", YAML_FILES, ids=[p.name for p in YAML_FILES])
-def test_game_config_loads_without_error(cfg_path: Path, mongo_provider) -> None:
+def test_game_config_loads_without_error(cfg_path: Path) -> None:
     """Test that a game config YAML file can be loaded without error."""
     try:
         logger.debug(f"Loading game config from: {cfg_path}")

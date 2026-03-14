@@ -1,9 +1,8 @@
 """Session event persistence for deterministic transcript reconstruction."""
 # ruff: noqa: D102,D105,D107
 
-import time
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
+from typing import Any, NamedTuple
 from uuid import uuid4
 
 from dcs_simulation_engine.dal.mongo.async_writer import AsyncMongoWriter
@@ -12,23 +11,24 @@ from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
 from pymongo.asynchronous.database import AsyncDatabase
 
+_ALLOWED_EVENT_CLASSIFICATIONS = {
+    ("internal", "system", "session_start"),
+    ("internal", "system", "session_end"),
+    ("inbound", "user", "message"),
+    ("inbound", "user", "command"),
+    ("outbound", "npc", "message"),
+    ("outbound", "system", "command"),
+    ("outbound", "system", "info"),
+    ("outbound", "system", "error"),
+}
 
-def _now_ns() -> int:
-    return time.time_ns()
 
-
-def _dt_from_ns(ts_ns: int) -> datetime:
-    return datetime.fromtimestamp(ts_ns / 1_000_000_000, tz=timezone.utc)
-
-
-def _parse_command(text: str) -> tuple[str, str] | None:
-    stripped = text.strip()
-    if not stripped.startswith(("/", "\\")):
-        return None
-    parts = stripped.lstrip("/\\").split(maxsplit=1)
-    cmd = parts[0].lower() if parts else ""
-    args = parts[1] if len(parts) > 1 else ""
-    return (cmd, args)
+def _validate_event_classification(*, direction: str, event_source: str, event_type: str) -> None:
+    if (direction, event_source, event_type) not in _ALLOWED_EVENT_CLASSIFICATIONS:
+        raise ValueError(
+            f"Invalid session event classification: direction={direction!r}, "
+            f"event_source={event_source!r}, event_type={event_type!r}"
+        )
 
 
 class SessionEventRecorder:
@@ -82,75 +82,65 @@ class SessionEventRecorder:
         finally:
             await self._writer.__aexit__(exc_type, exc, tb)
 
-    async def record_inbound(self, *, content: str, turn_index: int) -> None:
-        cmd = _parse_command(content)
-        if cmd is not None:
-            kind = "command_input"
-            command_name, command_args = cmd
-        else:
-            kind = "user_input"
-            command_name, command_args = (None, None)
-        await self._enqueue_event(
+    async def flush_pending(self) -> None:
+        """Force currently buffered event docs to Mongo."""
+        await self._writer.flush()
+
+    async def record_inbound(
+        self,
+        *,
+        content: str,
+        turn_index: int,
+        event_type: str,
+        command_name: str | None = None,
+        command_args: str | None = None,
+    ) -> "RecordedSessionEvent":
+        return await self._enqueue_event(
             direction="inbound",
-            kind=kind,
-            role="user",
+            event_source="user",
+            event_type=event_type,
             content=content,
             content_format="plain_text",
             turn_index=turn_index,
             command_name=command_name,
             command_args=command_args,
-            metadata=None,
-            event_ts_ns=None,
+            event_ts=None,
         )
 
     async def record_outbound(
         self,
         *,
         event_type: str,
+        event_source: str,
         content: str,
         turn_index: int,
-        command_context: bool,
-        event_ts_ns: int | None = None,
-    ) -> None:
-        event_type = str(event_type or "info").lower()
-        if event_type == "error":
-            kind = "error_message"
-            role = "system"
-        elif command_context:
-            kind = "command_output"
-            role = "system"
-        elif event_type == "ai":
-            kind = "assistant_message"
-            role = "assistant"
-        else:
-            kind = "system_message"
-            role = "system"
-
-        await self._enqueue_event(
+        command_name: str | None = None,
+        command_args: str | None = None,
+        event_ts: datetime | None = None,
+    ) -> "RecordedSessionEvent":
+        return await self._enqueue_event(
             direction="outbound",
-            kind=kind,
-            role=role,
+            event_source=event_source,
+            event_type=event_type,
             content=content,
             content_format="markdown",
             turn_index=turn_index,
-            command_name=None,
-            command_args=None,
-            metadata={"event_type": event_type},
-            event_ts_ns=event_ts_ns,
+            command_name=command_name,
+            command_args=command_args,
+            event_ts=event_ts,
         )
 
-    async def record_marker(self, *, label: str, detail: str, turn_index: int) -> None:
-        await self._enqueue_event(
-            direction="system",
-            kind="session_marker",
-            role="system",
-            content=f"{label}: {detail}",
+    async def record_internal(self, *, event_type: str, detail: str, turn_index: int) -> "RecordedSessionEvent":
+        return await self._enqueue_event(
+            direction="internal",
+            event_source="system",
+            event_type=event_type,
+            content=f"{event_type}: {detail}",
             content_format="plain_text",
             turn_index=turn_index,
             command_name=None,
             command_args=None,
-            metadata={"label": label},
-            event_ts_ns=None,
+            event_ts=None,
         )
 
     async def finalize(
@@ -164,9 +154,8 @@ class SessionEventRecorder:
             return
         self._finalized = True
 
-        ended_ns = _now_ns()
-        ended_at = _dt_from_ns(ended_ns)
-        await self.record_marker(label="session_end", detail=termination_reason, turn_index=turns_completed)
+        ended_at = utc_now()
+        await self.record_internal(event_type="session_end", detail=termination_reason, turn_index=turns_completed)
         await self._writer.flush()
         await self._sessions_coll.update_one(
             {MongoColumns.SESSION_ID: self._session_id},
@@ -175,7 +164,6 @@ class SessionEventRecorder:
                     MongoColumns.STATUS: status,
                     MongoColumns.TERMINATION_REASON: termination_reason,
                     MongoColumns.SESSION_ENDED_AT: ended_at,
-                    MongoColumns.SESSION_ENDED_AT_NS: ended_ns,
                     MongoColumns.TURNS_COMPLETED: turns_completed,
                     MongoColumns.LAST_SEQ: self._seq,
                     MongoColumns.UPDATED_AT: utc_now(),
@@ -188,34 +176,44 @@ class SessionEventRecorder:
         self,
         *,
         direction: str,
-        kind: str,
-        role: str,
+        event_source: str,
+        event_type: str,
         content: str,
         content_format: str,
         turn_index: int,
         command_name: str | None,
         command_args: str | None,
-        metadata: dict[str, Any] | None,
-        event_ts_ns: int | None,
-    ) -> None:
-        ts_ns = event_ts_ns if event_ts_ns is not None else _now_ns()
-        ts = _dt_from_ns(ts_ns)
+        event_ts: datetime | None,
+    ) -> "RecordedSessionEvent":
+        _validate_event_classification(
+            direction=direction,
+            event_source=event_source,
+            event_type=event_type,
+        )
+        ts = event_ts or utc_now()
         self._seq += 1
+        event_id = str(uuid4())
         doc = {
             MongoColumns.SESSION_ID: self._session_id,
             MongoColumns.SEQ: self._seq,
-            MongoColumns.EVENT_ID: str(uuid4()),
+            MongoColumns.EVENT_ID: event_id,
             MongoColumns.EVENT_TS: ts,
-            MongoColumns.EVENT_TS_NS: ts_ns,
             MongoColumns.DIRECTION: direction,
-            MongoColumns.KIND: kind,
-            MongoColumns.ROLE: role,
+            MongoColumns.EVENT_TYPE: event_type,
+            MongoColumns.EVENT_SOURCE: event_source,
             MongoColumns.CONTENT: content,
             MongoColumns.CONTENT_FORMAT: content_format,
             MongoColumns.TURN_INDEX: turn_index,
             MongoColumns.COMMAND_NAME: command_name,
             MongoColumns.COMMAND_ARGS: command_args,
             MongoColumns.VISIBLE_TO_USER: True,
-            MongoColumns.METADATA: metadata or {},
         }
         await self._writer.enqueue(doc)
+        return RecordedSessionEvent(event_id=event_id, seq=self._seq)
+
+
+class RecordedSessionEvent(NamedTuple):
+    """Metadata for an event that has been queued for persistence."""
+
+    event_id: str
+    seq: int

@@ -9,11 +9,12 @@ from dcs_simulation_engine.dal.mongo.const import (
     MongoColumns,
 )
 
+pytestmark = [pytest.mark.unit, pytest.mark.anyio]
 
-@pytest.mark.unit
-def test_database_is_seeded(mongo_provider):
+
+async def test_database_is_seeded(async_mongo_provider):
     """Database includes seeded core collections."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     collections = db.list_collection_names()
 
     assert "characters" in collections
@@ -22,10 +23,9 @@ def test_database_is_seeded(mongo_provider):
     assert db["characters"].count_documents({}) > 3
 
 
-@pytest.mark.unit
-def test_default_indexes_include_pii_and_exclude_removed_indexes(mongo_provider):
+async def test_default_indexes_include_pii_and_exclude_removed_indexes(async_mongo_provider):
     """Default index set includes new pii index and drops obsolete indexes."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
 
     players_idx = db[MongoColumns.PLAYERS].index_information()
     pii_idx = db[MongoColumns.PII].index_information()
@@ -47,13 +47,12 @@ def test_default_indexes_include_pii_and_exclude_removed_indexes(mongo_provider)
     assert session_events_idx["session_id_1_seq_1"].get("unique") is True
     assert "event_id_1" in session_events_idx
     assert session_events_idx["event_id_1"].get("unique") is True
-    assert "session_id_1_event_ts_ns_1" in session_events_idx
+    assert "session_id_1_event_ts_1" in session_events_idx
 
 
-@pytest.mark.unit
-def test_create_player_persists_fields(mongo_provider):
+async def test_create_player_persists_fields(async_mongo_provider):
     """create_player persists data and raw access key fields."""
-    record, raw_key = mongo_provider.create_player(
+    record, raw_key = await async_mongo_provider.create_player(
         player_data={"email": "alice@example.com"},
         issue_access_key=True,
     )
@@ -61,7 +60,7 @@ def test_create_player_persists_fields(mongo_provider):
     assert isinstance(record.id, str)
     assert raw_key is not None
 
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     doc = db[MongoColumns.PLAYERS].find_one({"_id": ObjectId(record.id)})
 
     assert doc is not None
@@ -70,10 +69,9 @@ def test_create_player_persists_fields(mongo_provider):
     assert MongoColumns.CREATED_AT in doc
 
 
-@pytest.mark.unit
-def test_seed_database_drops_and_replaces_collections(mongo_provider, tmp_path):
+async def test_seed_database_drops_and_replaces_collections(async_mongo_provider, tmp_path):
     """seed_database drops existing collections and inserts documents from seed files."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db["widgets"].insert_many([{"x": 1}, {"x": 2}])
     assert db["widgets"].count_documents({}) == 2
 
@@ -87,10 +85,9 @@ def test_seed_database_drops_and_replaces_collections(mongo_provider, tmp_path):
     assert db["widgets"].find_one({})["x"] == 99
 
 
-@pytest.mark.unit
-def test_seed_database_restores_default_indexes_after_drop(mongo_provider, tmp_path):
+async def test_seed_database_restores_default_indexes_after_drop(async_mongo_provider, tmp_path):
     """seed_database reapplies baseline indexes after collection drops."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
 
     (tmp_path / "characters.json").write_text('[{"hid": "seed-char", "name": "Seed Character"}]', encoding="utf-8")
     (tmp_path / "players.json").write_text('[{"name": "Seed Player", "access_key": "seed-ak"}]', encoding="utf-8")
@@ -129,14 +126,13 @@ def test_seed_database_restores_default_indexes_after_drop(mongo_provider, tmp_p
     assert session_events_idx["session_id_1_seq_1"].get("unique") is True
     assert "event_id_1" in session_events_idx
     assert session_events_idx["event_id_1"].get("unique") is True
-    assert "session_id_1_event_ts_ns_1" in session_events_idx
+    assert "session_id_1_event_ts_1" in session_events_idx
     assert "runs" not in db.list_collection_names()
 
 
-@pytest.mark.unit
-def test_backup_db_writes_manifest_and_collection_backups(mongo_provider, tmp_path):
+async def test_backup_db_writes_manifest_and_collection_backups(async_mongo_provider, tmp_path):
     """backup_db writes manifest and ndjson/index files for each collection."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one({"name": "backup-test"})
 
     root = MongoAdmin(db=db).backup_db(tmp_path, append_ts=False)
