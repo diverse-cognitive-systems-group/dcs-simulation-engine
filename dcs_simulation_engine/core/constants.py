@@ -2,21 +2,11 @@
 
 from pathlib import Path
 
-# --- Misc --- #
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
-# --- I/O --- #
 OUTPUT_FPATH: Path = Path("results")
 OUTPUT_FPATH.mkdir(parents=True, exist_ok=True)
 
-LOGS_FPATH: Path = Path("logs")
-LOGS_FPATH.mkdir(parents=True, exist_ok=True)
-
-_config_fpath: Path = Path("configs")
-GRAPH_CONFIG_FPATH: Path = _config_fpath / "graph.config.yaml"
-GRAPH_CONFIG_FPATH.parent.mkdir(parents=True, exist_ok=True)
-
-# --- Messages for the Simulation Engine (NOT FOR SPECIFIC GAME) --- #
 WELCOME_MSG: str = """
 # Welcome
 
