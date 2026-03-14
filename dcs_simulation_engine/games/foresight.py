@@ -20,7 +20,7 @@ from loguru import logger
 
 
 class Command(StrEnum):
-    """Game-level slash commands recognised by ForesightGame."""
+    """Game-level slash commands recognized by ForesightGame."""
 
     HELP = "help"
     COMPLETE = "complete"
