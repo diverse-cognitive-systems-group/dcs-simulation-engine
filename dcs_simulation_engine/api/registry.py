@@ -1,7 +1,6 @@
 """In-memory session registry with TTL cleanup for FastAPI server sessions."""
 
 import asyncio
-import inspect
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -105,25 +104,6 @@ class SessionRegistry:
         with self._lock:
             return len(self._store)
 
-    def sweep(self) -> list[str]:
-        """Expire and remove all sessions idle longer than the configured TTL."""
-        cutoff = datetime.now(timezone.utc) - self._ttl
-
-        with self._lock:
-            stale_ids = [sid for sid, entry in self._store.items() if entry.last_active < cutoff]
-            stale_entries = [(sid, self._store.pop(sid)) for sid in stale_ids]
-
-        for session_id, entry in stale_entries:
-            try:
-                if not entry.manager.exited:
-                    entry.manager.exit("session ttl expired")
-            except Exception:
-                logger.exception("Failed to exit stale session cleanly: %s", session_id)
-
-        if stale_ids:
-            logger.warning("Swept %d stale session(s)", len(stale_ids))
-        return stale_ids
-
     async def sweep_async(self) -> list[str]:
         """Async sweep variant that awaits async session finalization when available."""
         cutoff = datetime.now(timezone.utc) - self._ttl
@@ -134,13 +114,7 @@ class SessionRegistry:
         for session_id, entry in stale_entries:
             try:
                 if not entry.manager.exited:
-                    exit_async = getattr(entry.manager, "exit_async", None)
-                    if callable(exit_async):
-                        maybe_coro = exit_async("session ttl expired")
-                        if inspect.isawaitable(maybe_coro):
-                            await maybe_coro
-                    else:
-                        entry.manager.exit("session ttl expired")
+                    await entry.manager.exit_async("session ttl expired")
             except Exception:
                 logger.exception("Failed to exit stale session cleanly: %s", session_id)
 

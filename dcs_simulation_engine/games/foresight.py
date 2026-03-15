@@ -171,12 +171,12 @@ class ForesightGame(Game):
         cmd = stripped.lstrip("/\\").split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT)
+            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
 
         if cmd == Command.COMPLETE:
             # Transition to completion-notes collection on the next turn.
             self._awaiting_completion_notes = True
-            return GameEvent.now(type="info", content=C.COMPLETE_QUESTION)
+            return GameEvent.now(type="info", content=C.COMPLETE_QUESTION, command_response=True)
 
         # Unrecognised — return None so SessionManager can handle it.
         return None

@@ -70,8 +70,8 @@ def _to_session_event_record(doc: dict[str, Any]) -> SessionEventRecord:
         MongoColumns.EVENT_ID,
         MongoColumns.EVENT_TS,
         MongoColumns.DIRECTION,
-        MongoColumns.KIND,
-        MongoColumns.ROLE,
+        MongoColumns.EVENT_TYPE,
+        MongoColumns.EVENT_SOURCE,
         MongoColumns.CONTENT,
     }
     return SessionEventRecord(
@@ -80,8 +80,8 @@ def _to_session_event_record(doc: dict[str, Any]) -> SessionEventRecord:
         event_id=str(doc.get(MongoColumns.EVENT_ID, "")),
         event_ts=doc.get(MongoColumns.EVENT_TS),
         direction=str(doc.get(MongoColumns.DIRECTION, "")),
-        kind=str(doc.get(MongoColumns.KIND, "")),
-        role=str(doc.get(MongoColumns.ROLE, "")),
+        event_type=str(doc.get(MongoColumns.EVENT_TYPE, "")),
+        event_source=str(doc.get(MongoColumns.EVENT_SOURCE, "")),
         content=str(doc.get(MongoColumns.CONTENT, "")),
         data={k: v for k, v in doc.items() if k not in known},
     )
@@ -270,7 +270,6 @@ class AsyncMongoProvider:
         termination_reason: str,
         status: str,
         session_ended_at: datetime,
-        session_ended_at_ns: int,
         turns_completed: int,
         last_seq: int,
     ) -> None:
@@ -283,7 +282,6 @@ class AsyncMongoProvider:
                         "termination_reason": termination_reason,
                         "status": status,
                         "session_ended_at": session_ended_at,
-                        "session_ended_at_ns": session_ended_at_ns,  # Nanosecond precision tracking
                         "turns_completed": turns_completed,
                         "last_seq": last_seq,
                         "updated_at": utc_now(),
@@ -314,6 +312,107 @@ class AsyncMongoProvider:
             cursor = sorter(MongoColumns.SEQ, 1)
         docs = await _cursor_to_docs(cursor)
         return [_to_session_event_record(doc) for doc in docs]
+
+    async def set_session_event_feedback(
+        self,
+        *,
+        session_id: str,
+        player_id: str,
+        event_id: str,
+        feedback: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Store feedback on one persisted NPC message event owned by the player."""
+        session_doc = await maybe_await(
+            self._db[MongoColumns.SESSIONS].find_one(
+                {
+                    MongoColumns.SESSION_ID: session_id,
+                    MongoColumns.PLAYER_ID: player_id,
+                },
+                projection={MongoColumns.SESSION_ID: 1},
+            )
+        )
+        if not session_doc:
+            return None
+
+        now = utc_now()
+        result = await maybe_await(
+            self._db[MongoColumns.SESSION_EVENTS].update_one(
+                {
+                    MongoColumns.SESSION_ID: session_id,
+                    MongoColumns.EVENT_ID: event_id,
+                    MongoColumns.DIRECTION: "outbound",
+                    MongoColumns.EVENT_TYPE: "message",
+                    MongoColumns.EVENT_SOURCE: "npc",
+                },
+                {
+                    "$set": {
+                        MongoColumns.FEEDBACK: dict(feedback),
+                        MongoColumns.UPDATED_AT: now,
+                    }
+                },
+            )
+        )
+        if getattr(result, "matched_count", 0) == 0:
+            return None
+
+        await maybe_await(
+            self._db[MongoColumns.SESSIONS].update_one(
+                {MongoColumns.SESSION_ID: session_id},
+                {"$set": {MongoColumns.UPDATED_AT: now}},
+            )
+        )
+        return dict(feedback)
+
+    async def clear_session_event_feedback(
+        self,
+        *,
+        session_id: str,
+        player_id: str,
+        event_id: str,
+    ) -> bool:
+        """Remove feedback from one persisted NPC message event owned by the player."""
+        session_doc = await maybe_await(
+            self._db[MongoColumns.SESSIONS].find_one(
+                {
+                    MongoColumns.SESSION_ID: session_id,
+                    MongoColumns.PLAYER_ID: player_id,
+                },
+                projection={MongoColumns.SESSION_ID: 1},
+            )
+        )
+        if not session_doc:
+            return False
+
+        now = utc_now()
+        result = await maybe_await(
+            self._db[MongoColumns.SESSION_EVENTS].update_one(
+                {
+                    MongoColumns.SESSION_ID: session_id,
+                    MongoColumns.EVENT_ID: event_id,
+                    MongoColumns.DIRECTION: "outbound",
+                    MongoColumns.EVENT_TYPE: "message",
+                    MongoColumns.EVENT_SOURCE: "npc",
+                },
+                {
+                    "$unset": {
+                        MongoColumns.FEEDBACK: "",
+                    },
+                    "$set": {
+                        MongoColumns.UPDATED_AT: now,
+                    },
+                },
+            )
+        )
+        if getattr(result, "matched_count", 0) == 0:
+            return False
+
+        await maybe_await(
+            self._db[MongoColumns.SESSIONS].update_one(
+                {MongoColumns.SESSION_ID: session_id},
+                {"$set": {MongoColumns.UPDATED_AT: now}},
+            )
+        )
+        return True
 
     async def get_session_reconstruction(
         self,

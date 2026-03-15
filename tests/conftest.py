@@ -239,9 +239,15 @@ class SyncAsyncProviderAdapter:
 
 
 @pytest.fixture
-def mongo_provider(_isolate_db_state: Database[Any]) -> SyncAsyncProviderAdapter:
-    """Return sync adapter over AsyncMongoProvider wired to mongomock."""
-    return SyncAsyncProviderAdapter(AsyncMongoProvider(db=_isolate_db_state))
+def async_mongo_provider(_isolate_db_state: Database[Any]) -> AsyncMongoProvider:
+    """Return AsyncMongoProvider wired to the isolated mongomock database."""
+    return AsyncMongoProvider(db=_isolate_db_state)
+
+
+@pytest.fixture
+def sync_mongo_provider(async_mongo_provider: AsyncMongoProvider) -> SyncAsyncProviderAdapter:
+    """Return sync adapter over AsyncMongoProvider for explicitly sync-only tests."""
+    return SyncAsyncProviderAdapter(async_mongo_provider)
 
 
 # ============================================================================

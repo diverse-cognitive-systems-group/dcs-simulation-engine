@@ -3,13 +3,21 @@
 
 import { createRoute, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import {
+  useClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete,
+  useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost,
+} from '@/api/generated'
+import type { SubmitSessionEventFeedbackResponse } from '@/api/generated/model'
+import { HttpError } from '@/api/http'
 import { ChatMessageBubble } from '@/components/chat-message'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import type { MessageFeedback } from '@/hooks/use-session-websocket'
 import { useSessionWebSocket } from '@/hooks/use-session-websocket'
+import { unwrapOrvalData } from '@/lib/orval-response'
 import { requireAuth, rootRoute } from '../__root'
 
 // TODO: We should probably have a shared config file for both server and UI
@@ -21,13 +29,19 @@ function PlayPage() {
   const navigate = useNavigate()
   // useSessionWebSocket opens the WebSocket connection and returns reactive state plus
   // action callbacks; see hooks/use-session-websocket.ts for the protocol details.
-  const { messages, wsState, turns, exited, waiting, sendTurn, closeSession } =
+  const { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback } =
     useSessionWebSocket(sessionId)
 
   const [input, setInput] = useState('')
+  const [feedbackPendingEventId, setFeedbackPendingEventId] = useState<string | null>(null)
   // bottomRef is attached to a sentinel div at the end of the message list so we can
   // scroll it into view whenever a new message arrives.
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  const { mutateAsync: submitMessageFeedback } =
+    useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost()
+  const { mutateAsync: clearMessageFeedback } =
+    useClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete()
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — scroll on both new messages and waiting-state change
   useEffect(() => {
@@ -58,6 +72,63 @@ function PlayPage() {
   async function handleClose() {
     closeSession()
     await navigate({ to: '/games' })
+  }
+
+  async function handleSubmitFeedback(payload: {
+    eventId: string
+    liked: boolean
+    comment: string
+  }): Promise<MessageFeedback> {
+    setFeedbackPendingEventId(payload.eventId)
+
+    try {
+      const response = await submitMessageFeedback({
+        sessionId,
+        eventId: payload.eventId,
+        data: {
+          liked: payload.liked,
+          comment: payload.comment,
+        },
+      })
+      const result = unwrapOrvalData<SubmitSessionEventFeedbackResponse>(response)
+      if (!result?.feedback) {
+        throw new Error('Feedback save did not return stored feedback.')
+      }
+
+      const feedback: MessageFeedback = {
+        liked: result.feedback.liked,
+        comment: result.feedback.comment,
+        submittedAt: result.feedback.submitted_at,
+      }
+      setMessageFeedback(payload.eventId, feedback)
+      return feedback
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw new Error(error.message)
+      }
+      throw error instanceof Error ? error : new Error('Failed to save feedback.')
+    } finally {
+      setFeedbackPendingEventId((current) => (current === payload.eventId ? null : current))
+    }
+  }
+
+  async function handleClearFeedback(eventId: string): Promise<void> {
+    setFeedbackPendingEventId(eventId)
+
+    try {
+      await clearMessageFeedback({
+        sessionId,
+        eventId,
+      })
+      setMessageFeedback(eventId, undefined)
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw new Error(error.message)
+      }
+      throw error instanceof Error ? error : new Error('Failed to clear feedback.')
+    } finally {
+      setFeedbackPendingEventId((current) => (current === eventId ? null : current))
+    }
   }
 
   const isConnecting = wsState === 'connecting' || wsState === 'auth'
@@ -108,7 +179,13 @@ function PlayPage() {
           )}
 
           {messages.map((msg) => (
-            <ChatMessageBubble key={msg.id} message={msg} />
+            <ChatMessageBubble
+              key={msg.id}
+              message={msg}
+              feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
+              onSubmitFeedback={handleSubmitFeedback}
+              onClearFeedback={handleClearFeedback}
+            />
           ))}
 
           {/* Animated "thinking" indicator shown while waiting for the AI response */}

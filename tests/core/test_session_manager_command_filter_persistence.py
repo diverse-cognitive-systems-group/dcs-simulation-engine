@@ -14,6 +14,8 @@ from dcs_simulation_engine.games.goal_horizon import Command as GoalHorizonComma
 from dcs_simulation_engine.games.infer_intent import Command as InferIntentCommand
 from pymongo.database import Database
 
+pytestmark = [pytest.mark.unit, pytest.mark.anyio]
+
 
 def _make_collection_async(coll: Any) -> None:
     """Wrap mongomock write methods with async callables."""
@@ -55,10 +57,24 @@ def _events_for_turn(db: Database[Any], *, session_id: str, turn_index: int) -> 
     )
 
 
-def _event_by_kind(events: list[dict[str, Any]], kind: str) -> dict[str, Any]:
-    """Return exactly one event by kind for deterministic assertions."""
-    matches = [event for event in events if event.get(MongoColumns.KIND) == kind]
-    assert len(matches) == 1, f"Expected 1 event with kind={kind}, found {len(matches)}."
+def _event_by_classification(
+    events: list[dict[str, Any]],
+    *,
+    direction: str,
+    event_type: str,
+    event_source: str,
+) -> dict[str, Any]:
+    """Return exactly one event by persisted classification."""
+    matches = [
+        event
+        for event in events
+        if event.get(MongoColumns.DIRECTION) == direction
+        and event.get(MongoColumns.EVENT_TYPE) == event_type
+        and event.get(MongoColumns.EVENT_SOURCE) == event_source
+    ]
+    assert (
+        len(matches) == 1
+    ), f"Expected 1 event for {direction}/{event_source}/{event_type}, found {len(matches)}."
     return matches[0]
 
 
@@ -84,10 +100,10 @@ async def _create_persisted_session(
 
 
 @pytest.fixture
-def consenting_player_id(mongo_provider: Any) -> str:
+def consenting_player_id(async_mongo_provider: Any) -> str:
     """Insert a consenting player row and return its id."""
     player_id = ObjectId()
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": player_id,
@@ -99,8 +115,6 @@ def consenting_player_id(mongo_provider: Any) -> str:
     return str(player_id)
 
 
-@pytest.mark.unit
-@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("game_name", "command_text", "expected_command_name"),
     [
@@ -118,7 +132,7 @@ def consenting_player_id(mongo_provider: Any) -> str:
 )
 async def test_game_level_command_filters_persist_command_events(
     patch_llm_client: Any,
-    mongo_provider: Any,
+    async_mongo_provider: Any,
     consenting_player_id: str,
     game_name: str,
     command_text: str,
@@ -126,11 +140,11 @@ async def test_game_level_command_filters_persist_command_events(
 ) -> None:
     """Game-level slash commands should persist as command input/output events."""
     _ = patch_llm_client
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     _enable_async_mongo_writes(db)
 
     session, session_id = await _create_persisted_session(
-        provider=mongo_provider,
+        provider=async_mongo_provider,
         game_name=game_name,
         player_id=consenting_player_id,
     )
@@ -144,17 +158,24 @@ async def test_game_level_command_filters_persist_command_events(
         await session.exit_async("test complete")
 
     turn_events = _events_for_turn(db, session_id=session_id, turn_index=turn_index)
-    command_input = _event_by_kind(turn_events, "command_input")
-    command_output = _event_by_kind(turn_events, "command_output")
+    command_input = _event_by_classification(
+        turn_events,
+        direction="inbound",
+        event_type="command",
+        event_source="user",
+    )
+    command_output = _event_by_classification(
+        turn_events,
+        direction="outbound",
+        event_type="command",
+        event_source="system",
+    )
 
     assert command_input[MongoColumns.CONTENT] == command_text
     assert command_input[MongoColumns.COMMAND_NAME] == expected_command_name
     assert command_input[MongoColumns.COMMAND_ARGS] == _expected_command_args(command_text)
     assert command_output[MongoColumns.CONTENT] == emitted[0]["content"]
 
-
-@pytest.mark.unit
-@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("command_text", "expected_command_name", "expected_command_args", "expect_exit"),
     [
@@ -167,7 +188,7 @@ async def test_game_level_command_filters_persist_command_events(
 )
 async def test_session_level_commands_persist_and_exit_aliases_normalize_reason(
     patch_llm_client: Any,
-    mongo_provider: Any,
+    async_mongo_provider: Any,
     consenting_player_id: str,
     command_text: str,
     expected_command_name: str,
@@ -176,11 +197,11 @@ async def test_session_level_commands_persist_and_exit_aliases_normalize_reason(
 ) -> None:
     """Session-level command handling should persist command events and normalize exit reasons."""
     _ = patch_llm_client
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     _enable_async_mongo_writes(db)
 
     session, session_id = await _create_persisted_session(
-        provider=mongo_provider,
+        provider=async_mongo_provider,
         game_name="Explore",
         player_id=consenting_player_id,
     )
@@ -197,8 +218,18 @@ async def test_session_level_commands_persist_and_exit_aliases_normalize_reason(
         await session.exit_async("test complete")
 
     turn_events = _events_for_turn(db, session_id=session_id, turn_index=turn_index)
-    command_input = _event_by_kind(turn_events, "command_input")
-    command_output = _event_by_kind(turn_events, "command_output")
+    command_input = _event_by_classification(
+        turn_events,
+        direction="inbound",
+        event_type="command",
+        event_source="user",
+    )
+    command_output = _event_by_classification(
+        turn_events,
+        direction="outbound",
+        event_type="command",
+        event_source="system",
+    )
 
     assert command_input[MongoColumns.CONTENT] == command_text
     assert command_input[MongoColumns.COMMAND_NAME] == expected_command_name

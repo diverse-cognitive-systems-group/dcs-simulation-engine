@@ -40,8 +40,8 @@ class SessionEventRecord(NamedTuple):
     event_id: str
     event_ts: Any
     direction: str
-    kind: str
-    role: str
+    event_type: str
+    event_source: str
     content: str
     data: dict[str, Any]
 
@@ -109,4 +109,25 @@ class DataProvider:
 
     def list_session_events(self, *, session_id: str) -> list[SessionEventRecord]:
         """Return ordered persisted events for a session."""
+        raise NotImplementedError
+
+    def set_session_event_feedback(
+        self,
+        *,
+        session_id: str,
+        player_id: str,
+        event_id: str,
+        feedback: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Store feedback on a persisted NPC-message event."""
+        raise NotImplementedError
+
+    def clear_session_event_feedback(
+        self,
+        *,
+        session_id: str,
+        player_id: str,
+        event_id: str,
+    ) -> bool:
+        """Remove feedback from a persisted NPC-message event."""
         raise NotImplementedError

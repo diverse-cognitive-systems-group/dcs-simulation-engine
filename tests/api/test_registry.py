@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from dcs_simulation_engine.api.registry import SessionRegistry
 
+pytestmark = [pytest.mark.unit, pytest.mark.anyio]
+
 
 class DummyManager:
     """Minimal session-manager stub for registry tests."""
@@ -19,14 +21,13 @@ class DummyManager:
         """Whether the manager has exited."""
         return self._exited
 
-    def exit(self, reason: str) -> None:
+    async def exit_async(self, reason: str) -> None:
         """Mark manager as exited with a reason."""
         self._exited = True
         self.exit_reason = reason
 
 
-@pytest.mark.unit
-def test_registry_add_get_list_touch_remove() -> None:
+async def test_registry_add_get_list_touch_remove() -> None:
     """Registry supports core CRUD and touch operations."""
     registry = SessionRegistry(ttl_seconds=3600, sweep_interval_seconds=600)
 
@@ -52,8 +53,7 @@ def test_registry_add_get_list_touch_remove() -> None:
     assert registry.get(entry_a.session_id) is None
 
 
-@pytest.mark.unit
-def test_registry_sweep_expires_idle_sessions() -> None:
+async def test_registry_sweep_expires_idle_sessions() -> None:
     """Sweep removes stale sessions and exits their managers."""
     registry = SessionRegistry(ttl_seconds=1, sweep_interval_seconds=600)
     manager = DummyManager()
@@ -61,7 +61,7 @@ def test_registry_sweep_expires_idle_sessions() -> None:
     entry = registry.add(player_id="player-a", game_name="explore", manager=manager)  # type: ignore[arg-type]
     entry.last_active = datetime.now(timezone.utc) - timedelta(seconds=10)
 
-    removed_ids = registry.sweep()
+    removed_ids = await registry.sweep_async()
 
     assert entry.session_id in removed_ids
     assert registry.get(entry.session_id) is None

@@ -9,8 +9,8 @@ access_settings: {}
 data_collection_settings:
   save_runs: true
 
-stopping_conditions:
-  runtime_seconds: [">=600"]
-  turns: [">=50"]
+# stopping_conditions:
+#   runtime_seconds: [">=600"]
+#   turns: [">=50"]
 
 game_class: dcs_simulation_engine.games.explore.ExploreGame
