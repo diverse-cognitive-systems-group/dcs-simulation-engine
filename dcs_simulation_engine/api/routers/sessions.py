@@ -8,10 +8,15 @@ from dcs_simulation_engine.api.auth import (
     require_player_async,
 )
 from dcs_simulation_engine.api.models import (
+    ClearSessionEventFeedbackResponse,
+    SessionEventFeedback,
     SessionStatus,
     SessionSummary,
     SessionsListResponse,
+    SubmitSessionEventFeedbackRequest,
+    SubmitSessionEventFeedbackResponse,
 )
+from dcs_simulation_engine.utils.time import utc_now
 from fastapi import APIRouter, HTTPException, Request, status
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -22,6 +27,18 @@ def _session_status(entry_status: str, exited: bool) -> SessionStatus:
     if entry_status == "closed" or exited:
         return "closed"
     return "active"
+
+
+async def _flush_live_session_feedback_target(*, request: Request, session_id: str, player_id: str) -> None:
+    """Flush queued live-session events so feedback can target freshly emitted rows."""
+    registry = get_registry_from_request(request)
+    entry = registry.get(session_id)
+    if entry is None or entry.player_id != player_id:
+        return
+
+    flush_hook = getattr(entry.manager, "flush_persistence_async", None)
+    if callable(flush_hook):
+        await maybe_await(flush_hook())
 
 
 @router.get("/list", response_model=SessionsListResponse)
@@ -69,3 +86,89 @@ async def get_session_reconstruction(session_id: str, request: Request) -> dict:
     if not payload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return payload
+
+
+@router.post(
+    "/{session_id}/events/{event_id}/feedback",
+    response_model=SubmitSessionEventFeedbackResponse,
+)
+async def submit_session_event_feedback(
+    session_id: str,
+    event_id: str,
+    body: SubmitSessionEventFeedbackRequest,
+    request: Request,
+) -> SubmitSessionEventFeedbackResponse:
+    """Store or overwrite feedback on one persisted NPC-message event."""
+    provider = get_provider_from_request(request)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+
+    comment = body.comment.strip()
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback comment is required")
+
+    await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player.id)
+
+    writer = getattr(provider, "set_session_event_feedback", None)
+    if writer is None:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Session event feedback is unavailable for this provider.",
+        )
+
+    now = utc_now()
+    feedback = SessionEventFeedback(
+        liked=body.liked,
+        comment=comment,
+        submitted_at=now,
+    )
+    stored = await maybe_await(
+        writer(
+            session_id=session_id,
+            player_id=player.id,
+            event_id=event_id,
+            feedback=feedback.model_dump(),
+        )
+    )
+    if not stored:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NPC message not found")
+
+    return SubmitSessionEventFeedbackResponse(
+        session_id=session_id,
+        event_id=event_id,
+        feedback=SessionEventFeedback.model_validate(stored),
+    )
+
+
+@router.delete(
+    "/{session_id}/events/{event_id}/feedback",
+    response_model=ClearSessionEventFeedbackResponse,
+)
+async def clear_session_event_feedback(
+    session_id: str,
+    event_id: str,
+    request: Request,
+) -> ClearSessionEventFeedbackResponse:
+    """Remove feedback from one persisted NPC-message event."""
+    provider = get_provider_from_request(request)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+
+    await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player.id)
+
+    clearer = getattr(provider, "clear_session_event_feedback", None)
+    if clearer is None:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Session event feedback clearing is unavailable for this provider.",
+        )
+
+    cleared = await maybe_await(
+        clearer(
+            session_id=session_id,
+            player_id=player.id,
+            event_id=event_id,
+        )
+    )
+    if not cleared:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="NPC message not found")
+
+    return ClearSessionEventFeedbackResponse(session_id=session_id, event_id=event_id, cleared=True)

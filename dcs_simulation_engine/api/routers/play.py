@@ -48,7 +48,7 @@ async def _send_error(websocket: WebSocket, detail: str) -> None:
     await websocket.send_json(WSErrorFrame(detail=detail).model_dump(mode="json"))
 
 
-async def _send_events(websocket: WebSocket, session_id: str, events: list[dict[str, str]]) -> None:
+async def _send_events(websocket: WebSocket, session_id: str, events: list[dict[str, Any]]) -> None:
     """Send zero or more event frames for one completed turn."""
     for event in events:
         event_type = str(event.get("type") or "info").lower()
@@ -59,6 +59,7 @@ async def _send_events(websocket: WebSocket, session_id: str, events: list[dict[
             session_id=session_id,
             event_type=event_type,  # type: ignore[arg-type]
             content=str(event.get("content") or ""),
+            event_id=str(event.get("event_id")) if event.get("event_id") else None,
         )
         await websocket.send_json(frame.model_dump(mode="json"))
 
@@ -85,11 +86,7 @@ async def _finalize_exit_with_retry(*, manager: Any, reason: str, session_id: st
     delay_s = 0.2
     for attempt in range(1, max_attempts + 1):
         try:
-            exit_async = getattr(manager, "exit_async", None)
-            if callable(exit_async):
-                await exit_async(reason)
-            else:
-                await maybe_await(manager.exit(reason))
+            await manager.exit_async(reason)
             return
         except Exception:
             logger.exception(

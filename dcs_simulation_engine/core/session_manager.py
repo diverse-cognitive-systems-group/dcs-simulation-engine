@@ -1,12 +1,11 @@
 """SessionManager: drives new-style Game classes."""
 
-import asyncio
 import importlib
 import inspect
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 from dcs_simulation_engine.core.game import Game, GameEvent
@@ -19,6 +18,21 @@ from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.file import safe_timestamp
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
+
+
+def _parse_command_input(text: str | None) -> tuple[str, str] | None:
+    """Parse a slash-prefixed input into (command_name, args)."""
+    if not isinstance(text, str):
+        return None
+
+    stripped = text.strip()
+    if not stripped.startswith(("/", "\\")):
+        return None
+
+    parts = stripped.lstrip("/\\").split(maxsplit=1)
+    command_name = parts[0].lower() if parts else ""
+    command_args = parts[1] if len(parts) > 1 else ""
+    return (command_name, command_args)
 
 
 class SessionManager:
@@ -248,11 +262,10 @@ class SessionManager:
         db = get_db()
         insert_one = getattr(db[MongoColumns.SESSIONS], "insert_one", None)
         if insert_one is None or not inspect.iscoroutinefunction(insert_one):
-            # Sync providers (tests/CLI) intentionally skip async transcript persistence.
+            # Transcript persistence requires async collection methods.
             return
 
         self._session_id = session_id
-        session_started_at_ns = int(self.start_ts.timestamp() * 1_000_000_000)
         pc = getattr(self.game, "_pc", None)
         npc = getattr(self.game, "_npc", None)
 
@@ -265,9 +278,7 @@ class SessionManager:
             MongoColumns.PC_HID: getattr(pc, "hid", None),
             MongoColumns.NPC_HID: getattr(npc, "hid", None),
             MongoColumns.SESSION_STARTED_AT: self.start_ts,
-            MongoColumns.SESSION_STARTED_AT_NS: session_started_at_ns,
             MongoColumns.SESSION_ENDED_AT: None,
-            MongoColumns.SESSION_ENDED_AT_NS: None,
             MongoColumns.TERMINATION_REASON: None,
             MongoColumns.STATUS: "active",
             MongoColumns.TURNS_COMPLETED: 0,
@@ -285,16 +296,7 @@ class SessionManager:
         self._recorder = SessionEventRecorder(db=db, session_doc=session_doc)
         await self._recorder.__aenter__()
         self._recorder_open = True
-        await self._recorder.record_marker(label="session_start", detail="created", turn_index=0)
-
-    def exit(self, reason: str) -> None:
-        """Sync wrapper for legacy code paths."""
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(self.exit_async(reason))
-        else:
-            asyncio.create_task(self.exit_async(reason))
+        await self._recorder.record_internal(event_type="session_start", detail="created", turn_index=0)
 
     def _begin_exit(self, reason: str) -> None:
         """Mark local exit state before persistence finalization."""
@@ -325,20 +327,15 @@ class SessionManager:
         self._finalized = True
         logger.info("Session exited. Reason: {}", reason)
 
+    async def flush_persistence_async(self) -> None:
+        """Flush any queued transcript events so follow-on writes can target them safely."""
+        if self._recorder_open and self._recorder is not None:
+            await self._recorder.flush_pending()
+
     def save(self) -> None:
         """Compatibility no-op; session transcript writes now use session_events."""
         self._saved = True
         logger.debug("SessionManager.save() is a no-op; persistence is event-sourced.")
-
-    def step(self, user_input: Optional[str] = None) -> Iterator[Dict[str, Any]]:
-        """Advance one turn synchronously for legacy callers."""
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            events = asyncio.run(self.step_async(user_input))
-        else:
-            raise RuntimeError("SessionManager.step() cannot run inside an active event loop; use await step_async().")
-        yield from events
 
     async def step_async(self, user_input: Optional[str] = None) -> List[Dict[str, Any]]:
         """Advance one turn asynchronously and return normalized event dicts."""
@@ -351,28 +348,34 @@ class SessionManager:
             return [{"type": "info", "content": f"Session ended: {self.exit_reason}"}]
 
         turn_index = self._turn_count + 1
-        is_command_input = isinstance(user_input, str) and user_input.strip().startswith(("/", "\\"))
-        if isinstance(user_input, str) and self._recorder_open and self._recorder is not None:
-            await self._recorder.record_inbound(content=user_input, turn_index=turn_index)
+        parsed_command = _parse_command_input(user_input)
 
-        if is_command_input:
-            parts = user_input.strip().split(maxsplit=1)
-            cmd = parts[0].lower().lstrip("/\\")
+        if parsed_command is not None:
+            cmd, cmd_args = parsed_command
             if cmd in ("quit", "stop", "exit"):
                 payload = {"type": "info", "content": "Session exited: received exit command"}
                 self._events.append(payload)
                 if self._recorder_open and self._recorder is not None:
+                    await self._recorder.record_inbound(
+                        content=user_input,
+                        turn_index=turn_index,
+                        event_type="command",
+                        command_name=cmd,
+                        command_args=cmd_args,
+                    )
                     await self._recorder.record_outbound(
-                        event_type="info",
+                        event_type="command",
+                        event_source="system",
                         content=payload["content"],
                         turn_index=turn_index,
-                        command_context=True,
+                        command_name=cmd,
+                        command_args=cmd_args,
                     )
                 await self.exit_async("received exit command")
                 return [payload]
 
             if cmd in ("feedback", "fb"):
-                fb = parts[1] if len(parts) > 1 else ""
+                fb = cmd_args
                 if fb:
                     self.feedback.append({"timestamp": utc_now().isoformat(), "content": fb})
                 payload = {
@@ -385,15 +388,37 @@ class SessionManager:
                 }
                 self._events.append(payload)
                 if self._recorder_open and self._recorder is not None:
+                    await self._recorder.record_inbound(
+                        content=user_input,
+                        turn_index=turn_index,
+                        event_type="command",
+                        command_name=cmd,
+                        command_args=cmd_args,
+                    )
                     await self._recorder.record_outbound(
-                        event_type="info",
+                        event_type="command",
+                        event_source="system",
                         content=payload["content"],
                         turn_index=turn_index,
-                        command_context=True,
+                        command_name=cmd,
+                        command_args=cmd_args,
                     )
                 return [payload]
 
         events = await self._collect_events(user_input)
+        recognized_game_command = parsed_command is not None and any(event.command_response for event in events)
+        if isinstance(user_input, str) and user_input != "" and self._recorder_open and self._recorder is not None:
+            inbound_event_type = "command" if recognized_game_command else "message"
+            inbound_command_name = parsed_command[0] if recognized_game_command and parsed_command is not None else None
+            inbound_command_args = parsed_command[1] if recognized_game_command and parsed_command is not None else None
+            await self._recorder.record_inbound(
+                content=user_input,
+                turn_index=turn_index,
+                event_type=inbound_event_type,
+                command_name=inbound_command_name,
+                command_args=inbound_command_args,
+            )
+
         emitted: List[Dict[str, Any]] = []
         yielded_ai = False
         for event in events:
@@ -401,15 +426,25 @@ class SessionManager:
                 yielded_ai = True
             payload = {"type": event.type, "content": event.content}
             self._events.append(payload)
-            emitted.append(payload)
             if self._recorder_open and self._recorder is not None:
-                await self._recorder.record_outbound(
-                    event_type=event.type,
+                persisted_event_type, persisted_event_source = self._classify_persisted_outbound_event(event)
+                outbound_command_name = (
+                    parsed_command[0] if event.command_response and parsed_command is not None else None
+                )
+                outbound_command_args = (
+                    parsed_command[1] if event.command_response and parsed_command is not None else None
+                )
+                recorded = await self._recorder.record_outbound(
+                    event_type=persisted_event_type,
+                    event_source=persisted_event_source,
                     content=event.content,
                     turn_index=turn_index,
-                    command_context=is_command_input,
-                    event_ts_ns=event.event_ts_ns,
+                    command_name=outbound_command_name,
+                    command_args=outbound_command_args,
+                    event_ts=event.event_ts,
                 )
+                payload["event_id"] = recorded.event_id
+            emitted.append(payload)
 
         if yielded_ai:
             self._turn_count += 1
@@ -423,6 +458,16 @@ class SessionManager:
         async for event in self.game.step(user_input):
             events.append(event)
         return events
+
+    def _classify_persisted_outbound_event(self, event: GameEvent) -> tuple[str, str]:
+        event_type = str(event.type or "info").lower()
+        if event.command_response:
+            return ("command", "system")
+        if event_type == "ai":
+            return ("message", "npc")
+        if event_type == "error":
+            return ("error", "system")
+        return ("info", "system")
 
     def _check_stopping_conditions(self) -> str | None:
         for attr, cond_list in self.stopping_conditions.items():

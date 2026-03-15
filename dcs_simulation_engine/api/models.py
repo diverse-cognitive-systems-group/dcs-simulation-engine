@@ -99,6 +99,37 @@ class SessionsListResponse(BaseModel):
     sessions: list[SessionSummary]
 
 
+class SessionEventFeedback(BaseModel):
+    """Stored reaction + comment attached to one assistant message."""
+
+    liked: bool
+    comment: str = Field(min_length=1)
+    submitted_at: datetime
+
+
+class SubmitSessionEventFeedbackRequest(BaseModel):
+    """Payload for storing feedback on a single assistant session event."""
+
+    liked: bool
+    comment: str = Field(min_length=1)
+
+
+class SubmitSessionEventFeedbackResponse(BaseModel):
+    """Response payload after feedback is stored on a session event."""
+
+    session_id: str
+    event_id: str
+    feedback: SessionEventFeedback
+
+
+class ClearSessionEventFeedbackResponse(BaseModel):
+    """Response payload after feedback is removed from a session event."""
+
+    session_id: str
+    event_id: str
+    cleared: bool = True
+
+
 class WSAuthRequest(BaseModel):
     """WebSocket first-message auth frame (browser clients only)."""
 
@@ -135,6 +166,7 @@ class WSEventFrame(BaseModel):
     session_id: str
     event_type: EventType
     content: str
+    event_id: str | None = None
 
 
 class WSTurnEndFrame(BaseModel):

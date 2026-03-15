@@ -9,8 +9,6 @@ This test suite validates the foresight game's unique mechanics:
 Tests use mocked LLMs to avoid external API dependencies.
 """
 
-import asyncio
-
 import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import (
@@ -20,14 +18,16 @@ from dcs_simulation_engine.dal.mongo.const import (
     MongoColumns,
 )
 
+pytestmark = [pytest.mark.functional, pytest.mark.anyio]
+
 # Test player ID for foresight tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
 
 
 @pytest.fixture(autouse=True)
-def seed_consenting_player(_isolate_db_state, mongo_provider):
+def seed_consenting_player(_isolate_db_state, async_mongo_provider):
     """Seed a player with consent signature for foresight game access."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": TEST_PLAYER_ID,
@@ -53,37 +53,31 @@ FORESIGHT_TEST_INPUTS = [
 ]
 
 
-@pytest.mark.functional
-def test_foresight_initialization(patch_llm_client, _isolate_db_state, mongo_provider):
+async def test_foresight_initialization(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test foresight game initializes correctly with SessionManager."""
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="foresight",
-            provider=mongo_provider,
-            pc_choice="human-normative",
-            npc_choice="flatworm",
-            player_id=str(TEST_PLAYER_ID),
-        )
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
 
     assert not session.exited, "Session should not be exited initially"
     assert session._events == [], "Initial events should be empty"
 
 
-@pytest.mark.functional
-def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_state, mongo_provider):
+async def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test ENTER step produces welcome message and AI opening."""
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="foresight",
-            provider=mongo_provider,
-            pc_choice="human-normative",
-            npc_choice="flatworm",
-            player_id=str(TEST_PLAYER_ID),
-        )
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
 
-    enter_events = list(session.step(""))
+    enter_events = await session.step_async("")
 
     info_events = [e for e in enter_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected welcome message with type 'info'"
@@ -94,25 +88,22 @@ def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_state, mo
     assert session.turns == 1, "After ENTER, turns should be 1"
 
 
-@pytest.mark.functional
-def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state, mongo_provider):
+async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test multi-turn simulation with prediction-containing inputs."""
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="foresight",
-            provider=mongo_provider,
-            pc_choice="human-normative",
-            npc_choice="flatworm",
-            player_id=str(TEST_PLAYER_ID),
-        )
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
 
-    list(session.step(""))
+    await session.step_async("")
     turns_after_enter = session.turns
 
     for idx, user_input in enumerate(FORESIGHT_TEST_INPUTS):
         turn_num = idx + 1
-        events = list(session.step(user_input))
+        events = await session.step_async(user_input)
 
         ai_events = [e for e in events if e.get("type") == "ai"]
         assert len(ai_events) > 0, (
@@ -130,24 +121,21 @@ def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state, mong
     assert not session.exited, "Session should still be active after 10 turns"
 
 
-@pytest.mark.functional
-def test_foresight_complete_command(patch_llm_client, _isolate_db_state, mongo_provider):
+async def test_foresight_complete_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test /complete command triggers completion-notes question."""
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="foresight",
-            provider=mongo_provider,
-            pc_choice="human-normative",
-            npc_choice="flatworm",
-            player_id=str(TEST_PLAYER_ID),
-        )
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
 
-    list(session.step(""))
-    list(session.step("I wave my hand"))
-    list(session.step("I look around"))
+    await session.step_async("")
+    await session.step_async("I wave my hand")
+    await session.step_async("I look around")
 
-    complete_events = list(session.step("/complete"))
+    complete_events = await session.step_async("/complete")
 
     # /complete should yield an info event asking for notes
     info_events = [e for e in complete_events if e.get("type") == "info"]
@@ -160,25 +148,22 @@ def test_foresight_complete_command(patch_llm_client, _isolate_db_state, mongo_p
     assert not session.exited, "Session should not exit until completion notes are provided"
 
 
-@pytest.mark.functional
-def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_state, mongo_provider):
+async def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test that the answer after /complete is collected and game exits."""
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="foresight",
-            provider=mongo_provider,
-            pc_choice="human-normative",
-            npc_choice="flatworm",
-            player_id=str(TEST_PLAYER_ID),
-        )
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
 
-    list(session.step(""))
-    list(session.step("I wave my hand"))
-    list(session.step("/complete"))
+    await session.step_async("")
+    await session.step_async("I wave my hand")
+    await session.step_async("/complete")
 
     # Provide the completion notes
-    notes_events = list(session.step("My notes about my predictions."))
+    notes_events = await session.step_async("My notes about my predictions.")
 
     info_events = [e for e in notes_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected confirmation info event after notes submitted"
@@ -188,25 +173,22 @@ def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_stat
     assert session.game.completion_notes == "My notes about my predictions."
 
 
-@pytest.mark.functional
-def test_foresight_run_save(patch_llm_client, _isolate_db_state, mongo_provider):
+async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test foresight game sessions can be saved to database."""
-    session = asyncio.run(
-        SessionManager.create_async(
-            game="foresight",
-            provider=mongo_provider,
-            pc_choice="human-normative",
-            npc_choice="flatworm",
-            player_id=str(TEST_PLAYER_ID),
-        )
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
     )
 
-    list(session.step(""))
-    list(session.step("I wave my hand and predict they will respond"))
-    list(session.step("I look around"))
-    list(session.step("I observe the flatworm"))
+    await session.step_async("")
+    await session.step_async("I wave my hand and predict they will respond")
+    await session.step_async("I look around")
+    await session.step_async("I observe the flatworm")
 
-    session.exit(reason="test complete")
+    await session.exit_async("test complete")
     assert session.exited, "Session should be exited after exit()"
 
     # save() is called by exit(); calling again is a no-op (idempotent)

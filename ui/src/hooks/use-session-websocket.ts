@@ -7,11 +7,19 @@ import { getApiKey } from '../lib/auth'
 
 export type EventType = 'ai' | 'info' | 'error' | 'warning'
 
+export interface MessageFeedback {
+  liked: boolean
+  comment: string
+  submittedAt: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'ai'
   eventType?: EventType
   content: string
+  eventId?: string
+  feedback?: MessageFeedback
   // Unix timestamp (ms) set when the message is added to the list.
   timestamp: number
 }
@@ -93,6 +101,7 @@ export function useSessionWebSocket(sessionId: string) {
             role: 'ai',
             eventType: frame.event_type as EventType,
             content: frame.content,
+            eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),
           },
         ])
@@ -150,5 +159,14 @@ export function useSessionWebSocket(sessionId: string) {
     }
   }, [])
 
-  return { messages, wsState, turns, exited, waiting, sendTurn, closeSession }
+  const setMessageFeedback = useCallback(
+    (eventId: string, feedback: MessageFeedback | undefined) => {
+      setMessages((prev) =>
+        prev.map((message) => (message.eventId === eventId ? { ...message, feedback } : message)),
+      )
+    },
+    [],
+  )
+
+  return { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback }
 }
