@@ -11,6 +11,33 @@
 [![Project Wiki](https://img.shields.io/badge/Project%20Wiki%20-FF69B4)](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) <!-- pink -->
 [![Build Status](https://github.com/fuzzy-tribble/dcs-simulation-engine/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/fuzzy-tribble/dcs-simulation-engine/actions/workflows/ci.yaml)
 
+## Quickstart
+
+#### cli
+
+```sh
+# bootstrap
+docker compose up -d
+
+# start server
+uv run dcs server --mongo-seed-dir="database_seeds/dev"
+
+# start frontend
+cd ui
+bun dev
+
+# teardown
+docker compose down --volumes 
+```
+
+#### vscode
+
+Run the `dcs server` launch target in the debugger and then
+```sh
+cd ui
+bun dev
+```
+
 ## What is this?
 
 It's both a research framework and a play space.

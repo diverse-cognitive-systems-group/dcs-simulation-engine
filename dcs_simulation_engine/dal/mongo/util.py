@@ -16,7 +16,6 @@ from dcs_simulation_engine.dal.mongo.const import (
 from dcs_simulation_engine.utils.time import utc_now
 from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, MongoClient
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.collection import Collection
 from pymongo.database import Database
 
 
@@ -169,26 +168,6 @@ def split_pii(player_data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, An
                 non_pii[key] = value
 
     return non_pii, pii
-
-
-def write_pii_fields(db: Database[Any], player_id: str, pii_fields: dict[str, Any]) -> None:
-    """Upsert PII fields for a player into the dedicated PII collection."""
-    if not pii_fields:
-        return
-
-    pii_coll: Collection[Any] = db[MongoColumns.PII]
-    pii_coll.update_one(
-        {MongoColumns.PLAYER_ID: player_id},
-        {
-            "$set": {
-                MongoColumns.PLAYER_ID: player_id,
-                MongoColumns.FIELDS: pii_fields,
-                MongoColumns.UPDATED_AT: utc_now(),
-            },
-            "$setOnInsert": {MongoColumns.CREATED_AT: utc_now()},
-        },
-        upsert=True,
-    )
 
 
 def player_doc_to_record(doc: dict[str, Any]) -> PlayerRecord:
