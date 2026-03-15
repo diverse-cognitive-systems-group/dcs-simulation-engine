@@ -27,16 +27,20 @@ import type {
   AuthRequest,
   AuthResponse,
   CharactersListResponse,
+  ClearSessionEventFeedbackResponse,
   CreateGameRequest,
   CreateGameResponse,
   DeleteCharacterResponse,
   GameSetupOptionsResponse,
   GamesListResponse,
+  GetSessionReconstructionApiSessionsSessionIdReconstructionGet200,
   HTTPValidationError,
   HealthHealthzGet200,
   RegistrationRequest,
   RegistrationResponse,
   SessionsListResponse,
+  SubmitSessionEventFeedbackRequest,
+  SubmitSessionEventFeedbackResponse,
   UpsertCharacterRequest,
   UpsertCharacterResponse
 } from './model';
@@ -340,6 +344,311 @@ export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typ
 
 
 
+/**
+ * Return complete persisted metadata + event stream for transcript replay.
+ * @summary Get Session Reconstruction
+ */
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse200 = {
+  data: GetSessionReconstructionApiSessionsSessionIdReconstructionGet200
+  status: 200
+}
+
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseSuccess = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse200) & {
+  headers: Headers;
+};
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseError = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse422) & {
+  headers: Headers;
+};
+
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseSuccess | getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseError)
+
+export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/reconstruction`
+}
+
+export const getSessionReconstructionApiSessionsSessionIdReconstructionGet = async (sessionId: string, options?: RequestInit): Promise<getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse> => {
+  
+  return httpClient<getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse>(getGetSessionReconstructionApiSessionsSessionIdReconstructionGetUrl(sessionId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryKey = (sessionId: string,) => {
+    return [
+    `/api/sessions/${sessionId}/reconstruction`
+    ] as const;
+    }
+
+    
+export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryOptions = <TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryKey(sessionId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>> = ({ signal }) => getSessionReconstructionApiSessionsSessionIdReconstructionGet(sessionId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(sessionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>>
+export type GetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryError = HTTPValidationError
+
+
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Session Reconstruction
+ */
+
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Store or overwrite feedback on one persisted assistant-message event.
+ * @summary Submit Session Event Feedback
+ */
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse200 = {
+  data: SubmitSessionEventFeedbackResponse
+  status: 200
+}
+
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseSuccess = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse200) & {
+  headers: Headers;
+};
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseError = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse422) & {
+  headers: Headers;
+};
+
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseSuccess | submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseError)
+
+export const getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostUrl = (sessionId: string,
+    eventId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/events/${eventId}/feedback`
+}
+
+export const submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost = async (sessionId: string,
+    eventId: string,
+    submitSessionEventFeedbackRequest: SubmitSessionEventFeedbackRequest, options?: RequestInit): Promise<submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse> => {
+  
+  return httpClient<submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse>(getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostUrl(sessionId,eventId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      submitSessionEventFeedbackRequest,)
+  }
+);}
+  
+
+
+
+export const getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext> => {
+
+const mutationKey = ['submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, {sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}> = (props) => {
+          const {sessionId,eventId,data} = props ?? {};
+
+          return  submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost(sessionId,eventId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>>
+    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationBody = SubmitSessionEventFeedbackRequest
+    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Submit Session Event Feedback
+ */
+export const useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>,
+        TError,
+        {sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest},
+        TContext
+      > => {
+      return useMutation(getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Remove feedback from one persisted assistant-message event.
+ * @summary Clear Session Event Feedback
+ */
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse200 = {
+  data: ClearSessionEventFeedbackResponse
+  status: 200
+}
+
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseSuccess = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse200) & {
+  headers: Headers;
+};
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseError = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse422) & {
+  headers: Headers;
+};
+
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseSuccess | clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseError)
+
+export const getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteUrl = (sessionId: string,
+    eventId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/events/${eventId}/feedback`
+}
+
+export const clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete = async (sessionId: string,
+    eventId: string, options?: RequestInit): Promise<clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse> => {
+  
+  return httpClient<clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse>(getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteUrl(sessionId,eventId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+  
+
+
+
+export const getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext> => {
+
+const mutationKey = ['clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, {sessionId: string;eventId: string}> = (props) => {
+          const {sessionId,eventId} = props ?? {};
+
+          return  clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete(sessionId,eventId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>>
+    
+    export type ClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationError = HTTPValidationError
+
+    /**
+ * @summary Clear Session Event Feedback
+ */
+export const useClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>,
+        TError,
+        {sessionId: string;eventId: string},
+        TContext
+      > => {
+      return useMutation(getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationOptions(options), queryClient);
+    }
+    
 /**
  * Return setup-ready authorization and valid character choices for a game.
  * @summary Setup Options

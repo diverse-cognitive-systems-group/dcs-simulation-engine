@@ -13,16 +13,17 @@ from dcs_simulation_engine.dal.mongo.const import (
     MongoColumns,
 )
 
+pytestmark = [pytest.mark.unit, pytest.mark.anyio]
 
-@pytest.mark.unit
-def test_get_character_returns_record(mongo_provider):
+
+async def test_get_character_returns_record(async_mongo_provider):
     """get_character returns a CharacterRecord for a seeded character."""
     # The mongomock DB is seeded from database_seeds/dev at test time (autouse fixture).
     # Use a known hid from the seed data.
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db["characters"].insert_one({"hid": "test-char", "name": "Test", "short_description": "A test character"})
 
-    record = mongo_provider.get_character(hid="test-char")
+    record = await async_mongo_provider.get_character(hid="test-char")
 
     assert isinstance(record, CharacterRecord)
     assert record.hid == "test-char"
@@ -30,27 +31,24 @@ def test_get_character_returns_record(mongo_provider):
     assert record.short_description == "A test character"
 
 
-@pytest.mark.unit
-def test_get_character_not_found_raises(mongo_provider):
+async def test_get_character_not_found_raises(async_mongo_provider):
     """get_character raises ValueError for an unknown hid."""
     with pytest.raises(ValueError, match="not found"):
-        mongo_provider.get_character(hid="nonexistent-hid")
+        await async_mongo_provider.get_character(hid="nonexistent-hid")
 
 
-@pytest.mark.unit
-def test_create_player_returns_record(mongo_provider):
+async def test_create_player_returns_record(async_mongo_provider):
     """create_player returns a PlayerRecord."""
-    record, raw_key = mongo_provider.create_player(player_data={"name": "Alice"})
+    record, raw_key = await async_mongo_provider.create_player(player_data={"name": "Alice"})
 
     assert isinstance(record, PlayerRecord)
     assert record.id  # non-empty string id
     assert raw_key is None  # no access key by default
 
 
-@pytest.mark.unit
-def test_create_player_with_access_key(mongo_provider):
+async def test_create_player_with_access_key(async_mongo_provider):
     """create_player with issue_access_key=True returns a raw key."""
-    record, raw_key = mongo_provider.create_player(player_data={"name": "Bob"}, issue_access_key=True)
+    record, raw_key = await async_mongo_provider.create_player(player_data={"name": "Bob"}, issue_access_key=True)
 
     assert isinstance(record, PlayerRecord)
     assert raw_key is not None
@@ -58,58 +56,52 @@ def test_create_player_with_access_key(mongo_provider):
     assert record.access_key == raw_key
 
 
-@pytest.mark.unit
-def test_create_player_stores_in_db(mongo_provider):
+async def test_create_player_stores_in_db(async_mongo_provider):
     """create_player actually inserts the player into the DB."""
-    record, _ = mongo_provider.create_player(player_data={"name": "Charlie"})
+    record, _ = await async_mongo_provider.create_player(player_data={"name": "Charlie"})
 
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     from bson import ObjectId
 
     doc = db[MongoColumns.PLAYERS].find_one({"_id": ObjectId(record.id)})
     assert doc is not None
 
 
-@pytest.mark.unit
-def test_get_players_by_access_key_returns_record(mongo_provider):
+async def test_get_players_by_access_key_returns_record(async_mongo_provider):
     """get_players(access_key=...) finds a player by their raw key."""
-    _, raw_key = mongo_provider.create_player(player_data={"name": "Diana"}, issue_access_key=True)
+    _, raw_key = await async_mongo_provider.create_player(player_data={"name": "Diana"}, issue_access_key=True)
 
-    result = mongo_provider.get_players(access_key=raw_key)
+    result = await async_mongo_provider.get_players(access_key=raw_key)
 
     assert result is not None
     assert isinstance(result, PlayerRecord)
 
 
-@pytest.mark.unit
-def test_get_players_by_access_key_wrong_key_returns_none(mongo_provider):
+async def test_get_players_by_access_key_wrong_key_returns_none(async_mongo_provider):
     """get_players(access_key=...) returns None for an invalid key."""
-    result = mongo_provider.get_players(access_key="ak-not-a-real-key")
+    result = await async_mongo_provider.get_players(access_key="ak-not-a-real-key")
     assert result is None
 
 
-@pytest.mark.unit
-def test_get_players_by_access_key_empty_returns_none(mongo_provider):
+async def test_get_players_by_access_key_empty_returns_none(async_mongo_provider):
     """get_players(access_key=...) returns None for empty input."""
-    assert mongo_provider.get_players(access_key="") is None
+    assert await async_mongo_provider.get_players(access_key="") is None
 
 
-@pytest.mark.unit
-def test_get_players_returns_records(mongo_provider):
+async def test_get_players_returns_records(async_mongo_provider):
     """get_players returns PlayerRecords."""
-    mongo_provider.create_player(player_data={"name": "Eve"})
-    mongo_provider.create_player(player_data={"name": "Frank"})
+    await async_mongo_provider.create_player(player_data={"name": "Eve"})
+    await async_mongo_provider.create_player(player_data={"name": "Frank"})
 
-    players = mongo_provider.get_players()
+    players = await async_mongo_provider.get_players()
 
     assert len(players) >= 2
     assert all(isinstance(p, PlayerRecord) for p in players)
 
 
-@pytest.mark.unit
-def test_get_session_returns_session_record(mongo_provider):
+async def test_get_session_returns_session_record(async_mongo_provider):
     """get_session returns a SessionRecord when the session exists."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db[MongoColumns.SESSIONS].insert_one(
         {
             "session_id": "s-1",
@@ -121,17 +113,16 @@ def test_get_session_returns_session_record(mongo_provider):
         }
     )
 
-    session = mongo_provider.get_session(session_id="s-1", player_id="p-1")
+    session = await async_mongo_provider.get_session(session_id="s-1", player_id="p-1")
     assert isinstance(session, SessionRecord)
     assert session.session_id == "s-1"
     assert session.player_id == "p-1"
     assert session.data["source"] == "test"
 
 
-@pytest.mark.unit
-def test_list_session_events_returns_session_event_records(mongo_provider):
+async def test_list_session_events_returns_session_event_records(async_mongo_provider):
     """list_session_events returns ordered SessionEventRecord rows."""
-    db = mongo_provider.get_db()
+    db = async_mongo_provider.get_db()
     db[MongoColumns.SESSION_EVENTS].insert_many(
         [
             {
@@ -140,8 +131,8 @@ def test_list_session_events_returns_session_event_records(mongo_provider):
                 "event_id": "e-2",
                 "event_ts": datetime.now(timezone.utc),
                 "direction": "outbound",
-                "kind": "assistant_message",
-                "role": "assistant",
+                "event_type": "message",
+                "event_source": "npc",
                 "content": "two",
             },
             {
@@ -150,14 +141,224 @@ def test_list_session_events_returns_session_event_records(mongo_provider):
                 "event_id": "e-1",
                 "event_ts": datetime.now(timezone.utc),
                 "direction": "inbound",
-                "kind": "user_input",
-                "role": "user",
+                "event_type": "message",
+                "event_source": "user",
                 "content": "one",
             },
         ]
     )
 
-    events = mongo_provider.list_session_events(session_id="s-2")
+    events = await async_mongo_provider.list_session_events(session_id="s-2")
     assert isinstance(events, list)
     assert all(isinstance(event, SessionEventRecord) for event in events)
     assert [event.seq for event in events] == [1, 2]
+    assert events[0].event_type == "message"
+    assert events[0].event_source == "user"
+    assert events[1].event_type == "message"
+    assert events[1].event_source == "npc"
+
+
+async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_provider):
+    """set_session_event_feedback stores one top-level feedback object per NPC message event."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            "session_id": "s-feedback",
+            "player_id": "p-feedback",
+            "game_name": "Explore",
+            "status": "active",
+            "created_at": created_at,
+            "updated_at": created_at,
+        }
+    )
+    db[MongoColumns.SESSION_EVENTS].insert_one(
+        {
+            "session_id": "s-feedback",
+            "seq": 1,
+            "event_id": "evt-ai-1",
+            "event_ts": created_at,
+            "direction": "outbound",
+            "event_type": "message",
+            "event_source": "npc",
+            "content": "hello",
+        }
+    )
+
+    first = {
+        "liked": True,
+        "comment": "Helpful answer",
+        "submitted_at": created_at,
+    }
+    second = {
+        "liked": False,
+        "comment": "Actually not correct",
+        "submitted_at": created_at,
+    }
+
+    stored_first = await async_mongo_provider.set_session_event_feedback(
+        session_id="s-feedback",
+        player_id="p-feedback",
+        event_id="evt-ai-1",
+        feedback=first,
+    )
+    stored_second = await async_mongo_provider.set_session_event_feedback(
+        session_id="s-feedback",
+        player_id="p-feedback",
+        event_id="evt-ai-1",
+        feedback=second,
+    )
+
+    assert stored_first == first
+    assert stored_second == second
+
+    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-1"})
+    assert event_doc[MongoColumns.FEEDBACK]["liked"] is False
+    assert event_doc[MongoColumns.FEEDBACK]["comment"] == "Actually not correct"
+    assert event_doc[MongoColumns.FEEDBACK]["submitted_at"] is not None
+    assert event_doc[MongoColumns.UPDATED_AT] is not None
+
+
+async def test_set_session_event_feedback_rejects_non_npc_message_target(async_mongo_provider):
+    """set_session_event_feedback ignores non-NPC-message session events."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            "session_id": "s-feedback-2",
+            "player_id": "p-feedback-2",
+            "game_name": "Explore",
+            "status": "active",
+            "created_at": created_at,
+            "updated_at": created_at,
+        }
+    )
+    db[MongoColumns.SESSION_EVENTS].insert_one(
+        {
+            "session_id": "s-feedback-2",
+            "seq": 1,
+            "event_id": "evt-user-1",
+            "event_ts": created_at,
+            "direction": "inbound",
+            "event_type": "message",
+            "event_source": "user",
+            "content": "hello",
+        }
+    )
+
+    stored = await async_mongo_provider.set_session_event_feedback(
+        session_id="s-feedback-2",
+        player_id="p-feedback-2",
+        event_id="evt-user-1",
+        feedback={
+            "liked": True,
+            "comment": "Should not store",
+            "submitted_at": created_at,
+        },
+    )
+
+    assert stored is None
+    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-user-1"})
+    assert MongoColumns.FEEDBACK not in event_doc
+
+
+async def test_clear_session_event_feedback_removes_existing_feedback(async_mongo_provider):
+    """clear_session_event_feedback unsets the feedback field on the NPC message event."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            "session_id": "s-feedback-3",
+            "player_id": "p-feedback-3",
+            "game_name": "Explore",
+            "status": "active",
+            "created_at": created_at,
+            "updated_at": created_at,
+        }
+    )
+    db[MongoColumns.SESSION_EVENTS].insert_one(
+        {
+            "session_id": "s-feedback-3",
+            "seq": 1,
+            "event_id": "evt-ai-3",
+            "event_ts": created_at,
+            "direction": "outbound",
+            "event_type": "message",
+            "event_source": "npc",
+            "content": "hello",
+            "feedback": {
+                "liked": False,
+                "comment": "Wrong message",
+                "submitted_at": created_at,
+            },
+        }
+    )
+
+    cleared = await async_mongo_provider.clear_session_event_feedback(
+        session_id="s-feedback-3",
+        player_id="p-feedback-3",
+        event_id="evt-ai-3",
+    )
+
+    assert cleared is True
+    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-3"})
+    assert MongoColumns.FEEDBACK not in event_doc
+    assert event_doc[MongoColumns.UPDATED_AT] is not None
+
+
+@pytest.mark.parametrize(
+    ("direction", "event_type", "event_source"),
+    [
+        ("inbound", "message", "user"),
+        ("inbound", "command", "user"),
+        ("outbound", "command", "system"),
+        ("outbound", "info", "system"),
+        ("outbound", "error", "system"),
+        ("internal", "session_start", "system"),
+        ("internal", "session_end", "system"),
+    ],
+)
+async def test_feedback_is_rejected_for_non_npc_message_events(
+    async_mongo_provider,
+    direction: str,
+    event_type: str,
+    event_source: str,
+):
+    """Feedback is only accepted for outbound NPC message rows."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            "session_id": "s-feedback-matrix",
+            "player_id": "p-feedback-matrix",
+            "game_name": "Explore",
+            "status": "active",
+            "created_at": created_at,
+            "updated_at": created_at,
+        }
+    )
+    db[MongoColumns.SESSION_EVENTS].insert_one(
+        {
+            "session_id": "s-feedback-matrix",
+            "seq": 1,
+            "event_id": f"evt-{direction}-{event_type}-{event_source}",
+            "event_ts": created_at,
+            "direction": direction,
+            "event_type": event_type,
+            "event_source": event_source,
+            "content": "nope",
+        }
+    )
+
+    stored = await async_mongo_provider.set_session_event_feedback(
+        session_id="s-feedback-matrix",
+        player_id="p-feedback-matrix",
+        event_id=f"evt-{direction}-{event_type}-{event_source}",
+        feedback={
+            "liked": True,
+            "comment": "Should not store",
+            "submitted_at": created_at,
+        },
+    )
+
+    assert stored is None

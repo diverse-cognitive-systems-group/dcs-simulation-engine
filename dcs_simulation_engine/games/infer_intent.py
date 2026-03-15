@@ -199,17 +199,18 @@ class InferIntentGame(Game):
         cmd = stripped.lstrip("/\\").split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT)
+            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
                 type="info",
                 content=C.ABILITIES_CONTENT.format(pc_abilities=self._pc.data.get("abilities", "")),
+                command_response=True,
             )
 
         if cmd == Command.GUESS:
             self._awaiting_goal_inference = True
-            return GameEvent.now(type="info", content=C.GOAL_INFERENCE_QUESTION)
+            return GameEvent.now(type="info", content=C.GOAL_INFERENCE_QUESTION, command_response=True)
 
         # Unrecognised — return None so SessionManager can handle it.
         return None

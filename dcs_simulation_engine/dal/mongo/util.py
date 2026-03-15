@@ -57,7 +57,7 @@ def ensure_default_indexes(db: Database[Any]) -> None:
     )
     db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
     db[MongoColumns.SESSION_EVENTS].create_index(
-        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS_NS, ASCENDING)]
+        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)]
     )
 
     for collection_name, defs in INDEX_DEFS.items():
@@ -83,7 +83,7 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
     )
     await db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
     await db[MongoColumns.SESSION_EVENTS].create_index(
-        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS_NS, ASCENDING)]
+        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)]
     )
 
     for collection_name, defs in INDEX_DEFS.items():
