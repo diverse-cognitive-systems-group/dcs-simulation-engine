@@ -68,6 +68,13 @@ def create_app(
     @app.get("/healthz")
     def health() -> dict[str, str]:
         """Simple liveness endpoint."""
+        # TODO: Include
+        #  - uptime
+        #  - total sessions since start
+        #  - active sessions
+        #  - assignment status
+        #  - last db writ
+        #  - last request time
         return {"status": "ok"}
 
     return app

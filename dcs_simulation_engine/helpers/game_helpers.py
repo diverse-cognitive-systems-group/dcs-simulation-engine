@@ -1,9 +1,7 @@
 """Helpers for games."""
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from dcs_simulation_engine.utils.paths import (
@@ -14,39 +12,6 @@ from loguru import logger
 from packaging.version import InvalidVersion, Version
 
 IS_PROD = os.environ.get("DCS_ENV", "dev").lower() == "prod"
-
-
-class GameNameError(ValueError):
-    """Base class for game-name validation errors."""
-
-
-@dataclass(frozen=True)
-class BadGameNameError(GameNameError):
-    """Raised when a provided game name does not match any available games."""
-
-    game_name: str
-    available: list[str]
-
-    def __str__(self) -> str:
-        """Return a user-friendly error message."""
-        return f"Unknown game name {self.game_name!r}. Available games: {', '.join(self.available)}"
-
-
-def validate_game_name(game_name: Optional[str]) -> str:
-    """Validate that game name exists in list_games()."""
-    if game_name is None:
-        raise BadGameNameError(game_name="", available=[])
-
-    v = game_name.strip()
-    games = list_games()
-    available = sorted({name for (name, _author, _path, _ver, _desc) in games})
-
-    # case-insensitive match, but return canonical name
-    for name in available:
-        if name.lower() == v.lower():
-            return name
-
-    raise BadGameNameError(game_name=v, available=available)
 
 
 def create_game_from_template(name: str, template: str | Path | None = None) -> Path:

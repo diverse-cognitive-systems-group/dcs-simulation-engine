@@ -72,9 +72,7 @@ def _event_by_classification(
         and event.get(MongoColumns.EVENT_TYPE) == event_type
         and event.get(MongoColumns.EVENT_SOURCE) == event_source
     ]
-    assert (
-        len(matches) == 1
-    ), f"Expected 1 event for {direction}/{event_source}/{event_type}, found {len(matches)}."
+    assert len(matches) == 1, f"Expected 1 event for {direction}/{event_source}/{event_type}, found {len(matches)}."
     return matches[0]
 
 
@@ -175,6 +173,7 @@ async def test_game_level_command_filters_persist_command_events(
     assert command_input[MongoColumns.COMMAND_NAME] == expected_command_name
     assert command_input[MongoColumns.COMMAND_ARGS] == _expected_command_args(command_text)
     assert command_output[MongoColumns.CONTENT] == emitted[0]["content"]
+
 
 @pytest.mark.parametrize(
     ("command_text", "expected_command_name", "expected_command_args", "expect_exit"),

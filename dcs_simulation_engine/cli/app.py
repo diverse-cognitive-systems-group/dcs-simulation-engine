@@ -8,19 +8,13 @@ import typer.rich_utils as ru
 from dcs_simulation_engine.cli.commands.admin import admin_app
 from dcs_simulation_engine.cli.commands.game import game
 from dcs_simulation_engine.cli.commands.list import list_app
-from dcs_simulation_engine.cli.commands.modify import (
-    modify_app,
-)
-from dcs_simulation_engine.cli.commands.run import run
+from dcs_simulation_engine.cli.commands.modify import modify_app
 from dcs_simulation_engine.cli.commands.server import server
-from dcs_simulation_engine.cli.commands.status import status
-from dcs_simulation_engine.cli.common import (
-    GlobalOptions,
-    version_callback,
-)
-from dcs_simulation_engine.helpers.logging_helpers import (
-    configure_logger,
-)
+from dcs_simulation_engine.cli.common import GlobalOptions
+from dcs_simulation_engine.helpers.logging_helpers import configure_logger
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Default style overrides to neutral white/gray colors
 ru.STYLE_OPTION = "bold white"
@@ -55,15 +49,12 @@ app = typer.Typer(
 
 # sub-apps
 app.add_typer(admin_app, name="admin")
-
 app.add_typer(list_app, name="list")
 app.add_typer(modify_app, name="modify")
 
 # top level commands (no subcommand)
 app.command("game")(game)
-app.command("run")(run)
 app.command("server")(server)
-app.command("status")(status)
 
 
 @app.callback(invoke_without_command=False)
@@ -91,13 +82,6 @@ def main(
         dir_okay=False,
         file_okay=True,
         readable=True,
-    ),
-    version: Optional[bool] = typer.Option(
-        None,
-        "--version",
-        help="Show version and exit.",
-        callback=version_callback,
-        is_eager=True,
     ),
     mongo_uri: Optional[str] = typer.Option(
         None,
