@@ -4,6 +4,7 @@
 const KEY = 'dcs_api_key'
 const PLAYER_ID_KEY = 'dcs_player_id'
 const FULL_NAME_KEY = 'dcs_full_name'
+const EXPERIMENT_NAME_KEY = 'dcs_experiment_name'
 
 export function getApiKey(): string | null {
   return sessionStorage.getItem(KEY)
@@ -31,4 +32,12 @@ export function getFullName(): string | null {
 
 export function isAuthenticated(): boolean {
   return getApiKey() !== null
+}
+
+export function getActiveExperimentName(): string | null {
+  return sessionStorage.getItem(EXPERIMENT_NAME_KEY)
+}
+
+export function setActiveExperimentName(experimentName: string): void {
+  sessionStorage.setItem(EXPERIMENT_NAME_KEY, experimentName)
 }

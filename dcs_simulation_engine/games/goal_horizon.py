@@ -10,8 +10,9 @@ from dcs_simulation_engine.games.ai_client import (
     ValidatorClient,
 )
 from dcs_simulation_engine.games.const import (
-    GoalHorizonV2 as C,
+    GoalHorizon as C,
 )
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -160,10 +161,10 @@ class GoalHorizonGame(Game):
                 content=C.ABILITIES_CONTENT.format(
                     pc_hid=self._pc.hid,
                     pc_short_description=self._pc.short_description,
-                    pc_abilities=self._pc.data.get("abilities", ""),
+                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
                     npc_hid=self._npc.hid,
                     npc_short_description=self._npc.short_description,
-                    npc_abilities=self._npc.data.get("abilities", ""),
+                    npc_abilities=format_abilities_markdown(self._npc.data.get("abilities", "")),
                 ),
                 command_response=True,
             )

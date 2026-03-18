@@ -5,6 +5,7 @@ from typing import Any
 from dcs_simulation_engine.api.auth import (
     get_provider_from_request,
     maybe_await,
+    require_standard_mode_from_request,
     require_player_async,
 )
 from dcs_simulation_engine.api.models import (
@@ -103,6 +104,10 @@ def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
 @router.post("/registration", response_model=RegistrationResponse)
 async def register_user(body: RegistrationRequest, request: Request) -> RegistrationResponse:
     """Register a new player record and return a newly issued API key."""
+    require_standard_mode_from_request(
+        request,
+        detail="Player registration is disabled when the server is running in free play mode.",
+    )
     provider = get_provider_from_request(request)
     player_data = _registration_to_player_data(body)
 
@@ -116,6 +121,10 @@ async def register_user(body: RegistrationRequest, request: Request) -> Registra
 @router.post("/auth", response_model=AuthResponse)
 async def auth_user(body: AuthRequest, request: Request) -> AuthResponse:
     """Authenticate a user API key and return the associated player id."""
+    require_standard_mode_from_request(
+        request,
+        detail="Player authentication is disabled when the server is running in free play mode.",
+    )
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=body.api_key)
     full_name = player.data.get("full_name", {}).get("answer", "")

@@ -100,8 +100,10 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
 
     await session.step_async("")
     turns_after_enter = session.turns
+    turn_limit = int(str(session.stopping_conditions["turns"][0]).lstrip("<>=!"))
+    active_user_turns = max(0, turn_limit - turns_after_enter)
 
-    for idx, user_input in enumerate(FORESIGHT_TEST_INPUTS):
+    for idx, user_input in enumerate(FORESIGHT_TEST_INPUTS[:active_user_turns]):
         turn_num = idx + 1
         events = await session.step_async(user_input)
 
@@ -118,7 +120,8 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
             f"Turn {turn_num}: turns should be {turns_after_enter + turn_num} (got {session.turns})"
         )
 
-    assert not session.exited, "Session should still be active after 10 turns"
+    assert session.turns == turn_limit, f"Session should reach the configured turn cap of {turn_limit}"
+    assert not session.exited, "Session should stay open until the next input observes the stopping condition"
 
 
 async def test_foresight_complete_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -171,6 +174,29 @@ async def test_foresight_completion_notes_collected(patch_llm_client, _isolate_d
     # Game should exit after notes collected
     assert session.exited, "Session should be exited after completion notes provided"
     assert session.game.completion_notes == "My notes about my predictions."
+
+
+async def test_foresight_complete_command_accepts_inline_notes(
+    patch_llm_client, _isolate_db_state, async_mongo_provider
+):
+    """Inline notes after /complete should finish the game immediately."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
+    )
+
+    await session.step_async("")
+    await session.step_async("I wave my hand")
+
+    complete_events = await session.step_async("/complete The person wants to make friends.")
+
+    info_events = [e for e in complete_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected completion confirmation info event"
+    assert session.exited, "Session should exit when /complete includes inline notes"
+    assert session.game.completion_notes == "The person wants to make friends."
 
 
 async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mongo_provider):

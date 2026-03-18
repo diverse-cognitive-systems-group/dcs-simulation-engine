@@ -19,8 +19,8 @@
 # bootstrap
 docker compose up -d
 
-# start server
-uv run dcs server --mongo-seed-dir="database_seeds/dev"
+# start server in anonymous free-play mode
+uv run dcs server --mongo-seed-dir="database_seeds/dev" --free-play
 
 # start frontend
 cd ui
@@ -29,6 +29,8 @@ bun dev
 # teardown
 docker compose down --volumes 
 ```
+
+Omit `--free-play` to run the standard registration and experiment flow instead.
 
 #### vscode
 
@@ -131,6 +133,7 @@ uv run pytest -m functional
 Programmatic API access is provided by the FastAPI + WebSocket `dcs-server`.
 
 - Start server: `uv run dcs-server`
+- Start server in anonymous free play mode: `uv run dcs server --free-play`
 - Docs: `http://localhost:8000/docs`
 - Python client: `dcs_simulation_engine.client.DCSClient`
 

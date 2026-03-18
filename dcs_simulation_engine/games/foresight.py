@@ -10,7 +10,7 @@ from dcs_simulation_engine.games.ai_client import (
     ValidatorClient,
 )
 from dcs_simulation_engine.games.const import (
-    ForesightV2 as C,
+    Foresight as C,
 )
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
@@ -168,12 +168,22 @@ class ForesightGame(Game):
         if not stripped.startswith(("/", "\\")):
             return None
 
-        cmd = stripped.lstrip("/\\").split()[0].lower()
+        command_body = stripped.lstrip("/\\").strip()
+        if not command_body:
+            return None
+        parts = command_body.split(maxsplit=1)
+        cmd = parts[0].lower()
+        remainder = parts[1].strip() if len(parts) > 1 else ""
 
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
 
         if cmd == Command.COMPLETE:
+            if remainder:
+                self._completion_notes = remainder
+                self._awaiting_completion_notes = False
+                self.exit("game completed")
+                return GameEvent.now(type="info", content="Thank you. Game complete.", command_response=True)
             # Transition to completion-notes collection on the next turn.
             self._awaiting_completion_notes = True
             return GameEvent.now(type="info", content=C.COMPLETE_QUESTION, command_response=True)

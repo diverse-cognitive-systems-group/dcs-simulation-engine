@@ -2,15 +2,11 @@ name: Explore
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A lightweight interaction sandbox that allows users/players to freely explore and interact with characters. There are no goals, no data collection, and no extra mechanics. Useful for demos and open-ended play. (New-style Game implementation — no LangGraph.)
+  A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.
+  There are no goals and no extra mechanics. Useful for demos and open-ended play.
 
-access_settings: {}
-
-data_collection_settings:
-  save_runs: true
-
-# stopping_conditions:
-#   runtime_seconds: [">=600"]
-#   turns: [">=50"]
+stopping_conditions:
+  runtime_seconds: [">=600"]
+  turns: [">=50"]
 
 game_class: dcs_simulation_engine.games.explore.ExploreGame

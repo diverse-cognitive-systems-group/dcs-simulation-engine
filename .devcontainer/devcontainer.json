@@ -28,7 +28,8 @@
                 "charliermarsh.ruff",
                 "ms-azuretools.vscode-docker",
                 "streetsidesoftware.code-spell-checker",
-                "github.vscode-pull-request-github"
+                "github.vscode-pull-request-github",
+                "dbcode.dbcode"
             ],
             "settings": {
                 "editor.formatOnSave": true,

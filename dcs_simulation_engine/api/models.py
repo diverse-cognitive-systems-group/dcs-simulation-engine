@@ -6,9 +6,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
+ServerMode = Literal["standard", "free_play"]
 SessionStatus = Literal["active", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
-SetupDenialReason = Literal["not_allowed", "no_valid_pc", "no_valid_npc"]
+SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
+AssignmentStatus = Literal["assigned", "in_progress", "completed", "interrupted"]
 
 
 class RegistrationRequest(BaseModel):
@@ -44,10 +46,19 @@ class AuthResponse(BaseModel):
     authenticated: bool = True
 
 
+class ServerConfigResponse(BaseModel):
+    """Response payload describing server capabilities for the active mode."""
+
+    mode: ServerMode
+    authentication_required: bool
+    registration_enabled: bool
+    experiments_enabled: bool
+
+
 class CreateGameRequest(BaseModel):
     """Payload for creating a new gameplay session."""
 
-    api_key: str = Field(min_length=1)
+    api_key: str | None = None
     game: str = Field(min_length=1)
     pc_choice: str | None = None
     npc_choice: str | None = None
@@ -79,6 +90,80 @@ class GameSetupOptionsResponse(BaseModel):
     message: str | None = None
     pcs: list[CharacterChoice]
     npcs: list[CharacterChoice]
+
+
+class ExperimentAssignmentSummary(BaseModel):
+    """Assignment summary returned by experiment endpoints."""
+
+    assignment_id: str
+    game_name: str
+    character_hid: str
+    status: AssignmentStatus
+
+
+class ExperimentProgressResponse(BaseModel):
+    """Finite progress payload for the usability experiment."""
+
+    total: int
+    completed: int
+    is_complete: bool
+    quota_per_game: int
+    per_game_counts: dict[str, int]
+
+
+class ExperimentGameStatusResponse(BaseModel):
+    """Per-game status counts for an experiment."""
+
+    total: int
+    completed: int
+    in_progress: int
+
+
+class ExperimentStatusResponse(BaseModel):
+    """Aggregate status payload for an experiment."""
+
+    is_open: bool
+    total: int
+    completed: int
+    per_game: dict[str, ExperimentGameStatusResponse]
+
+
+class ExperimentSetupResponse(BaseModel):
+    """Setup payload for the experiment landing page."""
+
+    experiment_name: str
+    description: str
+    is_open: bool
+    forms: list[dict] = Field(default_factory=list)
+    progress: ExperimentProgressResponse
+    current_assignment: ExperimentAssignmentSummary | None = None
+    pending_post_play: bool = False
+    # True only when the participant has exhausted all assignments available to them.
+    assignment_completed: bool = False
+
+
+class ExperimentPlayerRequest(BaseModel):
+    """Entry-form payload for experiment registration."""
+
+    responses: dict[str, dict]
+
+
+class ExperimentPlayerResponse(BaseModel):
+    """Assignment response after an authenticated player submits before-play forms."""
+
+    assignment: ExperimentAssignmentSummary | None = None
+
+
+class ExperimentSessionRequest(BaseModel):
+    """Payload for creating a session from the current assignment."""
+
+    source: str = Field(default="experiment", min_length=1)
+
+
+class ExperimentPostPlayRequest(BaseModel):
+    """Payload for storing experiment post-play form answers."""
+
+    responses: dict[str, dict]
 
 
 class SessionSummary(BaseModel):

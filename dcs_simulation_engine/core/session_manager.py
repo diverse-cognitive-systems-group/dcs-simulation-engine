@@ -112,14 +112,6 @@ class SessionManager:
         else:
             raise TypeError(f"Invalid game parameter type: {type(game)}")
 
-        is_allowed = getattr(game_config, "is_player_allowed_async", None)
-        if is_allowed is None:
-            allowed = await maybe_await(game_config.is_player_allowed(player_id=player_id, provider=provider))
-        else:
-            allowed = await maybe_await(is_allowed(player_id=player_id, provider=provider))
-        if not allowed:
-            raise PermissionError(f"Player '{player_id}' is not allowed to access this game.")
-
         get_valid = getattr(game_config, "get_valid_characters_async", None)
         if get_valid is None:
             valid_pcs, valid_npcs = await maybe_await(
@@ -253,8 +245,6 @@ class SessionManager:
     async def start_persistence(self, *, session_id: str) -> None:
         """Initialize session + event persistence once session_id is assigned."""
         if self._recorder_open:
-            return
-        if not self.game_config.data_collection_settings.get("save_runs", False):
             return
 
         get_db = getattr(self._provider, "get_db", None)

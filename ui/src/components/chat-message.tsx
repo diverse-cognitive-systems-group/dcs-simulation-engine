@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 // muted bubble style (applied in the JSX below) is used instead.
 const EVENT_STYLES: Record<EventType, string> = {
   ai: '',
-  info: 'opacity-85',
+  info: 'rounded-2xl border border-border/70 bg-muted/40 px-4 py-3',
   error: 'bg-destructive/10 border border-destructive/30 text-destructive rounded-md px-3 py-2',
   warning: 'bg-yellow-50 border border-yellow-300 text-yellow-900 rounded-md px-3 py-2',
 }
@@ -43,7 +43,12 @@ export function ChatMessageBubble({
   const eventType = message.eventType ?? 'ai'
   const time = formatTime(message.timestamp)
   const savedFeedback = message.feedback
-  const canFeedback = !isUser && eventType === 'ai' && typeof message.eventId === 'string'
+  const canFeedback =
+    !isUser &&
+    eventType === 'ai' &&
+    typeof message.eventId === 'string' &&
+    !!onSubmitFeedback &&
+    !!onClearFeedback
   const [confirmedFeedback, setConfirmedFeedback] = useState<MessageFeedback | undefined>(
     savedFeedback,
   )
@@ -77,6 +82,7 @@ export function ChatMessageBubble({
 
   const style = EVENT_STYLES[eventType]
   const activeLiked = composerOpen ? draftLiked : (confirmedFeedback?.liked ?? null)
+  const isInfo = eventType === 'info'
 
   async function handleReactionClick(liked: boolean) {
     if (!message.eventId || feedbackPending) return
@@ -142,8 +148,8 @@ export function ChatMessageBubble({
   }
 
   return (
-    <div className="flex flex-col items-start gap-0.5">
-      <div className="w-full max-w-[min(82vw,76ch)]">
+    <div className={cn('flex flex-col gap-0.5', isInfo ? 'items-center' : 'items-start')}>
+      <div className={cn('w-full', isInfo ? 'max-w-[min(76vw,72ch)]' : 'max-w-[min(82vw,76ch)]')}>
         {/* If the event type has no override style, fall back to the default muted bubble. */}
         <div className={cn('text-sm', style || 'bg-muted rounded-2xl rounded-bl-sm px-4 py-2')}>
           {(eventType === 'error' || eventType === 'warning') && (
@@ -157,12 +163,14 @@ export function ChatMessageBubble({
             paragraphs, lists, code blocks, etc. consistently.
             `prose-sm` keeps the font size small to match the chat context.
           */}
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-sm dark:prose-invert max-w-none [&_code]:rounded [&_code]:bg-muted/70 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.95em] [&_code::before]:content-none [&_code::after]:content-none">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         </div>
-        <div className="flex flex-col items-start gap-2">
-          <span className="pl-1 text-[10px] text-muted-foreground">{time}</span>
+        <div className={cn('flex flex-col gap-2', isInfo ? 'items-center' : 'items-start')}>
+          <span className={cn('text-[10px] text-muted-foreground', isInfo ? '' : 'pl-1')}>
+            {time}
+          </span>
           {canFeedback && (
             <div className="flex w-full flex-col items-start gap-2">
               <div className="flex items-center gap-2">

@@ -19,6 +19,7 @@ from dcs_simulation_engine.api.models import (
     GamesListResponse,
     RegistrationRequest,
     RegistrationResponse,
+    ServerConfigResponse,
     SessionsListResponse,
     UpsertCharacterRequest,
     UpsertCharacterResponse,
@@ -43,7 +44,7 @@ class SimulationRun:
         client: "APIClient",
         session_id: str,
         game_name: str,
-        api_key: str,
+        api_key: str | None,
     ) -> None:
         """Initialize a SimulationRun bound to an existing server-side session."""
         self._client = client
@@ -165,11 +166,17 @@ class APIClient:
     def auth(self, *, api_key: Optional[str] = None) -> AuthResponse:
         """Validate an API key and return player_id + authenticated."""
         key = self._resolve_api_key(api_key)
+        assert key is not None
         return self._request("POST", "/api/player/auth", AuthRequest(api_key=key), AuthResponse)
+
+    def server_config(self) -> ServerConfigResponse:
+        """Fetch server capability flags for the active runtime mode."""
+        return self._request("GET", "/api/server/config", None, ServerConfigResponse)
 
     def list_sessions(self, *, api_key: Optional[str] = None) -> SessionsListResponse:
         """List active in-memory sessions for the authenticated player."""
         key = self._resolve_api_key(api_key)
+        assert key is not None
         return self._request(
             "GET",
             "/api/sessions/list",
@@ -200,19 +207,22 @@ class APIClient:
 
     def start_game(self, body: CreateGameRequest) -> SimulationRun:
         """Create a new simulation session and return a SimulationRun."""
-        key = self._resolve_api_key(body.api_key)
+        key = self._resolve_api_key(body.api_key, required=False)
         response = self._request("POST", "/api/play/game", body, CreateGameResponse)
         return SimulationRun(client=self, session_id=response.session_id, game_name=body.game, api_key=key)
 
     def setup_options(self, *, game_name: str, api_key: Optional[str] = None) -> GameSetupOptionsResponse:
         """Fetch setup authorization and valid character choices for a game."""
-        key = self._resolve_api_key(api_key)
+        key = self._resolve_api_key(api_key, required=False)
+        headers: dict[str, str] = {}
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
         return self._request(
             "GET",
             f"/api/play/setup/{game_name}",
             None,
             GameSetupOptionsResponse,
-            headers={"Authorization": f"Bearer {key}"},
+            headers=headers,
         )
 
     def health(self) -> dict:
@@ -221,11 +231,11 @@ class APIClient:
         response.raise_for_status()
         return response.json()
 
-    def _resolve_api_key(self, api_key: Optional[str]) -> str:
+    def _resolve_api_key(self, api_key: Optional[str], *, required: bool = True) -> str | None:
         key = (api_key or self._default_api_key).strip()
-        if not key:
+        if not key and required:
             raise APIRequestError("API key is required.")
-        return key
+        return key or None
 
     def _request(
         self,
@@ -317,7 +327,7 @@ class APIClient:
         self,
         *,
         session_id: str,
-        api_key: str,
+        api_key: str | None,
         text: Optional[str],
         include_opening: bool,
     ) -> tuple[list[WSEventFrame], WSTurnEndFrame]:
@@ -335,7 +345,10 @@ class APIClient:
         turn_end = WSTurnEndFrame(session_id=session_id, turns=0, exited=False)
 
         ws_url = self._build_ws_url(session_id=session_id)
-        with connect(ws_url, additional_headers={"Authorization": f"Bearer {api_key}"}) as ws:
+        connect_kwargs: dict[str, Any] = {}
+        if api_key:
+            connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
+        with connect(ws_url, **connect_kwargs) as ws:
             if include_opening:
                 # Consume the server-initiated opening turn before sending anything.
                 opening_events, opening_turn_end = self._recv_until_turn_end(ws)
@@ -351,7 +364,7 @@ class APIClient:
 
         return events, turn_end
 
-    def _ws_status(self, *, session_id: str, api_key: str, include_opening: bool) -> WSStatusFrame:
+    def _ws_status(self, *, session_id: str, api_key: str | None, include_opening: bool) -> WSStatusFrame:
         """Fetch session status via WebSocket without advancing a turn.
 
         If include_opening=True, the unsolicited opening turn is consumed first
@@ -359,7 +372,10 @@ class APIClient:
         Sends a WSStatusRequest and returns the WSStatusFrame payload.
         """
         ws_url = self._build_ws_url(session_id=session_id)
-        with connect(ws_url, additional_headers={"Authorization": f"Bearer {api_key}"}) as ws:
+        connect_kwargs: dict[str, Any] = {}
+        if api_key:
+            connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
+        with connect(ws_url, **connect_kwargs) as ws:
             if include_opening:
                 # Must drain the opening turn before the server will accept requests.
                 self._recv_until_turn_end(ws)
@@ -371,7 +387,7 @@ class APIClient:
 
         return frame
 
-    def _ws_close(self, *, session_id: str, api_key: str, include_opening: bool) -> None:
+    def _ws_close(self, *, session_id: str, api_key: str | None, include_opening: bool) -> None:
         """Close a session via WebSocket.
 
         Sends a WSCloseRequest and waits for the server's WSClosedFrame confirmation.
@@ -379,7 +395,10 @@ class APIClient:
         is ready to accept the close message.
         """
         ws_url = self._build_ws_url(session_id=session_id)
-        with connect(ws_url, additional_headers={"Authorization": f"Bearer {api_key}"}) as ws:
+        connect_kwargs: dict[str, Any] = {}
+        if api_key:
+            connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
+        with connect(ws_url, **connect_kwargs) as ws:
             if include_opening:
                 self._recv_until_turn_end(ws)
             ws.send(WSCloseRequest(type="close").model_dump_json())
