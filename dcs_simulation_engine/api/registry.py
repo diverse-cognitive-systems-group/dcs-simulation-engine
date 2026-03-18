@@ -19,9 +19,11 @@ class SessionEntry:
     """Represents one in-memory API session record."""
 
     session_id: str
-    player_id: str
+    player_id: str | None
     game_name: str
     manager: SessionManager
+    experiment_name: str | None = None
+    assignment_id: str | None = None
     status: SessionStatus = "active"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -48,10 +50,25 @@ class SessionRegistry:
         self._lock = RLock()
         self._sweep_task: asyncio.Task[None] | None = None
 
-    def add(self, *, player_id: str, game_name: str, manager: SessionManager) -> SessionEntry:
+    def add(
+        self,
+        *,
+        player_id: str | None,
+        game_name: str,
+        manager: SessionManager,
+        experiment_name: str | None = None,
+        assignment_id: str | None = None,
+    ) -> SessionEntry:
         """Create and store a new session entry."""
         session_id = str(uuid4())
-        entry = SessionEntry(session_id=session_id, player_id=player_id, game_name=game_name, manager=manager)
+        entry = SessionEntry(
+            session_id=session_id,
+            player_id=player_id,
+            game_name=game_name,
+            manager=manager,
+            experiment_name=experiment_name,
+            assignment_id=assignment_id,
+        )
         with self._lock:
             self._store[session_id] = entry
         logger.info("Session %s created (%d active)", session_id, self.size)

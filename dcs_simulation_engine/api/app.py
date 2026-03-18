@@ -2,14 +2,18 @@
 
 from contextlib import asynccontextmanager
 
+from dcs_simulation_engine.api.auth import build_server_config
+from dcs_simulation_engine.api.models import ServerConfigResponse, ServerMode
 from dcs_simulation_engine.api.registry import SessionRegistry
 from dcs_simulation_engine.api.routers import (
     catalog_router,
+    experiments_router,
     play_router,
     sessions_router,
     users_router,
 )
 from dcs_simulation_engine.cli.bootstrap import create_async_provider
+from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import DataProvider
 from fastapi import FastAPI
@@ -30,6 +34,7 @@ def create_app(
     *,
     provider: DataProvider | object | None = None,
     mongo_uri: str | None = None,
+    server_mode: ServerMode = "standard",
     session_ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
     sweep_interval_seconds: int = DEFAULT_SWEEP_INTERVAL_SECONDS,
     cors_origins: list[str] | None = None,
@@ -43,6 +48,7 @@ def create_app(
         if app.state.provider is None:
             app.state.provider = await create_async_provider(mongo_uri=mongo_uri)
         SessionManager.preload_game_configs()
+        ExperimentManager.preload_experiment_configs()
         await registry.start()
         try:
             yield
@@ -59,11 +65,18 @@ def create_app(
     )
     app.state.provider = provider
     app.state.registry = registry
+    app.state.server_mode = server_mode
 
     app.include_router(users_router)
     app.include_router(sessions_router)
     app.include_router(play_router)
+    app.include_router(experiments_router)
     app.include_router(catalog_router)
+
+    @app.get("/api/server/config", response_model=ServerConfigResponse)
+    def server_config() -> ServerConfigResponse:
+        """Expose server capabilities so clients can adapt to the active mode."""
+        return build_server_config(server_mode=server_mode)
 
     @app.get("/healthz")
     def health() -> dict[str, str]:

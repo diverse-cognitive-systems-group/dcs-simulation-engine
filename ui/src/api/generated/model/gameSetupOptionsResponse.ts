@@ -13,7 +13,7 @@ export interface GameSetupOptionsResponse {
   game: string;
   allowed: boolean;
   can_start: boolean;
-  denial_reason?: 'not_allowed' | 'no_valid_pc' | 'no_valid_npc' | null;
+  denial_reason?: 'no_valid_pc' | 'no_valid_npc' | null;
   message?: string | null;
   pcs: CharacterChoice[];
   npcs: CharacterChoice[];

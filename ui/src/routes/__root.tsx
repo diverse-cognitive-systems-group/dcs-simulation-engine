@@ -3,6 +3,7 @@
 
 import { createRootRoute, Outlet, redirect } from '@tanstack/react-router'
 import { isAuthenticated } from '@/lib/auth'
+import { getServerConfig } from '@/lib/server-config'
 
 export const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -10,8 +11,9 @@ export const rootRoute = createRootRoute({
 
 // Guard used in beforeLoad on protected routes. TanStack Router catches the thrown
 // redirect and navigates to /login before the component ever renders.
-export function requireAuth() {
-  if (!isAuthenticated()) {
+export async function requireAuth() {
+  const serverConfig = await getServerConfig()
+  if (serverConfig.authentication_required && !isAuthenticated()) {
     throw redirect({ to: '/login' })
   }
 }

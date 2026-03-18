@@ -3,9 +3,12 @@
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from dcs_simulation_engine.dal.base import (
+    AssignmentRecord,
     CharacterRecord,
+    ExperimentRecord,
     PlayerRecord,
     SessionEventRecord,
     SessionRecord,
@@ -29,6 +32,9 @@ async def _cursor_to_docs(cursor: Any) -> list[dict[str, Any]]:
     if hasattr(cursor, "__aiter__"):
         return [doc async for doc in cursor]
     return list(cursor)
+
+
+ACTIVE_ASSIGNMENT_STATUSES = {"assigned", "in_progress", "interrupted"}
 
 
 def _to_character_record(doc: dict[str, Any]) -> CharacterRecord:
@@ -83,6 +89,44 @@ def _to_session_event_record(doc: dict[str, Any]) -> SessionEventRecord:
         event_type=str(doc.get(MongoColumns.EVENT_TYPE, "")),
         event_source=str(doc.get(MongoColumns.EVENT_SOURCE, "")),
         content=str(doc.get(MongoColumns.CONTENT, "")),
+        data={k: v for k, v in doc.items() if k not in known},
+    )
+
+
+def _to_experiment_record(doc: dict[str, Any]) -> ExperimentRecord:
+    known = {
+        MongoColumns.ID,
+        MongoColumns.NAME,
+        MongoColumns.CREATED_AT,
+        MongoColumns.UPDATED_AT,
+    }
+    return ExperimentRecord(
+        name=str(doc.get(MongoColumns.NAME, "")),
+        created_at=doc.get(MongoColumns.CREATED_AT),
+        updated_at=doc.get(MongoColumns.UPDATED_AT),
+        data={k: v for k, v in doc.items() if k not in known},
+    )
+
+
+def _to_assignment_record(doc: dict[str, Any]) -> AssignmentRecord:
+    known = {
+        MongoColumns.ID,
+        MongoColumns.ASSIGNMENT_ID,
+        MongoColumns.EXPERIMENT_NAME,
+        MongoColumns.PLAYER_ID,
+        MongoColumns.GAME_NAME,
+        MongoColumns.CHARACTER_HID,
+        MongoColumns.STATUS,
+        "assigned_at",
+    }
+    return AssignmentRecord(
+        assignment_id=str(doc.get(MongoColumns.ASSIGNMENT_ID, "")),
+        experiment_name=str(doc.get(MongoColumns.EXPERIMENT_NAME, "")),
+        player_id=str(doc.get(MongoColumns.PLAYER_ID, "")),
+        game_name=str(doc.get(MongoColumns.GAME_NAME, "")),
+        character_hid=str(doc.get(MongoColumns.CHARACTER_HID, "")),
+        status=str(doc.get(MongoColumns.STATUS, "")),
+        assigned_at=doc.get("assigned_at"),
         data={k: v for k, v in doc.items() if k not in known},
     )
 
@@ -413,6 +457,205 @@ class AsyncMongoProvider:
             )
         )
         return True
+
+    async def get_experiment(self, *, experiment_name: str) -> ExperimentRecord | None:
+        """Return one persisted experiment record."""
+        doc = await maybe_await(self._db[MongoColumns.EXPERIMENTS].find_one({MongoColumns.NAME: experiment_name}))
+        if not doc:
+            return None
+        return _to_experiment_record(doc)
+
+    async def upsert_experiment(
+        self,
+        *,
+        experiment_name: str,
+        description: str,
+        config_snapshot: dict[str, Any],
+        progress: dict[str, Any],
+    ) -> ExperimentRecord:
+        """Create or update an experiment metadata row."""
+        now = utc_now()
+        await maybe_await(
+            self._db[MongoColumns.EXPERIMENTS].update_one(
+                {MongoColumns.NAME: experiment_name},
+                {
+                    "$set": {
+                        MongoColumns.NAME: experiment_name,
+                        "description": description,
+                        MongoColumns.CONFIG_SNAPSHOT: config_snapshot,
+                        MongoColumns.PROGRESS: progress,
+                        MongoColumns.UPDATED_AT: now,
+                    },
+                    "$setOnInsert": {MongoColumns.CREATED_AT: now},
+                },
+                upsert=True,
+            )
+        )
+        record = await self.get_experiment(experiment_name=experiment_name)
+        if record is None:
+            raise ValueError(f"Experiment {experiment_name!r} was not persisted")
+        return record
+
+    async def set_experiment_progress(
+        self,
+        *,
+        experiment_name: str,
+        progress: dict[str, Any],
+    ) -> ExperimentRecord | None:
+        """Persist the latest experiment progress snapshot."""
+        now = utc_now()
+        await maybe_await(
+            self._db[MongoColumns.EXPERIMENTS].update_one(
+                {MongoColumns.NAME: experiment_name},
+                {
+                    "$set": {
+                        MongoColumns.PROGRESS: progress,
+                        MongoColumns.UPDATED_AT: now,
+                    }
+                },
+            )
+        )
+        return await self.get_experiment(experiment_name=experiment_name)
+
+    async def create_assignment(self, *, assignment_doc: dict[str, Any]) -> AssignmentRecord:
+        """Persist a new experiment assignment row."""
+        experiment_name = str(assignment_doc.get(MongoColumns.EXPERIMENT_NAME) or "")
+        player_id = str(assignment_doc.get(MongoColumns.PLAYER_ID) or "")
+        if not experiment_name or not player_id:
+            raise ValueError("assignment_doc must include experiment_name and player_id")
+
+        existing = await self.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
+        if existing is not None:
+            raise ValueError("Player already has an active assignment for this experiment")
+
+        now = utc_now()
+        doc = dict(assignment_doc)
+        doc.setdefault(MongoColumns.ASSIGNMENT_ID, str(uuid4()))
+        doc.setdefault(MongoColumns.STATUS, "assigned")
+        doc.setdefault("assigned_at", now)
+        doc.setdefault(MongoColumns.CREATED_AT, now)
+        doc[MongoColumns.UPDATED_AT] = now
+        await maybe_await(self._db[MongoColumns.ASSIGNMENTS].insert_one(doc))
+        record = await self.get_assignment(assignment_id=doc[MongoColumns.ASSIGNMENT_ID])
+        if record is None:
+            raise ValueError("Assignment insert did not persist")
+        return record
+
+    async def get_assignment(self, *, assignment_id: str) -> AssignmentRecord | None:
+        """Return one assignment row by assignment_id."""
+        doc = await maybe_await(
+            self._db[MongoColumns.ASSIGNMENTS].find_one({MongoColumns.ASSIGNMENT_ID: assignment_id})
+        )
+        if not doc:
+            return None
+        return _to_assignment_record(doc)
+
+    async def get_active_assignment(self, *, experiment_name: str, player_id: str) -> AssignmentRecord | None:
+        """Return the current active assignment for one player in one experiment."""
+        cursor = self._db[MongoColumns.ASSIGNMENTS].find(
+            {
+                MongoColumns.EXPERIMENT_NAME: experiment_name,
+                MongoColumns.PLAYER_ID: player_id,
+                MongoColumns.STATUS: {"$in": sorted(ACTIVE_ASSIGNMENT_STATUSES)},
+            }
+        )
+        sorter = getattr(cursor, "sort", None)
+        if callable(sorter):
+            cursor = sorter(MongoColumns.UPDATED_AT, -1)
+        docs = await _cursor_to_docs(cursor)
+        if not docs:
+            return None
+        return _to_assignment_record(docs[0])
+
+    async def get_latest_experiment_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the newest experiment assignment for one player."""
+        cursor = self._db[MongoColumns.ASSIGNMENTS].find({MongoColumns.PLAYER_ID: player_id})
+        sorter = getattr(cursor, "sort", None)
+        if callable(sorter):
+            cursor = sorter(MongoColumns.UPDATED_AT, -1)
+        docs = await _cursor_to_docs(cursor)
+        if not docs:
+            return None
+        return _to_assignment_record(docs[0])
+
+    async def list_assignments(
+        self,
+        *,
+        experiment_name: str,
+        player_id: str | None = None,
+        statuses: list[str] | None = None,
+        game_name: str | None = None,
+    ) -> list[AssignmentRecord]:
+        """List assignment rows matching the requested filters."""
+        query: dict[str, Any] = {MongoColumns.EXPERIMENT_NAME: experiment_name}
+        if player_id is not None:
+            query[MongoColumns.PLAYER_ID] = player_id
+        if statuses:
+            query[MongoColumns.STATUS] = {"$in": list(statuses)}
+        if game_name is not None:
+            query[MongoColumns.GAME_NAME] = game_name
+
+        cursor = self._db[MongoColumns.ASSIGNMENTS].find(query)
+        sorter = getattr(cursor, "sort", None)
+        if callable(sorter):
+            cursor = sorter("assigned_at", 1)
+        docs = await _cursor_to_docs(cursor)
+        return [_to_assignment_record(doc) for doc in docs]
+
+    async def update_assignment_status(
+        self,
+        *,
+        assignment_id: str,
+        status: str,
+        active_session_id: str | None = None,
+    ) -> AssignmentRecord | None:
+        """Update assignment status and lifecycle timestamps."""
+        now = utc_now()
+        updates: dict[str, Any] = {
+            MongoColumns.STATUS: status,
+            MongoColumns.UPDATED_AT: now,
+        }
+        if status == "assigned":
+            updates.setdefault("assigned_at", now)
+            updates[MongoColumns.ACTIVE_SESSION_ID] = None
+        elif status == "in_progress":
+            updates["started_at"] = now
+            updates[MongoColumns.ACTIVE_SESSION_ID] = active_session_id
+        elif status == "completed":
+            updates["completed_at"] = now
+            updates[MongoColumns.ACTIVE_SESSION_ID] = None
+        elif status == "interrupted":
+            updates["interrupted_at"] = now
+            updates[MongoColumns.ACTIVE_SESSION_ID] = None
+
+        await maybe_await(
+            self._db[MongoColumns.ASSIGNMENTS].update_one(
+                {MongoColumns.ASSIGNMENT_ID: assignment_id},
+                {"$set": updates},
+            )
+        )
+        return await self.get_assignment(assignment_id=assignment_id)
+
+    async def set_assignment_form_response(
+        self,
+        *,
+        assignment_id: str,
+        form_key: str,
+        response: dict[str, Any],
+    ) -> AssignmentRecord | None:
+        """Store one form response payload on an assignment row."""
+        await maybe_await(
+            self._db[MongoColumns.ASSIGNMENTS].update_one(
+                {MongoColumns.ASSIGNMENT_ID: assignment_id},
+                {
+                    "$set": {
+                        f"{MongoColumns.FORM_RESPONSES}.{form_key}": response,
+                        MongoColumns.UPDATED_AT: utc_now(),
+                    }
+                },
+            )
+        )
+        return await self.get_assignment(assignment_id=assignment_id)
 
     async def get_session_reconstruction(
         self,

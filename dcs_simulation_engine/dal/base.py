@@ -46,6 +46,28 @@ class SessionEventRecord(NamedTuple):
     data: dict[str, Any]
 
 
+class ExperimentRecord(NamedTuple):
+    """A persisted experiment metadata record."""
+
+    name: str
+    created_at: Any
+    updated_at: Any
+    data: dict[str, Any]
+
+
+class AssignmentRecord(NamedTuple):
+    """A persisted experiment assignment row."""
+
+    assignment_id: str
+    experiment_name: str
+    player_id: str
+    game_name: str
+    character_hid: str
+    status: str
+    assigned_at: Any
+    data: dict[str, Any]
+
+
 class DataProvider:
     """Abstract data provider interface.
 
@@ -130,4 +152,75 @@ class DataProvider:
         event_id: str,
     ) -> bool:
         """Remove feedback from a persisted NPC-message event."""
+        raise NotImplementedError
+
+    def get_experiment(self, *, experiment_name: str) -> ExperimentRecord | None:
+        """Return a persisted experiment record by name."""
+        raise NotImplementedError
+
+    def upsert_experiment(
+        self,
+        *,
+        experiment_name: str,
+        description: str,
+        config_snapshot: dict[str, Any],
+        progress: dict[str, Any],
+    ) -> ExperimentRecord:
+        """Create or update a persisted experiment metadata record."""
+        raise NotImplementedError
+
+    def set_experiment_progress(
+        self,
+        *,
+        experiment_name: str,
+        progress: dict[str, Any],
+    ) -> ExperimentRecord | None:
+        """Persist the latest experiment progress snapshot."""
+        raise NotImplementedError
+
+    def create_assignment(self, *, assignment_doc: dict[str, Any]) -> AssignmentRecord:
+        """Persist a new experiment assignment row."""
+        raise NotImplementedError
+
+    def get_assignment(self, *, assignment_id: str) -> AssignmentRecord | None:
+        """Return one assignment row by assignment id."""
+        raise NotImplementedError
+
+    def get_active_assignment(self, *, experiment_name: str, player_id: str) -> AssignmentRecord | None:
+        """Return the current active assignment for one player in one experiment."""
+        raise NotImplementedError
+
+    def get_latest_experiment_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the newest experiment assignment for one player across experiments."""
+        raise NotImplementedError
+
+    def list_assignments(
+        self,
+        *,
+        experiment_name: str,
+        player_id: str | None = None,
+        statuses: list[str] | None = None,
+        game_name: str | None = None,
+    ) -> list[AssignmentRecord]:
+        """List experiment assignments matching the provided filters."""
+        raise NotImplementedError
+
+    def update_assignment_status(
+        self,
+        *,
+        assignment_id: str,
+        status: str,
+        active_session_id: str | None = None,
+    ) -> AssignmentRecord | None:
+        """Update assignment status and lifecycle timestamps."""
+        raise NotImplementedError
+
+    def set_assignment_form_response(
+        self,
+        *,
+        assignment_id: str,
+        form_key: str,
+        response: dict[str, Any],
+    ) -> AssignmentRecord | None:
+        """Store one experiment form response payload on an assignment row."""
         raise NotImplementedError

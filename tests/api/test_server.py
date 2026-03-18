@@ -6,6 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from dcs_simulation_engine.api.app import create_app
+from dcs_simulation_engine.core.forms import (
+    ExperimentForm,
+    ExperimentFormQuestion,
+)
 from dcs_simulation_engine.dal.base import PlayerRecord
 from fastapi.testclient import TestClient
 
@@ -93,6 +97,7 @@ def mock_provider() -> MagicMock:
 
     provider.get_players.side_effect = _get_players
     provider.create_player.return_value = (owner, "valid-key")
+    provider.get_latest_experiment_assignment_for_player.return_value = None
     return provider
 
 
@@ -101,6 +106,19 @@ def client(mock_provider: MagicMock) -> TestClient:
     """Build a TestClient over the API app with mocked provider wiring."""
     app = create_app(
         provider=mock_provider,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def free_play_client(mock_provider: MagicMock) -> TestClient:
+    """Build a TestClient configured for anonymous free-play mode."""
+    app = create_app(
+        provider=mock_provider,
+        server_mode="free_play",
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
@@ -117,11 +135,15 @@ def test_app_lifespan_preloads_game_configs(mock_provider: MagicMock) -> None:
         sweep_interval_seconds=3600,
     )
 
-    with patch("dcs_simulation_engine.api.app.SessionManager.preload_game_configs") as preload_mock:
+    with (
+        patch("dcs_simulation_engine.api.app.SessionManager.preload_game_configs") as preload_mock,
+        patch("dcs_simulation_engine.api.app.ExperimentManager.preload_experiment_configs") as preload_experiments_mock,
+    ):
         with TestClient(app):
             pass
 
     preload_mock.assert_called_once_with()
+    preload_experiments_mock.assert_called_once_with()
 
 
 @pytest.mark.unit
@@ -160,6 +182,34 @@ def test_auth_success_and_failure(client: TestClient) -> None:
 
 
 @pytest.mark.unit
+def test_server_config_reports_standard_mode(client: TestClient) -> None:
+    """Server config should advertise standard-mode capabilities by default."""
+    response = client.get("/api/server/config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "mode": "standard",
+        "authentication_required": True,
+        "registration_enabled": True,
+        "experiments_enabled": True,
+    }
+
+
+@pytest.mark.unit
+def test_server_config_reports_free_play_mode(free_play_client: TestClient) -> None:
+    """Server config should advertise anonymous capabilities in free-play mode."""
+    response = free_play_client.get("/api/server/config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "mode": "free_play",
+        "authentication_required": False,
+        "registration_enabled": False,
+        "experiments_enabled": False,
+    }
+
+
+@pytest.mark.unit
 def test_create_game_and_list_sessions(client: TestClient) -> None:
     """Play creation registers an in-memory session visible in list endpoint."""
     manager = DummySessionManager()
@@ -190,6 +240,92 @@ def test_create_game_and_list_sessions(client: TestClient) -> None:
     assert len(sessions) == 1
     assert sessions[0]["session_id"] == session_id
     assert sessions[0]["status"] == "active"
+
+
+@pytest.mark.unit
+def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestClient) -> None:
+    """Free-play setup should not require an Authorization header."""
+    setup_config = SimpleNamespace(
+        name="Explore",
+        get_valid_characters=lambda **_kwargs: ([("PC Alpha", "pc-1")], [("NPC Beta", "npc-2")]),
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
+        return_value=setup_config,
+    ):
+        response = free_play_client.get("/api/play/setup/explore")
+
+    assert response.status_code == 200
+    assert response.json()["can_start"] is True
+    assert response.json()["pcs"] == [{"hid": "pc-1", "label": "PC Alpha"}]
+
+
+@pytest.mark.unit
+def test_free_play_create_game_and_websocket_without_auth(free_play_client: TestClient) -> None:
+    """Free-play should support anonymous session creation and websocket play."""
+    manager = DummySessionManager()
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = free_play_client.post(
+            "/api/play/game",
+            json={
+                "game": "explore",
+                "pc_choice": None,
+                "npc_choice": None,
+                "source": "api",
+            },
+        )
+
+    assert create_resp.status_code == 200
+    session_id = create_resp.json()["session_id"]
+
+    with free_play_client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+        opening_event = ws.receive_json()
+        opening_turn_end = ws.receive_json()
+
+        assert opening_event["type"] == "event"
+        assert opening_event["content"] == "opening"
+        assert opening_turn_end["type"] == "turn_end"
+
+        ws.send_json({"type": "advance", "text": "hello"})
+        advance_event = ws.receive_json()
+        advance_turn_end = ws.receive_json()
+
+        assert advance_event["type"] == "event"
+        assert advance_event["content"] == "echo:hello"
+        assert advance_turn_end["turns"] == 2
+
+        ws.send_json({"type": "close"})
+        assert ws.receive_json() == {"type": "closed", "session_id": session_id}
+
+
+@pytest.mark.unit
+def test_free_play_disables_player_experiment_and_session_prefixes(
+    free_play_client: TestClient,
+) -> None:
+    """Free-play should reject registration, experiments, and session APIs with 409s."""
+    registration = free_play_client.post(
+        "/api/player/registration",
+        json={
+            "full_name": "Ada Lovelace",
+            "email": "ada@example.com",
+            "phone_number": "+1 555 123 4567",
+            "prior_experience": "none",
+            "additional_comments": "n/a",
+            "consent_to_followup": True,
+            "consent_signature": "Ada",
+        },
+    )
+    experiment = free_play_client.get("/api/experiments/usability-ca/setup")
+    sessions = free_play_client.get("/api/sessions/list")
+
+    assert registration.status_code == 409
+    assert "free play mode" in registration.json()["detail"].lower()
+    assert experiment.status_code == 409
+    assert sessions.status_code == 409
 
 
 @pytest.mark.unit
@@ -267,7 +403,6 @@ def test_setup_options_returns_allowed_choices(client: TestClient) -> None:
     """Setup preflight returns valid player-scoped character choices."""
     setup_config = SimpleNamespace(
         name="Explore",
-        is_player_allowed=lambda **_kwargs: True,
         get_valid_characters=lambda **_kwargs: ([("PC Alpha", "pc-1")], [("NPC Beta", "npc-2")]),
     )
 
@@ -295,38 +430,10 @@ def test_setup_options_returns_allowed_choices(client: TestClient) -> None:
 
 
 @pytest.mark.unit
-def test_setup_options_denies_unauthorized_player(client: TestClient) -> None:
-    """Setup preflight blocks players that fail game access checks."""
-    setup_config = SimpleNamespace(
-        name="Foresight",
-        is_player_allowed=lambda **_kwargs: False,
-        get_valid_characters=lambda **_kwargs: ([], []),
-    )
-
-    with (
-        patch(
-            "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
-            return_value=setup_config,
-        ),
-    ):
-        response = client.get(
-            "/api/play/setup/foresight",
-            headers={"Authorization": "Bearer valid-key"},
-        )
-
-    assert response.status_code == 200
-    assert response.json()["allowed"] is False
-    assert response.json()["can_start"] is False
-    assert response.json()["denial_reason"] == "not_allowed"
-    assert "not authorized" in response.json()["message"]
-
-
-@pytest.mark.unit
 def test_setup_options_handles_missing_valid_characters(client: TestClient) -> None:
     """Setup preflight reports when no valid PCs are available for the player."""
     setup_config = SimpleNamespace(
         name="Explore",
-        is_player_allowed=lambda **_kwargs: True,
         get_valid_characters=lambda **_kwargs: ([], [("NPC Beta", "npc-2")]),
     )
 
@@ -481,3 +588,288 @@ def test_session_event_feedback_clear_flushes_live_session_and_persists(
     assert kwargs["session_id"] == session_id
     assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
+
+
+@pytest.mark.unit
+def test_experiment_setup_returns_metadata_and_assignment_state(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Experiment setup should return forms, progress, and the current assignment state."""
+    form = ExperimentForm(
+        name="intake",
+        before_or_after="before",
+        questions=[
+            ExperimentFormQuestion(
+                key="full_name",
+                prompt="Full Name",
+                answer_type="string",
+                required=True,
+            )
+        ],
+    )
+    assignment = SimpleNamespace(
+        assignment_id="asg-1",
+        game_name="Explore",
+        character_hid="pc-1",
+        status="assigned",
+    )
+
+    with (
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.get_experiment_config_cached",
+            return_value=SimpleNamespace(
+                name="usability-ca",
+                description="Usability study",
+                forms=[form],
+            ),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.ensure_experiment_async",
+            new=AsyncMock(),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.compute_progress_async",
+            new=AsyncMock(
+                return_value={
+                    "total": 20,
+                    "completed": 4,
+                    "is_complete": False,
+                    "quota_per_game": 5,
+                    "per_game_counts": {"Explore": 1},
+                }
+            ),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.get_player_state_async",
+            new=AsyncMock(
+                return_value={
+                    "active_assignment": assignment,
+                    "pending_post_play": None,
+                    "has_finished_experiment": False,
+                    "has_submitted_before_forms": True,
+                    "assignments": [assignment],
+                }
+            ),
+        ),
+    ):
+        response = client.get(
+            "/api/experiments/usability-ca/setup",
+            headers={"Authorization": "Bearer valid-key"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["experiment_name"] == "usability-ca"
+    assert payload["current_assignment"]["assignment_id"] == "asg-1"
+    assert payload["progress"]["quota_per_game"] == 5
+    assert payload["pending_post_play"] is False
+    assert payload["forms"][0]["name"] == "intake"
+
+
+@pytest.mark.unit
+def test_experiment_before_play_submission_returns_assignment(
+    client: TestClient,
+) -> None:
+    """Experiment before-play submission should return the current assignment for the signed-in player."""
+    assignment = SimpleNamespace(
+        assignment_id="asg-2",
+        game_name="Foresight",
+        character_hid="pc-2",
+        status="assigned",
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_before_play_async",
+        new=AsyncMock(return_value=assignment),
+    ):
+        response = client.post(
+            "/api/experiments/usability-ca/players",
+            headers={"Authorization": "Bearer valid-key"},
+            json={"responses": {"intake": {"full_name": "Ada"}}},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "assignment": {
+            "assignment_id": "asg-2",
+            "game_name": "Foresight",
+            "character_hid": "pc-2",
+            "status": "assigned",
+        },
+    }
+
+
+@pytest.mark.unit
+def test_experiment_setup_requires_auth(client: TestClient) -> None:
+    """Experiment setup should not expose progress or state without authentication."""
+    response = client.get("/api/experiments/usability-ca/setup")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.unit
+def test_experiment_session_creation_returns_ws_path(
+    client: TestClient,
+) -> None:
+    """Experiment session creation should return the websocket path for the assigned session."""
+    entry = SimpleNamespace(session_id="sess-exp-1")
+    assignment = SimpleNamespace(assignment_id="asg-3")
+
+    with patch(
+        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.start_assignment_session_async",
+        new=AsyncMock(return_value=(entry, assignment)),
+    ):
+        response = client.post(
+            "/api/experiments/usability-ca/sessions",
+            headers={"Authorization": "Bearer valid-key"},
+            json={"source": "experiment"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "session_id": "sess-exp-1",
+        "status": "active",
+        "ws_path": "/api/play/game/sess-exp-1/ws",
+    }
+
+
+@pytest.mark.unit
+def test_generic_play_blocks_experiment_gated_players(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Generic play endpoints should reject players who are assigned through an experiment."""
+    mock_provider.get_latest_experiment_assignment_for_player.return_value = SimpleNamespace(
+        experiment_name="usability-ca",
+    )
+
+    response = client.post(
+        "/api/play/game",
+        json={"api_key": "valid-key", "game": "explore", "source": "api"},
+    )
+
+    assert response.status_code == 403
+    assert "experiment" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit
+def test_experiment_websocket_close_updates_assignment_status(client: TestClient) -> None:
+    """Closing an experiment session should sync the assignment terminal state."""
+    manager = DummySessionManager()
+
+    def _start_session(*, provider, registry, experiment_name, player, source):
+        entry = registry.add(
+            player_id=player.id,
+            game_name="Explore",
+            manager=manager,  # type: ignore[arg-type]
+            experiment_name=experiment_name,
+            assignment_id="asg-live-1",
+        )
+        return entry, SimpleNamespace(assignment_id="asg-live-1")
+
+    with (
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.start_assignment_session_async",
+            new=AsyncMock(side_effect=_start_session),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.play.ExperimentManager.handle_session_terminal_state_async",
+            new=AsyncMock(),
+        ) as handle_terminal_mock,
+    ):
+        create_resp = client.post(
+            "/api/experiments/usability-ca/sessions",
+            headers={"Authorization": "Bearer valid-key"},
+            json={"source": "experiment"},
+        )
+        session_id = create_resp.json()["session_id"]
+
+        with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+            ws.send_json({"type": "auth", "api_key": "valid-key"})
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json({"type": "close"})
+            assert ws.receive_json() == {"type": "closed", "session_id": session_id}
+
+    handle_terminal_mock.assert_awaited_once()
+    kwargs = handle_terminal_mock.await_args.kwargs
+    assert kwargs["experiment_name"] == "usability-ca"
+    assert kwargs["assignment_id"] == "asg-live-1"
+
+
+@pytest.mark.unit
+def test_experiment_post_play_submission_persists_response(client: TestClient) -> None:
+    """Experiment post-play submission should target the latest completed assignment."""
+    assignment = SimpleNamespace(
+        assignment_id="asg-complete-1",
+        game_name="Explore",
+        character_hid="pc-1",
+        status="completed",
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.store_post_play_async",
+        new=AsyncMock(return_value=assignment),
+    ):
+        response = client.post(
+            "/api/experiments/usability-ca/post-play",
+            headers={"Authorization": "Bearer valid-key"},
+            json={"responses": {"usability_feedback": {"usability_issues": "None"}}},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "assignment_id": "asg-complete-1",
+        "game_name": "Explore",
+        "character_hid": "pc-1",
+        "status": "completed",
+    }
+
+
+@pytest.mark.unit
+def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
+    """Experiment status should return only the aggregate status fields."""
+    with (
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.ensure_experiment_async",
+            new=AsyncMock(),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.compute_status_async",
+            new=AsyncMock(
+                return_value={
+                    "is_open": True,
+                    "total": 20,
+                    "completed": 4,
+                    "per_game": {
+                        "Explore": {"total": 5, "completed": 2, "in_progress": 1},
+                        "Foresight": {"total": 5, "completed": 1, "in_progress": 0},
+                    },
+                }
+            ),
+        ),
+    ):
+        response = client.get(
+            "/api/experiments/usability-ca/status",
+            headers={"Authorization": "Bearer valid-key"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "is_open": True,
+        "total": 20,
+        "completed": 4,
+        "per_game": {
+            "Explore": {"total": 5, "completed": 2, "in_progress": 1},
+            "Foresight": {"total": 5, "completed": 1, "in_progress": 0},
+        },
+    }
+
+
+@pytest.mark.unit
+def test_experiment_status_requires_auth(client: TestClient) -> None:
+    """Experiment status should not be exposed without authentication."""
+    response = client.get("/api/experiments/usability-ca/status")
+
+    assert response.status_code == 401

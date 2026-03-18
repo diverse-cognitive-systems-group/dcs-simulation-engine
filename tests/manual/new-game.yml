@@ -5,16 +5,6 @@ authors: ["DCS"]
 description: |
   A demo
 
-### ACCESS SETTINGS ###
-access_settings:
-  user:
-    valid:
-      players: {}  # open to any players
-
-### DATA COLLECTION SETTINGS ###
-data_collection_settings:
-  save_runs: false
-
 ### ADDITIONAL STOPPING CRITERIA ###
 stopping_conditions:
   runtime_seconds: [">=300"] # stop after 5 minutes

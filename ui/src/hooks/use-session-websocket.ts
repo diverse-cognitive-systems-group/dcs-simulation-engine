@@ -66,8 +66,10 @@ export function useSessionWebSocket(sessionId: string) {
       if (cancelled) return
       // The server requires an auth frame before it will send any game events.
       const apiKey = getApiKey()
-      socket.send(JSON.stringify({ type: 'auth', api_key: apiKey }))
-      setWsState('auth')
+      if (apiKey) {
+        socket.send(JSON.stringify({ type: 'auth', api_key: apiKey }))
+        setWsState('auth')
+      }
     }
 
     socket.onmessage = (ev) => {
@@ -105,6 +107,7 @@ export function useSessionWebSocket(sessionId: string) {
             timestamp: Date.now(),
           },
         ])
+        setWaiting(false)
       }
 
       if (frame.type === 'turn_end') {
@@ -115,6 +118,7 @@ export function useSessionWebSocket(sessionId: string) {
 
       if (frame.type === 'closed') {
         setWsState('closed')
+        setWaiting(false)
         socket.close()
       }
     }
