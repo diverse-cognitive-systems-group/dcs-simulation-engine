@@ -52,6 +52,11 @@ def server(
         "--fake-ai-response",
         help="Return this string for all AI responses instead of calling OpenRouter.",
     ),
+    free_play: bool = typer.Option(
+        False,
+        "--free-play",
+        help="Run the server in anonymous free play mode without registration or experiments.",
+    ),
 ) -> None:
     """Start the DCS API server."""
     import uvicorn
@@ -67,6 +72,7 @@ def server(
         app = create_app(
             provider=None,
             mongo_uri=mongo_uri,
+            server_mode="free_play" if free_play else "standard",
             session_ttl_seconds=ttl_seconds,
             sweep_interval_seconds=sweep_interval_seconds,
         )

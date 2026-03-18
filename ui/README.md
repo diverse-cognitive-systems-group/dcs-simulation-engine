@@ -1,6 +1,6 @@
 # DCS Simulation UI
 
-A browser-based interface for the DCS (Decision and Communication Simulation) engine. Players register with a one-time access key, browse available simulation games, configure a session by selecting characters, and then interact with an AI-driven scenario in real time over a WebSocket connection.
+A browser-based interface for the DCS (Decision and Communication Simulation) engine. In standard mode, players register with a one-time access key, browse available simulation games, configure a session by selecting characters, and then interact with an AI-driven scenario in real time over a WebSocket connection. In server free-play mode, the UI skips login/registration and lands users directly in anonymous game selection.
 
 ## Prerequisites
 
@@ -8,6 +8,8 @@ A browser-based interface for the DCS (Decision and Communication Simulation) en
 - The DCS API server running on port 8000 — see `dcs_simulation_engine/api/`
 
 The Vite dev server proxies `/api/` to `http://localhost:8000`, so the API server must be running before you start the UI.
+
+For anonymous local play, start the backend with `uv run dcs server --free-play`.
 
 ## Getting Started
 
@@ -59,9 +61,9 @@ src/
 ├── routes/
 │   ├── routeTree.ts          # Assembles all routes into the tree passed to createRouter
 │   ├── __root.tsx            # Root route (renders <Outlet />) and requireAuth guard
-│   ├── index.tsx             # "/" — redirects to /games or /login based on auth state
-│   ├── login.tsx             # "/login" — access-key login form
-│   ├── signup.tsx            # "/signup" — participant registration form
+│   ├── index.tsx             # "/" — redirects based on server mode and auth state
+│   ├── login.tsx             # "/login" — access-key login form (standard mode only)
+│   ├── signup.tsx            # "/signup" — participant registration form (standard mode only)
 │   ├── games/
 │   │   ├── index.tsx         # "/games" — grid of available games
 │   │   └── $gameName.tsx     # "/games/:gameName" — character selection and session creation
@@ -125,6 +127,8 @@ The generated files are committed to the repository. Do not edit them by hand; a
 
 ## Authentication
 
-Authentication uses a bearer access key issued at registration. The key is stored in `sessionStorage`, which is scoped to the current browser tab and cleared automatically when the tab closes. There are no refresh tokens or persistent sessions; closing the tab requires signing in again.
+Authentication uses a bearer access key issued at registration when the server runs in standard mode. The key is stored in `sessionStorage`, which is scoped to the current browser tab and cleared automatically when the tab closes. There are no refresh tokens or persistent sessions; closing the tab requires signing in again.
 
 For authenticated app API calls, the key is sent as an `Authorization: Bearer <key>` header (via `src/api/http.ts`). Login (`/api/player/auth`) and registration (`/api/player/registration`) are unauthenticated bootstrap requests. The key is also sent as an `auth` WebSocket frame at the start of each game session (via `src/hooks/use-session-websocket.ts`).
+
+When the server runs with `--free-play`, the UI discovers that mode from `/api/server/config`, hides auth/experiment flows, and starts gameplay without any stored access key.

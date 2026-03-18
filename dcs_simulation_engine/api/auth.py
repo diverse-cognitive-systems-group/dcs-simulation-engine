@@ -2,6 +2,7 @@
 
 from typing import Any, cast
 
+from dcs_simulation_engine.api.models import ServerConfigResponse, ServerMode
 from dcs_simulation_engine.api.registry import SessionRegistry
 from dcs_simulation_engine.dal.base import DataProvider, PlayerRecord
 from dcs_simulation_engine.utils.async_utils import maybe_await
@@ -26,6 +27,38 @@ def get_provider_from_websocket(websocket: WebSocket) -> DataProvider:
 def get_registry_from_websocket(websocket: WebSocket) -> SessionRegistry:
     """Fetch the session registry stored on app state for a WebSocket connection."""
     return cast(SessionRegistry, websocket.app.state.registry)
+
+
+def get_server_mode_from_request(request: Request) -> ServerMode:
+    """Fetch the configured server mode from app state for an HTTP request."""
+    return cast(ServerMode, getattr(request.app.state, "server_mode", "standard"))
+
+
+def get_server_mode_from_websocket(websocket: WebSocket) -> ServerMode:
+    """Fetch the configured server mode from app state for a WebSocket connection."""
+    return cast(ServerMode, getattr(websocket.app.state, "server_mode", "standard"))
+
+
+def build_server_config(*, server_mode: ServerMode) -> ServerConfigResponse:
+    """Translate the active mode into frontend-readable capability flags."""
+    is_standard = server_mode == "standard"
+    return ServerConfigResponse(
+        mode=server_mode,
+        authentication_required=is_standard,
+        registration_enabled=is_standard,
+        experiments_enabled=is_standard,
+    )
+
+
+def require_standard_mode(*, server_mode: ServerMode, detail: str) -> None:
+    """Raise a 409 when an endpoint is disabled in free-play mode."""
+    if server_mode != "standard":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+
+def require_standard_mode_from_request(request: Request, *, detail: str) -> None:
+    """Ensure an HTTP endpoint is only used while the server runs in standard mode."""
+    require_standard_mode(server_mode=get_server_mode_from_request(request), detail=detail)
 
 
 def _extract_bearer(authorization: str | None) -> str | None:

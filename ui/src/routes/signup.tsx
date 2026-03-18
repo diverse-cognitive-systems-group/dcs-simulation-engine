@@ -1,7 +1,7 @@
 // Registration page at /signup. Collects participant info, validates with Zod,
 // and on success shows a one-time access key that the user must copy before continuing.
 
-import { createRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { z } from 'zod'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -18,6 +18,7 @@ import {
   REGISTRATION_FAILED,
   SERVER_ERROR,
 } from '@/lib/api-errors'
+import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
 // Zod schema defines the shape and validation rules for the form.
@@ -420,5 +421,11 @@ function SignupPage() {
 export const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/signup',
+  beforeLoad: async () => {
+    const serverConfig = await getServerConfig()
+    if (serverConfig.mode === 'free_play') {
+      throw redirect({ to: '/games' })
+    }
+  },
   component: SignupPage,
 })

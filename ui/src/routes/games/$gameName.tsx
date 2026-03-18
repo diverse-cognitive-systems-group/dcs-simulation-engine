@@ -2,7 +2,7 @@
 // then POSTs to create a session and navigates to the play view.
 
 import { useQuery } from '@tanstack/react-query'
-import { createRoute, useNavigate, useParams } from '@tanstack/react-router'
+import { createRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { useCreateGameApiPlayGamePost } from '@/api/generated'
 import { HttpError, httpClient } from '@/api/http'
@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getApiKey } from '@/lib/auth'
+import { getActiveExperimentName, getApiKey } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
+import { getServerConfig } from '@/lib/server-config'
 import { requireAuth, rootRoute } from '../__root'
 
 interface CharacterChoice {
@@ -120,7 +121,7 @@ function GameSetupPage() {
         await navigate({
           to: '/play/$sessionId',
           params: { sessionId: result.session_id },
-          search: { gameName },
+          search: { gameName, experimentName: '' },
         })
       },
       onError: (err) => {
@@ -142,7 +143,7 @@ function GameSetupPage() {
     setError(null)
     createGame({
       data: {
-        api_key: getApiKey() ?? '',
+        api_key: getApiKey() || undefined,
         game: gameName,
         pc_choice: resolvedPc || null,
         npc_choice: resolvedNpc || null,
@@ -304,6 +305,21 @@ function GameSetupPage() {
 export const gameSetupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/games/$gameName',
-  beforeLoad: requireAuth,
+  beforeLoad: async () => {
+    const serverConfig = await getServerConfig()
+    if (serverConfig.authentication_required) {
+      await requireAuth()
+    }
+    if (serverConfig.mode === 'free_play') {
+      return
+    }
+    const experimentName = getActiveExperimentName()
+    if (experimentName) {
+      throw redirect({
+        to: '/experiments/$experimentName',
+        params: { experimentName },
+      })
+    }
+  },
   component: GameSetupPage,
 })

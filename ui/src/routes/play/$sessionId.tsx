@@ -2,7 +2,7 @@
 // renders the chat transcript, and lets the player submit turns.
 
 import { createRoute, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   useClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete,
   useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost,
@@ -18,15 +18,53 @@ import { Textarea } from '@/components/ui/textarea'
 import type { MessageFeedback } from '@/hooks/use-session-websocket'
 import { useSessionWebSocket } from '@/hooks/use-session-websocket'
 import { unwrapOrvalData } from '@/lib/orval-response'
+import { getServerConfig, peekServerConfig } from '@/lib/server-config'
+import { cn } from '@/lib/utils'
 import { requireAuth, rootRoute } from '../__root'
 
 // TODO: We should probably have a shared config file for both server and UI
 const MAX_INPUT_LENGTH = 350
 
+interface CommandSuggestion {
+  command: string
+  description: string
+}
+
+const SESSION_COMMANDS: CommandSuggestion[] = [
+  { command: '/exit', description: 'Leave the current session.' },
+  { command: '/quit', description: 'Alias for /exit.' },
+  { command: '/feedback', description: 'Send quick session feedback with optional text.' },
+]
+
+const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
+  explore: [
+    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/abilities', description: 'Show your character and NPC abilities.' },
+  ],
+  goalhorizon: [
+    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/abilities', description: 'Show your character and NPC abilities.' },
+  ],
+  inferintent: [
+    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/abilities', description: 'Show your character abilities.' },
+    { command: '/guess', description: 'Submit your intent inference and finish the game.' },
+  ],
+  foresight: [
+    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/complete', description: 'Finish the game and submit your prediction notes.' },
+  ],
+}
+
+function normalizeGameName(value: string): string {
+  return value.replace(/[\s_-]+/g, '').toLowerCase()
+}
+
 function PlayPage() {
   const { sessionId } = useParams({ from: '/play/$sessionId' })
-  const { gameName } = useSearch({ from: '/play/$sessionId' })
+  const { gameName, experimentName } = useSearch({ from: '/play/$sessionId' })
   const navigate = useNavigate()
+  const feedbackEnabled = peekServerConfig()?.mode !== 'free_play'
   // useSessionWebSocket opens the WebSocket connection and returns reactive state plus
   // action callbacks; see hooks/use-session-websocket.ts for the protocol details.
   const { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback } =
@@ -34,6 +72,7 @@ function PlayPage() {
 
   const [input, setInput] = useState('')
   const [feedbackPendingEventId, setFeedbackPendingEventId] = useState<string | null>(null)
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   // bottomRef is attached to a sentinel div at the end of the message list so we can
   // scroll it into view whenever a new message arrives.
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -48,11 +87,40 @@ function PlayPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, waiting])
 
+  const availableCommands = useMemo(() => {
+    const gameCommands = GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
+    const byCommand = new Map<string, CommandSuggestion>()
+    for (const item of [...gameCommands, ...SESSION_COMMANDS]) {
+      byCommand.set(item.command, item)
+    }
+    return [...byCommand.values()]
+  }, [gameName])
+
+  const commandSuggestions = useMemo(() => {
+    if (!input.startsWith('/')) return []
+    if (/\s/.test(input.slice(1))) return []
+
+    const query = input.toLowerCase()
+    return availableCommands.filter((item) => item.command.startsWith(query))
+  }, [availableCommands, input])
+
+  useEffect(() => {
+    if (!commandSuggestions.length) {
+      setSelectedCommandIndex(0)
+      return
+    }
+    setSelectedCommandIndex((current) => Math.min(current, commandSuggestions.length - 1))
+  }, [commandSuggestions])
+
   function submitInput() {
     const text = input.trim()
     if (!text || exited || wsState !== 'ready' || waiting) return
     sendTurn(text)
     setInput('')
+  }
+
+  function applyCommandSuggestion(suggestion: CommandSuggestion) {
+    setInput(`${suggestion.command} `)
   }
 
   function handleSubmit(e: React.SubmitEvent) {
@@ -61,6 +129,35 @@ function PlayPage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (commandSuggestions.length) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedCommandIndex((current) => (current + 1) % commandSuggestions.length)
+        return
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedCommandIndex((current) =>
+          current === 0 ? commandSuggestions.length - 1 : current - 1,
+        )
+        return
+      }
+
+      const selectedSuggestion = commandSuggestions[selectedCommandIndex] ?? commandSuggestions[0]
+      const typedCommand = input.trim().toLowerCase()
+      const canAutocompleteWithEnter =
+        selectedSuggestion && typedCommand !== selectedSuggestion.command
+
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && canAutocompleteWithEnter)) {
+        e.preventDefault()
+        if (selectedSuggestion) {
+          applyCommandSuggestion(selectedSuggestion)
+        }
+        return
+      }
+    }
+
     // Enter alone submits; Shift+Enter inserts a newline.
     const canSubmit = !waiting && !exited && wsState === 'ready' && !!input.trim()
     if (e.key === 'Enter' && !e.shiftKey && canSubmit) {
@@ -71,6 +168,13 @@ function PlayPage() {
 
   async function handleClose() {
     closeSession()
+    if (experimentName) {
+      await navigate({
+        to: '/experiments/$experimentName',
+        params: { experimentName },
+      })
+      return
+    }
     await navigate({ to: '/games' })
   }
 
@@ -156,7 +260,7 @@ function PlayPage() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button variant="outline" size="sm" onClick={handleClose}>
-            Close Session
+            {experimentName ? 'Return to Study' : 'Close Session'}
           </Button>
         </div>
       </header>
@@ -166,7 +270,7 @@ function PlayPage() {
           {isConnecting && (
             <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
               {/* CSS-only spinner: a bordered circle with one colored arc, rotated by animation */}
-              <div className="w-6 h-6 rounded-full border-2 border-muted border-t-foreground animate-spin" />
+              <div className="w-6 h-6 rounded-full border-2 border-muted/70 border-t-primary animate-spin" />
               <p className="text-sm italic">Loading simulation environment…</p>
             </div>
           )}
@@ -183,8 +287,8 @@ function PlayPage() {
               key={msg.id}
               message={msg}
               feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
-              onSubmitFeedback={handleSubmitFeedback}
-              onClearFeedback={handleClearFeedback}
+              onSubmitFeedback={feedbackEnabled ? handleSubmitFeedback : undefined}
+              onClearFeedback={feedbackEnabled ? handleClearFeedback : undefined}
             />
           ))}
 
@@ -200,8 +304,23 @@ function PlayPage() {
           )}
 
           {exited && (
-            <div className="text-center py-4">
-              <Badge variant="secondary">Simulation ended</Badge>
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <div>
+                <Badge variant="secondary">Simulation ended</Badge>
+              </div>
+              {experimentName && (
+                <Button
+                  className="mx-auto"
+                  onClick={() =>
+                    navigate({
+                      to: '/experiments/$experimentName',
+                      params: { experimentName },
+                    })
+                  }
+                >
+                  Continue to Post Game Feedback
+                </Button>
+              )}
             </div>
           )}
 
@@ -210,7 +329,34 @@ function PlayPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="border-t px-4 py-3 flex gap-2 items-end shrink-0">
-        <div className="flex-1 space-y-1">
+        <div className="relative flex-1 space-y-1">
+          {commandSuggestions.length > 0 && (
+            <div className="absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+              <div className="border-b border-border/70 px-3 py-2 text-xs text-muted-foreground">
+                Slash commands
+              </div>
+              <div className="max-h-56 overflow-y-auto py-1">
+                {commandSuggestions.map((suggestion, index) => (
+                  <button
+                    key={suggestion.command}
+                    type="button"
+                    className={cn(
+                      'flex w-full items-start justify-between gap-3 px-3 py-2 text-left transition-colors',
+                      index === selectedCommandIndex ? 'bg-primary/10' : 'hover:bg-muted/60',
+                    )}
+                    onMouseDown={(event) => {
+                      event.preventDefault()
+                      applyCommandSuggestion(suggestion)
+                    }}
+                    onMouseEnter={() => setSelectedCommandIndex(index)}
+                  >
+                    <span className="font-mono text-sm">{suggestion.command}</span>
+                    <span className="text-xs text-muted-foreground">{suggestion.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value.slice(0, MAX_INPUT_LENGTH))}
@@ -238,7 +384,13 @@ export const playRoute = createRoute({
   path: '/play/$sessionId',
   validateSearch: (search: Record<string, unknown>) => ({
     gameName: typeof search.gameName === 'string' ? search.gameName : '',
+    experimentName: typeof search.experimentName === 'string' ? search.experimentName : '',
   }),
-  beforeLoad: requireAuth,
+  beforeLoad: async () => {
+    const serverConfig = await getServerConfig()
+    if (serverConfig.authentication_required) {
+      await requireAuth()
+    }
+  },
   component: PlayPage,
 })

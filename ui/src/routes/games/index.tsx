@@ -1,19 +1,21 @@
 // Games list page at /games. Fetches available games from the API and renders
 // them as cards. Clicking "Play" on a card navigates to the game setup page.
 
-import { createRoute, useNavigate } from '@tanstack/react-router'
+import { createRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useListGamesEndpointApiGamesListGet } from '@/api/generated'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { clearAuth, getFullName } from '@/lib/auth'
+import { clearAuth, getActiveExperimentName, getFullName } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
+import { getServerConfig, peekServerConfig } from '@/lib/server-config'
 import { requireAuth, rootRoute } from '../__root'
 
 function GamesPage() {
   const navigate = useNavigate()
   const fullName = getFullName()
+  const freePlay = peekServerConfig()?.mode === 'free_play'
 
   async function handleLogout() {
     clearAuth()
@@ -47,13 +49,17 @@ function GamesPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            {fullName && <p className="text-muted-foreground mb-1">Hello, {fullName}!</p>}
+            {!freePlay && fullName && (
+              <p className="text-muted-foreground mb-1">Hello, {fullName}!</p>
+            )}
             <h1 className="text-2xl font-semibold">Games</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              Logout
-            </Button>
+            {!freePlay && (
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                Logout
+              </Button>
+            )}
             <ThemeToggle />
           </div>
         </div>
@@ -90,6 +96,21 @@ function GamesPage() {
 export const gamesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/games',
-  beforeLoad: requireAuth,
+  beforeLoad: async () => {
+    const serverConfig = await getServerConfig()
+    if (serverConfig.authentication_required) {
+      await requireAuth()
+    }
+    if (serverConfig.mode === 'free_play') {
+      return
+    }
+    const experimentName = getActiveExperimentName()
+    if (experimentName) {
+      throw redirect({
+        to: '/experiments/$experimentName',
+        params: { experimentName },
+      })
+    }
+  },
   component: GamesPage,
 })

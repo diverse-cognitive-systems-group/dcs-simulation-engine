@@ -1,7 +1,7 @@
 // Login page at /login. Accepts an access key, validates it against the API,
 // and on success stores credentials in sessionStorage and navigates to /games.
 
-import { createRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { extractDetail, NETWORK_UNAVAILABLE, SIGNIN_UNAVAILABLE } from '@/lib/api-errors'
-import { setAuth } from '@/lib/auth'
+import { getActiveExperimentName, setAuth } from '@/lib/auth'
+import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
 async function authPlayer(apiKey: string): Promise<{ player_id: string; full_name: string }> {
@@ -56,7 +57,14 @@ function LoginPage() {
     try {
       const data = await authPlayer(apiKey.trim())
       setAuth(apiKey.trim(), data.player_id, data.full_name)
-      // On success, navigate to the games list.
+      const experimentName = getActiveExperimentName()
+      if (experimentName) {
+        await navigate({
+          to: '/experiments/$experimentName',
+          params: { experimentName },
+        })
+        return
+      }
       await navigate({ to: '/games' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
@@ -103,6 +111,16 @@ function LoginPage() {
                 Register here
               </Link>
             </p>
+            <p className="text-center text-sm text-muted-foreground">
+              Joining the usability study?{' '}
+              <Link
+                to="/experiments/$experimentName"
+                params={{ experimentName: 'usability-ca' }}
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Start here
+              </Link>
+            </p>
             <p className="text-center text-xs text-muted-foreground">
               By continuing, you agree to the{' '}
               <Link to="/terms" className="underline underline-offset-4 hover:text-primary">
@@ -120,5 +138,11 @@ function LoginPage() {
 export const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
+  beforeLoad: async () => {
+    const serverConfig = await getServerConfig()
+    if (serverConfig.mode === 'free_play') {
+      throw redirect({ to: '/games' })
+    }
+  },
   component: LoginPage,
 })

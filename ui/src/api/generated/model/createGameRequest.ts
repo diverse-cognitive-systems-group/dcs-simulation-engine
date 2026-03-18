@@ -9,8 +9,7 @@
  * Payload for creating a new gameplay session.
  */
 export interface CreateGameRequest {
-  /** @minLength 1 */
-  api_key: string;
+  api_key?: string | null;
   /** @minLength 1 */
   game: string;
   pc_choice?: string | null;

@@ -6,6 +6,7 @@ from dcs_simulation_engine.api.auth import (
     get_registry_from_request,
     maybe_await,
     require_player_async,
+    require_standard_mode_from_request,
 )
 from dcs_simulation_engine.api.models import (
     ClearSessionEventFeedbackResponse,
@@ -44,6 +45,10 @@ async def _flush_live_session_feedback_target(*, request: Request, session_id: s
 @router.get("/list", response_model=SessionsListResponse)
 async def list_sessions(request: Request) -> SessionsListResponse:
     """List active in-memory sessions for the player tied to the provided API key."""
+    require_standard_mode_from_request(
+        request,
+        detail="Session endpoints are disabled when the server is running in free play mode.",
+    )
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
 
@@ -72,6 +77,10 @@ async def list_sessions(request: Request) -> SessionsListResponse:
 @router.get("/{session_id}/reconstruction")
 async def get_session_reconstruction(session_id: str, request: Request) -> dict:
     """Return complete persisted metadata + event stream for transcript replay."""
+    require_standard_mode_from_request(
+        request,
+        detail="Session endpoints are disabled when the server is running in free play mode.",
+    )
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 
@@ -99,6 +108,10 @@ async def submit_session_event_feedback(
     request: Request,
 ) -> SubmitSessionEventFeedbackResponse:
     """Store or overwrite feedback on one persisted NPC-message event."""
+    require_standard_mode_from_request(
+        request,
+        detail="Session endpoints are disabled when the server is running in free play mode.",
+    )
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 
@@ -149,6 +162,10 @@ async def clear_session_event_feedback(
     request: Request,
 ) -> ClearSessionEventFeedbackResponse:
     """Remove feedback from one persisted NPC-message event."""
+    require_standard_mode_from_request(
+        request,
+        detail="Session endpoints are disabled when the server is running in free play mode.",
+    )
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 

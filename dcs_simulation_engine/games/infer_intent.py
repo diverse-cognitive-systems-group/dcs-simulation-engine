@@ -11,8 +11,9 @@ from dcs_simulation_engine.games.ai_client import (
     ValidatorClient,
 )
 from dcs_simulation_engine.games.const import (
-    InferIntentV2 as C,
+    InferIntent as C,
 )
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -204,7 +205,9 @@ class InferIntentGame(Game):
         if cmd == Command.ABILITIES:
             return GameEvent.now(
                 type="info",
-                content=C.ABILITIES_CONTENT.format(pc_abilities=self._pc.data.get("abilities", "")),
+                content=C.ABILITIES_CONTENT.format(
+                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", ""))
+                ),
                 command_response=True,
             )
 

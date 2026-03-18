@@ -94,5 +94,5 @@ async def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_s
     assert session.exited, "Session should be exited after exit()"
     assert session.exit_reason == "test complete"
 
-    # Save (no-op if save_runs=False; explore.yaml has save_runs=True but no DB doc_id check)
+    # Save remains a compatibility no-op; persistence is event-sourced elsewhere.
     session.save()

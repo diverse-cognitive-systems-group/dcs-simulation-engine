@@ -45,6 +45,21 @@
             "postDebugTask": "docker-compose-down",
         },
         {
+            "name": "dcs server freeplay",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
+            "args": [
+                "server",
+                "--mongo-seed-dir=database_seeds/dev",
+                "--free-play",
+            ],
+            "cwd": "${workspaceFolder}",
+            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
+            "preLaunchTask": "docker-compose-up",
+            "postDebugTask": "docker-compose-down",
+        },
+        {
             "name": "dcs create database: dev",
             "type": "debugpy",
             "request": "launch",

@@ -1,0 +1,46 @@
+import { useQuery } from '@tanstack/react-query'
+
+export interface ServerConfig {
+  mode: 'standard' | 'free_play'
+  authentication_required: boolean
+  registration_enabled: boolean
+  experiments_enabled: boolean
+}
+
+let cachedServerConfig: ServerConfig | null = null
+let inflightServerConfig: Promise<ServerConfig> | null = null
+
+async function fetchServerConfig(): Promise<ServerConfig> {
+  const response = await fetch('/api/server/config')
+  if (!response.ok) {
+    throw new Error(`Unable to load server config (HTTP ${response.status})`)
+  }
+  const config = (await response.json()) as ServerConfig
+  cachedServerConfig = config
+  return config
+}
+
+export function peekServerConfig(): ServerConfig | null {
+  return cachedServerConfig
+}
+
+export function getServerConfig(): Promise<ServerConfig> {
+  if (cachedServerConfig) {
+    return Promise.resolve(cachedServerConfig)
+  }
+  if (!inflightServerConfig) {
+    inflightServerConfig = fetchServerConfig().finally(() => {
+      inflightServerConfig = null
+    })
+  }
+  return inflightServerConfig
+}
+
+export function useServerConfig() {
+  return useQuery({
+    queryKey: ['server-config'],
+    queryFn: getServerConfig,
+    initialData: cachedServerConfig ?? undefined,
+    staleTime: 5 * 60_000,
+  })
+}
