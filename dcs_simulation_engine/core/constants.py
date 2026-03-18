@@ -1,11 +1,6 @@
 """Constants for core module."""
 
-from pathlib import Path
-
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-
-OUTPUT_FPATH: Path = Path("results")
-OUTPUT_FPATH.mkdir(parents=True, exist_ok=True)
 
 WELCOME_MSG: str = """
 # Welcome

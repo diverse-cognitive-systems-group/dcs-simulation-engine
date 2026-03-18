@@ -15,7 +15,6 @@ from dcs_simulation_engine.dal.base import CharacterRecord, DataProvider
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from dcs_simulation_engine.utils.async_utils import maybe_await
-from dcs_simulation_engine.utils.file import safe_timestamp
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
 
@@ -197,7 +196,9 @@ class SessionManager:
         source: str,
         player_id: str | None,
     ) -> "SessionManager":
-        name = f"{source}-{game_config.name}-{safe_timestamp()}".lower().replace(" ", "-")
+        # Use a deterministic name format for easier testing and indexing, but include a timestamp for uniqueness.
+        time_str = utc_now().strftime("%Y%m%d-%H%M%S")
+        name = f"{source}-{game_config.name}-{time_str}".lower().replace(" ", "-")
         stopping = dict(game_config.stopping_conditions) if game_config.stopping_conditions else {}
         return cls(
             name=name,
