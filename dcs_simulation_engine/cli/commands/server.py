@@ -47,6 +47,12 @@ def server(
         envvar="DCS_MONGO_SEED_DIR",
         help="Seed MongoDB from this directory of JSON/NDJSON files on startup.",
     ),
+    dump_dir: Optional[Path] = typer.Option(
+        None,
+        "--dump",
+        envvar="DCS_DUMP_DIR",
+        help="Dump all Mongo collections to this directory when the server shuts down.",
+    ),
     fake_ai_response: Optional[str] = typer.Option(
         None,
         "--fake-ai-response",
@@ -72,6 +78,7 @@ def server(
         app = create_app(
             provider=None,
             mongo_uri=mongo_uri,
+            shutdown_dump_dir=dump_dir,
             server_mode="free_play" if free_play else "standard",
             session_ttl_seconds=ttl_seconds,
             sweep_interval_seconds=sweep_interval_seconds,

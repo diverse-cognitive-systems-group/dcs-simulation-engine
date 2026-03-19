@@ -1,35 +1,83 @@
 # syntax=docker/dockerfile:1
-FROM python:3.13-slim-bookworm
+FROM astral/uv:python3.13-bookworm-slim
 
-# Install git + optional SSH client for GitHub/Bitbucket, plus minimal build deps
-RUN apt update && apt install -y --no-install-recommends \
-    git openssh-client ca-certificates curl build-essential \
+# Kept for compatibility with the existing devcontainer.json build args.
+ARG INSTALL_DEV=true
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    NVM_DIR=/usr/local/nvm \
+    NVM_SYMLINK_CURRENT=true \
+    BUN_INSTALL=/opt/bun \
+    PATH="/opt/venv/bin:/opt/bun/bin:/usr/local/nvm/current/bin:/root/.fly/bin:/app/ui/node_modules/.bin:${PATH}"
+
+# Install the base toolchain needed for both the Python API and Bun/Vite UI.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    gnupg \
+    openssh-client \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install flyctl exactly as per Fly.io docs
-RUN curl -L https://fly.io/install.sh | sh
+# Install Node.js via nvm so the version can be managed consistently inside
+# the dev container.
+RUN mkdir -p "${NVM_DIR}" \
+    && bash -lc 'curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | PROFILE=/dev/null bash' \
+    && bash -lc '. "${NVM_DIR}/nvm.sh" && nvm install --lts && nvm alias default "lts/*" && nvm use default'
 
-# Make flyctl available on PATH for all users
-ENV PATH="/root/.fly/bin:${PATH}"
+# Install Fly CLI for the deploy/debug workflows used by this repo.
+RUN curl -fsSL https://fly.io/install.sh | sh
 
-# Keep it minimal; no compilers unless your deps need them.
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# Install Bun so the UI can run from inside the dev container.
+RUN curl -fsSL https://bun.sh/install | bash
 
-# Install uv
-RUN pip install --no-cache-dir uv
+# Install the official Codex CLI for Linux so it is available inside the
+# dev container without relying on the host editor extension binary.
+RUN npm i -g @openai/codex@latest
+
+# Create the project virtualenv outside /app so it survives the workspace bind
+# mount used by the dev container. The actual `uv sync` happens after the repo
+# is mounted by devcontainer.json.
+RUN uv python install 3.13 \
+    && uv venv --python 3.13 "${UV_PROJECT_ENVIRONMENT}"
+
+# Keep Codex config inside the container, but let auth be mounted in from the
+# host so the CLI can reuse an existing login without copying secrets into git.
+RUN mkdir -p /root/.codex \
+    && printf '%s\n' \
+    'model = "gpt-5.4"' \
+    'model_reasoning_effort = "high"' \
+    'approval_policy = "never"' \
+    'sandbox_mode = "danger-full-access"' \
+    > /root/.codex/config.toml
+
 
 WORKDIR /app
 
-# Analysis nbs are repo-local code that should be importable by the notebooks, but not packaged
-ENV PYTHONPATH=/app
+# The source tree is bind-mounted onto /app at runtime, so this image acts as a
+# development base rather than copying the project in during build.
+RUN printf '%s\n' \
+    'export NVM_DIR="/usr/local/nvm"' \
+    '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' \
+    'alias dcs="uv run dcs"' \
+    'alias api-dev="cd /app && uv run dcs server --host 0.0.0.0"' \
+    'alias ui-dev="cd /app/ui && bun run dev --host 0.0.0.0"' \
+    >> /root/.bashrc \
+    && printf '%s\n' \
+    'export NVM_DIR="/usr/local/nvm"' \
+    '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' \
+    'alias dcs="uv run dcs"' \
+    'alias api-dev="cd /app && uv run dcs server --host 0.0.0.0"' \
+    'alias ui-dev="cd /app/ui && bun run dev --host 0.0.0.0"' \
+    >> /root/.zshrc
 
-# App code
-COPY . .
-
-# Install deps - include dev deps for devcontainer
-RUN uv sync --extra dev
-
-# Add an alias for the dcs command to run with uv
-RUN echo 'alias dcs="uv run dcs"' >> ~/.bashrc
+# make sure to use --network=host when running the container so the API server is reachable at localhost:8000

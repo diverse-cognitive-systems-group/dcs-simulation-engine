@@ -1,11 +1,10 @@
 {
     "version": "2.0.0",
     "tasks": [
-
         {
-            "label": "docker-compose-up",
+            "label": "start-mongo",
             "type": "shell",
-            "command": "docker compose -f compose.yaml up --detach",
+            "command": "docker compose -f .devcontainer/dev.compose.yml up --detach",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -16,9 +15,9 @@
             "problemMatcher": []
         },
         {
-            "label": "docker-compose-down",
+            "label": "stop-mongo",
             "type": "shell",
-            "command": "docker compose -f compose.yaml down --volumes",
+            "command": "bash .devcontainer/stop-mongo.bash",
             "group": {
                 "kind": "build",
                 "isDefault": false

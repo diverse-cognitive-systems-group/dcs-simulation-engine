@@ -147,6 +147,30 @@ def test_app_lifespan_preloads_game_configs(mock_provider: MagicMock) -> None:
 
 
 @pytest.mark.unit
+def test_app_lifespan_dumps_db_on_shutdown(async_mongo_provider, tmp_path) -> None:
+    """App shutdown should write a Mongo dump when configured."""
+    db = async_mongo_provider.get_db()
+    db["widgets"].insert_one({"name": "shutdown-test"})
+
+    app = create_app(
+        provider=async_mongo_provider,
+        shutdown_dump_dir=tmp_path,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+
+    with TestClient(app):
+        pass
+
+    dump_dirs = [path for path in tmp_path.iterdir() if path.is_dir()]
+    assert len(dump_dirs) == 1
+
+    widgets_dump = dump_dirs[0] / "widgets.json"
+    assert widgets_dump.exists()
+    assert "shutdown-test" in widgets_dump.read_text(encoding="utf-8")
+
+
+@pytest.mark.unit
 def test_registration_returns_player_and_api_key(client: TestClient, mock_provider: MagicMock) -> None:
     """Registration creates player data and returns issued API key."""
     payload = {

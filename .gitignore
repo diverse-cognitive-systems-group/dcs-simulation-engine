@@ -82,3 +82,8 @@ CLAUDE.md
 .claude/
 .continue/
 .kilocode/
+
+
+ui/.vite
+ui/openapi.snapshot.json
+runs/

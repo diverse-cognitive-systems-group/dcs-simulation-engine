@@ -1,6 +1,7 @@
 """FastAPI application factory for the DCS server."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dcs_simulation_engine.api.auth import build_server_config
 from dcs_simulation_engine.api.models import ServerConfigResponse, ServerMode, StatusResponse
@@ -16,9 +17,11 @@ from dcs_simulation_engine.cli.bootstrap import create_async_provider
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json_async
 from dcs_simulation_engine.utils.time import utc_now
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8000
@@ -35,6 +38,7 @@ def create_app(
     *,
     provider: DataProvider | object | None = None,
     mongo_uri: str | None = None,
+    shutdown_dump_dir: Path | None = None,
     server_mode: ServerMode = "standard",
     session_ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
     sweep_interval_seconds: int = DEFAULT_SWEEP_INTERVAL_SECONDS,
@@ -56,6 +60,13 @@ def create_app(
             yield
         finally:
             await registry.stop()
+            if shutdown_dump_dir is not None:
+                try:
+                    db = app.state.provider.get_db()
+                    dump_root = await dump_all_collections_to_json_async(db, shutdown_dump_dir)
+                    logger.info("Wrote shutdown Mongo dump to {}", dump_root)
+                except Exception:
+                    logger.exception("Failed to write shutdown Mongo dump to {}", shutdown_dump_dir)
 
     app.router.lifespan_context = lifespan
     app.add_middleware(

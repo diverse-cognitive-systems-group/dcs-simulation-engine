@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getApiKey } from '../lib/auth'
+import { resolveWebSocketUrl } from '../lib/ws-url'
 
 export type EventType = 'ai' | 'info' | 'error' | 'warning'
 
@@ -57,8 +58,7 @@ export function useSessionWebSocket(sessionId: string) {
   useEffect(() => {
     let cancelled = false
 
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(`${proto}//${window.location.host}/api/play/game/${sessionId}/ws`)
+    const socket = new WebSocket(resolveWebSocketUrl(`/api/play/game/${sessionId}/ws`))
     ws.current = socket
     setWsState('connecting')
 

@@ -9,11 +9,16 @@
     },
     "workspaceFolder": "/app",
     "overrideCommand": true,
+    "runArgs": [
+        "--network=host"
+    ],
+    "postCreateCommand": "uv sync --extra dev && cd /app/ui && bun install",
     // Docker outside Docker (share the host Docker engine)
     // Mount the Docker socket and feature
     "mounts": [
         "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+        "source=${localEnv:HOME}/.codex/auth.json,target=/root/.codex/auth.json,type=bind,consistency=cached,readonly"
     ],
     "features": {
         "ghcr.io/devcontainers/features/docker-outside-of-docker": {
@@ -29,7 +34,9 @@
                 "ms-azuretools.vscode-docker",
                 "streetsidesoftware.code-spell-checker",
                 "github.vscode-pull-request-github",
-                "dbcode.dbcode"
+                "dbcode.dbcode",
+                "openai.chatgpt",
+                "Anthropic.claude-code"
             ],
             "settings": {
                 "editor.formatOnSave": true,
@@ -42,12 +49,7 @@
                     }
                 },
                 "python.analysis.typeCheckingMode": "basic",
-                // "mypy-type-checker.importStrategy": "fromEnvironment",
-                // "mypy-type-checker.args": [
-                //     "--strict",
-                //     "--exclude",
-                //     "^(tests|analysis_notebooks)/"
-                // ],
+                "python.defaultInterpreterPath": "/opt/venv/bin/python",
                 "python.testing.pytestEnabled": true,
                 "python.testing.unittestEnabled": false
             }

@@ -18,30 +18,15 @@ Create a .env file in the root of the project. (Just copy the .env.example file 
 
 We provide a dev container configuration for development in VS Code which automatically sets up a consistent development environment. Open the project in VS Code and click "Reopen in Container" when prompted. This will build the Docker image defined in `.devcontainer/dev.Dockerfile` and start a container with the project mounted inside.
 
-
-## Manual Setup
-
-It is recommended that you use [uv](https://github.com/astral-sh/uv) to manage your Python environment.
-
-```sh
-# install uv (if you don't have it already)
-pip install uv
-
-# install python 3.13 with uv
-uv python install 3.13
-
-# create a new virtual environment with uv
-uv venv --python 3.13
-
-# activate the virtual environment
-source .venv/bin/activate
-
-# install dependencies and install your current project in editable mode
-uv sync --extra dev
-```
-
-
 ## Verify Setup
+
+Use the `dcs server` or `dcs server freeplay` debug targets to run the server locally. This will start the database, and server.
+
+The ui must be manually started. You can do this with 
+```sh
+cd ui
+bun dev
+```
 
 To verify everything is working, run the tests
 
@@ -49,7 +34,7 @@ To verify everything is working, run the tests
 make test
 ```
 
-For more detail on usage of the various scripts see the main [README](README.md) file.
+The entire state of the database is stored in a timestamped folder in `./runs` each time you stop the stack.
 
 ## PR Workflow
 

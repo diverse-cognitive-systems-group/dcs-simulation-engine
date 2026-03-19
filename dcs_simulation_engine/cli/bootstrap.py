@@ -1,6 +1,7 @@
 """CLI bootstrap: single entrypoint for backend wiring and lifecycle."""
 
 import os
+from typing import Any
 
 from dcs_simulation_engine.dal.mongo import (
     AsyncMongoProvider,
@@ -11,6 +12,7 @@ from dcs_simulation_engine.dal.mongo.const import (
 )
 from dcs_simulation_engine.dal.mongo.util import connect_db, connect_db_async
 from loguru import logger
+from pymongo.database import Database
 
 
 def _resolve_mongo_uri(*, mongo_uri: str | None = None) -> str:
@@ -37,6 +39,12 @@ async def create_async_provider(*, mongo_uri: str | None = None) -> AsyncMongoPr
     """Return an AsyncMongoProvider wired to a resolved MongoDB URI."""
     uri = _resolve_mongo_uri(mongo_uri=mongo_uri)
     return AsyncMongoProvider(db=await connect_db_async(uri=uri))
+
+
+def create_sync_db(*, mongo_uri: str | None = None) -> Database[Any]:
+    """Return a sync MongoDB database handle wired to a resolved MongoDB URI."""
+    uri = _resolve_mongo_uri(mongo_uri=mongo_uri)
+    return connect_db(uri=uri)
 
 
 def create_provider_admin(*, mongo_uri: str | None = None) -> MongoAdmin:

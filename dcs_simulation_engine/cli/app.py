@@ -6,6 +6,7 @@ from typing import Optional
 import typer
 import typer.rich_utils as ru
 from dcs_simulation_engine.cli.commands.admin import admin_app
+from dcs_simulation_engine.cli.commands.dump import dump
 from dcs_simulation_engine.cli.commands.game import game
 from dcs_simulation_engine.cli.commands.list import list_app
 from dcs_simulation_engine.cli.commands.modify import modify_app
@@ -53,6 +54,7 @@ app.add_typer(list_app, name="list")
 app.add_typer(modify_app, name="modify")
 
 # top level commands (no subcommand)
+app.command("dump")(dump)
 app.command("game")(game)
 app.command("server")(server)
 

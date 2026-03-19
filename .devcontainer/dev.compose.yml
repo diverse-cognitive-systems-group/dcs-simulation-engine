@@ -1,0 +1,32 @@
+# Devcontainer compose only provisions MongoDB.
+# Server mode is chosen when you run `dcs server` inside the devcontainer;
+# set `DCS_FREE_PLAY=1` in `../.env` for free-play mode, or leave it unset/0
+# for the standard registration and experiment flow.
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: dcs-mongo
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all", "--noauth"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "mongodb://127.0.0.1:27017/admin",
+          "--eval",
+          "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  mongo_data:
+    driver: local
