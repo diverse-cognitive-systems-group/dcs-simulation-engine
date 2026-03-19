@@ -153,8 +153,6 @@ def test_registration_returns_player_and_api_key(client: TestClient, mock_provid
         "full_name": "Ada Lovelace",
         "email": "ada@example.com",
         "phone_number": "+1 555 123 4567",
-        "prior_experience": "none",
-        "additional_comments": "n/a",
         "consent_to_followup": True,
         "consent_signature": "Ada",
     }
@@ -207,6 +205,21 @@ def test_server_config_reports_free_play_mode(free_play_client: TestClient) -> N
         "registration_enabled": False,
         "experiments_enabled": False,
     }
+
+
+@pytest.mark.unit
+def test_status_reports_started_at_and_uptime(client: TestClient) -> None:
+    """Status endpoint should return liveness metadata with uptime and start time."""
+    response = client.get("/api/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["uptime"] >= 0
+
+    started_at = datetime.fromisoformat(payload["started_at"].replace("Z", "+00:00"))
+    assert started_at.tzinfo is not None
+    assert started_at <= datetime.now(timezone.utc)
 
 
 @pytest.mark.unit
@@ -313,8 +326,6 @@ def test_free_play_disables_player_experiment_and_session_prefixes(
             "full_name": "Ada Lovelace",
             "email": "ada@example.com",
             "phone_number": "+1 555 123 4567",
-            "prior_experience": "none",
-            "additional_comments": "n/a",
             "consent_to_followup": True,
             "consent_signature": "Ada",
         },
@@ -483,8 +494,8 @@ def test_session_event_feedback_submit_flushes_live_session_and_persists(
     manager = DummySessionManager()
     mock_provider.set_session_event_feedback = AsyncMock(
         return_value={
-            "liked": True,
-            "comment": "Helpful answer",
+            "doesnt_make_sense": True,
+            "out_of_character": False,
             "submitted_at": datetime.now(timezone.utc).isoformat(),
         }
     )
@@ -503,22 +514,23 @@ def test_session_event_feedback_submit_flushes_live_session_and_persists(
     response = client.post(
         f"/api/sessions/{session_id}/events/evt-opening/feedback",
         headers={"Authorization": "Bearer valid-key"},
-        json={"liked": True, "comment": "Helpful answer"},
+        json={"doesnt_make_sense": True, "out_of_character": False},
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["session_id"] == session_id
     assert payload["event_id"] == "evt-opening"
-    assert payload["feedback"]["liked"] is True
-    assert payload["feedback"]["comment"] == "Helpful answer"
+    assert payload["feedback"]["doesnt_make_sense"] is True
+    assert payload["feedback"]["out_of_character"] is False
     assert manager.flush_calls == 1
 
     kwargs = mock_provider.set_session_event_feedback.await_args.kwargs
     assert kwargs["session_id"] == session_id
     assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
-    assert kwargs["feedback"]["comment"] == "Helpful answer"
+    assert kwargs["feedback"]["doesnt_make_sense"] is True
+    assert kwargs["feedback"]["out_of_character"] is False
 
 
 @pytest.mark.unit
@@ -544,7 +556,7 @@ def test_session_event_feedback_submit_returns_not_found_for_non_owner(
     response = client.post(
         f"/api/sessions/{session_id}/events/evt-opening/feedback",
         headers={"Authorization": "Bearer other-key"},
-        json={"liked": False, "comment": "Wrong owner"},
+        json={"doesnt_make_sense": False, "out_of_character": True},
     )
 
     assert response.status_code == 404
@@ -635,8 +647,6 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
                     "total": 20,
                     "completed": 4,
                     "is_complete": False,
-                    "quota_per_game": 5,
-                    "per_game_counts": {"Explore": 1},
                 }
             ),
         ),
@@ -662,7 +672,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     payload = response.json()
     assert payload["experiment_name"] == "usability-ca"
     assert payload["current_assignment"]["assignment_id"] == "asg-1"
-    assert payload["progress"]["quota_per_game"] == 5
+    assert payload["progress"] == {"total": 20, "completed": 4, "is_complete": False}
     assert payload["pending_post_play"] is False
     assert payload["forms"][0]["name"] == "intake"
 

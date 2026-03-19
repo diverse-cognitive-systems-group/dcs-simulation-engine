@@ -43,6 +43,9 @@
             // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
             "preLaunchTask": "docker-compose-up",
             "postDebugTask": "docker-compose-down",
+            "env": {
+                "DEBUGPY_PROCESS_SPAWN_TIMEOUT": "5" // Timeout in seconds (90 seconds)
+            }
         },
         {
             "name": "dcs server freeplay",
@@ -58,6 +61,9 @@
             // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
             "preLaunchTask": "docker-compose-up",
             "postDebugTask": "docker-compose-down",
+            "env": {
+                "DEBUGPY_PROCESS_SPAWN_TIMEOUT": "5" // Timeout in seconds (90 seconds)
+            }
         },
         {
             "name": "dcs create database: dev",

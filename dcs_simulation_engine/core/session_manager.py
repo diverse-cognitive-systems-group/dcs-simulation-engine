@@ -25,10 +25,10 @@ def _parse_command_input(text: str | None) -> tuple[str, str] | None:
         return None
 
     stripped = text.strip()
-    if not stripped.startswith(("/", "\\")):
+    if not stripped.startswith("/"):
         return None
 
-    parts = stripped.lstrip("/\\").split(maxsplit=1)
+    parts = stripped[1:].split(maxsplit=1)
     command_name = parts[0].lower() if parts else ""
     command_args = parts[1] if len(parts) > 1 else ""
     return (command_name, command_args)
@@ -41,8 +41,8 @@ class SessionManager:
 
     @classmethod
     def _cache_key(cls, game: str) -> str:
-        """Normalize cache lookup key for game names."""
-        return game.strip().lower()
+        """Normalize cache lookup key for one exact game name."""
+        return game.strip()
 
     @classmethod
     def _load_game_config_into_cache(cls, game: str) -> bool:
@@ -77,7 +77,6 @@ class SessionManager:
         self._provider = provider
         self.source = source
         self.player_id = player_id
-        self.feedback: List[Dict[str, Any]] = []
         self.start_ts: datetime = utc_now()
         self.end_ts: Optional[datetime] = None
         self._exited = False
@@ -343,7 +342,7 @@ class SessionManager:
 
         if parsed_command is not None:
             cmd, cmd_args = parsed_command
-            if cmd in ("quit", "stop", "exit"):
+            if cmd == "exit":
                 payload = {"type": "info", "content": "Session exited: received exit command"}
                 self._events.append(payload)
                 if self._recorder_open and self._recorder is not None:
@@ -363,37 +362,6 @@ class SessionManager:
                         command_args=cmd_args,
                     )
                 await self.exit_async("received exit command")
-                return [payload]
-
-            if cmd in ("feedback", "fb"):
-                fb = cmd_args
-                if fb:
-                    self.feedback.append({"timestamp": utc_now().isoformat(), "content": fb})
-                payload = {
-                    "type": "info",
-                    "content": (
-                        "Feedback received, thank you."
-                        if fb
-                        else "No feedback content provided. Type '/feedback <your comments here>'"
-                    ),
-                }
-                self._events.append(payload)
-                if self._recorder_open and self._recorder is not None:
-                    await self._recorder.record_inbound(
-                        content=user_input,
-                        turn_index=turn_index,
-                        event_type="command",
-                        command_name=cmd,
-                        command_args=cmd_args,
-                    )
-                    await self._recorder.record_outbound(
-                        event_type="command",
-                        event_source="system",
-                        content=payload["content"],
-                        turn_index=turn_index,
-                        command_name=cmd,
-                        command_args=cmd_args,
-                    )
                 return [payload]
 
         events = await self._collect_events(user_input)

@@ -16,7 +16,7 @@ async def test_upsert_experiment_persists_snapshot(async_mongo_provider) -> None
         experiment_name="usability-ca",
         description="Usability study",
         config_snapshot={"name": "usability-ca", "games": ["Explore"]},
-        progress={"total": 5, "completed": 0, "is_complete": False, "quota_per_game": 5, "per_game_counts": {}},
+        progress={"total": 5, "completed": 0, "is_complete": False},
     )
 
     assert isinstance(record, ExperimentRecord)

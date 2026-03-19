@@ -63,8 +63,6 @@ def main() -> None:
         "full_name": "API Smoke Tester",
         "email": "api-smoke@example.com",
         "phone_number": "+1 555 010 9999",
-        "prior_experience": "none",
-        "additional_comments": "automated smoke flow",
         "consent_to_followup": True,
         "consent_signature": "API Smoke Tester",
     }

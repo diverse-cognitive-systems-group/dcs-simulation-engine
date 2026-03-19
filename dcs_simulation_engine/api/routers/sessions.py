@@ -115,10 +115,6 @@ async def submit_session_event_feedback(
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 
-    comment = body.comment.strip()
-    if not comment:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback comment is required")
-
     await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player.id)
 
     writer = getattr(provider, "set_session_event_feedback", None)
@@ -130,8 +126,8 @@ async def submit_session_event_feedback(
 
     now = utc_now()
     feedback = SessionEventFeedback(
-        liked=body.liked,
-        comment=comment,
+        doesnt_make_sense=body.doesnt_make_sense,
+        out_of_character=body.out_of_character,
         submitted_at=now,
     )
     stored = await maybe_await(

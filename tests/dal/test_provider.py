@@ -159,7 +159,7 @@ async def test_list_session_events_returns_session_event_records(async_mongo_pro
 
 
 async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_provider):
-    """set_session_event_feedback stores one top-level feedback object per NPC message event."""
+    """set_session_event_feedback stores one top-level boolean-feedback object per NPC message event."""
     db = async_mongo_provider.get_db()
     created_at = datetime.now(timezone.utc)
     db[MongoColumns.SESSIONS].insert_one(
@@ -186,13 +186,13 @@ async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_
     )
 
     first = {
-        "liked": True,
-        "comment": "Helpful answer",
+        "doesnt_make_sense": True,
+        "out_of_character": False,
         "submitted_at": created_at,
     }
     second = {
-        "liked": False,
-        "comment": "Actually not correct",
+        "doesnt_make_sense": False,
+        "out_of_character": True,
         "submitted_at": created_at,
     }
 
@@ -213,8 +213,8 @@ async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_
     assert stored_second == second
 
     event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-1"})
-    assert event_doc[MongoColumns.FEEDBACK]["liked"] is False
-    assert event_doc[MongoColumns.FEEDBACK]["comment"] == "Actually not correct"
+    assert event_doc[MongoColumns.FEEDBACK]["doesnt_make_sense"] is False
+    assert event_doc[MongoColumns.FEEDBACK]["out_of_character"] is True
     assert event_doc[MongoColumns.FEEDBACK]["submitted_at"] is not None
     assert event_doc[MongoColumns.UPDATED_AT] is not None
 
@@ -251,8 +251,8 @@ async def test_set_session_event_feedback_rejects_non_npc_message_target(async_m
         player_id="p-feedback-2",
         event_id="evt-user-1",
         feedback={
-            "liked": True,
-            "comment": "Should not store",
+            "doesnt_make_sense": True,
+            "out_of_character": False,
             "submitted_at": created_at,
         },
     )
@@ -287,8 +287,8 @@ async def test_clear_session_event_feedback_removes_existing_feedback(async_mong
             "event_source": "npc",
             "content": "hello",
             "feedback": {
-                "liked": False,
-                "comment": "Wrong message",
+                "doesnt_make_sense": False,
+                "out_of_character": True,
                 "submitted_at": created_at,
             },
         }
@@ -355,8 +355,8 @@ async def test_feedback_is_rejected_for_non_npc_message_events(
         player_id="p-feedback-matrix",
         event_id=f"evt-{direction}-{event_type}-{event_source}",
         feedback={
-            "liked": True,
-            "comment": "Should not store",
+            "doesnt_make_sense": True,
+            "out_of_character": False,
             "submitted_at": created_at,
         },
     )

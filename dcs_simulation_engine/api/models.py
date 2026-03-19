@@ -19,8 +19,6 @@ class RegistrationRequest(BaseModel):
     full_name: str = Field(min_length=1)
     email: str = Field(min_length=1)
     phone_number: str = Field(min_length=1)
-    prior_experience: str = Field(min_length=1)
-    additional_comments: str = ""
     consent_to_followup: bool
     consent_signature: str = Field(min_length=1)
 
@@ -53,6 +51,14 @@ class ServerConfigResponse(BaseModel):
     authentication_required: bool
     registration_enabled: bool
     experiments_enabled: bool
+
+
+class StatusResponse(BaseModel):
+    """Response payload describing process liveness and uptime."""
+
+    status: Literal["ok"] = "ok"
+    started_at: datetime
+    uptime: int
 
 
 class CreateGameRequest(BaseModel):
@@ -107,8 +113,6 @@ class ExperimentProgressResponse(BaseModel):
     total: int
     completed: int
     is_complete: bool
-    quota_per_game: int
-    per_game_counts: dict[str, int]
 
 
 class ExperimentGameStatusResponse(BaseModel):
@@ -185,18 +189,18 @@ class SessionsListResponse(BaseModel):
 
 
 class SessionEventFeedback(BaseModel):
-    """Stored reaction + comment attached to one assistant message."""
+    """Stored boolean issue flags attached to one assistant message."""
 
-    liked: bool
-    comment: str = Field(min_length=1)
+    doesnt_make_sense: bool
+    out_of_character: bool
     submitted_at: datetime
 
 
 class SubmitSessionEventFeedbackRequest(BaseModel):
     """Payload for storing feedback on a single assistant session event."""
 
-    liked: bool
-    comment: str = Field(min_length=1)
+    doesnt_make_sense: bool
+    out_of_character: bool
 
 
 class SubmitSessionEventFeedbackResponse(BaseModel):

@@ -8,8 +8,8 @@ import { getApiKey } from '../lib/auth'
 export type EventType = 'ai' | 'info' | 'error' | 'warning'
 
 export interface MessageFeedback {
-  liked: boolean
-  comment: string
+  doesntMakeSense: boolean
+  outOfCharacter: boolean
   submittedAt: string
 }
 

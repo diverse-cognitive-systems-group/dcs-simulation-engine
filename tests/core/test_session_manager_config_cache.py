@@ -20,7 +20,7 @@ class _DummyConfig:
 
 @pytest.mark.unit
 def test_get_game_config_cached_loads_once_and_returns_defensive_copies(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Config loader should run once per game key and callers should receive copies."""
+    """Config loader should run once per exact game key and callers should receive copies."""
     previous_cache = dict(SessionManager._game_config_cache)
     SessionManager._game_config_cache.clear()
     load_calls = {"count": 0}
@@ -37,7 +37,7 @@ def test_get_game_config_cached_loads_once_and_returns_defensive_copies(monkeypa
 
     try:
         cfg1 = SessionManager.get_game_config_cached("Explore")
-        cfg2 = SessionManager.get_game_config_cached("explore")
+        cfg2 = SessionManager.get_game_config_cached("Explore")
 
         cfg1.marker.append("changed")
 

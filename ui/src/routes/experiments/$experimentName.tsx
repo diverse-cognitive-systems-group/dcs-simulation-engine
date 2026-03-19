@@ -61,8 +61,6 @@ interface ExperimentProgressResponse {
   total: number
   completed: number
   is_complete: boolean
-  quota_per_game: number
-  per_game_counts: Record<string, number>
 }
 
 interface ExperimentSetupResponse {
@@ -429,11 +427,6 @@ function ExperimentPage() {
     )
   }, [afterForms])
 
-  const progressLines = useMemo(() => {
-    const entries = Object.entries(data?.progress.per_game_counts ?? {})
-    return entries.sort(([left], [right]) => left.localeCompare(right))
-  }, [data?.progress.per_game_counts])
-
   function setResponse(
     setter: React.Dispatch<React.SetStateAction<FormResponseMap>>,
     formName: string,
@@ -631,19 +624,6 @@ function ExperimentPage() {
                     )}%`,
                   }}
                 />
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {progressLines.map(([gameName, count]) => (
-                  <div
-                    key={gameName}
-                    className="rounded-lg border border-border/70 bg-muted/20 px-3 py-3 text-sm"
-                  >
-                    <div className="font-medium">{gameName}</div>
-                    <div className="text-muted-foreground">
-                      {count}/{data.progress.quota_per_game} participants
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>

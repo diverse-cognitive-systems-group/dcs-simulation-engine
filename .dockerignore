@@ -10,3 +10,8 @@ build/
 .env
 .venv
 *.ipynb_checkpoints
+ui/node_modules/
+.vscode/
+tests/
+analysis/
+docs/

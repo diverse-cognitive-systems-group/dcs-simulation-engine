@@ -66,22 +66,6 @@ def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
             required=True,
             pii=True,
         ),
-        "prior_experience": _consent_field(
-            key="prior_experience",
-            answer=body.prior_experience,
-            field_type="textarea",
-            label="Prior Experience",
-            required=True,
-            pii=False,
-        ),
-        "additional_comments": _consent_field(
-            key="additional_comments",
-            answer=body.additional_comments,
-            field_type="textarea",
-            label="Additional Comments",
-            required=False,
-            pii=False,
-        ),
         "consent_to_followup": _consent_field(
             key="consent_to_followup",
             answer=body.consent_to_followup,

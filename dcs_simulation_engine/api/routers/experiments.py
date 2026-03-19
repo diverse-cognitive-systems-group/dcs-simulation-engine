@@ -41,8 +41,6 @@ def _progress_response(progress: dict) -> ExperimentProgressResponse:
         total=int(progress["total"]),
         completed=int(progress["completed"]),
         is_complete=bool(progress["is_complete"]),
-        quota_per_game=int(progress["quota_per_game"]),
-        per_game_counts={str(k): int(v) for k, v in dict(progress["per_game_counts"]).items()},
     )
 
 

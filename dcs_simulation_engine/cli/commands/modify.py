@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import shutil
 from pathlib import Path
 from typing import List, Optional
 
@@ -11,59 +10,14 @@ from dcs_simulation_engine.cli.bootstrap import (
     create_async_provider,
 )
 from dcs_simulation_engine.cli.common import console, echo
-from dcs_simulation_engine.helpers.game_helpers import (
-    create_game_from_template,
-)
 from dcs_simulation_engine.utils.misc import parse_kv
 
-modify_app = typer.Typer(help="Modify games or characters available for use.")
+modify_app = typer.Typer(help="Modify characters or players available for use.")
 
 
 def _run_async(coro):
     """Execute an async coroutine from sync CLI command handlers."""
     return asyncio.run(coro)
-
-
-@modify_app.command("game")
-def modify_game(
-    ctx: typer.Context,
-    name: Optional[str] = typer.Argument(None, help="Name of the game. If omitted, you will be prompted."),
-    delete: bool = typer.Option(False, "--delete", help="Delete the game directory."),
-) -> None:
-    """Create or delete a game."""
-    if name is None:
-        name = typer.prompt("Game name", default="my-game")
-
-    game_path = Path(name)
-
-    if delete:
-        if not game_path.exists():
-            echo(ctx, f"Game '{name}' does not exist at {game_path}.", style="error")
-            raise typer.Exit(code=1)
-        try:
-            shutil.rmtree(game_path)
-        except Exception as e:
-            echo(ctx, f"Failed to delete game '{name}': {e}", style="error")
-            raise typer.Exit(code=1)
-
-        echo(ctx, f"Deleted game '{name}' at {game_path}.", style="success")
-        return
-
-    try:
-        created_path = create_game_from_template(name)
-    except FileExistsError:
-        typer.secho(
-            f"A game named '{name}' already exists.\nDelete it or choose a different name.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-    echo(
-        ctx,
-        f"Modified game '{name}'. Config path: {created_path}",
-        style="success",
-    )
 
 
 @modify_app.command("character")

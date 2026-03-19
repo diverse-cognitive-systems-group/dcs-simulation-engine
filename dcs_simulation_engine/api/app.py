@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 
 from dcs_simulation_engine.api.auth import build_server_config
-from dcs_simulation_engine.api.models import ServerConfigResponse, ServerMode
+from dcs_simulation_engine.api.models import ServerConfigResponse, ServerMode, StatusResponse
 from dcs_simulation_engine.api.registry import SessionRegistry
 from dcs_simulation_engine.api.routers import (
     catalog_router,
@@ -16,6 +16,7 @@ from dcs_simulation_engine.cli.bootstrap import create_async_provider
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.utils.time import utc_now
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -47,6 +48,7 @@ def create_app(
     async def lifespan(_app: FastAPI):
         if app.state.provider is None:
             app.state.provider = await create_async_provider(mongo_uri=mongo_uri)
+        app.state.started_at = utc_now()
         SessionManager.preload_game_configs()
         ExperimentManager.preload_experiment_configs()
         await registry.start()
@@ -77,6 +79,13 @@ def create_app(
     def server_config() -> ServerConfigResponse:
         """Expose server capabilities so clients can adapt to the active mode."""
         return build_server_config(server_mode=server_mode)
+
+    @app.get("/api/status", response_model=StatusResponse)
+    def status() -> StatusResponse:
+        """Expose basic process liveness metadata for monitoring."""
+        started_at = app.state.started_at
+        uptime = int((utc_now() - started_at).total_seconds())
+        return StatusResponse(started_at=started_at, uptime=max(uptime, 0))
 
     @app.get("/healthz")
     def health() -> dict[str, str]:

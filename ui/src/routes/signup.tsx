@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   extractDetail,
   NETWORK_UNAVAILABLE,
@@ -30,8 +29,6 @@ const schema = z.object({
     .string()
     .transform((v) => v.replace(/\D/g, ''))
     .pipe(z.string().min(10, 'Enter at least 10 digits')),
-  prior_experience: z.string().min(1, 'Required'),
-  additional_comments: z.string(),
   consent_to_followup: z.boolean(),
   consent_signature: z.string().min(1, 'Required'),
 })
@@ -84,8 +81,6 @@ function SignupPage() {
     full_name: '',
     email: '',
     phone_number: '',
-    prior_experience: '',
-    additional_comments: '',
     consent_to_followup: false,
     consent_signature: '',
   })
@@ -251,29 +246,6 @@ function SignupPage() {
               />
               <FieldError msg={visibleError('phone_number')} />
             </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="prior_experience">Prior Experience</Label>
-              <Textarea
-                id="prior_experience"
-                value={form.prior_experience}
-                onChange={(e) => set('prior_experience', e.target.value)}
-                onBlur={() => touch('prior_experience')}
-                rows={3}
-              />
-              <FieldError msg={visibleError('prior_experience')} />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="additional_comments">Additional Comments</Label>
-              <Textarea
-                id="additional_comments"
-                value={form.additional_comments}
-                onChange={(e) => set('additional_comments', e.target.value)}
-                rows={2}
-              />
-            </div>
-
             <div className="flex items-center gap-2">
               <Checkbox
                 id="consent_to_followup"

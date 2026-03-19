@@ -15,8 +15,7 @@ your character takes.
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/feedback` followed by your comments to submit feedback about the game. (Eg. '`/feedback` This reply doesn't make sense because...')
-Type `/exit` or `/quit` to leave the game.
+Type `/exit` to leave the game.
 Type `/abilities` to see your character's abilities.\
 """
 
@@ -72,9 +71,8 @@ Describe an action your character takes (and optionally include a prediction abo
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/feedback` followed by your comments to submit feedback about the game.
 Type `/complete` to end the game and submit your prediction notes. You can also use `/complete <notes>` to submit them immediately.
-Type `/exit` or `/quit` to leave without submitting notes.\
+Type `/exit` to leave without submitting notes.\
 """
 
     COMPLETE_QUESTION = """\
@@ -122,10 +120,9 @@ Describe an action that makes sense in the context of the scene and uses your ch
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/feedback` followed by your comments to submit feedback about the game.
 Type `/abilities` to see your character's abilities.
 Type `/guess` when you think you understand the NPC's goal to end the interaction and submit your inference.
-Type `/exit` or `/quit` to leave the game without submitting an inference.\
+Type `/exit` to leave the game without submitting an inference.\
 """
 
     ABILITIES_CONTENT = """\
@@ -170,9 +167,8 @@ Describe an action that makes sense in the context of the scene and uses your ch
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/feedback` followed by your comments to submit feedback about the game.
 Type `/abilities` to see your character's abilities.
-Type `/exit` or `/quit` to leave the game.\
+Type `/exit` to leave the game.\
 """
 
     ABILITIES_CONTENT = """\
