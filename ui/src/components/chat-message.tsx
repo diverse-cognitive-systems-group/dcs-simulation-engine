@@ -1,11 +1,9 @@
 // Renders a single chat message bubble. User messages align right; AI messages
 // align left with visual styling that varies by event type (normal, info, error, warning).
 
-import { ThumbsDown, ThumbsUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import type { ChatMessage, EventType, MessageFeedback } from '@/hooks/use-session-websocket'
 import { cn } from '@/lib/utils'
 
@@ -27,8 +25,8 @@ interface ChatMessageProps {
   feedbackPending?: boolean
   onSubmitFeedback?: (payload: {
     eventId: string
-    liked: boolean
-    comment: string
+    doesntMakeSense: boolean
+    outOfCharacter: boolean
   }) => Promise<MessageFeedback | undefined>
   onClearFeedback?: (eventId: string) => Promise<void>
 }
@@ -52,9 +50,6 @@ export function ChatMessageBubble({
   const [confirmedFeedback, setConfirmedFeedback] = useState<MessageFeedback | undefined>(
     savedFeedback,
   )
-  const [composerOpen, setComposerOpen] = useState(false)
-  const [draftLiked, setDraftLiked] = useState<boolean | null>(savedFeedback?.liked ?? null)
-  const [draftComment, setDraftComment] = useState(savedFeedback?.comment ?? '')
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -62,11 +57,8 @@ export function ChatMessageBubble({
   }, [savedFeedback])
 
   useEffect(() => {
-    if (composerOpen) return
-    setDraftLiked(confirmedFeedback?.liked ?? null)
-    setDraftComment(confirmedFeedback?.comment ?? '')
     setFeedbackError(null)
-  }, [confirmedFeedback, composerOpen])
+  }, [confirmedFeedback])
 
   if (isUser) {
     return (
@@ -81,67 +73,40 @@ export function ChatMessageBubble({
   }
 
   const style = EVENT_STYLES[eventType]
-  const activeLiked = composerOpen ? draftLiked : (confirmedFeedback?.liked ?? null)
+  const doesntMakeSense = confirmedFeedback?.doesntMakeSense ?? false
+  const outOfCharacter = confirmedFeedback?.outOfCharacter ?? false
   const isInfo = eventType === 'info'
 
-  async function handleReactionClick(liked: boolean) {
+  async function handleFeedbackToggle(flag: 'doesntMakeSense' | 'outOfCharacter') {
     if (!message.eventId || feedbackPending) return
 
-    if (confirmedFeedback && confirmedFeedback.liked === liked && onClearFeedback) {
-      try {
-        setFeedbackError(null)
-        await onClearFeedback(message.eventId)
-        setConfirmedFeedback(undefined)
-        setDraftLiked(null)
-        setDraftComment('')
-        setComposerOpen(false)
-      } catch (error) {
-        setFeedbackError(error instanceof Error ? error.message : 'Failed to clear feedback.')
-      }
-      return
-    }
-
-    setDraftLiked(liked)
-    setDraftComment((prev) => {
-      if (composerOpen) return prev
-      return confirmedFeedback?.comment ?? ''
-    })
-    setComposerOpen(true)
-    setFeedbackError(null)
-  }
-
-  function cancelComposer() {
-    setComposerOpen(false)
-    setDraftLiked(confirmedFeedback?.liked ?? null)
-    setDraftComment(confirmedFeedback?.comment ?? '')
-    setFeedbackError(null)
-  }
-
-  async function handleFeedbackSubmit() {
-    if (!message.eventId || draftLiked === null || !onSubmitFeedback || feedbackPending) return
-
-    const comment = draftComment.trim()
-    if (!comment) {
-      setFeedbackError('Feedback comment is required.')
-      return
+    const nextFeedback = {
+      doesntMakeSense,
+      outOfCharacter,
+      [flag]: flag === 'doesntMakeSense' ? !doesntMakeSense : !outOfCharacter,
     }
 
     try {
       setFeedbackError(null)
+      if (!nextFeedback.doesntMakeSense && !nextFeedback.outOfCharacter && onClearFeedback) {
+        await onClearFeedback(message.eventId)
+        setConfirmedFeedback(undefined)
+        return
+      }
+
+      if (!onSubmitFeedback) return
       const submittedFeedback = await onSubmitFeedback({
         eventId: message.eventId,
-        liked: draftLiked,
-        comment,
+        doesntMakeSense: nextFeedback.doesntMakeSense,
+        outOfCharacter: nextFeedback.outOfCharacter,
       })
       setConfirmedFeedback(
         submittedFeedback ?? {
-          liked: draftLiked,
-          comment,
+          doesntMakeSense: nextFeedback.doesntMakeSense,
+          outOfCharacter: nextFeedback.outOfCharacter,
           submittedAt: new Date().toISOString(),
         },
       )
-      setDraftComment(comment)
-      setComposerOpen(false)
     } catch (error) {
       setFeedbackError(error instanceof Error ? error.message : 'Failed to save feedback.')
     }
@@ -177,71 +142,37 @@ export function ChatMessageBubble({
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon-xs"
+                  size="sm"
                   disabled={feedbackPending}
                   className={cn(
                     'border-border/70 text-muted-foreground transition-colors',
-                    activeLiked === true
-                      ? '!border-emerald-600 !bg-emerald-600 !text-white hover:!border-emerald-600 hover:!bg-emerald-600/90 hover:!text-white'
-                      : 'hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-700',
+                    doesntMakeSense
+                      ? '!border-amber-600 !bg-amber-600 !text-white hover:!border-amber-600 hover:!bg-amber-600/90 hover:!text-white'
+                      : 'hover:border-amber-300 hover:bg-amber-100 hover:text-amber-800',
                   )}
-                  aria-label="Like assistant message"
-                  onClick={() => void handleReactionClick(true)}
+                  aria-label="Flag assistant message as not making sense"
+                  onClick={() => void handleFeedbackToggle('doesntMakeSense')}
                 >
-                  <ThumbsUp />
+                  Doesn&apos;t make sense
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon-xs"
+                  size="sm"
                   disabled={feedbackPending}
                   className={cn(
                     'border-border/70 text-muted-foreground transition-colors',
-                    activeLiked === false
+                    outOfCharacter
                       ? '!border-rose-600 !bg-rose-600 !text-white hover:!border-rose-600 hover:!bg-rose-600/90 hover:!text-white'
                       : 'hover:border-rose-300 hover:bg-rose-100 hover:text-rose-700',
                   )}
-                  aria-label="Dislike assistant message"
-                  onClick={() => void handleReactionClick(false)}
+                  aria-label="Flag assistant message as out of character"
+                  onClick={() => void handleFeedbackToggle('outOfCharacter')}
                 >
-                  <ThumbsDown />
+                  Out of character
                 </Button>
               </div>
-
-              {composerOpen && (
-                <div className="w-full rounded-xl border border-border/80 bg-background/95 p-3 shadow-sm">
-                  <div className="space-y-2">
-                    <Textarea
-                      value={draftComment}
-                      onChange={(e) => setDraftComment(e.target.value)}
-                      placeholder="Describe your feedback"
-                      rows={3}
-                      disabled={feedbackPending}
-                      className="min-h-24 w-full bg-background"
-                    />
-                    {feedbackError && <p className="text-xs text-destructive">{feedbackError}</p>}
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={feedbackPending || !draftComment.trim()}
-                        onClick={handleFeedbackSubmit}
-                      >
-                        {feedbackPending ? 'Submitting...' : 'Submit'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={feedbackPending}
-                        onClick={cancelComposer}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {feedbackError && <p className="text-xs text-destructive">{feedbackError}</p>}
             </div>
           )}
         </div>

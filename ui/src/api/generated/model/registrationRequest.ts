@@ -15,9 +15,6 @@ export interface RegistrationRequest {
   email: string;
   /** @minLength 1 */
   phone_number: string;
-  /** @minLength 1 */
-  prior_experience: string;
-  additional_comments?: string;
   consent_to_followup: boolean;
   /** @minLength 1 */
   consent_signature: string;

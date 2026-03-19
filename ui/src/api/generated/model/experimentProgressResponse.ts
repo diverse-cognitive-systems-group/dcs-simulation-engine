@@ -4,7 +4,6 @@
  * DCS Server
  * OpenAPI spec version: 0.1.0
  */
-import type { ExperimentProgressResponsePerGameCounts } from './experimentProgressResponsePerGameCounts';
 
 /**
  * Finite progress payload for the usability experiment.
@@ -13,6 +12,4 @@ export interface ExperimentProgressResponse {
   total: number;
   completed: number;
   is_complete: boolean;
-  quota_per_game: number;
-  per_game_counts: ExperimentProgressResponsePerGameCounts;
 }

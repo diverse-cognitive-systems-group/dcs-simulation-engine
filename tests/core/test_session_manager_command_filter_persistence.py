@@ -38,7 +38,7 @@ def _enable_async_mongo_writes(db: Database[Any]) -> None:
 
 def _expected_command_args(command_text: str) -> str:
     """Return parsed command args using recorder-equivalent parsing."""
-    stripped = command_text.strip().lstrip("/\\")
+    stripped = command_text.strip().removeprefix("/")
     parts = stripped.split(maxsplit=1)
     return parts[1] if len(parts) > 1 else ""
 
@@ -118,7 +118,6 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
     [
         ("Explore", f"/{ExploreCommand.HELP.value}", ExploreCommand.HELP.value),
         ("Explore", f"/{ExploreCommand.ABILITIES.value}", ExploreCommand.ABILITIES.value),
-        ("Explore", f"\\{ExploreCommand.HELP.value}", ExploreCommand.HELP.value),
         ("Foresight", f"/{ForesightCommand.HELP.value}", ForesightCommand.HELP.value),
         ("Foresight", f"/{ForesightCommand.COMPLETE.value}", ForesightCommand.COMPLETE.value),
         ("Infer Intent", f"/{InferIntentCommand.HELP.value}", InferIntentCommand.HELP.value),
@@ -178,14 +177,10 @@ async def test_game_level_command_filters_persist_command_events(
 @pytest.mark.parametrize(
     ("command_text", "expected_command_name", "expected_command_args", "expect_exit"),
     [
-        ("/feedback useful note", "feedback", "useful note", False),
-        ("/fb useful note", "fb", "useful note", False),
         ("/exit", "exit", "", True),
-        ("/quit", "quit", "", True),
-        ("/stop", "stop", "", True),
     ],
 )
-async def test_session_level_commands_persist_and_exit_aliases_normalize_reason(
+async def test_session_level_exit_command_persists_and_normalizes_reason(
     patch_llm_client: Any,
     async_mongo_provider: Any,
     consenting_player_id: str,
@@ -194,7 +189,7 @@ async def test_session_level_commands_persist_and_exit_aliases_normalize_reason(
     expected_command_args: str,
     expect_exit: bool,
 ) -> None:
-    """Session-level command handling should persist command events and normalize exit reasons."""
+    """Session-level exit command should persist command events and normalize exit reasons."""
     _ = patch_llm_client
     db = async_mongo_provider.get_db()
     _enable_async_mongo_writes(db)

@@ -113,8 +113,6 @@ class ExperimentManager:
                 "total": 0,
                 "completed": 0,
                 "is_complete": False,
-                "per_game_counts": {},
-                "quota_per_game": 0,
             }
 
         completed_assignments = await maybe_await(
@@ -130,8 +128,6 @@ class ExperimentManager:
             "total": quota * len(config.games),
             "completed": len(completed_assignments),
             "is_complete": all(count >= quota for count in per_game_counts.values()),
-            "per_game_counts": per_game_counts,
-            "quota_per_game": quota,
         }
 
     @classmethod

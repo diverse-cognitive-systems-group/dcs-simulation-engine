@@ -44,13 +44,6 @@ def list_games(
 ) -> list[tuple[str, str, Path, str | None, str | None]]:
     """Return available games."""
     pkg_dir = package_games_dir()
-
-    # TODO: Make this a param or env
-    user_dir = Path.home() / "games"
-
-    if not user_dir.exists() or not user_dir.is_dir():
-        raise FileNotFoundError(f"Provided games directory {user_dir!s} not found or invalid.")
-
     results: list[tuple[str, str, Path, str | None, str | None]] = []
 
     def add_from_dir(dir_path: Path) -> None:
@@ -87,10 +80,6 @@ def list_games(
     # List package games first
     if pkg_dir and pkg_dir.exists() and pkg_dir.is_dir():
         add_from_dir(pkg_dir)
-
-    # Only include user dir if it's not the same directory
-    if not pkg_dir or pkg_dir.resolve() != user_dir.resolve():
-        add_from_dir(user_dir)
 
     return results
 

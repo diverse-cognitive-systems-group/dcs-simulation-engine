@@ -161,8 +161,8 @@ class InferIntentGame(Game):
             yield GameEvent.now(type="info", content="Thank you. Game complete.")
             return
 
-        # Game-level commands (/help, /abilities, /guess). Session-level commands
-        # (/exit, /quit, /feedback) are already handled by SessionManager.
+        # Game-level commands (/help, /abilities, /guess). Session-level exit
+        # commands are already handled by SessionManager.
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -194,10 +194,13 @@ class InferIntentGame(Game):
     def _handle_command(self, user_input: str) -> GameEvent | None:
         """Return a GameEvent for recognised game-level commands, or None to continue."""
         stripped = user_input.strip()
-        if not stripped.startswith(("/", "\\")):
+        if not stripped.startswith("/"):
             return None
 
-        cmd = stripped.lstrip("/\\").split()[0].lower()
+        command_body = stripped[1:].strip()
+        if not command_body:
+            return None
+        cmd = command_body.split()[0].lower()
 
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)

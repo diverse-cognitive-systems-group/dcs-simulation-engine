@@ -107,7 +107,6 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
         ExperimentConfig.load(path)
 
 
-
 async def test_experiment_config_snapshot_is_serializable(usability_experiment_config) -> None:
     """Experiment config snapshots should be JSON-friendly for DB storage."""
     config = usability_experiment_config

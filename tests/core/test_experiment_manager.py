@@ -198,7 +198,6 @@ async def test_progress_counts_completed_assignments_and_unique_players(
         cached_usability_experiment.games
     )
     assert progress["completed"] == 2
-    assert progress["per_game_counts"]["Explore"] == 2
     assert progress["is_complete"] is False
 
 

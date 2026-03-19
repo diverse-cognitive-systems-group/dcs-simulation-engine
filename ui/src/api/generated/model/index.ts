@@ -24,7 +24,6 @@ export * from './experimentPlayerResponse';
 export * from './experimentPostPlayRequest';
 export * from './experimentPostPlayRequestResponses';
 export * from './experimentProgressResponse';
-export * from './experimentProgressResponsePerGameCounts';
 export * from './experimentSessionRequest';
 export * from './experimentSetupResponse';
 export * from './experimentSetupResponseFormsItem';

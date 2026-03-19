@@ -32,8 +32,6 @@ interface CommandSuggestion {
 
 const SESSION_COMMANDS: CommandSuggestion[] = [
   { command: '/exit', description: 'Leave the current session.' },
-  { command: '/quit', description: 'Alias for /exit.' },
-  { command: '/feedback', description: 'Send quick session feedback with optional text.' },
 ]
 
 const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
@@ -180,8 +178,8 @@ function PlayPage() {
 
   async function handleSubmitFeedback(payload: {
     eventId: string
-    liked: boolean
-    comment: string
+    doesntMakeSense: boolean
+    outOfCharacter: boolean
   }): Promise<MessageFeedback> {
     setFeedbackPendingEventId(payload.eventId)
 
@@ -190,8 +188,8 @@ function PlayPage() {
         sessionId,
         eventId: payload.eventId,
         data: {
-          liked: payload.liked,
-          comment: payload.comment,
+          doesnt_make_sense: payload.doesntMakeSense,
+          out_of_character: payload.outOfCharacter,
         },
       })
       const result = unwrapOrvalData<SubmitSessionEventFeedbackResponse>(response)
@@ -200,8 +198,8 @@ function PlayPage() {
       }
 
       const feedback: MessageFeedback = {
-        liked: result.feedback.liked,
-        comment: result.feedback.comment,
+        doesntMakeSense: result.feedback.doesnt_make_sense,
+        outOfCharacter: result.feedback.out_of_character,
         submittedAt: result.feedback.submitted_at,
       }
       setMessageFeedback(payload.eventId, feedback)
@@ -240,8 +238,8 @@ function PlayPage() {
   const isClosed = wsState === 'closed' || exited
   // Allow drafting at all times except terminal states (closed/error).
   const inputDisabled = isClosed || isError
-  // Send is blocked while waiting so users can draft the next turn without double-submitting.
-  const sendDisabled = !input.trim() || inputDisabled || waiting
+  // Send is blocked while the simulation is loading or awaiting the next turn response.
+  const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting
 
   return (
     <div className="h-screen flex flex-col bg-background">

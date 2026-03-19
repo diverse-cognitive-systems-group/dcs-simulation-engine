@@ -2107,9 +2107,6 @@ export function useServerConfigApiServerConfigGet<TData = Awaited<ReturnType<typ
 }
 
 
-
-
-
 /**
  * Simple liveness endpoint.
  * @summary Health
