@@ -13,32 +13,25 @@
 
 ## Quickstart
 
-#### cli
+Install [Docker](https://docs.docker.com/engine/install/) following the instructions for your operating system.
+
+Run the full stack with the commands below. ***The build may take a few minutes the first time you run the command.***
 
 ```sh
-# bootstrap
-docker compose up -d
+# configure your OpenRouter API key in a .env first
 
-# start server in anonymous free-play mode
-uv run dcs server --mongo-seed-dir="database_seeds/dev" --free-play
+# start the app
+docker compose up --build --detach
 
-# start frontend
-cd ui
-bun dev
+# go to http://localhost:5173 to view the ui
 
 # teardown
-docker compose down --volumes 
+docker compose down --volumes
+
+# the entire state of the database in store in a timestamped folder
+ls ./runs
 ```
 
-Omit `--free-play` to run the standard registration and experiment flow instead.
-
-#### vscode
-
-Run the `dcs server` launch target in the debugger and then
-```sh
-cd ui
-bun dev
-```
 
 ## What is this?
 
@@ -132,7 +125,7 @@ uv run pytest -m functional
 
 Programmatic API access is provided by the FastAPI + WebSocket `dcs-server`.
 
-- Start server: `uv run dcs-server`
+- Start server: `uv run dcs server`
 - Start server in anonymous free play mode: `uv run dcs server --free-play`
 - Docs: `http://localhost:8000/docs`
 - Python client: `dcs_simulation_engine.client.DCSClient`
@@ -149,7 +142,7 @@ The full Researcher User Guide lives in the wiki and walks through these options
 
 At a high level, the recommended way to work with the project is to install and run it directly from PyPI. This lets you create and launch custom games and experiments without modifying the core codebase.
 
-- Install from Docker: Run from the docker image without installing anything locally. This is ideal if you want to test or deploy games without modifying the codebase.
+- Install from Docker: Run the split Docker stack from [`compose.yaml`](compose.yaml) without installing the project locally. This is ideal if you want to test or demo the system with the packaged API and UI images.
 
 Install the `dcs-simulation-engine` package from PyPI, create a new game or modify an existing one, test it locally then use the deploy script to launch it for others to play.
 

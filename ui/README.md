@@ -7,7 +7,8 @@ A browser-based interface for the DCS (Decision and Communication Simulation) en
 - [Bun](https://bun.sh) — used as the package manager and script runner
 - The DCS API server running on port 8000 — see `dcs_simulation_engine/api/`
 
-The Vite dev server proxies `/api/` to `http://localhost:8000`, so the API server must be running before you start the UI.
+The Vite dev server proxies HTTP `/api/` requests to `http://localhost:8000`, so the API server must be running before you start the UI.
+Live gameplay WebSockets connect directly to the backend on port `8000` in development so chat does not depend on Vite's WebSocket proxy implementation.
 
 For anonymous local play, start the backend with `uv run dcs server --free-play`.
 
@@ -21,7 +22,20 @@ bun install
 bun run dev
 ```
 
+If your API server is not running on the same host as the browser, set `VITE_API_ORIGIN` before starting the UI:
+
+```bash
+VITE_API_ORIGIN=http://your-api-host:8000 bun run dev
+```
+
 Then open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## Docker Image
+
+The Docker UI container is built from [`docker/ui.dockerfile`](../docker/ui.dockerfile).
+It runs the same Bun/Vite workflow as local development from the `ui/` folder.
+In Docker Compose, Vite proxies HTTP `/api/*` requests to the `api` service via
+`VITE_API_PROXY_TARGET=http://api:8000`.
 
 ## Available Scripts
 

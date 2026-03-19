@@ -1,0 +1,79 @@
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: dcs-mongo
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all", "--noauth"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "mongodb://127.0.0.1:27017/admin",
+          "--eval",
+          "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.dockerfile
+    container_name: dcs-api
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "exec /app/.venv/bin/dcs server --mongo-seed-dir /app/database_seeds/dev ${DCS_FREE_PLAY:+--free-play} --dump ./runs",
+      ]
+    environment:
+      MONGO_URI: mongodb://mongo:27017/
+      DCS_SERVER_HOST: 0.0.0.0
+      DCS_SERVER_PORT: 8000
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY must be set before running docker compose}
+    volumes:
+      - ./runs:/app/runs
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: ../docker/ui.dockerfile
+    container_name: dcs-ui
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    ports:
+      - "5173:5173"
+
+volumes:
+  mongo_data:
+    driver: local

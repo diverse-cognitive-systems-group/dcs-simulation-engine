@@ -4,15 +4,17 @@ This module is intentionally stateless. Connection ownership is handled by
 bootstrap/runtime wiring and passed into DAL objects explicitly.
 """
 
+from pathlib import Path
 from typing import Any
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 from dcs_simulation_engine.dal.base import PlayerRecord
 from dcs_simulation_engine.dal.mongo.const import (
     DEFAULT_DB_NAME,
     INDEX_DEFS,
     MongoColumns,
 )
+from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.time import utc_now
 from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, MongoClient
 from pymongo.asynchronous.database import AsyncDatabase
@@ -167,6 +169,68 @@ async def connect_db_async(
     db = client[db_name]
     await ensure_default_indexes_async(db)
     return db
+
+
+def _make_dump_root(path: str | Path) -> Path:
+    """Create and return the timestamped dump directory."""
+    base_path = Path(path)
+    root = base_path / utc_now().strftime("%Y_%m_%d_%H_%M_%S")
+    root.mkdir(parents=True, exist_ok=False)
+    return root
+
+
+def dump_all_collections_to_json(db: Database[Any], path: str | Path) -> Path:
+    """Dump every collection to a timestamped directory of JSON files."""
+    root = _make_dump_root(path)
+
+    for collection_name in sorted(db.list_collection_names()):
+        out_path = root / f"{collection_name}.json"
+        cursor = db[collection_name].find({})
+        with out_path.open("w", encoding="utf-8") as f:
+            f.write("[\n")
+            first = True
+            try:
+                for doc in cursor:
+                    if not first:
+                        f.write(",\n")
+                    f.write(json_util.dumps(doc))
+                    first = False
+            finally:
+                cursor.close()
+            f.write("\n]\n")
+
+    return root
+
+
+async def dump_all_collections_to_json_async(db: AsyncDatabase[Any] | Database[Any] | Any, path: str | Path) -> Path:
+    """Dump every collection to a timestamped directory of JSON files."""
+    root = _make_dump_root(path)
+    collection_names = sorted(await maybe_await(db.list_collection_names()))
+
+    for collection_name in collection_names:
+        out_path = root / f"{collection_name}.json"
+        cursor = db[collection_name].find({})
+        with out_path.open("w", encoding="utf-8") as f:
+            f.write("[\n")
+            first = True
+            try:
+                if hasattr(cursor, "__aiter__"):
+                    async for doc in cursor:
+                        if not first:
+                            f.write(",\n")
+                        f.write(json_util.dumps(doc))
+                        first = False
+                else:
+                    for doc in cursor:
+                        if not first:
+                            f.write(",\n")
+                        f.write(json_util.dumps(doc))
+                        first = False
+            finally:
+                await maybe_await(cursor.close())
+            f.write("\n]\n")
+
+    return root
 
 
 def sanitize_player_data(player_data: dict[str, Any]) -> dict[str, Any]:

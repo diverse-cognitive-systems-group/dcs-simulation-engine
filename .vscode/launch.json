@@ -8,41 +8,26 @@
             "name": "pytest",
             "type": "debugpy",
             "request": "launch",
-            "module": "pytest: functional",
+            "python": "/opt/venv/bin/python",
+            "module": "pytest",
             "args": [
-                "-m",
-                "functional",
                 "-v",
             ],
             "cwd": "${workspaceFolder}",
         },
         {
-            "name": "dcs list game",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
-            "args": [
-                "list",
-                "games",
-            ],
-            "cwd": "${workspaceFolder}",
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
-            "preLaunchTask": "docker-compose-up",
-            "postDebugTask": "docker-compose-down",
-        },
-        {
             "name": "dcs server",
             "type": "debugpy",
             "request": "launch",
+            "python": "/opt/venv/bin/python",
             "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
             "args": [
                 "server",
                 "--mongo-seed-dir=database_seeds/dev",
             ],
             "cwd": "${workspaceFolder}",
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
-            "preLaunchTask": "docker-compose-up",
-            "postDebugTask": "docker-compose-down",
+            "preLaunchTask": "start-mongo",
+            "postDebugTask": "stop-mongo",
             "env": {
                 "DEBUGPY_PROCESS_SPAWN_TIMEOUT": "5" // Timeout in seconds (90 seconds)
             }
@@ -51,6 +36,7 @@
             "name": "dcs server freeplay",
             "type": "debugpy",
             "request": "launch",
+            "python": "/opt/venv/bin/python",
             "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
             "args": [
                 "server",
@@ -58,28 +44,11 @@
                 "--free-play",
             ],
             "cwd": "${workspaceFolder}",
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
-            "preLaunchTask": "docker-compose-up",
-            "postDebugTask": "docker-compose-down",
+            "preLaunchTask": "start-mongo",
+            "postDebugTask": "stop-mongo",
             "env": {
                 "DEBUGPY_PROCESS_SPAWN_TIMEOUT": "5" // Timeout in seconds (90 seconds)
             }
-        },
-        {
-            "name": "dcs create database: dev",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/dcs_simulation_engine/cli/app.py",
-            "args": [
-                "create",
-                "database",
-                "--path",
-                "database_seeds/dev",
-            ],
-            "cwd": "${workspaceFolder}",
-            // run docker compose in dev with: docker compose -f docker-compose.dev.yaml up --build
-            "preLaunchTask": "docker-compose-up",
-            "postDebugTask": "docker-compose-down",
         }
     ]
 }
