@@ -93,3 +93,37 @@ def test_server_wires_shutdown_dump_dir(monkeypatch: pytest.MonkeyPatch, tmp_pat
     )
 
     assert create_app.call_args.kwargs["shutdown_dump_dir"] == tmp_path
+
+
+@pytest.mark.unit
+def test_server_wires_remote_management_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Server command should pass remote-management settings through to the app factory."""
+    app = object()
+    create_app = MagicMock(return_value=app)
+
+    monkeypatch.setattr(server_command, "create_app", create_app)
+    monkeypatch.setattr(server_command.ai_client, "set_fake_ai_response", MagicMock())
+    monkeypatch.setattr(server_command.ai_client, "validate_openrouter_configuration", MagicMock())
+    monkeypatch.setattr("uvicorn.run", MagicMock())
+
+    ctx = SimpleNamespace(obj=None)
+    server_command.server(
+        ctx=ctx,  # type: ignore[arg-type]
+        host="127.0.0.1",
+        port=9000,
+        ttl_seconds=3600,
+        sweep_interval_seconds=60,
+        mongo_seed_dir=None,
+        dump_dir=None,
+        fake_ai_response=None,
+        free_play=False,
+        remote_managed=True,
+        default_experiment="usability-ca",
+        bootstrap_token="bootstrap-secret",
+        cors_origin=["https://ui.example"],
+    )
+
+    assert create_app.call_args.kwargs["remote_management_enabled"] is True
+    assert create_app.call_args.kwargs["default_experiment_name"] == "usability-ca"
+    assert create_app.call_args.kwargs["bootstrap_token"] == "bootstrap-secret"
+    assert create_app.call_args.kwargs["cors_origins"] == ["https://ui.example"]

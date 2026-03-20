@@ -1,5 +1,7 @@
 """Pydantic models and payload parsers for the API layer."""
 
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from typing import Literal
@@ -7,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, ValidationError
 
 ServerMode = Literal["standard", "free_play"]
+RemoteDeploymentMode = Literal["standard", "free_play", "experiment"]
 SessionStatus = Literal["active", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
@@ -51,6 +54,7 @@ class ServerConfigResponse(BaseModel):
     authentication_required: bool
     registration_enabled: bool
     experiments_enabled: bool
+    default_experiment_name: str | None = None
 
 
 class StatusResponse(BaseModel):
@@ -59,6 +63,26 @@ class StatusResponse(BaseModel):
     status: Literal["ok"] = "ok"
     started_at: datetime
     uptime: int
+
+
+class RemoteBootstrapResponse(BaseModel):
+    """Bootstrap response containing the newly issued remote admin key."""
+
+    player_id: str
+    admin_api_key: str
+    experiment_name: str | None = None
+
+
+class RemoteStatusResponse(BaseModel):
+    """Public status payload for remote-managed or generic deployments."""
+
+    status: Literal["ok"] = "ok"
+    mode: RemoteDeploymentMode
+    started_at: datetime
+    uptime: int
+    experiment_name: str | None = None
+    progress: ExperimentProgressResponse | None = None
+    experiment_status: ExperimentStatusResponse | None = None
 
 
 class CreateGameRequest(BaseModel):
@@ -189,8 +213,10 @@ class SessionsListResponse(BaseModel):
 
 
 class SessionEventFeedback(BaseModel):
-    """Stored boolean issue flags attached to one assistant message."""
+    """Stored reaction, comment, and issue flags attached to one assistant message."""
 
+    liked: bool
+    comment: str = Field(min_length=1)
     doesnt_make_sense: bool
     out_of_character: bool
     submitted_at: datetime
@@ -199,6 +225,8 @@ class SessionEventFeedback(BaseModel):
 class SubmitSessionEventFeedbackRequest(BaseModel):
     """Payload for storing feedback on a single assistant session event."""
 
+    liked: bool
+    comment: str = Field(min_length=1)
     doesnt_make_sense: bool
     out_of_character: bool
 

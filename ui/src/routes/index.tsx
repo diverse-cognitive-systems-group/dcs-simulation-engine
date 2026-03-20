@@ -5,8 +5,6 @@ import { getActiveExperimentName, isAuthenticated } from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
-const DEFAULT_EXPERIMENT = 'usability-ca'
-
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
@@ -17,6 +15,7 @@ export const indexRoute = createRoute({
       throw redirect({ to: '/games' })
     }
 
+    const defaultExperimentName = serverConfig.default_experiment_name
     const experimentName = getActiveExperimentName()
     if (experimentName) {
       throw redirect({
@@ -24,13 +23,16 @@ export const indexRoute = createRoute({
         params: { experimentName },
       })
     }
+    if (defaultExperimentName) {
+      throw redirect({
+        to: '/experiments/$experimentName',
+        params: { experimentName: defaultExperimentName },
+      })
+    }
     if (isAuthenticated()) {
       throw redirect({ to: '/games' })
     }
-    throw redirect({
-      to: '/experiments/$experimentName',
-      params: { experimentName: DEFAULT_EXPERIMENT },
-    })
+    throw redirect({ to: '/games' })
   },
   component: () => null,
 })

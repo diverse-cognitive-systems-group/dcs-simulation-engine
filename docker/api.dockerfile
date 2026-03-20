@@ -13,6 +13,7 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY dcs_simulation_engine/ ./dcs_simulation_engine/
 COPY games/ ./games/
 COPY experiments/ ./experiments/
+COPY deployments/ ./deployments/
 COPY database_seeds/ ./database_seeds/
 
 RUN uv sync --frozen --no-dev

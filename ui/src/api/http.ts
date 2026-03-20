@@ -2,6 +2,7 @@
 // Used by TanStack Query hooks throughout the app instead of calling fetch directly.
 
 import { getApiKey } from '../lib/auth'
+import { resolveApiUrl } from '../lib/api-url'
 
 export class HttpError extends Error {
   status: number
@@ -25,7 +26,7 @@ export async function httpClient<T>(url: string, options?: RequestInit): Promise
     headers.Authorization = `Bearer ${apiKey}`
   }
 
-  const response = await fetch(url, { ...options, headers })
+  const response = await fetch(resolveApiUrl(url), { ...options, headers })
 
   if (!response.ok) {
     // Try to surface the FastAPI `detail` field; fall back to the HTTP status text.

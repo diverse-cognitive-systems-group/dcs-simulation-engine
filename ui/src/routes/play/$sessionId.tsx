@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { MessageFeedback } from '@/hooks/use-session-websocket'
 import { useSessionWebSocket } from '@/hooks/use-session-websocket'
 import { unwrapOrvalData } from '@/lib/orval-response'
-import { getServerConfig, peekServerConfig } from '@/lib/server-config'
+import { getServerConfig } from '@/lib/server-config'
 import { cn } from '@/lib/utils'
 import { requireAuth, rootRoute } from '../__root'
 
@@ -62,7 +62,6 @@ function PlayPage() {
   const { sessionId } = useParams({ from: '/play/$sessionId' })
   const { gameName, experimentName } = useSearch({ from: '/play/$sessionId' })
   const navigate = useNavigate()
-  const feedbackEnabled = peekServerConfig()?.mode !== 'free_play'
   // useSessionWebSocket opens the WebSocket connection and returns reactive state plus
   // action callbacks; see hooks/use-session-websocket.ts for the protocol details.
   const { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback } =
@@ -178,6 +177,8 @@ function PlayPage() {
 
   async function handleSubmitFeedback(payload: {
     eventId: string
+    liked: boolean
+    comment: string
     doesntMakeSense: boolean
     outOfCharacter: boolean
   }): Promise<MessageFeedback> {
@@ -188,6 +189,8 @@ function PlayPage() {
         sessionId,
         eventId: payload.eventId,
         data: {
+          liked: payload.liked,
+          comment: payload.comment,
           doesnt_make_sense: payload.doesntMakeSense,
           out_of_character: payload.outOfCharacter,
         },
@@ -198,6 +201,8 @@ function PlayPage() {
       }
 
       const feedback: MessageFeedback = {
+        liked: result.feedback.liked,
+        comment: result.feedback.comment,
         doesntMakeSense: result.feedback.doesnt_make_sense,
         outOfCharacter: result.feedback.out_of_character,
         submittedAt: result.feedback.submitted_at,
@@ -285,8 +290,8 @@ function PlayPage() {
               key={msg.id}
               message={msg}
               feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
-              onSubmitFeedback={feedbackEnabled ? handleSubmitFeedback : undefined}
-              onClearFeedback={feedbackEnabled ? handleClearFeedback : undefined}
+              onSubmitFeedback={handleSubmitFeedback}
+              onClearFeedback={handleClearFeedback}
             />
           ))}
 

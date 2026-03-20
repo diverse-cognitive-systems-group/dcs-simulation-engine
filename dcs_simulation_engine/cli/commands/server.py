@@ -63,6 +63,29 @@ def server(
         "--free-play",
         help="Run the server in anonymous free play mode without registration or experiments.",
     ),
+    remote_managed: bool = typer.Option(
+        False,
+        "--remote-managed",
+        envvar="DCS_REMOTE_MANAGED",
+        help="Run the server as a remote-managed deployment with bootstrap/export endpoints enabled.",
+    ),
+    default_experiment: Optional[str] = typer.Option(
+        None,
+        "--default-experiment",
+        envvar="DCS_DEFAULT_EXPERIMENT_NAME",
+        help="Default experiment name for experiment-centric deployments.",
+    ),
+    bootstrap_token: Optional[str] = typer.Option(
+        None,
+        "--bootstrap-token",
+        envvar="DCS_REMOTE_BOOTSTRAP_TOKEN",
+        help="One-time bootstrap token used to seed a remote-managed deployment.",
+    ),
+    cors_origin: Optional[list[str]] = typer.Option(
+        None,
+        "--cors-origin",
+        help="Additional allowed CORS origin. Repeat the flag to allow multiple origins.",
+    ),
 ) -> None:
     """Start the DCS API server."""
     import uvicorn
@@ -80,8 +103,12 @@ def server(
             mongo_uri=mongo_uri,
             shutdown_dump_dir=dump_dir,
             server_mode="free_play" if free_play else "standard",
+            default_experiment_name=default_experiment,
+            remote_management_enabled=remote_managed,
+            bootstrap_token=bootstrap_token,
             session_ttl_seconds=ttl_seconds,
             sweep_interval_seconds=sweep_interval_seconds,
+            cors_origins=cors_origin or [],
         )
     except Exception:
         console.print_exception()

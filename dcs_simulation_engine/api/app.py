@@ -10,6 +10,7 @@ from dcs_simulation_engine.api.routers import (
     catalog_router,
     experiments_router,
     play_router,
+    remote_router,
     sessions_router,
     users_router,
 )
@@ -40,6 +41,9 @@ def create_app(
     mongo_uri: str | None = None,
     shutdown_dump_dir: Path | None = None,
     server_mode: ServerMode = "standard",
+    default_experiment_name: str | None = None,
+    remote_management_enabled: bool = False,
+    bootstrap_token: str | None = None,
     session_ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
     sweep_interval_seconds: int = DEFAULT_SWEEP_INTERVAL_SECONDS,
     cors_origins: list[str] | None = None,
@@ -71,7 +75,7 @@ def create_app(
     app.router.lifespan_context = lifespan
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins if cors_origins is not None else CORS_ORIGINS,
+        allow_origins=list(dict.fromkeys((cors_origins or []) + CORS_ORIGINS)),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -79,17 +83,25 @@ def create_app(
     app.state.provider = provider
     app.state.registry = registry
     app.state.server_mode = server_mode
+    app.state.mongo_uri = mongo_uri
+    app.state.default_experiment_name = default_experiment_name
+    app.state.remote_management_enabled = remote_management_enabled
+    app.state.bootstrap_token = bootstrap_token
 
     app.include_router(users_router)
     app.include_router(sessions_router)
     app.include_router(play_router)
     app.include_router(experiments_router)
     app.include_router(catalog_router)
+    app.include_router(remote_router)
 
     @app.get("/api/server/config", response_model=ServerConfigResponse)
     def server_config() -> ServerConfigResponse:
         """Expose server capabilities so clients can adapt to the active mode."""
-        return build_server_config(server_mode=server_mode)
+        return build_server_config(
+            server_mode=server_mode,
+            default_experiment_name=default_experiment_name,
+        )
 
     @app.get("/api/status", response_model=StatusResponse)
     def status() -> StatusResponse:

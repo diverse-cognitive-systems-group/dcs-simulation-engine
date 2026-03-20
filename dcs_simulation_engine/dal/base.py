@@ -25,7 +25,7 @@ class SessionRecord(NamedTuple):
     """A persisted chat session header record."""
 
     session_id: str
-    player_id: str
+    player_id: str | None
     game_name: str
     status: str
     created_at: Any
@@ -101,11 +101,12 @@ class DataProvider:
         player_data: dict[str, Any],
         player_id: str | None = None,
         issue_access_key: bool = False,
+        access_key: str | None = None,
     ) -> tuple[PlayerRecord, str | None]:
         """Create or upsert a player.
 
         Returns:
-            (record, raw_key) where raw_key is None unless issue_access_key=True.
+            (record, raw_key) where raw_key is None unless an access key was issued or explicitly provided.
         """
         raise NotImplementedError
 
@@ -125,7 +126,7 @@ class DataProvider:
         """Delete a player by id."""
         raise NotImplementedError
 
-    def get_session(self, *, session_id: str, player_id: str) -> SessionRecord | None:
+    def get_session(self, *, session_id: str, player_id: str | None) -> SessionRecord | None:
         """Return one persisted session header for a player."""
         raise NotImplementedError
 
@@ -137,7 +138,7 @@ class DataProvider:
         self,
         *,
         session_id: str,
-        player_id: str,
+        player_id: str | None,
         event_id: str,
         feedback: dict[str, Any],
     ) -> dict[str, Any] | None:
@@ -148,7 +149,7 @@ class DataProvider:
         self,
         *,
         session_id: str,
-        player_id: str,
+        player_id: str | None,
         event_id: str,
     ) -> bool:
         """Remove feedback from a persisted NPC-message event."""

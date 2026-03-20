@@ -1,17 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
+import { resolveApiUrl } from './api-url'
 
 export interface ServerConfig {
   mode: 'standard' | 'free_play'
   authentication_required: boolean
   registration_enabled: boolean
   experiments_enabled: boolean
+  default_experiment_name: string | null
 }
 
 let cachedServerConfig: ServerConfig | null = null
 let inflightServerConfig: Promise<ServerConfig> | null = null
 
 async function fetchServerConfig(): Promise<ServerConfig> {
-  const response = await fetch('/api/server/config')
+  const response = await fetch(resolveApiUrl('/api/server/config'))
   if (!response.ok) {
     throw new Error(`Unable to load server config (HTTP ${response.status})`)
   }

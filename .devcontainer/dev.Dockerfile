@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     openssh-client \
     unzip \
+    zsh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js via nvm so the version can be managed consistently inside

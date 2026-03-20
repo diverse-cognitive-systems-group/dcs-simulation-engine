@@ -9,6 +9,8 @@
  * Payload for storing feedback on a single assistant session event.
  */
 export interface SubmitSessionEventFeedbackRequest {
+  liked: boolean;
+  comment: string;
   doesnt_make_sense: boolean;
   out_of_character: boolean;
 }

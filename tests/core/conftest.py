@@ -34,15 +34,15 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
         """
         name: test-usability-exp
         description: Stable fixture for experiment tests.
-        assignment_protocol:
-          strategy: usability_random_unique
+        assignment_strategy:
+          strategy: random_unique
           games:
             - Explore
             - Infer Intent
             - Foresight
             - Goal Horizon
           quota_per_game: 5
-          max_assignments_per_player: 4
+          max_assignments_per_player: 1
           seed: test-usability-seed
         forms:
           - name: intake

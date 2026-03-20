@@ -111,6 +111,12 @@ export const gamesRoute = createRoute({
         params: { experimentName },
       })
     }
+    if (serverConfig.default_experiment_name) {
+      throw redirect({
+        to: '/experiments/$experimentName',
+        params: { experimentName: serverConfig.default_experiment_name },
+      })
+    }
   },
   component: GamesPage,
 })

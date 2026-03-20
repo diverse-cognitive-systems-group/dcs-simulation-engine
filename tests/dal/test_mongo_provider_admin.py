@@ -178,8 +178,8 @@ async def test_backup_db_writes_manifest_and_collection_backups(async_mongo_prov
     assert players_indexes.exists()
 
 
-async def test_dump_all_collections_to_json_writes_one_json_per_collection(async_mongo_provider, tmp_path):
-    """dump_all_collections_to_json creates a timestamped directory of collection JSON files."""
+async def test_dump_all_collections_to_json_writes_metadata_and_collection_json(async_mongo_provider, tmp_path):
+    """dump_all_collections_to_json creates JSON dumps plus manifest/index metadata."""
     db = async_mongo_provider.get_db()
     db["widgets"].insert_many([{"name": "alpha"}, {"name": "beta"}])
 
@@ -191,10 +191,17 @@ async def test_dump_all_collections_to_json_writes_one_json_per_collection(async
 
     collection_names = sorted(db.list_collection_names())
     dumped_files = sorted(path.name for path in root.glob("*.json"))
-    assert dumped_files == [f"{collection_name}.json" for collection_name in collection_names]
+    assert "__manifest__.json" in dumped_files
+    assert "widgets.__indexes__.json" in dumped_files
+    assert "widgets.json" in dumped_files
+    assert all(f"{collection_name}.json" in dumped_files for collection_name in collection_names)
 
     widgets_dump = root / "widgets.json"
     assert widgets_dump.exists()
+    manifest = json.loads((root / "__manifest__.json").read_text(encoding="utf-8"))
+    assert manifest["db_name"] == db.name
+    assert "widgets" in manifest["collections"]
+    assert (root / "widgets.__indexes__.json").exists()
 
     docs = json_util.loads(widgets_dump.read_text(encoding="utf-8"))
     assert isinstance(docs, list)
