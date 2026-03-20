@@ -34,10 +34,12 @@
                 "charliermarsh.ruff",
                 "dbcode.dbcode",
                 "github.vscode-pull-request-github",
+                "mk12.better-git-line-blame",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
                 "openai.chatgpt",
                 "streetsidesoftware.code-spell-checker",
+                "tamasfe.even-better-toml",
                 "wholroyd.jinja"
             ],
             "settings": {

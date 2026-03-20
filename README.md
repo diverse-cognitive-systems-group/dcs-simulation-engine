@@ -5,8 +5,7 @@
 
 *A textual role-playing simulator for diverse cognitive systems to play and learn.*
 
-[![API Demo](https://img.shields.io/badge/API%20-007ACC)](https://simulation-api-demo.fly.dev:8000)          <!-- blue -->
-[![Web Demo](https://img.shields.io/badge/Demo%20-28A745)](https://simulation-widget-demo.fly.dev/) <!-- green -->
+[![Web Demo](https://img.shields.io/badge/Demo%20-28A745)](https://dcs-free-play-ui.fly.dev) <!-- green -->
 [![Codebase Docs](https://img.shields.io/badge/Codebase%20Docs%20-FF8C00)](https://fuzzy-tribble.github.io/dcs-simulation-engine/) <!-- orange -->
 [![Project Wiki](https://img.shields.io/badge/Project%20Wiki%20-FF69B4)](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) <!-- pink -->
 [![Build Status](https://github.com/fuzzy-tribble/dcs-simulation-engine/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/fuzzy-tribble/dcs-simulation-engine/actions/workflows/ci.yaml)

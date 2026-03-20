@@ -1,0 +1,86 @@
+alias ".."="cd .."
+alias gs="git status"
+alias gl="git log"
+alias l="eza -l"
+alias ls="eza"
+
+function git-collate()
+{
+    # NOTE: This function "collates" git commits between branches into a single
+    # commit. This is useful for when you wish to squash all commit and
+    # provide a single message for them. For example consider the case:
+    #
+    # * 9f20e81 (HEAD -> dev) Finally done
+    # * 63fc6e4 Commit before big refactor
+    # * ce2a40f Starting dev work
+    # * e95df85 (main) Version 1 working
+    #
+    # We could squash the top 3 commits ahead of the main branch into a single commit with the command
+    # git-collate main
+
+    # Read the name of the "from branch", or the branch we wish to merge to after collating.
+    if [ $# -eq 0 ]; then
+        echo "Must provide the name of the branch to collate commits for."
+        return 1
+    fi
+
+    # Count the number of commits between the "from branch" and the current branch.
+    local NUM_COMMIT="$(git rev-list $1.. --count --first-parent)"
+    if [ $NUM_COMMIT = "0" ]; then
+        echo "No commits between HEAD and $1".
+        return 1
+    fi
+
+    # We do a "git squash" (without prompting) all the commits
+    # into a single commit with their commit messages concatenated
+    git reset --soft HEAD~$NUM_COMMIT && \
+        git commit --edit -m"$(git log --format=%B --reverse HEAD..HEAD@{1})"
+}
+
+function git-flatten()
+{
+    # NOTE: This function flattens the last n commits on the current branch 
+    # into a single commit, concatenating their commit messages.
+    # For example consider the case:
+    #
+    # * 9f20e81 (HEAD -> dev) Fix typo
+    # * 63fc6e4 Update docs
+    # * ce2a40f Add new feature
+    # * e95df85 Version 1 working
+    #
+    # We could squash the top 3 commits into a single commit with the command:
+    # git-flatten 3
+
+    # Check if an argument was provided
+    if [ $# -eq 0 ]; then
+        echo "Error: Must provide the number of commits to flatten."
+        echo "Usage: git-flatten <number_of_commits>"
+        return 1
+    fi
+
+    local NUM_COMMITS="$1"
+
+    # Validate that the input is a positive integer
+    if ! [[ "$NUM_COMMITS" =~ ^[0-9]+$ ]]; then
+        echo "Error: Argument must be a positive integer."
+        return 1
+    fi
+
+    # It doesn't make sense to squash fewer than 2 commits
+    if [ "$NUM_COMMITS" -lt 2 ]; then
+        echo "Error: Number of commits must be at least 2 to flatten."
+        return 1
+    fi
+
+    # Verify the current branch has enough commits to perform the operation safely
+    local TOTAL_COMMITS="$(git rev-list --count HEAD)"
+    if [ "$NUM_COMMITS" -gt "$TOTAL_COMMITS" ]; then
+        echo "Error: Cannot flatten $NUM_COMMITS commits. Only $TOTAL_COMMITS exist in this branch."
+        return 1
+    fi
+
+    # We do a "git reset --soft" to move HEAD back n commits, leaving the working tree intact.
+    # Then we commit, using the reflog (HEAD@{1}) to grab the messages of the commits we just orphaned.
+    git reset --soft "HEAD~$NUM_COMMITS" && \
+        git commit --edit -m"$(git log --format=%B --reverse HEAD..HEAD@{1})"
+}
