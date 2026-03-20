@@ -2,8 +2,10 @@
 
 from dcs_simulation_engine.api.auth import (
     api_key_from_request,
+    get_default_experiment_name_from_request,
     get_provider_from_request,
     get_registry_from_request,
+    is_remote_management_enabled_from_request,
     require_player_async,
     require_standard_mode_from_request,
 )
@@ -23,6 +25,20 @@ from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from fastapi import APIRouter, HTTPException, Request, status
 
 router = APIRouter(prefix="/api/experiments", tags=["experiments"])
+
+
+def _require_allowed_experiment(*, experiment_name: str, request: Request) -> None:
+    """Restrict experiment-only deployments to their configured experiment slug."""
+    if not is_remote_management_enabled_from_request(request):
+        return
+    allowed = get_default_experiment_name_from_request(request)
+    if allowed is None:
+        return
+    if experiment_name.strip().lower() != allowed.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Experiment '{experiment_name}' is not hosted on this deployment.",
+        )
 
 
 def _assignment_summary(assignment) -> ExperimentAssignmentSummary | None:
@@ -67,6 +83,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
     )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
     provider = get_provider_from_request(request)
     config = ExperimentManager.get_experiment_config_cached(experiment_name)
     await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=config.name)
@@ -107,6 +124,7 @@ async def register_experiment_player(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
     )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     try:
@@ -133,6 +151,7 @@ async def create_experiment_session(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
     )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
@@ -168,6 +187,7 @@ async def submit_experiment_post_play(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
     )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 
@@ -191,6 +211,7 @@ async def experiment_progress(experiment_name: str, request: Request) -> Experim
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
     )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
     progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=experiment_name)
@@ -205,6 +226,7 @@ async def experiment_status(experiment_name: str, request: Request) -> Experimen
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
     )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
     await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)

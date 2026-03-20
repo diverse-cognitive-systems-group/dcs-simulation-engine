@@ -143,6 +143,9 @@ class MongoAdmin:
 
         total_inserted = 0
         for seed_file in seed_files:
+            if seed_file.name == "__manifest__.json" or seed_file.name.endswith(".__indexes__.json"):
+                logger.debug("Skipping metadata seed file {}", seed_file.name)
+                continue
             collection_name = seed_file.stem
             logger.info(f"Seeding collection '{collection_name}' from {seed_file.name}")
             docs = self.load_seed_documents(seed_file)

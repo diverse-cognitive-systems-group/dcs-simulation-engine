@@ -1,11 +1,10 @@
 """Experiment orchestration for assignment-driven study flows."""
 
-import random
-from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import yaml
+from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
 from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.forms import (
     ExperimentForm,
@@ -108,64 +107,15 @@ class ExperimentManager:
     async def compute_progress_async(cls, *, provider: Any, experiment_name: str) -> dict[str, Any]:
         """Compute finite usability progress from assignment state."""
         config = cls.get_experiment_config_cached(experiment_name)
-        if config.assignment_protocol.strategy != "usability_random_unique":
-            return {
-                "total": 0,
-                "completed": 0,
-                "is_complete": False,
-            }
-
-        completed_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=config.name, statuses=["completed"])
-        )
-        per_game_players: dict[str, set[str]] = defaultdict(set)
-        for assignment in completed_assignments:
-            per_game_players[assignment.game_name].add(assignment.player_id)
-
-        per_game_counts = {game_name: len(per_game_players.get(game_name, set())) for game_name in config.games}
-        quota = int(config.assignment_protocol.quota_per_game or 0)
-        return {
-            "total": quota * len(config.games),
-            "completed": len(completed_assignments),
-            "is_complete": all(count >= quota for count in per_game_counts.values()),
-        }
+        strategy = cls._strategy_for(config=config)
+        return await maybe_await(strategy.compute_progress_async(provider=provider, config=config))
 
     @classmethod
     async def compute_status_async(cls, *, provider: Any, experiment_name: str) -> dict[str, Any]:
         """Compute quota-centric status counts for an experiment."""
         config = cls.get_experiment_config_cached(experiment_name)
-        quota = int(config.assignment_protocol.quota_per_game or 0)
-
-        completed_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=config.name, statuses=["completed"])
-        )
-        in_progress_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=config.name, statuses=["in_progress"])
-        )
-
-        completed_players_by_game: dict[str, set[str]] = defaultdict(set)
-        in_progress_players_by_game: dict[str, set[str]] = defaultdict(set)
-
-        for assignment in completed_assignments:
-            completed_players_by_game[assignment.game_name].add(assignment.player_id)
-        for assignment in in_progress_assignments:
-            in_progress_players_by_game[assignment.game_name].add(assignment.player_id)
-
-        per_game: dict[str, dict[str, int]] = {}
-        for game_name in config.games:
-            per_game[game_name] = {
-                "total": quota,
-                "completed": len(completed_players_by_game.get(game_name, set())),
-                "in_progress": len(in_progress_players_by_game.get(game_name, set())),
-            }
-
-        completed_total = sum(item["completed"] for item in per_game.values())
-        return {
-            "is_open": any(item["completed"] < item["total"] for item in per_game.values()),
-            "total": quota * len(config.games),
-            "completed": completed_total,
-            "per_game": per_game,
-        }
+        strategy = cls._strategy_for(config=config)
+        return await maybe_await(strategy.compute_status_async(provider=provider, config=config))
 
     @classmethod
     async def get_player_state_async(
@@ -198,7 +148,8 @@ class ExperimentManager:
             ),
             None,
         )
-        has_finished_experiment = len(completed_assignments) >= cls._max_assignments_per_player(config=config)
+        strategy = cls._strategy_for(config=config)
+        has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
 
         if (
             active_assignment is None
@@ -233,10 +184,6 @@ class ExperimentManager:
     ) -> AssignmentRecord | None:
         """Store before-play form answers for an authenticated player and return their assignment."""
         config = cls.get_experiment_config_cached(experiment_name)
-        if config.assignment_protocol.strategy != "usability_random_unique":
-            raise ValueError(
-                f"Experiment strategy '{config.assignment_protocol.strategy}' is not executable in this runtime yet."
-            )
 
         player_record = await maybe_await(provider.get_player(player_id=player_id))
         if player_record is None:
@@ -272,75 +219,10 @@ class ExperimentManager:
     ) -> AssignmentRecord | None:
         """Return the active assignment for a player or create one on demand."""
         config = cls.get_experiment_config_cached(experiment_name)
-        if config.assignment_protocol.strategy != "usability_random_unique":
-            raise ValueError(
-                f"Experiment strategy '{config.assignment_protocol.strategy}' is not executable in this runtime yet."
-            )
-
-        active_assignment = await maybe_await(
-            provider.get_active_assignment(experiment_name=config.name, player_id=player.id)
+        strategy = cls._strategy_for(config=config)
+        return await maybe_await(
+            strategy.get_or_create_assignment_async(provider=provider, config=config, player=player)
         )
-        if active_assignment is not None:
-            return active_assignment
-
-        player_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=config.name, player_id=player.id)
-        )
-        completed_count = sum(1 for item in player_assignments if item.status == "completed")
-        if completed_count >= cls._max_assignments_per_player(config=config):
-            return None
-
-        completed_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=config.name, statuses=["completed"])
-        )
-        completed_players_by_game: dict[str, set[str]] = defaultdict(set)
-        for assignment in completed_assignments:
-            completed_players_by_game[assignment.game_name].add(assignment.player_id)
-
-        assigned_games = {item.game_name for item in player_assignments}
-        quota = int(config.assignment_protocol.quota_per_game or 0)
-        eligible_games = [
-            game_name
-            for game_name in config.games
-            if game_name not in assigned_games and len(completed_players_by_game.get(game_name, set())) < quota
-        ]
-        if not eligible_games:
-            return None
-
-        game_rng = cls._rng_for(config=config, player_id=player.id, salt="game")
-        game_candidates = list(eligible_games)
-        game_rng.shuffle(game_candidates)
-
-        for game_name in game_candidates:
-            game_config = SessionManager.get_game_config_cached(game_name)
-            get_valid = getattr(game_config, "get_valid_characters_async", None)
-            if get_valid is None:
-                valid_pcs, _ = await maybe_await(
-                    game_config.get_valid_characters(player_id=player.id, provider=provider)
-                )
-            else:
-                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider))
-
-            valid_pc_hids = [hid for _, hid in valid_pcs]
-            if not valid_pc_hids:
-                continue
-
-            pc_rng = cls._rng_for(config=config, player_id=player.id, salt=f"pc:{game_name}")
-            character_hid = pc_rng.choice(valid_pc_hids)
-            return await maybe_await(
-                provider.create_assignment(
-                    assignment_doc={
-                        MongoColumns.EXPERIMENT_NAME: config.name,
-                        MongoColumns.PLAYER_ID: player.id,
-                        MongoColumns.GAME_NAME: game_name,
-                        MongoColumns.CHARACTER_HID: character_hid,
-                        MongoColumns.STATUS: "assigned",
-                        MongoColumns.FORM_RESPONSES: {},
-                    }
-                )
-            )
-
-        return None
 
     @classmethod
     async def start_assignment_session_async(
@@ -569,16 +451,9 @@ class ExperimentManager:
         raise ValueError(f"Unsupported form field type: {answer_type}")
 
     @classmethod
-    def _rng_for(cls, *, config: ExperimentConfig, player_id: str, salt: str) -> random.Random:
-        seed_value = config.assignment_protocol.seed or config.name
-        return random.Random(f"{seed_value}:{player_id}:{salt}")
-
-    @classmethod
-    def _max_assignments_per_player(cls, *, config: ExperimentConfig) -> int:
-        configured = config.assignment_protocol.max_assignments_per_player
-        if configured is None:
-            return len(config.games)
-        return min(int(configured), len(config.games))
+    def _strategy_for(cls, *, config: ExperimentConfig):
+        """Resolve the configured assignment strategy for one experiment."""
+        return get_assignment_strategy(config.assignment_strategy.strategy)
 
     @classmethod
     def _is_completion_reason(cls, reason: str) -> bool:

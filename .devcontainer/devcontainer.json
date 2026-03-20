@@ -10,7 +10,9 @@
     "workspaceFolder": "/app",
     "overrideCommand": true,
     "runArgs": [
-        "--network=host"
+        "--network=host",
+        "--memory=6g",
+        "--cpus=4"
     ],
     "postCreateCommand": "uv sync --extra dev && cd /app/ui && bun install",
     // Docker outside Docker (share the host Docker engine)
@@ -28,15 +30,15 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "Anthropic.claude-code",
+                "charliermarsh.ruff",
+                "dbcode.dbcode",
+                "github.vscode-pull-request-github",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "charliermarsh.ruff",
-                "ms-azuretools.vscode-docker",
-                "streetsidesoftware.code-spell-checker",
-                "github.vscode-pull-request-github",
-                "dbcode.dbcode",
                 "openai.chatgpt",
-                "Anthropic.claude-code"
+                "streetsidesoftware.code-spell-checker",
+                "wholroyd.jinja"
             ],
             "settings": {
                 "editor.formatOnSave": true,

@@ -1,0 +1,20 @@
+app = "{{ app_name }}"
+{% if region %}primary_region = "{{ region }}"
+{% endif %}[build]
+  dockerfile = "{{ docker_dir }}/api.dockerfile"
+
+[processes]
+  app = {{ process_cmd_json }}
+
+[http_service]
+  internal_port = {{ api_port }}
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = false
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "1gb"

@@ -4,6 +4,7 @@ This module is intentionally stateless. Connection ownership is handled by
 bootstrap/runtime wiring and passed into DAL objects explicitly.
 """
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -179,11 +180,38 @@ def _make_dump_root(path: str | Path) -> Path:
     return root
 
 
-def dump_all_collections_to_json(db: Database[Any], path: str | Path) -> Path:
-    """Dump every collection to a timestamped directory of JSON files."""
-    root = _make_dump_root(path)
+def _write_dump_manifest(root: Path, *, db_name: str, collections: list[str]) -> None:
+    """Write dump metadata alongside collection payloads."""
+    manifest = {
+        "db_name": db_name,
+        "created_at": utc_now().isoformat(),
+        "collections": collections,
+        "format": {
+            "collection_dump": "<collection>.json",
+            "indexes_dump": "<collection>.__indexes__.json",
+            "json_encoding": "bson.json_util extended json",
+        },
+    }
+    (root / "__manifest__.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
 
-    for collection_name in sorted(db.list_collection_names()):
+
+def _write_collection_indexes(root: Path, *, collection_name: str, index_info: dict[str, Any]) -> None:
+    """Write one collection's index metadata to disk."""
+    (root / f"{collection_name}.__indexes__.json").write_text(
+        json.dumps(index_info, default=json_util.default, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def dump_all_collections_to_json(db: Database[Any], path: str | Path) -> Path:
+    """Dump every collection to JSON plus backup metadata files."""
+    root = _make_dump_root(path)
+    collection_names = sorted(db.list_collection_names())
+
+    for collection_name in collection_names:
         out_path = root / f"{collection_name}.json"
         cursor = db[collection_name].find({})
         with out_path.open("w", encoding="utf-8") as f:
@@ -198,12 +226,17 @@ def dump_all_collections_to_json(db: Database[Any], path: str | Path) -> Path:
             finally:
                 cursor.close()
             f.write("\n]\n")
+        _write_collection_indexes(
+            root, collection_name=collection_name, index_info=db[collection_name].index_information()
+        )
+
+    _write_dump_manifest(root, db_name=db.name, collections=collection_names)
 
     return root
 
 
 async def dump_all_collections_to_json_async(db: AsyncDatabase[Any] | Database[Any] | Any, path: str | Path) -> Path:
-    """Dump every collection to a timestamped directory of JSON files."""
+    """Dump every collection to JSON plus backup metadata files."""
     root = _make_dump_root(path)
     collection_names = sorted(await maybe_await(db.list_collection_names()))
 
@@ -229,6 +262,14 @@ async def dump_all_collections_to_json_async(db: AsyncDatabase[Any] | Database[A
             finally:
                 await maybe_await(cursor.close())
             f.write("\n]\n")
+        _write_collection_indexes(
+            root,
+            collection_name=collection_name,
+            index_info=await maybe_await(db[collection_name].index_information()),
+        )
+
+    db_name = getattr(db, "name", "")
+    _write_dump_manifest(root, db_name=db_name, collections=collection_names)
 
     return root
 

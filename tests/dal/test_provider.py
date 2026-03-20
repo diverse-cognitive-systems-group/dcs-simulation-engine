@@ -56,6 +56,16 @@ async def test_create_player_with_access_key(async_mongo_provider):
     assert record.access_key == raw_key
 
 
+async def test_create_player_with_explicit_access_key(async_mongo_provider):
+    """create_player accepts an explicitly provided deployment admin key."""
+    explicit_key = "dcs-ak-r9kc-B9kmhuyV85tUWIcl8KHrPl_HO7Z3BnAlcgMtJU"
+    record, raw_key = await async_mongo_provider.create_player(player_data={"name": "Dana"}, access_key=explicit_key)
+
+    assert isinstance(record, PlayerRecord)
+    assert raw_key == explicit_key
+    assert record.access_key == explicit_key
+
+
 async def test_create_player_stores_in_db(async_mongo_provider):
     """create_player actually inserts the player into the DB."""
     record, _ = await async_mongo_provider.create_player(player_data={"name": "Charlie"})
@@ -186,11 +196,15 @@ async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_
     )
 
     first = {
+        "liked": False,
+        "comment": "The reply was confusing.",
         "doesnt_make_sense": True,
         "out_of_character": False,
         "submitted_at": created_at,
     }
     second = {
+        "liked": False,
+        "comment": "The reply felt off character.",
         "doesnt_make_sense": False,
         "out_of_character": True,
         "submitted_at": created_at,
@@ -213,6 +227,8 @@ async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_
     assert stored_second == second
 
     event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-1"})
+    assert event_doc[MongoColumns.FEEDBACK]["liked"] is False
+    assert event_doc[MongoColumns.FEEDBACK]["comment"] == "The reply felt off character."
     assert event_doc[MongoColumns.FEEDBACK]["doesnt_make_sense"] is False
     assert event_doc[MongoColumns.FEEDBACK]["out_of_character"] is True
     assert event_doc[MongoColumns.FEEDBACK]["submitted_at"] is not None
@@ -251,6 +267,8 @@ async def test_set_session_event_feedback_rejects_non_npc_message_target(async_m
         player_id="p-feedback-2",
         event_id="evt-user-1",
         feedback={
+            "liked": False,
+            "comment": "This should be rejected.",
             "doesnt_make_sense": True,
             "out_of_character": False,
             "submitted_at": created_at,
@@ -287,6 +305,8 @@ async def test_clear_session_event_feedback_removes_existing_feedback(async_mong
             "event_source": "npc",
             "content": "hello",
             "feedback": {
+                "liked": False,
+                "comment": "This felt off.",
                 "doesnt_make_sense": False,
                 "out_of_character": True,
                 "submitted_at": created_at,
@@ -304,6 +324,52 @@ async def test_clear_session_event_feedback_removes_existing_feedback(async_mong
     event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-3"})
     assert MongoColumns.FEEDBACK not in event_doc
     assert event_doc[MongoColumns.UPDATED_AT] is not None
+
+
+async def test_set_session_event_feedback_accepts_free_play_session_owner_none(async_mongo_provider):
+    """Anonymous free-play sessions should still accept NPC message feedback."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            "session_id": "s-feedback-free-play",
+            "player_id": None,
+            "game_name": "Explore",
+            "status": "active",
+            "created_at": created_at,
+            "updated_at": created_at,
+        }
+    )
+    db[MongoColumns.SESSION_EVENTS].insert_one(
+        {
+            "session_id": "s-feedback-free-play",
+            "seq": 1,
+            "event_id": "evt-ai-free-play",
+            "event_ts": created_at,
+            "direction": "outbound",
+            "event_type": "message",
+            "event_source": "npc",
+            "content": "hello",
+        }
+    )
+
+    stored = await async_mongo_provider.set_session_event_feedback(
+        session_id="s-feedback-free-play",
+        player_id=None,
+        event_id="evt-ai-free-play",
+        feedback={
+            "liked": False,
+            "comment": "Anonymous free-play feedback.",
+            "doesnt_make_sense": True,
+            "out_of_character": False,
+            "submitted_at": created_at,
+        },
+    )
+
+    assert stored is not None
+    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-free-play"})
+    assert event_doc[MongoColumns.FEEDBACK]["comment"] == "Anonymous free-play feedback."
+    assert event_doc[MongoColumns.FEEDBACK]["doesnt_make_sense"] is True
 
 
 @pytest.mark.parametrize(
@@ -355,6 +421,8 @@ async def test_feedback_is_rejected_for_non_npc_message_events(
         player_id="p-feedback-matrix",
         event_id=f"evt-{direction}-{event_type}-{event_source}",
         feedback={
+            "liked": False,
+            "comment": "Matrix test.",
             "doesnt_make_sense": True,
             "out_of_character": False,
             "submitted_at": created_at,

@@ -5,6 +5,7 @@ from pathlib import Path
 import typer
 from dcs_simulation_engine.cli.bootstrap import create_provider_admin
 from dcs_simulation_engine.cli.common import echo, seed_database
+from dcs_simulation_engine.utils.auth import generate_access_key
 
 admin_app = typer.Typer(help="Database administration commands.")
 
@@ -36,3 +37,12 @@ def backup(
         echo(ctx, str(e), style="error")
         raise typer.Exit(code=1)
     echo(ctx, f"Backup written to: {result}")
+
+
+@admin_app.command("keygen")
+def keygen(ctx: typer.Context) -> None:
+    """Generate a deployment-ready admin key without storing it anywhere."""
+    key = generate_access_key()
+    echo(ctx, key, style="success")
+    echo(ctx, "This key has not been added to any app or database.", style="error")
+    echo(ctx, "It is intended to be supplied during deployment, for example via `dcs remote deploy --admin-key`.")

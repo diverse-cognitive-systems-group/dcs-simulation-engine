@@ -17,6 +17,7 @@ import {
   REGISTRATION_FAILED,
   SERVER_ERROR,
 } from '@/lib/api-errors'
+import { resolveApiUrl } from '@/lib/api-url'
 import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
@@ -51,7 +52,7 @@ interface RegistrationResponse {
 async function registerPlayer(body: object): Promise<RegistrationResponse> {
   let res: Response
   try {
-    res = await fetch('/api/player/registration', {
+    res = await fetch(resolveApiUrl('/api/player/registration'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

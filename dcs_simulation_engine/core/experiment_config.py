@@ -42,8 +42,8 @@ def _available_game_names() -> dict[str, str]:
     return aliases
 
 
-class AssignmentProtocol(BaseModel):
-    """Flexible assignment-protocol shape that can parse current and future strategies."""
+class AssignmentStrategyConfig(BaseModel):
+    """Flexible assignment-strategy shape that can parse current and future strategies."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -68,10 +68,10 @@ class AssignmentProtocol(BaseModel):
         for value in values:
             canonical = aliases.get(_normalize_game_ref(value))
             if canonical is None:
-                raise ValueError(f"Unknown game reference in assignment protocol: {value!r}")
+                raise ValueError(f"Unknown game reference in assignment strategy: {value!r}")
             lowered = canonical.lower()
             if lowered in seen:
-                raise ValueError(f"Duplicate game listed in assignment protocol: {canonical}")
+                raise ValueError(f"Duplicate game listed in assignment strategy: {canonical}")
             seen.add(lowered)
             normalized.append(canonical)
         return normalized
@@ -84,7 +84,7 @@ class ExperimentConfig(SerdeMixin, BaseModel):
 
     name: str
     description: str = ""
-    assignment_protocol: AssignmentProtocol
+    assignment_strategy: AssignmentStrategyConfig
     forms: list[ExperimentForm] = Field(default_factory=list)
 
     @field_validator("forms", mode="before")
@@ -105,26 +105,15 @@ class ExperimentConfig(SerdeMixin, BaseModel):
         form_names = [form.name for form in self.forms]
         if len(form_names) != len(set(form_names)):
             raise ValueError("Experiment form names must be unique.")
+        from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
 
-        if self.assignment_protocol.strategy == "usability_random_unique":
-            if not self.assignment_protocol.games:
-                raise ValueError("usability_random_unique requires assignment_protocol.games")
-            if self.assignment_protocol.quota_per_game is None or self.assignment_protocol.quota_per_game <= 0:
-                raise ValueError("usability_random_unique requires a positive quota_per_game")
-            max_assignments = self.assignment_protocol.max_assignments_per_player
-            if max_assignments is not None and max_assignments <= 0:
-                raise ValueError("usability_random_unique requires max_assignments_per_player to be positive")
-            if max_assignments is not None and max_assignments > len(self.games):
-                raise ValueError(
-                    "usability_random_unique cannot assign more games per player "
-                    "than are listed in assignment_protocol.games"
-                )
+        get_assignment_strategy(self.assignment_strategy.strategy).validate_config(config=self)
         return self
 
     @property
     def games(self) -> list[str]:
-        """Canonical list of games included in the experiment assignment protocol."""
-        return list(self.assignment_protocol.games or [])
+        """Canonical list of games included in the experiment assignment strategy."""
+        return list(self.assignment_strategy.games or [])
 
     def forms_for_phase(self, *, before_or_after: str) -> list[ExperimentForm]:
         """Return forms matching one phase."""

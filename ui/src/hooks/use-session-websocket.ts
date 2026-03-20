@@ -9,6 +9,8 @@ import { resolveWebSocketUrl } from '../lib/ws-url'
 export type EventType = 'ai' | 'info' | 'error' | 'warning'
 
 export interface MessageFeedback {
+  liked: boolean
+  comment: string
   doesntMakeSense: boolean
   outOfCharacter: boolean
   submittedAt: string

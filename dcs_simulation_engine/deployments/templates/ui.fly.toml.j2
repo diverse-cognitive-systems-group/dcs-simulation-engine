@@ -1,0 +1,16 @@
+app = "{{ app_name }}"
+{% if region %}primary_region = "{{ region }}"
+{% endif %}[build]
+  dockerfile = "{{ docker_dir }}/ui.fly.dockerfile"
+
+[http_service]
+  internal_port = {{ ui_port }}
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"

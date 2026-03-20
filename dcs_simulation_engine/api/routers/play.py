@@ -7,12 +7,14 @@ from typing import Any
 from dcs_simulation_engine.api.auth import (
     api_key_from_request,
     api_key_from_websocket,
+    get_default_experiment_name_from_request,
     get_provider_from_request,
     get_provider_from_websocket,
     get_registry_from_request,
     get_registry_from_websocket,
     get_server_mode_from_request,
     get_server_mode_from_websocket,
+    is_remote_management_enabled_from_request,
     maybe_await,
     require_player_async,
 )
@@ -44,6 +46,15 @@ def _session_status(entry_status: str, exited: bool) -> str:
     if entry_status == "closed" or exited:
         return "closed"
     return "active"
+
+
+def _require_generic_play_enabled(request: Request) -> None:
+    """Reject generic play paths when the server is running as an experiment-only deployment."""
+    if is_remote_management_enabled_from_request(request) and get_default_experiment_name_from_request(request):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Generic play is disabled on experiment-only deployments. Use the experiment flow instead.",
+        )
 
 
 async def _reject_if_experiment_gated(*, provider: Any, player_id: str) -> None:
@@ -150,6 +161,7 @@ def _spawn_background_finalize(*, manager: Any, reason: str, session_id: str) ->
 @router.get("/setup/{game_name}", response_model=GameSetupOptionsResponse)
 async def setup_options(game_name: str, request: Request) -> GameSetupOptionsResponse:
     """Return setup-ready authorization and valid character choices for a game."""
+    _require_generic_play_enabled(request)
     provider = get_provider_from_request(request)
     server_mode = get_server_mode_from_request(request)
     player_id: str | None = None
@@ -210,6 +222,7 @@ async def setup_options(game_name: str, request: Request) -> GameSetupOptionsRes
 @router.post("/game", response_model=CreateGameResponse)
 async def create_game(body: CreateGameRequest, request: Request) -> CreateGameResponse:
     """Create a session-owned game instance and return websocket connect info."""
+    _require_generic_play_enabled(request)
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
     server_mode = get_server_mode_from_request(request)

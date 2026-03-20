@@ -23,7 +23,7 @@ from dcs_simulation_engine.dal.mongo.util import (
     split_pii,
 )
 from dcs_simulation_engine.utils.async_utils import maybe_await
-from dcs_simulation_engine.utils.auth import generate_access_key
+from dcs_simulation_engine.utils.auth import generate_access_key, validate_access_key
 from dcs_simulation_engine.utils.time import utc_now
 
 
@@ -60,7 +60,7 @@ def _to_session_record(doc: dict[str, Any]) -> SessionRecord:
     }
     return SessionRecord(
         session_id=str(doc.get(MongoColumns.SESSION_ID, "")),
-        player_id=str(doc.get(MongoColumns.PLAYER_ID, "")),
+        player_id=(None if doc.get(MongoColumns.PLAYER_ID) is None else str(doc.get(MongoColumns.PLAYER_ID))),
         game_name=str(doc.get(MongoColumns.GAME_NAME, "")),
         status=str(doc.get(MongoColumns.STATUS, "")),
         created_at=doc.get(MongoColumns.CREATED_AT),
@@ -193,13 +193,25 @@ class AsyncMongoProvider:
         player_data: dict[str, Any],
         player_id: str | None = None,
         issue_access_key: bool = False,
+        access_key: str | None = None,
     ) -> tuple[PlayerRecord, str | None]:
         """Create or update a player, optionally issuing them a new access key."""
         sanitized = sanitize_player_data(player_data)
         raw_key: str | None = None
 
-        # Security/Auth logic: Generate a token if requested.
-        if issue_access_key:
+        if issue_access_key and access_key is not None:
+            raise ValueError("Use either issue_access_key=True or an explicit access_key, not both.")
+
+        if access_key is not None:
+            raw_key = validate_access_key(access_key)
+            sanitized.update(
+                {
+                    "access_key": raw_key,
+                    "access_key_revoked": False,
+                    "last_key_issued_at": utc_now(),
+                }
+            )
+        elif issue_access_key:
             raw_key = generate_access_key()
             sanitized.update(
                 {
@@ -334,7 +346,7 @@ class AsyncMongoProvider:
             )
         )
 
-    async def get_session(self, *, session_id: str, player_id: str) -> SessionRecord | None:
+    async def get_session(self, *, session_id: str, player_id: str | None) -> SessionRecord | None:
         """Return a single persisted session record for the player."""
         doc = await maybe_await(
             self._db[MongoColumns.SESSIONS].find_one(
@@ -361,7 +373,7 @@ class AsyncMongoProvider:
         self,
         *,
         session_id: str,
-        player_id: str,
+        player_id: str | None,
         event_id: str,
         feedback: dict[str, Any],
     ) -> dict[str, Any] | None:
@@ -411,7 +423,7 @@ class AsyncMongoProvider:
         self,
         *,
         session_id: str,
-        player_id: str,
+        player_id: str | None,
         event_id: str,
     ) -> bool:
         """Remove feedback from one persisted NPC message event owned by the player."""

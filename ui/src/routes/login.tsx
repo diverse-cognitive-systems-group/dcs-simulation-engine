@@ -2,7 +2,7 @@
 // and on success stores credentials in sessionStorage and navigates to /games.
 
 import { createRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -11,13 +11,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { extractDetail, NETWORK_UNAVAILABLE, SIGNIN_UNAVAILABLE } from '@/lib/api-errors'
 import { getActiveExperimentName, setAuth } from '@/lib/auth'
+import { resolveApiUrl } from '@/lib/api-url'
 import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
 async function authPlayer(apiKey: string): Promise<{ player_id: string; full_name: string }> {
   let res: Response
   try {
-    res = await fetch('/api/player/auth', {
+    res = await fetch(resolveApiUrl('/api/player/auth'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ api_key: apiKey }),
@@ -49,6 +50,21 @@ function LoginPage() {
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [defaultExperimentName, setDefaultExperimentName] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getServerConfig()
+      .then((serverConfig) => {
+        if (!cancelled) {
+          setDefaultExperimentName(serverConfig.default_experiment_name)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault()
@@ -62,6 +78,13 @@ function LoginPage() {
         await navigate({
           to: '/experiments/$experimentName',
           params: { experimentName },
+        })
+        return
+      }
+      if (defaultExperimentName) {
+        await navigate({
+          to: '/experiments/$experimentName',
+          params: { experimentName: defaultExperimentName },
         })
         return
       }
@@ -111,16 +134,18 @@ function LoginPage() {
                 Register here
               </Link>
             </p>
-            <p className="text-center text-sm text-muted-foreground">
-              Joining the usability study?{' '}
-              <Link
-                to="/experiments/$experimentName"
-                params={{ experimentName: 'usability-ca' }}
-                className="underline underline-offset-4 hover:text-primary"
-              >
-                Start here
-              </Link>
-            </p>
+            {defaultExperimentName && (
+              <p className="text-center text-sm text-muted-foreground">
+                Joining the default study?{' '}
+                <Link
+                  to="/experiments/$experimentName"
+                  params={{ experimentName: defaultExperimentName }}
+                  className="underline underline-offset-4 hover:text-primary"
+                >
+                  Start here
+                </Link>
+              </p>
+            )}
             <p className="text-center text-xs text-muted-foreground">
               By continuing, you agree to the{' '}
               <Link to="/terms" className="underline underline-offset-4 hover:text-primary">

@@ -147,6 +147,9 @@ py-modules = ["__init__"]
 # https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
 include = ["dcs_simulation_engine*"]
 
+[tool.setuptools.package-data]
+"dcs_simulation_engine.deployments.templates" = ["*.j2"]
+
 [dependency-groups]
 dev = [
     "matplotlib>=3.10.8",

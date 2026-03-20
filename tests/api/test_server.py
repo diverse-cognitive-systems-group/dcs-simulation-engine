@@ -1,6 +1,10 @@
 """API and websocket behavior tests for the FastAPI dcs-server."""
 
+import asyncio
+import tarfile
+import zipfile
 from datetime import datetime, timezone
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -126,6 +130,80 @@ def free_play_client(mock_provider: MagicMock) -> TestClient:
         yield test_client
 
 
+@pytest.fixture
+def remote_managed_client(mock_provider: MagicMock) -> TestClient:
+    """Build a TestClient configured for remote-managed experiment hosting."""
+    app = create_app(
+        provider=mock_provider,
+        server_mode="standard",
+        mongo_uri="mongodb://example",
+        default_experiment_name="usability-ca",
+        remote_management_enabled=True,
+        bootstrap_token="bootstrap-secret",
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+@pytest.mark.unit
+def test_remote_managed_free_play_status_reports_free_play_mode(mock_provider: MagicMock) -> None:
+    """Remote-managed free-play deployments should report free-play mode without an experiment."""
+    app = create_app(
+        provider=mock_provider,
+        server_mode="free_play",
+        mongo_uri="mongodb://example",
+        remote_management_enabled=True,
+        bootstrap_token="bootstrap-secret",
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as client:
+        response = client.get("/api/remote/status")
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "free_play"
+    assert response.json()["experiment_name"] is None
+
+
+@pytest.mark.unit
+def test_remote_bootstrap_in_free_play_returns_admin_without_experiment(mock_provider: MagicMock) -> None:
+    """Remote bootstrap should still issue an admin key for free-play remote deployments."""
+    seed_admin = MagicMock()
+
+    app = create_app(
+        provider=mock_provider,
+        server_mode="free_play",
+        mongo_uri="mongodb://example",
+        remote_management_enabled=True,
+        bootstrap_token="bootstrap-secret",
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as client:
+        with patch(
+            "dcs_simulation_engine.api.routers.remote.create_provider_admin",
+            return_value=SimpleNamespace(seed_database=seed_admin),
+        ):
+            response = client.post(
+                "/api/remote/bootstrap",
+                headers={
+                    "X-DCS-Bootstrap-Token": "bootstrap-secret",
+                    "X-DCS-Mongo-Seed-Filename": "players.json",
+                    "Content-Type": "application/json",
+                },
+                content=b"[]",
+            )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "player_id": "player-owner",
+        "admin_api_key": "valid-key",
+        "experiment_name": None,
+    }
+
+
 @pytest.mark.unit
 def test_app_lifespan_preloads_game_configs(mock_provider: MagicMock) -> None:
     """App startup should preload game configs into SessionManager cache."""
@@ -214,6 +292,7 @@ def test_server_config_reports_standard_mode(client: TestClient) -> None:
         "authentication_required": True,
         "registration_enabled": True,
         "experiments_enabled": True,
+        "default_experiment_name": None,
     }
 
 
@@ -228,6 +307,7 @@ def test_server_config_reports_free_play_mode(free_play_client: TestClient) -> N
         "authentication_required": False,
         "registration_enabled": False,
         "experiments_enabled": False,
+        "default_experiment_name": None,
     }
 
 
@@ -518,6 +598,8 @@ def test_session_event_feedback_submit_flushes_live_session_and_persists(
     manager = DummySessionManager()
     mock_provider.set_session_event_feedback = AsyncMock(
         return_value={
+            "liked": False,
+            "comment": "This response felt off.",
             "doesnt_make_sense": True,
             "out_of_character": False,
             "submitted_at": datetime.now(timezone.utc).isoformat(),
@@ -538,13 +620,20 @@ def test_session_event_feedback_submit_flushes_live_session_and_persists(
     response = client.post(
         f"/api/sessions/{session_id}/events/evt-opening/feedback",
         headers={"Authorization": "Bearer valid-key"},
-        json={"doesnt_make_sense": True, "out_of_character": False},
+        json={
+            "liked": False,
+            "comment": "This response felt off.",
+            "doesnt_make_sense": True,
+            "out_of_character": False,
+        },
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["session_id"] == session_id
     assert payload["event_id"] == "evt-opening"
+    assert payload["feedback"]["liked"] is False
+    assert payload["feedback"]["comment"] == "This response felt off."
     assert payload["feedback"]["doesnt_make_sense"] is True
     assert payload["feedback"]["out_of_character"] is False
     assert manager.flush_calls == 1
@@ -553,6 +642,8 @@ def test_session_event_feedback_submit_flushes_live_session_and_persists(
     assert kwargs["session_id"] == session_id
     assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
+    assert kwargs["feedback"]["liked"] is False
+    assert kwargs["feedback"]["comment"] == "This response felt off."
     assert kwargs["feedback"]["doesnt_make_sense"] is True
     assert kwargs["feedback"]["out_of_character"] is False
 
@@ -580,7 +671,12 @@ def test_session_event_feedback_submit_returns_not_found_for_non_owner(
     response = client.post(
         f"/api/sessions/{session_id}/events/evt-opening/feedback",
         headers={"Authorization": "Bearer other-key"},
-        json={"doesnt_make_sense": False, "out_of_character": True},
+        json={
+            "liked": False,
+            "comment": "That did not land.",
+            "doesnt_make_sense": False,
+            "out_of_character": True,
+        },
     )
 
     assert response.status_code == 404
@@ -623,6 +719,133 @@ def test_session_event_feedback_clear_flushes_live_session_and_persists(
     kwargs = mock_provider.clear_session_event_feedback.await_args.kwargs
     assert kwargs["session_id"] == session_id
     assert kwargs["player_id"] == "player-owner"
+    assert kwargs["event_id"] == "evt-opening"
+
+
+@pytest.mark.unit
+def test_free_play_feedback_submit_flushes_live_session_and_persists(
+    free_play_client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Free-play sessions should still expose per-message feedback controls."""
+    manager = DummySessionManager()
+    mock_provider.set_session_event_feedback = AsyncMock(
+        return_value={
+            "liked": False,
+            "comment": "This felt out of character.",
+            "doesnt_make_sense": False,
+            "out_of_character": True,
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = free_play_client.post(
+            "/api/play/game",
+            json={"game": "explore", "pc_choice": None, "npc_choice": None, "source": "api"},
+        )
+
+    session_id = create_resp.json()["session_id"]
+
+    response = free_play_client.post(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        json={
+            "liked": False,
+            "comment": "This felt out of character.",
+            "doesnt_make_sense": False,
+            "out_of_character": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["feedback"]["comment"] == "This felt out of character."
+    assert response.json()["feedback"]["out_of_character"] is True
+    assert manager.flush_calls == 1
+
+    kwargs = mock_provider.set_session_event_feedback.await_args.kwargs
+    assert kwargs["session_id"] == session_id
+    assert kwargs["player_id"] is None
+    assert kwargs["event_id"] == "evt-opening"
+
+
+@pytest.mark.unit
+def test_session_event_feedback_submit_clears_issue_flags_for_likes(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Positive reactions should not retain negative issue flags even if sent accidentally."""
+    manager = DummySessionManager()
+    mock_provider.set_session_event_feedback = AsyncMock(
+        return_value={
+            "liked": True,
+            "comment": "Helpful scene framing.",
+            "doesnt_make_sense": False,
+            "out_of_character": False,
+            "submitted_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = client.post(
+            "/api/play/game",
+            json={"api_key": "valid-key", "game": "explore", "source": "api"},
+        )
+
+    session_id = create_resp.json()["session_id"]
+
+    response = client.post(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": "Bearer valid-key"},
+        json={
+            "liked": True,
+            "comment": "Helpful scene framing.",
+            "doesnt_make_sense": True,
+            "out_of_character": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["feedback"]["liked"] is True
+    assert payload["feedback"]["doesnt_make_sense"] is False
+    assert payload["feedback"]["out_of_character"] is False
+
+
+@pytest.mark.unit
+def test_free_play_feedback_clear_flushes_live_session_and_persists(
+    free_play_client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Free-play feedback clearing should work without a player auth key."""
+    manager = DummySessionManager()
+    mock_provider.clear_session_event_feedback = AsyncMock(return_value=True)
+
+    with patch(
+        "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
+        new=AsyncMock(return_value=manager),
+    ):
+        create_resp = free_play_client.post(
+            "/api/play/game",
+            json={"game": "explore", "pc_choice": None, "npc_choice": None, "source": "api"},
+        )
+
+    session_id = create_resp.json()["session_id"]
+
+    response = free_play_client.delete(f"/api/sessions/{session_id}/events/evt-opening/feedback")
+
+    assert response.status_code == 200
+    assert response.json()["cleared"] is True
+    assert manager.flush_calls == 1
+
+    kwargs = mock_provider.clear_session_event_feedback.await_args.kwargs
+    assert kwargs["session_id"] == session_id
+    assert kwargs["player_id"] is None
     assert kwargs["event_id"] == "evt-opening"
 
 
@@ -907,3 +1130,254 @@ def test_experiment_status_requires_auth(client: TestClient) -> None:
     response = client.get("/api/experiments/usability-ca/status")
 
     assert response.status_code == 401
+
+
+@pytest.mark.unit
+def test_remote_managed_server_config_reports_default_experiment(remote_managed_client: TestClient) -> None:
+    """Remote-managed deployments should expose their default experiment name."""
+    response = remote_managed_client.get("/api/server/config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "mode": "standard",
+        "authentication_required": True,
+        "registration_enabled": True,
+        "experiments_enabled": True,
+        "default_experiment_name": "usability-ca",
+    }
+
+
+@pytest.mark.unit
+def test_remote_bootstrap_seeds_and_returns_admin_key(
+    remote_managed_client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Remote bootstrap should seed the selected profile and issue an admin key."""
+    seed_admin = MagicMock()
+
+    with patch(
+        "dcs_simulation_engine.api.routers.remote.create_provider_admin",
+        return_value=SimpleNamespace(seed_database=seed_admin),
+    ):
+        response = remote_managed_client.post(
+            "/api/remote/bootstrap",
+            headers={
+                "X-DCS-Bootstrap-Token": "bootstrap-secret",
+                "X-DCS-Mongo-Seed-Filename": "players.json",
+                "Content-Type": "application/json",
+            },
+            content=b"[]",
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "player_id": "player-owner",
+        "admin_api_key": "valid-key",
+        "experiment_name": "usability-ca",
+    }
+    seed_admin.assert_called_once()
+    kwargs = mock_provider.create_player.call_args.kwargs
+    assert kwargs["issue_access_key"] is True
+    assert kwargs["player_data"]["role"] == "remote_admin"
+
+
+@pytest.mark.unit
+def test_remote_bootstrap_uses_requested_admin_key(
+    remote_managed_client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Remote bootstrap should accept a caller-supplied admin key during deployment."""
+    seed_admin = MagicMock()
+    requested_key = "dcs-ak-r9kc-B9kmhuyV85tUWIcl8KHrPl_HO7Z3BnAlcgMtJU"
+
+    with patch(
+        "dcs_simulation_engine.api.routers.remote.create_provider_admin",
+        return_value=SimpleNamespace(seed_database=seed_admin),
+    ):
+        response = remote_managed_client.post(
+            "/api/remote/bootstrap",
+            headers={
+                "X-DCS-Bootstrap-Token": "bootstrap-secret",
+                "X-DCS-Mongo-Seed-Filename": "players.json",
+                "X-DCS-Admin-Key": requested_key,
+                "Content-Type": "application/json",
+            },
+            content=b"[]",
+        )
+
+    assert response.status_code == 200
+    kwargs = mock_provider.create_player.call_args.kwargs
+    assert kwargs["issue_access_key"] is False
+    assert kwargs["access_key"] == requested_key
+
+
+@pytest.mark.unit
+def test_remote_status_is_public_and_reports_experiment_progress(
+    remote_managed_client: TestClient,
+) -> None:
+    """Remote status should expose experiment-oriented progress without authentication."""
+    with (
+        patch(
+            "dcs_simulation_engine.api.routers.remote.ExperimentManager.ensure_experiment_async",
+            new=AsyncMock(),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.remote.ExperimentManager.compute_progress_async",
+            new=AsyncMock(return_value={"total": 4, "completed": 1, "is_complete": False}),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.remote.ExperimentManager.compute_status_async",
+            new=AsyncMock(
+                return_value={
+                    "is_open": True,
+                    "total": 4,
+                    "completed": 1,
+                    "per_game": {"Explore": {"total": 1, "completed": 1, "in_progress": 0}},
+                }
+            ),
+        ),
+    ):
+        response = remote_managed_client.get("/api/remote/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mode"] == "experiment"
+    assert payload["experiment_name"] == "usability-ca"
+    assert payload["progress"] == {"total": 4, "completed": 1, "is_complete": False}
+    assert payload["experiment_status"] == {
+        "is_open": True,
+        "total": 4,
+        "completed": 1,
+        "per_game": {"Explore": {"total": 1, "completed": 1, "in_progress": 0}},
+    }
+
+
+@pytest.mark.unit
+def test_remote_export_requires_admin_role(async_mongo_provider) -> None:
+    """Remote DB export should reject non-admin authenticated players."""
+    _player_record, api_key = asyncio.run(
+        async_mongo_provider.create_player(
+            player_data={"name": "Regular Player"},
+            issue_access_key=True,
+        )
+    )
+
+    app = create_app(
+        provider=async_mongo_provider,
+        server_mode="standard",
+        default_experiment_name="usability-ca",
+        remote_management_enabled=True,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as client:
+        response = client.get("/api/remote/db-export", headers={"Authorization": f"Bearer {api_key}"})
+
+    assert response.status_code == 403
+    assert "admin" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit
+def test_remote_export_streams_tarball_for_admin(async_mongo_provider) -> None:
+    """Remote DB export should stream a gzipped tarball to the remote admin."""
+    _admin_record, admin_key = asyncio.run(
+        async_mongo_provider.create_player(
+            player_data={"name": "Remote Admin", "role": "remote_admin"},
+            issue_access_key=True,
+        )
+    )
+    async_mongo_provider.get_db()["widgets"].insert_one({"name": "export-test"})
+
+    app = create_app(
+        provider=async_mongo_provider,
+        server_mode="standard",
+        default_experiment_name="usability-ca",
+        remote_management_enabled=True,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as client:
+        response = client.get("/api/remote/db-export", headers={"Authorization": f"Bearer {admin_key}"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/gzip"
+
+    with tarfile.open(fileobj=BytesIO(response.content), mode="r:gz") as archive:
+        names = archive.getnames()
+
+    assert any(name.endswith("/widgets.json") for name in names)
+    assert any(name.endswith("/players.json") for name in names)
+    assert any(name.endswith("/__manifest__.json") for name in names)
+    assert any(name.endswith("/widgets.__indexes__.json") for name in names)
+
+
+@pytest.mark.unit
+def test_remote_export_streams_zip_for_admin(async_mongo_provider) -> None:
+    """Remote DB export should also support zip archives for the remote admin."""
+    _admin_record, admin_key = asyncio.run(
+        async_mongo_provider.create_player(
+            player_data={"name": "Remote Admin", "role": "remote_admin"},
+            issue_access_key=True,
+        )
+    )
+    async_mongo_provider.get_db()["widgets"].insert_one({"name": "export-test"})
+
+    app = create_app(
+        provider=async_mongo_provider,
+        server_mode="standard",
+        default_experiment_name="usability-ca",
+        remote_management_enabled=True,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as client:
+        response = client.get("/api/remote/db-export?format=zip", headers={"Authorization": f"Bearer {admin_key}"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+
+    with zipfile.ZipFile(BytesIO(response.content)) as archive:
+        names = archive.namelist()
+
+    assert any(name.endswith("/widgets.json") for name in names)
+    assert any(name.endswith("/players.json") for name in names)
+    assert any(name.endswith("/__manifest__.json") for name in names)
+    assert any(name.endswith("/widgets.__indexes__.json") for name in names)
+
+
+@pytest.mark.unit
+def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_provider) -> None:
+    """The first remotely registered user should receive the remote admin role."""
+    app = create_app(
+        provider=async_mongo_provider,
+        server_mode="standard",
+        default_experiment_name="usability-ca",
+        remote_management_enabled=True,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/player/registration",
+            json={
+                "full_name": "Ada Lovelace",
+                "email": "ada@example.com",
+                "phone_number": "+1 555 123 4567",
+                "consent_to_followup": True,
+                "consent_signature": "Ada",
+            },
+        )
+
+    assert response.status_code == 200
+    created = asyncio.run(async_mongo_provider.get_players(access_key=response.json()["api_key"]))
+    assert created is not None
+    assert created.data["role"] == "remote_admin"
+
+
+@pytest.mark.unit
+def test_remote_managed_deployment_disables_generic_play(remote_managed_client: TestClient) -> None:
+    """Experiment-only remote deployments should reject generic play endpoints."""
+    response = remote_managed_client.get("/api/play/setup/explore")
+
+    assert response.status_code == 409
+    assert "experiment-only" in response.json()["detail"].lower()

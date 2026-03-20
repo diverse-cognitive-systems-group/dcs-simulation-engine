@@ -2,13 +2,13 @@
     "mypy-type-checker.ignorePatterns": [
         "**/**/*.py",
     ],
-    "terminal.integrated.defaultProfile.osx": "zsh",
-    "terminal.integrated.profiles.osx": {
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "terminal.integrated.profiles.linux": {
         "zsh": {
             "path": "/bin/zsh",
             "args": [
-                "-l",
-                "-i"
+                "-l", // login shell
+                "-i"  // interactive shell
             ]
         }
     },

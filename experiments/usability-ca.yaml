@@ -4,15 +4,15 @@ description: |
   Usability study component A. Each participant receives one random unique game
   assignment, completes a single session, and submits post-play usability feedback.
 
-assignment_protocol:
-  strategy: usability_random_unique
+assignment_strategy:
+  strategy: random_unique
   games:
     - explore
     - infer_intent
     - foresight
     - goal_horizon
-  quota_per_game: 1
-  max_assignments_per_player: 4
+  quota_per_game: 5
+  max_assignments_per_player: 1
   seed: usability-ca-v1
 
 forms:

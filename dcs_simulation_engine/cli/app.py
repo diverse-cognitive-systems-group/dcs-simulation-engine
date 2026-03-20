@@ -8,8 +8,7 @@ import typer.rich_utils as ru
 from dcs_simulation_engine.cli.commands.admin import admin_app
 from dcs_simulation_engine.cli.commands.dump import dump
 from dcs_simulation_engine.cli.commands.game import game
-from dcs_simulation_engine.cli.commands.list import list_app
-from dcs_simulation_engine.cli.commands.modify import modify_app
+from dcs_simulation_engine.cli.commands.remote import remote_app
 from dcs_simulation_engine.cli.commands.server import server
 from dcs_simulation_engine.cli.common import GlobalOptions
 from dcs_simulation_engine.helpers.logging_helpers import configure_logger
@@ -50,8 +49,7 @@ app = typer.Typer(
 
 # sub-apps
 app.add_typer(admin_app, name="admin")
-app.add_typer(list_app, name="list")
-app.add_typer(modify_app, name="modify")
+app.add_typer(remote_app, name="remote")
 
 # top level commands (no subcommand)
 app.command("dump")(dump)
@@ -64,7 +62,7 @@ def main(
     ctx: typer.Context,
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress non-error output."),
     verbose: int = typer.Option(
-        1,
+        0,
         "-v",
         "--verbose",
         count=True,

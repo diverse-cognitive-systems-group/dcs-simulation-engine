@@ -3,7 +3,10 @@
 from typing import Any
 
 from dcs_simulation_engine.api.auth import (
+    REMOTE_ADMIN_ROLE,
     get_provider_from_request,
+    has_remote_admin_async,
+    is_remote_management_enabled_from_request,
     maybe_await,
     require_player_async,
     require_standard_mode_from_request,
@@ -94,6 +97,8 @@ async def register_user(body: RegistrationRequest, request: Request) -> Registra
     )
     provider = get_provider_from_request(request)
     player_data = _registration_to_player_data(body)
+    if is_remote_management_enabled_from_request(request) and not await has_remote_admin_async(provider=provider):
+        player_data["role"] = REMOTE_ADMIN_ROLE
 
     record, api_key = await maybe_await(provider.create_player(player_data=player_data, issue_access_key=True))
     if api_key is None:

@@ -17,4 +17,10 @@ def get_experiment_config(experiment: str) -> str:
         if path.stem.lower() == experiment.strip().lower():
             return str(path)
 
+    deployments_dir = Path(__file__).resolve().parents[2] / "deployments"
+    if deployments_dir.exists():
+        for path in deployments_dir.glob("*/experiments/*.y*ml"):
+            if path.stem.lower() == experiment.strip().lower():
+                return str(path)
+
     raise FileNotFoundError(f"No experiment config matching {experiment!r} found in {experiments_dir}")

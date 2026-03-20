@@ -4,6 +4,7 @@ from dcs_simulation_engine.api.auth import (
     api_key_from_request,
     get_provider_from_request,
     get_registry_from_request,
+    get_server_mode_from_request,
     maybe_await,
     require_player_async,
     require_standard_mode_from_request,
@@ -30,7 +31,12 @@ def _session_status(entry_status: str, exited: bool) -> SessionStatus:
     return "active"
 
 
-async def _flush_live_session_feedback_target(*, request: Request, session_id: str, player_id: str) -> None:
+async def _flush_live_session_feedback_target(
+    *,
+    request: Request,
+    session_id: str,
+    player_id: str | None,
+) -> None:
     """Flush queued live-session events so feedback can target freshly emitted rows."""
     registry = get_registry_from_request(request)
     entry = registry.get(session_id)
@@ -40,6 +46,18 @@ async def _flush_live_session_feedback_target(*, request: Request, session_id: s
     flush_hook = getattr(entry.manager, "flush_persistence_async", None)
     if callable(flush_hook):
         await maybe_await(flush_hook())
+
+
+async def _resolve_feedback_player_id(*, request: Request, session_id: str) -> str | None:
+    """Resolve the feedback owner for standard or anonymous free-play sessions."""
+    provider = get_provider_from_request(request)
+    if get_server_mode_from_request(request) == "standard":
+        player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+        return player.id
+
+    registry = get_registry_from_request(request)
+    entry = registry.get(session_id)
+    return entry.player_id if entry is not None else None
 
 
 @router.get("/list", response_model=SessionsListResponse)
@@ -108,14 +126,10 @@ async def submit_session_event_feedback(
     request: Request,
 ) -> SubmitSessionEventFeedbackResponse:
     """Store or overwrite feedback on one persisted NPC-message event."""
-    require_standard_mode_from_request(
-        request,
-        detail="Session endpoints are disabled when the server is running in free play mode.",
-    )
     provider = get_provider_from_request(request)
-    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    player_id = await _resolve_feedback_player_id(request=request, session_id=session_id)
 
-    await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player.id)
+    await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player_id)
 
     writer = getattr(provider, "set_session_event_feedback", None)
     if writer is None:
@@ -125,15 +139,19 @@ async def submit_session_event_feedback(
         )
 
     now = utc_now()
+    doesnt_make_sense = False if body.liked else body.doesnt_make_sense
+    out_of_character = False if body.liked else body.out_of_character
     feedback = SessionEventFeedback(
-        doesnt_make_sense=body.doesnt_make_sense,
-        out_of_character=body.out_of_character,
+        liked=body.liked,
+        comment=body.comment.strip(),
+        doesnt_make_sense=doesnt_make_sense,
+        out_of_character=out_of_character,
         submitted_at=now,
     )
     stored = await maybe_await(
         writer(
             session_id=session_id,
-            player_id=player.id,
+            player_id=player_id,
             event_id=event_id,
             feedback=feedback.model_dump(),
         )
@@ -158,14 +176,10 @@ async def clear_session_event_feedback(
     request: Request,
 ) -> ClearSessionEventFeedbackResponse:
     """Remove feedback from one persisted NPC-message event."""
-    require_standard_mode_from_request(
-        request,
-        detail="Session endpoints are disabled when the server is running in free play mode.",
-    )
     provider = get_provider_from_request(request)
-    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    player_id = await _resolve_feedback_player_id(request=request, session_id=session_id)
 
-    await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player.id)
+    await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player_id)
 
     clearer = getattr(provider, "clear_session_event_feedback", None)
     if clearer is None:
@@ -177,7 +191,7 @@ async def clear_session_event_feedback(
     cleared = await maybe_await(
         clearer(
             session_id=session_id,
-            player_id=player.id,
+            player_id=player_id,
             event_id=event_id,
         )
     )
