@@ -24,9 +24,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     gnupg \
+    gpg \
     openssh-client \
     unzip \
     zsh \
+    && rm -rf /var/lib/apt/lists/*
+
+# install eza
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | tee /etc/apt/sources.list.d/gierens.list \
+    && chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list \
+    && apt update \
+    && apt install -y eza \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js via nvm so the version can be managed consistently inside
@@ -80,5 +90,9 @@ RUN printf '%s\n' \
     'alias api-dev="cd /app && uv run dcs server --host 0.0.0.0"' \
     'alias ui-dev="cd /app/ui && bun run dev --host 0.0.0.0"' \
     >> /root/.zshrc
+
+# append zshrc file to the end of the default zshrc
+COPY .devcontainer/zshrc /tmp/zshrc
+RUN cat /tmp/zshrc >> /root/.zshrc
 
 # make sure to use --network=host when running the container so the API server is reachable at localhost:8000

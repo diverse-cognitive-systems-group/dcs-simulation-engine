@@ -138,7 +138,7 @@ Example with fallback regions:
 dcs remote deploy \
   --config experiments/experiment-a.yaml \
   --mongo-seed-path database_seeds/dev \
-  --regions lax,sjc,sea
+  --regions lax sjc sea
 ```
 
 Example targeted redeploy of just the UI app:
@@ -308,3 +308,24 @@ uv run dcs remote deploy \
 | `sjc` | San Jose, California (US) | ✅ |
 | `syd` | Sydney, Australia | ✅ |
 | `yyz` | Toronto, Canada | ✅ |
+
+# Example Real Deployment
+
+```bash
+# generate an admin key
+dcs admin keygen
+
+# deploy usability-ca experiment with the generated admin key and fallback regions
+dcs remote deploy \
+  --admin-key dcs-ak-YOUR_KEY_HERE \
+  --config /experiments/usability-ca.yml \
+  --mongo-seed-path database_seeds/prod \
+  --regions lax sjc sea
+
+# deploy free play
+dcs remote deploy \
+  --admin-key dcs-ak-YOUR_KEY_HERE \
+  --free-play \
+  --mongo-seed-path database_seeds/prod \
+  --regions lax sjc sea
+```
