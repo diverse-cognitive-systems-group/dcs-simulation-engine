@@ -218,3 +218,57 @@ class ScorerClient:
         result = _parse_json_response(raw)
         logger.debug(f"ScorerClient result: {result}")
         return result
+
+
+
+class AtomicValidator:
+    """A validator that checks for a SINGLE condition.
+
+    Instantiated with a system prompt describing one atomic validation rule.
+    Each call sends the rule + text to the LLM and returns True (pass) or False (fail).
+    """
+
+    def __init__(self, system_prompt: str, model: str = DEFAULT_MODEL) -> None:
+        """Initialise with a system prompt describing the condition and an optional model."""
+        self._system_prompt = system_prompt
+        self._model = model
+
+    async def validate(self, text: str) -> bool:
+        """Validate text against this validator's condition. Returns True if it passes."""
+        messages = [
+            {"role": "system", "content": self._system_prompt},
+            {"role": "user", "content": text},
+        ]
+
+        raw = await _call_openrouter(messages, self._model)
+        parsed = _parse_json_response(raw)
+        result = parsed.get("pass", False)
+
+        if isinstance(result, str):
+            result = result.lower() in ("true", "1", "yes")
+            
+        logger.debug(f"AtomicValidator result: {result}")
+        return bool(result)
+    
+
+class EngineValidator:
+    """Validator for universally applicable simulation engine rules"""
+    # Static rule set validations applied to both HUMAN and LLM players
+    def __init__(self):
+        pass
+
+class GameValidator:
+    """Validator for SPECIFIC game rules"""
+    # Rule set validations applied to both HUMAN and LLM players
+
+    # TODO: will need to be dynamic based on game configuration inputs
+    def __init__(self):
+        pass
+
+class RolePlayingLLMValidator:
+    """Validator for role-playing LLMs"""
+    # Rule set validations applied to ONLY LLM players to ensure
+    # LLM maintains role-play fidelity in either PC or NPC position
+    # TODO: implementation should be dynamic based on LLM's Persona (aka character sheet)
+    def __init__(self):
+        pass

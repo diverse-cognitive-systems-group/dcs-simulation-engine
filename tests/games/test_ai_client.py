@@ -99,3 +99,50 @@ def test_validate_openrouter_configuration_allows_fake_mode(
         ai_client.validate_openrouter_configuration()
     finally:
         ai_client.set_fake_ai_response(None)
+
+
+# ── AtomicValidator tests ─────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_atomic_validator_pass() -> None:
+    """AtomicValidator returns True when LLM responds with pass: true."""
+    ai_client.set_fake_ai_response('{"pass": true}')
+    try:
+        v = ai_client.AtomicValidator(system_prompt="Check something.")
+        assert asyncio.run(v.validate("some text")) is True
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_atomic_validator_fail() -> None:
+    """AtomicValidator returns False when LLM responds with pass: false."""
+    ai_client.set_fake_ai_response('{"pass": false}')
+    try:
+        v = ai_client.AtomicValidator(system_prompt="Check something.")
+        assert asyncio.run(v.validate("some text")) is False
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_atomic_validator_string_true() -> None:
+    """AtomicValidator handles stringified boolean 'true'."""
+    ai_client.set_fake_ai_response('{"pass": "true"}')
+    try:
+        v = ai_client.AtomicValidator(system_prompt="Check something.")
+        assert asyncio.run(v.validate("some text")) is True
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_atomic_validator_malformed_json() -> None:
+    """AtomicValidator defaults to False on unparseable LLM response."""
+    ai_client.set_fake_ai_response("not json at all")
+    try:
+        v = ai_client.AtomicValidator(system_prompt="Check something.")
+        assert asyncio.run(v.validate("some text")) is False
+    finally:
+        ai_client.set_fake_ai_response(None)
