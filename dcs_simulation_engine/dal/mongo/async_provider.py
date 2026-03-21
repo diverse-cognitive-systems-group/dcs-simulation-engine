@@ -369,6 +369,68 @@ class AsyncMongoProvider:
         docs = await _cursor_to_docs(cursor)
         return [_to_session_event_record(doc) for doc in docs]
 
+    async def append_session_event(
+        self,
+        *,
+        session_id: str,
+        player_id: str | None,
+        direction: str,
+        event_type: str,
+        event_source: str,
+        content: str,
+        content_format: str,
+        turn_index: int,
+        visible_to_user: bool,
+    ) -> SessionEventRecord | None:
+        """Append one owned session event and advance the parent session sequence counter."""
+        session_doc = await maybe_await(
+            self._db[MongoColumns.SESSIONS].find_one(
+                {
+                    MongoColumns.SESSION_ID: session_id,
+                    MongoColumns.PLAYER_ID: player_id,
+                },
+                projection={
+                    MongoColumns.SESSION_ID: 1,
+                    MongoColumns.LAST_SEQ: 1,
+                },
+            )
+        )
+        if not session_doc:
+            return None
+
+        last_seq = int(session_doc.get(MongoColumns.LAST_SEQ, 0) or 0)
+        next_seq = last_seq + 1
+        now = utc_now()
+        event_id = str(uuid4())
+        doc = {
+            MongoColumns.SESSION_ID: session_id,
+            MongoColumns.SEQ: next_seq,
+            MongoColumns.EVENT_ID: event_id,
+            MongoColumns.EVENT_TS: now,
+            MongoColumns.DIRECTION: direction,
+            MongoColumns.EVENT_TYPE: event_type,
+            MongoColumns.EVENT_SOURCE: event_source,
+            MongoColumns.CONTENT: content,
+            MongoColumns.CONTENT_FORMAT: content_format,
+            MongoColumns.TURN_INDEX: turn_index,
+            MongoColumns.VISIBLE_TO_USER: visible_to_user,
+            MongoColumns.PERSISTED_AT: now,
+            MongoColumns.UPDATED_AT: now,
+        }
+        await maybe_await(self._db[MongoColumns.SESSION_EVENTS].insert_one(doc))
+        await maybe_await(
+            self._db[MongoColumns.SESSIONS].update_one(
+                {MongoColumns.SESSION_ID: session_id},
+                {
+                    "$set": {
+                        MongoColumns.LAST_SEQ: next_seq,
+                        MongoColumns.UPDATED_AT: now,
+                    }
+                },
+            )
+        )
+        return _to_session_event_record(doc)
+
     async def set_session_event_feedback(
         self,
         *,

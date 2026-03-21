@@ -9,8 +9,13 @@ from dcs_simulation_engine.api.auth import (
     require_player_async,
     require_standard_mode_from_request,
 )
+from dcs_simulation_engine.api.infer_intent_evaluation import (
+    InferIntentEvaluationUnavailableError,
+    generate_or_get_infer_intent_evaluation,
+)
 from dcs_simulation_engine.api.models import (
     ClearSessionEventFeedbackResponse,
+    InferIntentEvaluationResponse,
     SessionEventFeedback,
     SessionStatus,
     SessionSummary,
@@ -48,8 +53,8 @@ async def _flush_live_session_feedback_target(
         await maybe_await(flush_hook())
 
 
-async def _resolve_feedback_player_id(*, request: Request, session_id: str) -> str | None:
-    """Resolve the feedback owner for standard or anonymous free-play sessions."""
+async def _resolve_session_player_id(*, request: Request, session_id: str) -> str | None:
+    """Resolve the session owner for standard or anonymous free-play sessions."""
     provider = get_provider_from_request(request)
     if get_server_mode_from_request(request) == "standard":
         player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
@@ -57,7 +62,9 @@ async def _resolve_feedback_player_id(*, request: Request, session_id: str) -> s
 
     registry = get_registry_from_request(request)
     entry = registry.get(session_id)
-    return entry.player_id if entry is not None else None
+    if entry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return entry.player_id
 
 
 @router.get("/list", response_model=SessionsListResponse)
@@ -116,6 +123,40 @@ async def get_session_reconstruction(session_id: str, request: Request) -> dict:
 
 
 @router.post(
+    "/{session_id}/infer-intent/evaluation",
+    response_model=InferIntentEvaluationResponse,
+)
+async def request_infer_intent_evaluation(
+    session_id: str,
+    request: Request,
+) -> InferIntentEvaluationResponse:
+    """Return a cached Infer Intent evaluation or generate and persist it on first request."""
+    provider = get_provider_from_request(request)
+    player_id = await _resolve_session_player_id(request=request, session_id=session_id)
+
+    if getattr(provider, "append_session_event", None) is None:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Infer Intent evaluation is unavailable for this provider.",
+        )
+
+    try:
+        response = await generate_or_get_infer_intent_evaluation(
+            provider=provider,
+            session_id=session_id,
+            player_id=player_id,
+        )
+    except InferIntentEvaluationUnavailableError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except NotImplementedError as exc:
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(exc)) from exc
+
+    if response is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return response
+
+
+@router.post(
     "/{session_id}/events/{event_id}/feedback",
     response_model=SubmitSessionEventFeedbackResponse,
 )
@@ -127,7 +168,7 @@ async def submit_session_event_feedback(
 ) -> SubmitSessionEventFeedbackResponse:
     """Store or overwrite feedback on one persisted NPC-message event."""
     provider = get_provider_from_request(request)
-    player_id = await _resolve_feedback_player_id(request=request, session_id=session_id)
+    player_id = await _resolve_session_player_id(request=request, session_id=session_id)
 
     await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player_id)
 
@@ -177,7 +218,7 @@ async def clear_session_event_feedback(
 ) -> ClearSessionEventFeedbackResponse:
     """Remove feedback from one persisted NPC-message event."""
     provider = get_provider_from_request(request)
-    player_id = await _resolve_feedback_player_id(request=request, session_id=session_id)
+    player_id = await _resolve_session_player_id(request=request, session_id=session_id)
 
     await _flush_live_session_feedback_target(request=request, session_id=session_id, player_id=player_id)
 

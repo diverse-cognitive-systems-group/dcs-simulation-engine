@@ -18,9 +18,19 @@
     // Docker outside Docker (share the host Docker engine)
     // Mount the Docker socket and feature
     "mounts": [
+        // mount the source code to allow live editing and testing without rebuilding the container
         "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+        // mount the uv cache to speed up installs and avoid re-downloading dependencies every time the container is rebuilt
+        // keep in mind that the container os may be different from the host os, so we can't use the cache at $HOME/.cache/uv
+        "source=${localWorkspaceFolder}/.devcontainer/cache/uv,target=/root/.cache/uv,type=bind,consistency=cached",
+        // mount the zsh history to allow sharing command history between sessions and persisting it across container restarts
+        "source=${localWorkspaceFolder}/.devcontainer/cache/zsh,target=/root/.cache/zsh,type=bind,consistency=cached",
+        // mount the Docker socket to allow running Docker commands from inside the container
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-        "source=${localEnv:HOME}/.codex/auth.json,target=/root/.codex/auth.json,type=bind,consistency=cached,readonly"
+        // mount codex auth file to allow using codex cli from inside the container
+        "source=${localWorkspaceFolder}/.devcontainer/cache/codex/,target=/root/.codex/,type=bind,consistency=cached",
+        // mount claude folder to allow using claude cli from inside the container
+        "source=${localWorkspaceFolder}/.devcontainer/cache/claude,target=/root/.claude,type=bind,consistency=cached"
     ],
     "features": {
         "ghcr.io/devcontainers/features/docker-outside-of-docker": {
@@ -30,6 +40,7 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "aaron-bond.better-comments",
                 "Anthropic.claude-code",
                 "charliermarsh.ruff",
                 "dbcode.dbcode",
@@ -38,6 +49,7 @@
                 "ms-python.python",
                 "ms-python.vscode-pylance",
                 "openai.chatgpt",
+                "redhat.vscode-yaml",
                 "streetsidesoftware.code-spell-checker",
                 "tamasfe.even-better-toml",
                 "wholroyd.jinja"
@@ -55,8 +67,21 @@
                 "python.analysis.typeCheckingMode": "basic",
                 "python.defaultInterpreterPath": "/opt/venv/bin/python",
                 "python.testing.pytestEnabled": true,
-                "python.testing.unittestEnabled": false
+                "python.testing.unittestEnabled": false,
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "/usr/bin/zsh",
+                        "args": [
+                            "-l", // login shell
+                            "-i" // interactive shell
+                        ]
+                    }
+                }
             }
         }
+    },
+    "containerEnv": {
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8"
     }
 }

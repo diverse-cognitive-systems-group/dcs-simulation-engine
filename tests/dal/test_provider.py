@@ -168,6 +168,54 @@ async def test_list_session_events_returns_session_event_records(async_mongo_pro
     assert events[1].event_source == "npc"
 
 
+async def test_append_session_event_persists_hidden_llm_eval_and_advances_last_seq(async_mongo_provider):
+    """append_session_event adds a hidden row and updates the parent session sequence counter."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            MongoColumns.SESSION_ID: "s-eval",
+            MongoColumns.PLAYER_ID: "p-eval",
+            MongoColumns.GAME_NAME: "Infer Intent",
+            MongoColumns.STATUS: "closed",
+            MongoColumns.CREATED_AT: created_at,
+            MongoColumns.UPDATED_AT: created_at,
+            MongoColumns.LAST_SEQ: 3,
+            MongoColumns.TURNS_COMPLETED: 4,
+        }
+    )
+
+    appended = await async_mongo_provider.append_session_event(
+        session_id="s-eval",
+        player_id="p-eval",
+        direction="internal",
+        event_type="llm_eval",
+        event_source="system",
+        content='{"tier": 3, "score": 95, "reasoning": "Strong match."}',
+        content_format="json",
+        turn_index=4,
+        visible_to_user=False,
+    )
+
+    assert isinstance(appended, SessionEventRecord)
+    assert appended.seq == 4
+    assert appended.event_type == "llm_eval"
+    assert appended.event_source == "system"
+
+    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({MongoColumns.EVENT_ID: appended.event_id})
+    assert event_doc is not None
+    assert event_doc[MongoColumns.SEQ] == 4
+    assert event_doc[MongoColumns.DIRECTION] == "internal"
+    assert event_doc[MongoColumns.CONTENT_FORMAT] == "json"
+    assert event_doc[MongoColumns.VISIBLE_TO_USER] is False
+    assert event_doc[MongoColumns.TURN_INDEX] == 4
+
+    session_doc = db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: "s-eval"})
+    assert session_doc is not None
+    assert session_doc[MongoColumns.LAST_SEQ] == 4
+    assert session_doc[MongoColumns.UPDATED_AT] is not None
+
+
 async def test_set_session_event_feedback_overwrites_existing_value(async_mongo_provider):
     """set_session_event_feedback stores one top-level boolean-feedback object per NPC message event."""
     db = async_mongo_provider.get_db()

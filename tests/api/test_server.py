@@ -14,7 +14,14 @@ from dcs_simulation_engine.core.forms import (
     ExperimentForm,
     ExperimentFormQuestion,
 )
-from dcs_simulation_engine.dal.base import PlayerRecord
+from dcs_simulation_engine.dal.base import (
+    CharacterRecord,
+    PlayerRecord,
+    SessionEventRecord,
+    SessionRecord,
+)
+from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.games.ai_client import ScorerResult
 from fastapi.testclient import TestClient
 
 
@@ -81,6 +88,51 @@ def _player(player_id: str) -> PlayerRecord:
         created_at=datetime.now(timezone.utc),
         access_key="raw-key",
         data={},
+    )
+
+
+def _session_record(
+    *,
+    session_id: str,
+    player_id: str | None,
+    game_name: str,
+    termination_reason: str | None,
+    npc_hid: str = "flatworm",
+    turns_completed: int = 4,
+) -> SessionRecord:
+    return SessionRecord(
+        session_id=session_id,
+        player_id=player_id,
+        game_name=game_name,
+        status="closed" if termination_reason else "active",
+        created_at=datetime.now(timezone.utc),
+        data={
+            MongoColumns.TERMINATION_REASON: termination_reason,
+            MongoColumns.NPC_HID: npc_hid,
+            MongoColumns.TURNS_COMPLETED: turns_completed,
+        },
+    )
+
+
+def _session_event(
+    *,
+    seq: int,
+    direction: str,
+    event_type: str,
+    event_source: str,
+    content: str,
+    data: dict | None = None,
+) -> SessionEventRecord:
+    return SessionEventRecord(
+        session_id="s-infer-eval",
+        seq=seq,
+        event_id=f"evt-{seq}",
+        event_ts=datetime.now(timezone.utc),
+        direction=direction,
+        event_type=event_type,
+        event_source=event_source,
+        content=content,
+        data=data or {MongoColumns.VISIBLE_TO_USER: True},
     )
 
 
@@ -587,6 +639,359 @@ def test_session_reconstruction_endpoint_returns_payload(client: TestClient, moc
     assert response.status_code == 200
     assert response.json()["session"]["session_id"] == "s1"
     assert response.json()["events"][0]["seq"] == 1
+
+
+@pytest.mark.unit
+def test_infer_intent_evaluation_endpoint_generates_then_returns_cached_result(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """First evaluation request persists a hidden event; second request reuses it."""
+    session_id = "s-infer-eval"
+    persisted_events = [
+        _session_event(
+            seq=1,
+            direction="outbound",
+            event_type="message",
+            event_source="npc",
+            content="A pale creature retreats into the shadow.",
+        ),
+        _session_event(
+            seq=2,
+            direction="inbound",
+            event_type="message",
+            event_source="user",
+            content="I place a crumb nearby.",
+        ),
+        _session_event(
+            seq=3,
+            direction="outbound",
+            event_type="message",
+            event_source="npc",
+            content="It glides toward the crumb and settles over it.",
+        ),
+        _session_event(
+            seq=4,
+            direction="inbound",
+            event_type="command",
+            event_source="user",
+            content="/guess",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "guess"},
+        ),
+        _session_event(
+            seq=5,
+            direction="outbound",
+            event_type="command",
+            event_source="system",
+            content="What do you think the NPC's goal or intention was?",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "guess"},
+        ),
+        _session_event(
+            seq=6,
+            direction="inbound",
+            event_type="message",
+            event_source="user",
+            content="It is trying to find food while staying protected.",
+        ),
+        _session_event(
+            seq=7,
+            direction="inbound",
+            event_type="message",
+            event_source="user",
+            content="No additional feedback.",
+        ),
+    ]
+    mock_provider.get_session = AsyncMock(
+        return_value=_session_record(
+            session_id=session_id,
+            player_id="player-owner",
+            game_name="Infer Intent",
+            termination_reason="game_completed",
+        )
+    )
+    mock_provider.list_session_events = AsyncMock(side_effect=lambda **_kwargs: list(persisted_events))
+    mock_provider.get_character = AsyncMock(
+        return_value=CharacterRecord(
+            hid="flatworm",
+            name="Flatworm",
+            short_description="A flatworm.",
+            data={"long_description": "A cautious feeder.", "abilities": "Can move and feed."},
+        )
+    )
+
+    async def _append_session_event(**kwargs):
+        event = SessionEventRecord(
+            session_id=kwargs["session_id"],
+            seq=8,
+            event_id="evt-llm-eval",
+            event_ts=datetime.now(timezone.utc),
+            direction=kwargs["direction"],
+            event_type=kwargs["event_type"],
+            event_source=kwargs["event_source"],
+            content=kwargs["content"],
+            data={
+                MongoColumns.CONTENT_FORMAT: kwargs["content_format"],
+                MongoColumns.TURN_INDEX: kwargs["turn_index"],
+                MongoColumns.VISIBLE_TO_USER: kwargs["visible_to_user"],
+            },
+        )
+        persisted_events.append(event)
+        return event
+
+    mock_provider.append_session_event = AsyncMock(side_effect=_append_session_event)
+    scorer_mock = AsyncMock(
+        return_value=ScorerResult(
+            evaluation={"tier": 3, "score": 95, "reasoning": "Strong match."},
+            raw_json='{"tier": 3, "score": 95, "reasoning": "Strong match."}',
+        )
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.infer_intent_evaluation.ScorerClient.score",
+        new=scorer_mock,
+    ):
+        first = client.post(
+            f"/api/sessions/{session_id}/infer-intent/evaluation",
+            headers={"Authorization": "Bearer valid-key"},
+        )
+        second = client.post(
+            f"/api/sessions/{session_id}/infer-intent/evaluation",
+            headers={"Authorization": "Bearer valid-key"},
+        )
+
+    assert first.status_code == 200
+    assert first.json() == {
+        "session_id": session_id,
+        "event_id": "evt-llm-eval",
+        "cached": False,
+        "evaluation": {
+            "tier": 3,
+            "score": 95,
+            "reasoning": "Strong match.",
+        },
+    }
+
+    assert second.status_code == 200
+    assert second.json() == {
+        "session_id": session_id,
+        "event_id": "evt-llm-eval",
+        "cached": True,
+        "evaluation": {
+            "tier": 3,
+            "score": 95,
+            "reasoning": "Strong match.",
+        },
+    }
+    assert scorer_mock.await_count == 1
+    assert mock_provider.append_session_event.await_count == 1
+
+
+@pytest.mark.unit
+def test_infer_intent_evaluation_endpoint_supports_free_play_sessions(
+    free_play_client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Free-play should allow Infer Intent evaluation for anonymous sessions by session id."""
+    app = free_play_client.app
+    registry = app.state.registry
+    entry = registry.add(player_id=None, game_name="Infer Intent", manager=DummySessionManager())
+    registry.close(entry.session_id)
+
+    session_id = entry.session_id
+    persisted_events = [
+        _session_event(
+            seq=1,
+            direction="outbound",
+            event_type="message",
+            event_source="npc",
+            content="A pale creature retreats into the shadow.",
+        ),
+        _session_event(
+            seq=2,
+            direction="inbound",
+            event_type="message",
+            event_source="user",
+            content="I place a crumb nearby.",
+        ),
+        _session_event(
+            seq=3,
+            direction="outbound",
+            event_type="message",
+            event_source="npc",
+            content="It glides toward the crumb and settles over it.",
+        ),
+        _session_event(
+            seq=4,
+            direction="inbound",
+            event_type="command",
+            event_source="user",
+            content="/guess",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "guess"},
+        ),
+        _session_event(
+            seq=5,
+            direction="outbound",
+            event_type="command",
+            event_source="system",
+            content="What do you think the NPC's goal or intention was?",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "guess"},
+        ),
+        _session_event(
+            seq=6,
+            direction="inbound",
+            event_type="message",
+            event_source="user",
+            content="It is trying to find food while staying protected.",
+        ),
+        _session_event(
+            seq=7,
+            direction="inbound",
+            event_type="message",
+            event_source="user",
+            content="No additional feedback.",
+        ),
+    ]
+    mock_provider.get_session = AsyncMock(
+        return_value=_session_record(
+            session_id=session_id,
+            player_id=None,
+            game_name="Infer Intent",
+            termination_reason="game_completed",
+        )
+    )
+    mock_provider.list_session_events = AsyncMock(side_effect=lambda **_kwargs: list(persisted_events))
+    mock_provider.get_character = AsyncMock(
+        return_value=CharacterRecord(
+            hid="flatworm",
+            name="Flatworm",
+            short_description="A flatworm.",
+            data={"long_description": "A cautious feeder.", "abilities": "Can move and feed."},
+        )
+    )
+
+    async def _append_session_event(**kwargs):
+        event = SessionEventRecord(
+            session_id=kwargs["session_id"],
+            seq=8,
+            event_id="evt-freeplay-llm-eval",
+            event_ts=datetime.now(timezone.utc),
+            direction=kwargs["direction"],
+            event_type=kwargs["event_type"],
+            event_source=kwargs["event_source"],
+            content=kwargs["content"],
+            data={
+                MongoColumns.CONTENT_FORMAT: kwargs["content_format"],
+                MongoColumns.TURN_INDEX: kwargs["turn_index"],
+                MongoColumns.VISIBLE_TO_USER: kwargs["visible_to_user"],
+            },
+        )
+        persisted_events.append(event)
+        return event
+
+    mock_provider.append_session_event = AsyncMock(side_effect=_append_session_event)
+    scorer_mock = AsyncMock(
+        return_value=ScorerResult(
+            evaluation={"tier": 3, "score": 95, "reasoning": "Strong match."},
+            raw_json='{"tier": 3, "score": 95, "reasoning": "Strong match."}',
+        )
+    )
+
+    with patch(
+        "dcs_simulation_engine.api.infer_intent_evaluation.ScorerClient.score",
+        new=scorer_mock,
+    ):
+        first = free_play_client.post(f"/api/sessions/{session_id}/infer-intent/evaluation")
+        second = free_play_client.post(f"/api/sessions/{session_id}/infer-intent/evaluation")
+
+    assert first.status_code == 200
+    assert first.json() == {
+        "session_id": session_id,
+        "event_id": "evt-freeplay-llm-eval",
+        "cached": False,
+        "evaluation": {
+            "tier": 3,
+            "score": 95,
+            "reasoning": "Strong match.",
+        },
+    }
+
+    assert second.status_code == 200
+    assert second.json() == {
+        "session_id": session_id,
+        "event_id": "evt-freeplay-llm-eval",
+        "cached": True,
+        "evaluation": {
+            "tier": 3,
+            "score": 95,
+            "reasoning": "Strong match.",
+        },
+    }
+    assert scorer_mock.await_count == 1
+    assert mock_provider.append_session_event.await_count == 1
+
+
+def test_infer_intent_evaluation_endpoint_rejects_incomplete_session(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Evaluation is unavailable until the Infer Intent session is completed."""
+    mock_provider.get_session = AsyncMock(
+        return_value=_session_record(
+            session_id="s-incomplete",
+            player_id="player-owner",
+            game_name="Infer Intent",
+            termination_reason="user_exit_command",
+        )
+    )
+
+    response = client.post(
+        "/api/sessions/s-incomplete/infer-intent/evaluation",
+        headers={"Authorization": "Bearer valid-key"},
+    )
+
+    assert response.status_code == 409
+    assert "not available until the game is completed" in response.json()["detail"]
+
+
+@pytest.mark.unit
+def test_infer_intent_evaluation_endpoint_returns_not_found_for_non_owner(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """The evaluation endpoint does not reveal sessions the caller does not own."""
+    mock_provider.get_session = AsyncMock(return_value=None)
+
+    response = client.post(
+        "/api/sessions/s-missing/infer-intent/evaluation",
+        headers={"Authorization": "Bearer valid-key"},
+    )
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit
+def test_infer_intent_evaluation_endpoint_rejects_other_games(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Infer Intent evaluation is only available for Infer Intent sessions."""
+    mock_provider.get_session = AsyncMock(
+        return_value=_session_record(
+            session_id="s-explore",
+            player_id="player-owner",
+            game_name="Explore",
+            termination_reason="game_completed",
+        )
+    )
+
+    response = client.post(
+        "/api/sessions/s-explore/infer-intent/evaluation",
+        headers={"Authorization": "Bearer valid-key"},
+    )
+
+    assert response.status_code == 409
+    assert "only available for completed infer intent sessions" in response.json()["detail"].lower()
 
 
 @pytest.mark.unit

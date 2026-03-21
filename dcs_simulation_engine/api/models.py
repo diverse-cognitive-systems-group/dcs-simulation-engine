@@ -212,6 +212,23 @@ class SessionsListResponse(BaseModel):
     sessions: list[SessionSummary]
 
 
+class InferIntentEvaluation(BaseModel):
+    """Parsed Infer Intent evaluation payload returned by the scorer."""
+
+    tier: int = Field(ge=0, le=3)
+    score: int = Field(ge=0, le=100)
+    reasoning: str = Field(min_length=1)
+
+
+class InferIntentEvaluationResponse(BaseModel):
+    """Response payload for the cached-or-generated Infer Intent evaluation."""
+
+    session_id: str
+    event_id: str
+    cached: bool
+    evaluation: InferIntentEvaluation
+
+
 class SessionEventFeedback(BaseModel):
     """Stored reaction, comment, and issue flags attached to one assistant message."""
 

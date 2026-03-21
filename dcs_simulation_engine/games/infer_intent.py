@@ -6,7 +6,6 @@ from typing import Any, AsyncIterator
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import (
-    ScorerClient,
     UpdaterClient,
     ValidatorClient,
 )
@@ -41,7 +40,6 @@ class InferIntentGame(Game):
         npc: CharacterRecord,
         updater: UpdaterClient,
         validator: ValidatorClient,
-        scorer: ScorerClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
     ) -> None:
@@ -50,7 +48,6 @@ class InferIntentGame(Game):
         self._npc = npc
         self._updater = updater
         self._validator = validator
-        self._scorer = scorer
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
         self._entered = False
@@ -76,13 +73,11 @@ class InferIntentGame(Game):
             system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)
         )
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
-        scorer = ScorerClient(npc=npc)
         return cls(
             pc=pc,
             npc=npc,
             updater=updater,
             validator=validator,
-            scorer=scorer,
             retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
             max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
         )
@@ -154,9 +149,6 @@ class InferIntentGame(Game):
         if self._awaiting_other_feedback:
             self._other_feedback = user_input
             self._awaiting_other_feedback = False
-            transcript = _build_transcript(self._updater.history)
-            self._evaluation = await self._scorer.score(transcript, self._goal_inference)
-            logger.debug(f"Evaluation: {self._evaluation}")
             self.exit("game completed")
             yield GameEvent.now(type="info", content="Thank you. Game complete.")
             return
@@ -220,16 +212,3 @@ class InferIntentGame(Game):
 
         # Unrecognised — return None so SessionManager can handle it.
         return None
-
-
-def _build_transcript(history: list[dict[str, str]]) -> str:
-    """Format UpdaterClient history into a readable transcript string."""
-    lines: list[str] = []
-    for msg in history:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
-        if role == "user":
-            lines.append(f"Player: {content}")
-        elif role == "assistant":
-            lines.append(f"NPC: {content}")
-    return "\n".join(lines)

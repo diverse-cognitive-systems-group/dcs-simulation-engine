@@ -103,7 +103,12 @@ export function ChatMessageBubble({
   async function handleReactionClick(liked: boolean) {
     if (!message.eventId || feedbackPending) return
 
-    if (confirmedFeedback && !composerOpen && confirmedFeedback.liked === liked && onClearFeedback) {
+    if (
+      confirmedFeedback &&
+      !composerOpen &&
+      confirmedFeedback.liked === liked &&
+      onClearFeedback
+    ) {
       try {
         setFeedbackError(null)
         await onClearFeedback(message.eventId)
@@ -168,14 +173,13 @@ export function ChatMessageBubble({
         doesntMakeSense: draftLiked ? false : draftDoesntMakeSense,
         outOfCharacter: draftLiked ? false : draftOutOfCharacter,
       })
-      const nextFeedback =
-        submittedFeedback ?? {
-          liked: draftLiked,
-          comment,
-          doesntMakeSense: draftLiked ? false : draftDoesntMakeSense,
-          outOfCharacter: draftLiked ? false : draftOutOfCharacter,
-          submittedAt: new Date().toISOString(),
-        }
+      const nextFeedback = submittedFeedback ?? {
+        liked: draftLiked,
+        comment,
+        doesntMakeSense: draftLiked ? false : draftDoesntMakeSense,
+        outOfCharacter: draftLiked ? false : draftOutOfCharacter,
+        submittedAt: new Date().toISOString(),
+      }
       setConfirmedFeedback(nextFeedback)
       setDraftComment(comment)
       setComposerOpen(false)

@@ -10,8 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { extractDetail, NETWORK_UNAVAILABLE, SIGNIN_UNAVAILABLE } from '@/lib/api-errors'
-import { getActiveExperimentName, setAuth } from '@/lib/auth'
 import { resolveApiUrl } from '@/lib/api-url'
+import { getActiveExperimentName, setAuth } from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
