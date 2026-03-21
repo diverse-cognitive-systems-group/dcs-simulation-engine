@@ -82,6 +82,7 @@ CLAUDE.md
 .claude/
 .continue/
 .kilocode/
+Plans/
 
 
 ui/.vite
