@@ -17,6 +17,7 @@ from dcs_simulation_engine.api.models import (
     DeleteCharacterResponse,
     GameSetupOptionsResponse,
     GamesListResponse,
+    InferIntentEvaluationResponse,
     RegistrationRequest,
     RegistrationResponse,
     ServerConfigResponse,
@@ -183,6 +184,25 @@ class APIClient:
             None,
             SessionsListResponse,
             headers={"Authorization": f"Bearer {key}"},
+        )
+
+    def request_infer_intent_evaluation(
+        self,
+        session_id: str,
+        *,
+        api_key: Optional[str] = None,
+    ) -> InferIntentEvaluationResponse:
+        """Generate or fetch the cached Infer Intent evaluation for one completed session."""
+        key = self._resolve_api_key(api_key, required=False)
+        headers: dict[str, str] = {}
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        return self._request(
+            "POST",
+            f"/api/sessions/{session_id}/infer-intent/evaluation",
+            None,
+            InferIntentEvaluationResponse,
+            headers=headers,
         )
 
     def list_games(self) -> GamesListResponse:

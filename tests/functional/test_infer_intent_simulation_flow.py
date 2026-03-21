@@ -5,7 +5,7 @@ This test suite validates the infer-intent game's unique mechanics:
 2. /guess command triggers a 2-step completion form (goal inference + feedback)
 3. /help and /abilities command handlers
 4. Goal-aligned NPC responses
-5. Completion form collects goal_inference and other_feedback, then scores and exits
+5. Completion form collects goal_inference and other_feedback, then exits
 
 Tests use mocked LLMs to avoid external API dependencies.
 """
@@ -193,12 +193,12 @@ async def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state,
     assert not session.exited, "Session should not exit after first answer"
     assert session.game.goal_inference == "The creature is trying to find food."
 
-    # Step 3: provide other feedback — scores and exits
+    # Step 3: provide other feedback — exits without inline scoring
     feedback_events = await session.step_async("Interesting behavior overall.")
     assert any(e["type"] == "info" for e in feedback_events), "Expected completion confirmation"
     assert session.exited, "Session should exit after second answer"
     assert session.game.other_feedback == "Interesting behavior overall."
-    assert session.game.evaluation != {}, "Evaluation should be populated after scoring"
+    assert session.game.evaluation == {}, "Evaluation should not be populated during gameplay"
 
 
 async def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state, async_mongo_provider):

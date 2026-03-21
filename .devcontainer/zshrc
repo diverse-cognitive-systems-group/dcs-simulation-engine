@@ -1,3 +1,29 @@
+# Install antigen if not found. 
+# https://github.com/zsh-users/antigen
+# You can uninstall antigen with
+#   rm -rf $HOME/.antigen*
+ANTIGEN_FILE="$HOME/.antigen.zsh"
+if [ ! -f "$ANTIGEN_FILE" ]; then
+    echo "Installing antigen!..."
+    curl -sL git.io/antigen > "$ANTIGEN_FILE"
+fi
+
+# Load antigen
+source "$ANTIGEN_FILE"
+antigen use oh-my-zsh
+
+# Git status arrows in the shell prompt
+antigen bundle git
+
+# Use pure theme https://github.com/sindresorhus/pure
+antigen bundle sindresorhus/pure@main
+
+# Syntax highlighting
+antigen bundle zsh-users/zsh-syntax-highlighting@master
+
+# Apply antigen settings
+antigen apply
+
 alias ".."="cd .."
 alias gs="git status"
 alias gl="git log"
@@ -84,3 +110,17 @@ function git-flatten()
     git reset --soft "HEAD~$NUM_COMMITS" && \
         git commit --edit -m"$(git log --format=%B --reverse HEAD..HEAD@{1})"
 }
+
+# Configure zsh history to be shared between sessions and 
+# persisted across container restarts
+export HISTFILE=/root/.cache/zsh/history
+export HISTSIZE=100000
+export SAVEHIST=100000
+
+# append history to the file instead of overwriting it
+setopt APPENDHISTORY
+
+# share history between all sessions
+setopt SHARE_HISTORY
+
+setopt HIST_IGNORE_DUPS # Don't record consecutive duplicate entries

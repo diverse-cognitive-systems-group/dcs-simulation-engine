@@ -10,6 +10,7 @@
  */
 export interface SessionEventFeedback {
   liked: boolean;
+  /** @minLength 1 */
   comment: string;
   doesnt_make_sense: boolean;
   out_of_character: boolean;

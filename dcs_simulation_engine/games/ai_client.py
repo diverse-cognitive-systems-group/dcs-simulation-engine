@@ -10,7 +10,7 @@ Both call OpenRouter's OpenAI-compatible chat completions endpoint.
 
 import json
 import os
-from typing import Any
+from typing import Any, NamedTuple
 
 import httpx
 from dcs_simulation_engine.core.constants import (
@@ -76,17 +76,44 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
 
 def _parse_json_response(raw: str) -> dict[str, Any]:
     """Parse a JSON response from the LLM, stripping markdown code fences if present."""
-    text = raw.strip()
-    # Strip optional ```json ... ``` fences that some models add
-    if text.startswith("```"):
-        lines = text.splitlines()
-        # drop first line (```json or ```) and last line (```)
-        text = "\n".join(lines[1:-1]).strip()
+    text = _strip_json_fences(raw)
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
         logger.warning(f"Failed to parse LLM response as JSON: {exc}\nRaw: {raw!r}")
         return {"type": "error", "content": raw}
+
+
+def _strip_json_fences(raw: str) -> str:
+    """Return raw JSON text with optional markdown fences removed."""
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        text = "\n".join(lines[1:-1]).strip()
+    return text
+
+
+def _normalize_inference_evaluation(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Validate and normalize the scorer payload into a stable dict shape."""
+    try:
+        tier = int(parsed["tier"])
+        score = int(parsed["score"])
+        reasoning = str(parsed["reasoning"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid inference evaluation payload: {parsed!r}") from exc
+
+    if tier < 0 or tier > 3:
+        raise ValueError(f"Inference evaluation tier must be between 0 and 3; got {tier!r}")
+    if score < 0 or score > 100:
+        raise ValueError(f"Inference evaluation score must be between 0 and 100; got {score!r}")
+    if not reasoning.strip():
+        raise ValueError("Inference evaluation reasoning must be non-empty.")
+
+    return {
+        "tier": tier,
+        "score": score,
+        "reasoning": reasoning,
+    }
 
 
 _INFERENCE_SCORER_TEMPLATE = """
@@ -194,6 +221,13 @@ class ValidatorClient:
         return result
 
 
+class ScorerResult(NamedTuple):
+    """Parsed evaluation payload plus the raw JSON text returned by the scorer."""
+
+    evaluation: dict[str, Any]
+    raw_json: str
+
+
 class ScorerClient:
     """One-shot stateless client that scores a player's goal inference against the NPC profile."""
 
@@ -202,8 +236,8 @@ class ScorerClient:
         self._npc = npc
         self._model = model
 
-    async def score(self, transcript: str, guess: str) -> dict[str, Any]:
-        """Score the player's goal inference. Returns {"tier": int, "score": int, "reasoning": str}."""
+    async def score(self, transcript: str, guess: str) -> ScorerResult:
+        """Score the player's goal inference and return parsed + raw JSON results."""
         prompt = (
             SandboxedEnvironment()
             .from_string(_INFERENCE_SCORER_TEMPLATE)
@@ -215,6 +249,7 @@ class ScorerClient:
             )
         )
         raw = await _call_openrouter([{"role": "user", "content": prompt}], self._model)
-        result = _parse_json_response(raw)
+        stripped = _strip_json_fences(raw)
+        result = _normalize_inference_evaluation(_parse_json_response(raw))
         logger.debug(f"ScorerClient result: {result}")
-        return result
+        return ScorerResult(evaluation=result, raw_json=stripped)

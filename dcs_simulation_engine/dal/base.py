@@ -134,6 +134,22 @@ class DataProvider:
         """Return ordered persisted events for a session."""
         raise NotImplementedError
 
+    def append_session_event(
+        self,
+        *,
+        session_id: str,
+        player_id: str | None,
+        direction: str,
+        event_type: str,
+        event_source: str,
+        content: str,
+        content_format: str,
+        turn_index: int,
+        visible_to_user: bool,
+    ) -> SessionEventRecord | None:
+        """Append one owned session event to an existing persisted session."""
+        raise NotImplementedError
+
     def set_session_event_feedback(
         self,
         *,
