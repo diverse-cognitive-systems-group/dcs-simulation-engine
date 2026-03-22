@@ -8,21 +8,49 @@ Both call OpenRouter's OpenAI-compatible chat completions endpoint.
 """
 # ruff: noqa: E501  — prompt strings are intentionally long prose
 
+import asyncio
 import json
 import os
-from typing import Any
+from typing import Any, NamedTuple
 
 import httpx
 from dcs_simulation_engine.core.constants import (
     OPENROUTER_BASE_URL,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.games.prompts import (
+    ENGINE_CONTEXT_ROUTING,
+    ENGINE_VALIDATOR_PROMPTS,
+    ROLEPLAYING_CONTEXT_ROUTING,
+    ROLEPLAYING_VALIDATOR_PROMPTS,
+)
 from jinja2.sandbox import SandboxedEnvironment
 from loguru import logger
 
 DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
+
+
+class ValidationResult(NamedTuple):
+    """Result of a single atomic validation rule."""
+
+    rule: str  # e.g. "VALID-FORM"
+    passed: bool
+    reason: str  # empty if passed, explanation if failed
+
+
+class EnsembleValidationResult(NamedTuple):
+    """Aggregate result from running an ensemble validator."""
+
+    passed: bool  # True only if ALL rules passed
+    results: list[ValidationResult]  # all per-rule results
+    failed: list[ValidationResult]  # convenience: only failures
+
+
+# Backward-compatible aliases
+EngineValidationResult = EnsembleValidationResult
+RolePlayingLLMValidationResult = EnsembleValidationResult
 
 
 def set_fake_ai_response(value: str | None) -> None:
@@ -233,42 +261,137 @@ class AtomicValidator:
         self._system_prompt = system_prompt
         self._model = model
 
-    async def validate(self, text: str) -> bool:
-        """Validate text against this validator's condition. Returns True if it passes."""
+    async def validate(self, text: str, context: str = "") -> tuple[bool, str]:
+        """Validate text against this validator's condition.
+
+        Returns (passed, reason) where reason is empty on success.
+        When *context* is provided it is prepended to the user message
+        above a ``---`` separator so the LLM can use it for judgment.
+        """
+        user_content = f"{context}\n---\nText to evaluate:\n{text}" if context else text
         messages = [
             {"role": "system", "content": self._system_prompt},
-            {"role": "user", "content": text},
+            {"role": "user", "content": user_content},
         ]
 
         raw = await _call_openrouter(messages, self._model)
         parsed = _parse_json_response(raw)
         result = parsed.get("pass", False)
+        reason = parsed.get("reason", "")
 
         if isinstance(result, str):
             result = result.lower() in ("true", "1", "yes")
-            
-        logger.debug(f"AtomicValidator result: {result}")
-        return bool(result)
+
+        logger.debug(f"AtomicValidator result: {result}, reason: {reason}")
+        return bool(result), str(reason)
     
 
-class EngineValidator:
-    """Validator for universally applicable simulation engine rules"""
-    # Static rule set validations applied to both HUMAN and LLM players
-    def __init__(self):
-        pass
+class EnsembleValidator:
+    """Base class for ensemble validators that compose AtomicValidators.
+
+    Subclasses set two class variables:
+
+    - ``_prompts``         — ``dict[str, str]``  rule name → system prompt
+    - ``_context_routing`` — ``dict[str, list[str]]``  rule name → context keys
+
+    Optionally override ``_pre_checks`` for programmatic validations.
+    """
+
+    _prompts: dict[str, str]
+    _context_routing: dict[str, list[str]]
+
+    def __init__(self, validators: dict[str, AtomicValidator]) -> None:
+        """Initialise with a mapping of rule name to AtomicValidator."""
+        self._validators = validators
+
+    @classmethod
+    def create(cls, model: str = DEFAULT_MODEL) -> "EnsembleValidator":
+        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
+        validators = {
+            rule: AtomicValidator(system_prompt=prompt, model=model)
+            for rule, prompt in cls._prompts.items()
+        }
+        return cls(validators)
+
+    def _pre_checks(self, text: str) -> list[ValidationResult]:
+        """Override to add programmatic checks before LLM validation."""
+        return []
+
+    async def validate(
+        self, text: str, context: dict[str, str] | None = None,
+    ) -> EnsembleValidationResult:
+        """Run pre-checks + all LLM validators in parallel."""
+        ctx = context or {}
+        pre_results = self._pre_checks(text)
+
+        async def _run(rule: str, validator: AtomicValidator) -> ValidationResult:
+            try:
+                ctx_keys = self._context_routing.get(rule, [])
+                rule_ctx = "\n".join(
+                    f"{k}: {ctx.get(k, '')}" for k in ctx_keys if ctx.get(k)
+                )
+                passed, reason = await validator.validate(text, context=rule_ctx)
+                return ValidationResult(rule=rule, passed=passed, reason=reason)
+            except Exception as exc:
+                logger.warning(f"{type(self).__name__} rule {rule} raised: {exc}")
+                return ValidationResult(rule=rule, passed=False, reason=f"Validator error: {exc}")
+
+        llm_results = list(
+            await asyncio.gather(*[_run(r, v) for r, v in self._validators.items()])
+        )
+        results = pre_results + llm_results
+        failed = [r for r in results if not r.passed]
+        return EnsembleValidationResult(passed=len(failed) == 0, results=results, failed=failed)
+
+
+class EngineValidator(EnsembleValidator):
+    """Universally applicable simulation engine rules.
+
+    Applied to both player (PC) input and LLM (MPC) output.
+    """
+
+    _prompts = ENGINE_VALIDATOR_PROMPTS
+    _context_routing = ENGINE_CONTEXT_ROUTING
+    RULES: list[str] = list(ENGINE_VALIDATOR_PROMPTS)
+
 
 class GameValidator:
-    """Validator for SPECIFIC game rules"""
+    """Validator for SPECIFIC game rules."""
+
     # Rule set validations applied to both HUMAN and LLM players
-
     # TODO: will need to be dynamic based on game configuration inputs
-    def __init__(self):
-        pass
+    def __init__(self) -> None:
+        """Placeholder — not yet implemented."""
 
-class RolePlayingLLMValidator:
-    """Validator for role-playing LLMs"""
-    # Rule set validations applied to ONLY LLM players to ensure
-    # LLM maintains role-play fidelity in either PC or NPC position
-    # TODO: implementation should be dynamic based on LLM's Persona (aka character sheet)
-    def __init__(self):
-        pass
+
+class RolePlayingLLMValidator(EnsembleValidator):
+    """LLM role-play fidelity rules for UpdaterClient (MPC) output.
+
+    VALID-SCHEMA is checked programmatically via ``_pre_checks``;
+    the remaining 11 rules are checked via AtomicValidator in parallel.
+    """
+
+    _prompts = ROLEPLAYING_VALIDATOR_PROMPTS
+    _context_routing = ROLEPLAYING_CONTEXT_ROUTING
+    RULES: list[str] = ["VALID-SCHEMA"] + list(ROLEPLAYING_VALIDATOR_PROMPTS)
+
+    def _pre_checks(self, text: str) -> list[ValidationResult]:
+        """Programmatic VALID-SCHEMA check before LLM validation."""
+        return [self._check_schema(text)]
+
+    @staticmethod
+    def _check_schema(text: str) -> ValidationResult:
+        """Check updater output matches ``{"type": "ai", "content": "..."}``."""
+        stripped = text.strip()
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            return ValidationResult("VALID-SCHEMA", False, "Response is not valid JSON")
+        if not isinstance(parsed, dict):
+            return ValidationResult("VALID-SCHEMA", False, "Response is not a JSON object")
+        if parsed.get("type") != "ai" or "content" not in parsed:
+            return ValidationResult("VALID-SCHEMA", False, 'Missing or wrong "type"/"content" keys')
+        extra = set(parsed.keys()) - {"type", "content"}
+        if extra:
+            return ValidationResult("VALID-SCHEMA", False, f"Extra keys: {extra}")
+        return ValidationResult("VALID-SCHEMA", True, "")

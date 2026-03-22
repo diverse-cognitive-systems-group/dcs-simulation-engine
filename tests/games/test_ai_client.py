@@ -106,22 +106,26 @@ def test_validate_openrouter_configuration_allows_fake_mode(
 
 @pytest.mark.unit
 def test_atomic_validator_pass() -> None:
-    """AtomicValidator returns True when LLM responds with pass: true."""
+    """AtomicValidator returns (True, '') when LLM responds with pass: true."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
         v = ai_client.AtomicValidator(system_prompt="Check something.")
-        assert asyncio.run(v.validate("some text")) is True
+        passed, reason = asyncio.run(v.validate("some text"))
+        assert passed is True
+        assert reason == ""
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
 def test_atomic_validator_fail() -> None:
-    """AtomicValidator returns False when LLM responds with pass: false."""
-    ai_client.set_fake_ai_response('{"pass": false}')
+    """AtomicValidator returns (False, reason) when LLM responds with pass: false."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "not allowed"}')
     try:
         v = ai_client.AtomicValidator(system_prompt="Check something.")
-        assert asyncio.run(v.validate("some text")) is False
+        passed, reason = asyncio.run(v.validate("some text"))
+        assert passed is False
+        assert reason == "not allowed"
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -132,17 +136,100 @@ def test_atomic_validator_string_true() -> None:
     ai_client.set_fake_ai_response('{"pass": "true"}')
     try:
         v = ai_client.AtomicValidator(system_prompt="Check something.")
-        assert asyncio.run(v.validate("some text")) is True
+        passed, _reason = asyncio.run(v.validate("some text"))
+        assert passed is True
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
 def test_atomic_validator_malformed_json() -> None:
-    """AtomicValidator defaults to False on unparseable LLM response."""
+    """AtomicValidator defaults to (False, '') on unparseable LLM response."""
     ai_client.set_fake_ai_response("not json at all")
     try:
         v = ai_client.AtomicValidator(system_prompt="Check something.")
-        assert asyncio.run(v.validate("some text")) is False
+        passed, _reason = asyncio.run(v.validate("some text"))
+        assert passed is False
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+# ── RolePlayingLLMValidator tests ────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_schema_pass() -> None:
+    """VALID-SCHEMA passes for well-formed updater JSON."""
+    result = ai_client.RolePlayingLLMValidator._check_schema('{"type": "ai", "content": "hello"}')
+    assert result.passed is True
+    assert result.rule == "VALID-SCHEMA"
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_schema_fail_not_json() -> None:
+    """VALID-SCHEMA fails for non-JSON text."""
+    result = ai_client.RolePlayingLLMValidator._check_schema("not json")
+    assert result.passed is False
+    assert "not valid JSON" in result.reason
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_schema_fail_wrong_keys() -> None:
+    """VALID-SCHEMA fails when required keys are missing."""
+    result = ai_client.RolePlayingLLMValidator._check_schema('{"foo": "bar"}')
+    assert result.passed is False
+    assert "type" in result.reason or "content" in result.reason
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_schema_fail_extra_keys() -> None:
+    """VALID-SCHEMA fails when extra keys are present."""
+    result = ai_client.RolePlayingLLMValidator._check_schema(
+        '{"type": "ai", "content": "hello", "extra": 1}'
+    )
+    assert result.passed is False
+    assert "Extra keys" in result.reason
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_all_pass() -> None:
+    """RolePlayingLLMValidator reports passed=True when all rules pass."""
+    ai_client.set_fake_ai_response('{"pass": true}')
+    try:
+        v = ai_client.RolePlayingLLMValidator.create()
+        result = asyncio.run(v.validate('{"type": "ai", "content": "The door creaks open."}'))
+        assert result.passed is True
+        assert len(result.failed) == 0
+        assert len(result.results) == 12  # 1 schema + 11 LLM
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_schema_fail_propagates() -> None:
+    """RolePlayingLLMValidator reports passed=False when schema check fails."""
+    ai_client.set_fake_ai_response('{"pass": true}')
+    try:
+        v = ai_client.RolePlayingLLMValidator.create()
+        result = asyncio.run(v.validate("not valid json at all"))
+        assert result.passed is False
+        failed_rules = [r.rule for r in result.failed]
+        assert "VALID-SCHEMA" in failed_rules
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_roleplaying_validator_llm_fail_propagates() -> None:
+    """RolePlayingLLMValidator reports failures from LLM-based validators."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "invented action"}')
+    try:
+        v = ai_client.RolePlayingLLMValidator.create()
+        result = asyncio.run(v.validate('{"type": "ai", "content": "You step back."}'))
+        assert result.passed is False
+        # Schema passes but all 11 LLM rules fail
+        schema_results = [r for r in result.results if r.rule == "VALID-SCHEMA"]
+        assert schema_results[0].passed is True
+        assert len(result.failed) == 11
     finally:
         ai_client.set_fake_ai_response(None)
