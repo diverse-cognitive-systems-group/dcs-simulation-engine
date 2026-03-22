@@ -29,6 +29,10 @@ jobs:
         run: uv python install 3.13
       - name: Install deps (incl. dev)
         run: uv sync --extra dev
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install UI deps
+        run: cd ui && bun install
       - run: make lint
 
   test:
