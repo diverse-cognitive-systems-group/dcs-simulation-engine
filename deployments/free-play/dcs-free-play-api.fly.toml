@@ -4,7 +4,7 @@ primary_region = "lax"
   dockerfile = "../../docker/api.dockerfile"
 
 [processes]
-  app = "dcs server --host 0.0.0.0 --port 8000 --remote-managed --free-play --bootstrap-token dcs-bootstrap-free-play-765J1elpFAN7cgfj --cors-origin https://dcs-free-play-ui.fly.dev"
+  app = "dcs server --host 0.0.0.0 --port 8000 --remote-managed --free-play --bootstrap-token dcs-bootstrap-free-play-IaMR0HqKFR9O5Ilu --cors-origin https://dcs-free-play-ui.fly.dev"
 
 [http_service]
   internal_port = 8000
