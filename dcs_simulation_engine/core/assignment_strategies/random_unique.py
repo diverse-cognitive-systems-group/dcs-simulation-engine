@@ -31,9 +31,7 @@ class RandomUniqueAssignmentStrategy:
         if max_assignments is not None and max_assignments <= 0:
             raise ValueError("random_unique requires max_assignments_per_player to be positive")
         if max_assignments is not None and max_assignments > len(config.games):
-            raise ValueError(
-                "random_unique cannot assign more games per player than are listed in assignment_strategy.games"
-            )
+            raise ValueError("random_unique cannot assign more games per player than are listed in assignment_strategy.games")
 
     def max_assignments_per_player(self, *, config: "ExperimentConfig") -> int:
         """Return the configured max assignments, capped by the game list."""
@@ -60,9 +58,7 @@ class RandomUniqueAssignmentStrategy:
         return {
             "total": quota * len(config.games),
             "completed": completed_total,
-            "is_complete": all(
-                len(counted_players_by_game.get(game_name, set())) >= quota for game_name in config.games
-            ),
+            "is_complete": all(len(counted_players_by_game.get(game_name, set())) >= quota for game_name in config.games),
         }
 
     async def compute_status_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
@@ -108,15 +104,11 @@ class RandomUniqueAssignmentStrategy:
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
         """Reuse active work or create a new random unique assignment for a player."""
-        active_assignment = await maybe_await(
-            provider.get_active_assignment(experiment_name=config.name, player_id=player.id)
-        )
+        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
         if active_assignment is not None:
             return active_assignment
 
-        player_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=config.name, player_id=player.id)
-        )
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
         completed_count = sum(1 for item in player_assignments if item.status == "completed")
         if completed_count >= self.max_assignments_per_player(config=config):
             return None
@@ -144,9 +136,7 @@ class RandomUniqueAssignmentStrategy:
             game_config = SessionManager.get_game_config_cached(game_name)
             get_valid = getattr(game_config, "get_valid_characters_async", None)
             if get_valid is None:
-                valid_pcs, _ = await maybe_await(
-                    game_config.get_valid_characters(player_id=player.id, provider=provider)
-                )
+                valid_pcs, _ = await maybe_await(game_config.get_valid_characters(player_id=player.id, provider=provider))
             else:
                 valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider))
 

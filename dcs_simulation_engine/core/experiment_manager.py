@@ -127,18 +127,13 @@ class ExperimentManager:
     ) -> dict[str, Any]:
         """Return the assignment state visible to one authenticated player."""
         config = cls.get_experiment_config_cached(experiment_name)
-        active_assignment = await maybe_await(
-            provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
-        )
-        player_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=experiment_name, player_id=player_id)
-        )
+        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id))
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
         completed_assignments = [item for item in player_assignments if item.status == "completed"]
         before_form_names = {form.name for form in config.forms_for_phase(before_or_after="before")}
         after_form_names = {form.name for form in config.forms_for_phase(before_or_after="after")}
         has_submitted_before_forms = not before_form_names or any(
-            before_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys()))
-            for item in player_assignments
+            before_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys())) for item in player_assignments
         )
         pending_post_play = next(
             (
@@ -151,12 +146,7 @@ class ExperimentManager:
         strategy = cls._strategy_for(config=config)
         has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
 
-        if (
-            active_assignment is None
-            and pending_post_play is None
-            and has_submitted_before_forms
-            and not has_finished_experiment
-        ):
+        if active_assignment is None and pending_post_play is None and has_submitted_before_forms and not has_finished_experiment:
             player_record = await maybe_await(provider.get_player(player_id=player_id))
             if player_record is not None:
                 active_assignment = await cls.get_or_create_assignment_async(
@@ -220,9 +210,7 @@ class ExperimentManager:
         """Return the active assignment for a player or create one on demand."""
         config = cls.get_experiment_config_cached(experiment_name)
         strategy = cls._strategy_for(config=config)
-        return await maybe_await(
-            strategy.get_or_create_assignment_async(provider=provider, config=config, player=player)
-        )
+        return await maybe_await(strategy.get_or_create_assignment_async(provider=provider, config=config, player=player))
 
     @classmethod
     async def start_assignment_session_async(
@@ -235,9 +223,7 @@ class ExperimentManager:
         source: str = "experiment",
     ) -> tuple["SessionEntry", AssignmentRecord]:
         """Start a gameplay session for the current assignment."""
-        assignment = await maybe_await(
-            provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id)
-        )
+        assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id))
         if assignment is None:
             raise ValueError("No active assignment is available for this player.")
         if assignment.status == "in_progress":

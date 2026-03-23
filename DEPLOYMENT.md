@@ -320,12 +320,12 @@ dcs remote deploy \
   --admin-key dcs-ak-YOUR_KEY_HERE \
   --config /experiments/usability-ca.yml \
   --mongo-seed-path database_seeds/prod \
-  --regions lax sjc sea
+  --regions iad # cheapest region
 
 # deploy free play
 dcs remote deploy \
   --admin-key dcs-ak-YOUR_KEY_HERE \
   --free-play \
   --mongo-seed-path database_seeds/prod \
-  --regions lax sjc sea
+  --regions iad # cheapest region
 ```

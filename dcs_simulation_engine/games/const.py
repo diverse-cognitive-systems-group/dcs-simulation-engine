@@ -49,49 +49,48 @@ class Foresight:
     """String constants for the new-style Foresight game (Python format strings, not Jinja2)."""
 
     ENTER_CONTENT = """\
-*Welcome, in this game you take on the role of a character whose aim is to understand the other \
-character well enough to predict their actions.*
+*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*
 
-Engage with the other character using your abilities. When you feel ready, include a prediction \
-alongside your action — for example: "I wave my hand and predict they will wave back."
+Engage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.
 
 - You are playing as: {pc_hid} ({pc_short_description})
 
-Type `/help` for instructions. Type `/complete` when you are done to submit your notes. You can include notes in the same message or send them on the next turn.\
+Type `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\
 """
 
     HELP_CONTENT = """\
 ##### Objective
-Interact with the other character and learn to predict their responses.
+Interact with the other character and learn to predict their next action.
 
-##### Actions and Predictions
-Describe an action your character takes (and optionally include a prediction about the other character's response).
+##### Actions
+Describe an action your character takes.
 - Eg. "I look around the room and walk to the door."
-- Eg. "I look around the room and walk to the door, and I predict they will follow me."
+
+##### Predictions
+Use `/predict-next` whenever you want to record what you think the simulator character will do next.
+- Eg. `/predict-next I think they will follow me to the door.`
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/complete` to end the game and submit your prediction notes. You can also use `/complete <notes>` to submit them immediately.
-Type `/exit` to leave without submitting notes.\
+Type `/predict-next` to record a prediction. You can also use `/predict-next <prediction>` to submit it immediately.
+Type `/exit` to leave the game.\
 """
 
-    COMPLETE_QUESTION = """\
-Thanks for playing! Before you go, please share any notes about your predictions:
+    PREDICT_NEXT_QUESTION = """\
+What do you predict the simulator character will do next?
 
-Were any predictions particularly interesting or challenging? Describe in a few sentences \
-(or type 'none' to skip).\
+Describe your prediction in a sentence or two.\
 """
+
+    PREDICT_NEXT_CONFIRMATION = "Prediction noted. Continue interacting, or use `/predict-next` again anytime."
 
     ADDITIONAL_VALIDATOR_RULES = """\
-- ALLOW PREDICTIONS: The user's input IS ALLOWED to include a prediction about what the \
-other character's response will be. For example, "I wave my hand and predict they will wave back."\
+- ALLOW PREDICTIONS: The user's input IS ALLOWED to include a prediction about what the other character's response will be. For example, "I wave my hand and predict they will wave back."\
 """
 
     ADDITIONAL_UPDATER_RULES = """\
 - IGNORE PREDICTIONS:
-The user's input MAY include a prediction about what the simulator character's response will be. \
-IGNORE ANY PREDICTIONS ENTIRELY. DO NOT ADJUDICATE THEM OR RESPOND TO THEM IN ANY WAY. \
-ONLY RESPOND TO THE USER'S ACTION.\
+The user's input MAY include a prediction about what the simulator character's response will be. IGNORE ANY PREDICTIONS ENTIRELY. DO NOT ADJUDICATE THEM OR RESPOND TO THEM IN ANY WAY. ONLY RESPOND TO THE USER'S ACTION.\
 """
 
 
@@ -101,18 +100,16 @@ class InferIntent:
     ENTER_CONTENT = """\
 *Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*
 
-Engage with the other character using your abilities. When you think you understand their goal, \
-type `/guess` to submit your inference.
+Engage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.
 
 - You are playing as: {pc_hid} ({pc_short_description})
 
-Type `/help` for instructions. Type `/abilities` to see your character's abilities.\
+Type `/help` for instructions. Type `/predict-intent` when you are ready to answer.\
 """
 
     HELP_CONTENT = """\
 ##### Objective
-Interact with the other character and figure out their goal or intention. \
-When you feel confident, type `/guess` to submit your inference.
+Interact with the other character and figure out their goal or intention. When you feel confident, type `/predict-intent` to submit your inference and end the game.
 
 ##### Rules
 Describe an action that makes sense in the context of the scene and uses your character's abilities.
@@ -120,8 +117,7 @@ Describe an action that makes sense in the context of the scene and uses your ch
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/abilities` to see your character's abilities.
-Type `/guess` when you think you understand the NPC's goal to end the interaction and submit your inference.
+Type `/predict-intent` when you think you understand the character's intent to end the interaction and submit your inference.
 Type `/exit` to leave the game without submitting an inference.\
 """
 
@@ -131,15 +127,13 @@ Type `/exit` to leave the game without submitting an inference.\
 """
 
     GOAL_INFERENCE_QUESTION = """\
-What do you think the NPC's goal or intention was during this interaction? \
-Please describe in a few sentences.\
+What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.\
 """
 
     OTHER_FEEDBACK_QUESTION = "Do you have any other feedback about this experience?"
 
     ADDITIONAL_UPDATER_RULES = """\
-- Goal Aligned Response: The simulator character's response should be in-line with a specific \
-goal or intention that s/he/it/they are trying to communicate with the user character.\
+- Goal Aligned Response: The simulator character's response should be in-line with a specific goal or intention that s/he/it/they are trying to communicate with the user character.\
 """
 
 
@@ -149,17 +143,17 @@ class GoalHorizon:
     ENTER_CONTENT = """\
 *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*
 
-Engage with the other character using your abilities. There is no predefined objective — explore freely.
+Engage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.
 
 - You are playing as: {pc_hid} ({pc_short_description})
 - The simulator is playing as: {npc_hid} ({npc_short_description})
 
-Type `/help` for instructions. Type `/abilities` to see your character's abilities.\
+Type `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\
 """
 
     HELP_CONTENT = """\
 ##### Objective
-Interact with the other character across multiple scenes to understand the scope and structure of their goals.
+Interact with the other character across multiple scenes to understand the scope and limits of their goals and capabilities.
 
 ##### Rules
 Describe an action that makes sense in the context of the scene and uses your character's abilities.
@@ -167,7 +161,7 @@ Describe an action that makes sense in the context of the scene and uses your ch
 
 ##### Commands
 Type `/help` to see this message again.
-Type `/abilities` to see your character's abilities.
+Type `/predict-capabilities` when you think you understand the character's limits. This ends the game.
 Type `/exit` to leave the game.\
 """
 
@@ -183,4 +177,10 @@ Type `/exit` to leave the game.\
 
 ## Simulator Character Abilities
 {npc_abilities}\
+"""
+
+    CAPABILITY_PREDICTION_QUESTION = """\
+What do you think this character's limits or capabilities are?
+
+Describe the bounds you inferred in a few sentences.\
 """

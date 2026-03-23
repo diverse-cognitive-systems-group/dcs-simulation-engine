@@ -1,5 +1,5 @@
 app = "dcs-usability-ca-ui"
-primary_region = "lax"
+primary_region = "iad"
 [build]
   dockerfile = "../../docker/ui.fly.dockerfile"
 

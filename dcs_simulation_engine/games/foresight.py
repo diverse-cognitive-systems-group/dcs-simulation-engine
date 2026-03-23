@@ -23,11 +23,11 @@ class Command(StrEnum):
     """Game-level slash commands recognized by ForesightGame."""
 
     HELP = "help"
-    COMPLETE = "complete"
+    PREDICT_NEXT = "predict-next"
 
 
 class ForesightGame(Game):
-    """Foresight game: player interacts with NPC and makes predictions about their responses."""
+    """Foresight game: player interacts with NPC and makes repeatable predictions."""
 
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
@@ -52,9 +52,8 @@ class ForesightGame(Game):
         self._exited = False
         self._exit_reason = ""
 
-        # Completion flow state: set True after /complete, cleared after answer collected.
-        self._awaiting_completion_notes = False
-        self._completion_notes = ""
+        self._awaiting_prediction = False
+        self._predictions: list[str] = []
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
@@ -64,12 +63,8 @@ class ForesightGame(Game):
             retry_budget (int): overrides DEFAULT_RETRY_BUDGET
             max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
         """
-        updater = UpdaterClient(
-            system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)
-        )
-        validator = ValidatorClient(
-            system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES)
-        )
+        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
+        validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES))
         return cls(
             pc=pc,
             npc=npc,
@@ -98,16 +93,15 @@ class ForesightGame(Game):
         return self._exit_reason
 
     @property
-    def completion_notes(self) -> str:
-        """Notes collected from the player at game completion, or empty string."""
-        return self._completion_notes
+    def predictions(self) -> list[str]:
+        """Predictions recorded during play."""
+        return list(self._predictions)
 
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
             return
 
-        # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
             yield GameEvent.now(
@@ -124,16 +118,12 @@ class ForesightGame(Game):
         if not user_input:
             return
 
-        # COMPLETION NOTES: collect the player's answer after /complete was typed.
-        if self._awaiting_completion_notes:
-            self._completion_notes = user_input
-            self._awaiting_completion_notes = False
-            self.exit("game completed")
-            yield GameEvent.now(type="info", content="Thank you. Game complete.")
+        if self._awaiting_prediction:
+            self._predictions.append(user_input)
+            self._awaiting_prediction = False
+            yield GameEvent.now(type="info", content=C.PREDICT_NEXT_CONFIRMATION)
             return
 
-        # Game-level commands (/help, /complete). Session-level exit commands
-        # are already handled by SessionManager.
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -146,7 +136,6 @@ class ForesightGame(Game):
             )
             return
 
-        # Validate before advancing the scene.
         validation = await self._validator.validate(user_input)
         if validation.get("type") == "error":
             self._retry_budget -= 1
@@ -178,15 +167,11 @@ class ForesightGame(Game):
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
 
-        if cmd == Command.COMPLETE:
+        if cmd == Command.PREDICT_NEXT:
             if remainder:
-                self._completion_notes = remainder
-                self._awaiting_completion_notes = False
-                self.exit("game completed")
-                return GameEvent.now(type="info", content="Thank you. Game complete.", command_response=True)
-            # Transition to completion-notes collection on the next turn.
-            self._awaiting_completion_notes = True
-            return GameEvent.now(type="info", content=C.COMPLETE_QUESTION, command_response=True)
+                self._predictions.append(remainder)
+                return GameEvent.now(type="info", content=C.PREDICT_NEXT_CONFIRMATION, command_response=True)
+            self._awaiting_prediction = True
+            return GameEvent.now(type="info", content=C.PREDICT_NEXT_QUESTION, command_response=True)
 
-        # Unrecognised — return None so SessionManager can handle it.
         return None

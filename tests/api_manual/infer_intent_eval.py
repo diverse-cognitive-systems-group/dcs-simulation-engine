@@ -139,9 +139,7 @@ def main() -> None:
         with connect(ws_url, **connect_kwargs) as ws:
             opening_events, opening_frame = _recv_until_turn_end(ws)
             _print_events(opening_events)
-            print(
-                f"   opening: turns={opening_frame.get('turns')} exited={opening_frame.get('exited', False)}"
-            )
+            print(f"   opening: turns={opening_frame.get('turns')} exited={opening_frame.get('exited', False)}")
 
             for idx, turn in enumerate(turns, start=1):
                 print(f"   turn {idx}: {turn}")
@@ -149,8 +147,8 @@ def main() -> None:
                 _print_events(step_events)
                 print(f"   turn_end: turns={step_frame.get('turns')} exited={step_frame.get('exited', False)}")
 
-            print("   command: /guess")
-            guess_events, guess_frame = _send_advance(ws, "/guess")
+            print("   command: /predict-intent")
+            guess_events, guess_frame = _send_advance(ws, "/predict-intent")
             _print_events(guess_events)
             print(f"   turn_end: turns={guess_frame.get('turns')} exited={guess_frame.get('exited', False)}")
 

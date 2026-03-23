@@ -179,10 +179,7 @@ async def test_session_events_persist_normal_turn_with_user_and_npc_messages(
         session_id="session-normal-turn",
         inputs=["", "I look around"],
     )
-    assert any(
-        row["direction"] == "internal" and row["event_source"] == "system" and row["event_type"] == "session_start"
-        for row in rows
-    )
+    assert any(row["direction"] == "internal" and row["event_source"] == "system" and row["event_type"] == "session_start" for row in rows)
     assert any(
         row["direction"] == "inbound"
         and row["event_source"] == "user"
@@ -197,10 +194,7 @@ async def test_session_events_persist_normal_turn_with_user_and_npc_messages(
         and row["content"] == "The flatworm moves slowly across the surface."
         for row in rows
     )
-    assert any(
-        row["direction"] == "internal" and row["event_source"] == "system" and row["event_type"] == "session_end"
-        for row in rows
-    )
+    assert any(row["direction"] == "internal" and row["event_source"] == "system" and row["event_type"] == "session_end" for row in rows)
 
 
 async def test_session_events_persist_recognized_commands_as_command_rows(
@@ -224,10 +218,7 @@ async def test_session_events_persist_recognized_commands_as_command_rows(
         inputs=["", "/help"],
     )
     assert any(
-        row["direction"] == "inbound"
-        and row["event_source"] == "user"
-        and row["event_type"] == "command"
-        and row["content"] == "/help"
+        row["direction"] == "inbound" and row["event_source"] == "user" and row["event_type"] == "command" and row["content"] == "/help"
         for row in rows
     )
     assert any(
@@ -267,8 +258,7 @@ async def test_session_events_treat_unrecognized_slash_input_as_normal_message_t
         for row in rows
     )
     assert not any(
-        row["direction"] == "inbound" and row["event_type"] == "command" and row["content"] == "/unknown gesture"
-        for row in rows
+        row["direction"] == "inbound" and row["event_type"] == "command" and row["content"] == "/unknown gesture" for row in rows
     )
     assert any(
         row["direction"] == "outbound"

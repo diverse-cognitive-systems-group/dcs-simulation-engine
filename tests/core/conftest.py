@@ -10,9 +10,7 @@ from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 
 
 @pytest.fixture
-def game_config_minimal(
-    write_yaml: Callable[[Path, str], Path], tmp_path_factory: pytest.TempPathFactory
-) -> SimpleNamespace:
+def game_config_minimal(write_yaml: Callable[[Path, str], Path], tmp_path_factory: pytest.TempPathFactory) -> SimpleNamespace:
     """Fixture for a minimal base GameConfig."""
     base = tmp_path_factory.mktemp("cfg_minimal")
     game_config_yaml = """

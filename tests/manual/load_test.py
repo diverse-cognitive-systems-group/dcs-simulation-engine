@@ -39,9 +39,7 @@ from websockets.asyncio.client import connect
 try:
     import pandas as pd
 except ModuleNotFoundError as exc:
-    raise SystemExit(
-        "Missing dependency: pandas. Install pandas to run load_test.py with dataframe export support."
-    ) from exc
+    raise SystemExit("Missing dependency: pandas. Install pandas to run load_test.py with dataframe export support.") from exc
 
 
 @dataclass
@@ -154,8 +152,7 @@ def _find_playable_setup(
         npcs = setup.npcs
         if not setup.can_start or not pcs or not npcs:
             diagnostics.append(
-                f"{game_name}: can_start={setup.can_start} "
-                f"denial_reason={setup.denial_reason} pcs={len(pcs)} npcs={len(npcs)}"
+                f"{game_name}: can_start={setup.can_start} denial_reason={setup.denial_reason} pcs={len(pcs)} npcs={len(npcs)}"
             )
             continue
         return game_name, random.choice(pcs).hid, random.choice(npcs).hid
@@ -372,9 +369,7 @@ def run_load_test(
     ctx = mp.get_context("spawn")
     results: list[ClientResult] = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_clients, mp_context=ctx) as pool:
-        futures = [
-            pool.submit(_run_client_process, i, base_url, n_games, n_turns, forced_game) for i in range(n_clients)
-        ]
+        futures = [pool.submit(_run_client_process, i, base_url, n_games, n_turns, forced_game) for i in range(n_clients)]
         for fut in concurrent.futures.as_completed(futures):
             results.append(fut.result())
     return sorted(results, key=lambda r: r.client_id)
@@ -400,12 +395,7 @@ def _print_summary(results: list[ClientResult], elapsed_s: float) -> None:
     print(f"Total game failures: {len(failed)}")
 
     if durations_ms:
-        print(
-            "Per-game duration (ms): "
-            f"min={min(durations_ms):.3f} "
-            f"mean={statistics.fmean(durations_ms):.3f} "
-            f"max={max(durations_ms):.3f}"
-        )
+        print(f"Per-game duration (ms): min={min(durations_ms):.3f} mean={statistics.fmean(durations_ms):.3f} max={max(durations_ms):.3f}")
     else:
         print("Per-game duration (ms): n/a")
 
@@ -443,11 +433,7 @@ def _print_summary(results: list[ClientResult], elapsed_s: float) -> None:
 
     print("\nGames per client:")
     for client in sorted(results, key=lambda r: r.client_id):
-        print(
-            f"  client {client.client_id:>3}: "
-            f"completed={client.completed_games}/{client.attempted_games} "
-            f"errors={len(client.errors)}"
-        )
+        print(f"  client {client.client_id:>3}: completed={client.completed_games}/{client.attempted_games} errors={len(client.errors)}")
 
     if failed:
         print("\nErrors:")

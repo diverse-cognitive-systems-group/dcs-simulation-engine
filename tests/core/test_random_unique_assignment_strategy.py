@@ -200,9 +200,7 @@ async def test_random_unique_interrupted_rows_release_quota(async_mongo_provider
         character_hid="test-char-a",
         status="in_progress",
     )
-    interrupted = await async_mongo_provider.get_active_assignment(
-        experiment_name=config.name, player_id=first_player.id
-    )
+    interrupted = await async_mongo_provider.get_active_assignment(experiment_name=config.name, player_id=first_player.id)
     assert interrupted is not None
     await async_mongo_provider.update_assignment_status(
         assignment_id=interrupted.assignment_id,

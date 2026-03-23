@@ -172,9 +172,7 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
     assert events_docs[1]["event_id"] == info_outbound.event_id
     assert events_docs[1]["event_ts"] == explicit_event_ts
     assistant_doc = next(
-        doc
-        for doc in events_docs
-        if doc["direction"] == "outbound" and doc["event_type"] == "message" and doc["event_source"] == "npc"
+        doc for doc in events_docs if doc["direction"] == "outbound" and doc["event_type"] == "message" and doc["event_source"] == "npc"
     )
     assert assistant_doc["event_id"] == ai_outbound.event_id
     assert (
@@ -185,8 +183,7 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
         is False
     )
     assert any(
-        doc["direction"] == "internal" and doc["event_type"] == "session_end" and doc["event_source"] == "system"
-        for doc in events_docs
+        doc["direction"] == "internal" and doc["event_type"] == "session_end" and doc["event_source"] == "system" for doc in events_docs
     )
 
 
