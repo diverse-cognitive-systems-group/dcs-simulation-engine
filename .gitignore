@@ -87,3 +87,4 @@ CLAUDE.md
 ui/.vite
 ui/openapi.snapshot.json
 runs/
+deployments/
