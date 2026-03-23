@@ -617,9 +617,7 @@ class AsyncMongoProvider:
 
     async def get_assignment(self, *, assignment_id: str) -> AssignmentRecord | None:
         """Return one assignment row by assignment_id."""
-        doc = await maybe_await(
-            self._db[MongoColumns.ASSIGNMENTS].find_one({MongoColumns.ASSIGNMENT_ID: assignment_id})
-        )
+        doc = await maybe_await(self._db[MongoColumns.ASSIGNMENTS].find_one({MongoColumns.ASSIGNMENT_ID: assignment_id}))
         if not doc:
             return None
         return _to_assignment_record(doc)

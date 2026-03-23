@@ -211,6 +211,7 @@ def deploy(
     echo(ctx, f"Deployed apps: {', '.join(result.deployed_apps)}")
     echo(ctx, f"API: {result.api_url}")
     echo(ctx, f"UI: {result.ui_url}")
+    echo(ctx, f"Open the UI in your browser: {result.ui_url}")
     echo(ctx, f"Apps: api={result.api_app} ui={result.ui_app} db={result.db_app}")
     if result.admin_api_key:
         echo(ctx, f"Admin access key: {result.admin_api_key}", style="error")

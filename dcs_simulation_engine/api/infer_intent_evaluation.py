@@ -26,18 +26,18 @@ class InferIntentEvaluationUnavailableError(ValueError):
 
 
 def extract_infer_intent_scoring_inputs(events: list[SessionEventRecord]) -> tuple[str, str]:
-    """Rebuild the transcript and saved player guess from persisted session events."""
+    """Rebuild the transcript and saved player intent prediction from persisted session events."""
     transcript_lines: list[str] = []
-    found_guess_command = False
-    guess = ""
+    found_prediction_command = False
+    prediction = ""
 
     for event in sorted(events, key=lambda item: item.seq):
         if event.data.get(MongoColumns.VISIBLE_TO_USER) is False:
             continue
 
-        if not found_guess_command:
-            if _is_guess_command(event):
-                found_guess_command = True
+        if not found_prediction_command:
+            if _is_prediction_command(event):
+                found_prediction_command = True
                 continue
 
             if event.direction == "inbound" and event.event_source == "user" and event.event_type == "message":
@@ -51,19 +51,17 @@ def extract_infer_intent_scoring_inputs(events: list[SessionEventRecord]) -> tup
             continue
 
         if event.direction == "inbound" and event.event_source == "user" and event.event_type == "message":
-            guess = event.content.strip()
+            prediction = event.content.strip()
             break
 
-    if not found_guess_command:
+    if not found_prediction_command:
+        raise InferIntentEvaluationUnavailableError("Infer Intent evaluation is unavailable because no prediction was saved.")
+    if not prediction:
         raise InferIntentEvaluationUnavailableError(
-            "Infer Intent evaluation is unavailable because no guess was saved."
-        )
-    if not guess:
-        raise InferIntentEvaluationUnavailableError(
-            "Infer Intent evaluation is unavailable because the saved guess could not be found."
+            "Infer Intent evaluation is unavailable because the saved prediction could not be found."
         )
 
-    return ("\n".join(transcript_lines), guess)
+    return ("\n".join(transcript_lines), prediction)
 
 
 async def generate_or_get_infer_intent_evaluation(
@@ -89,9 +87,9 @@ async def generate_or_get_infer_intent_evaluation(
             evaluation=InferIntentEvaluation.model_validate_json(cached_event.content),
         )
 
-    transcript, guess = extract_infer_intent_scoring_inputs(events)
+    transcript, prediction = extract_infer_intent_scoring_inputs(events)
     npc = await _load_session_npc(provider=provider, session=session)
-    scorer_result = await ScorerClient(npc=npc).score(transcript, guess)
+    scorer_result = await ScorerClient(npc=npc).score(transcript, prediction)
     evaluation = InferIntentEvaluation.model_validate(scorer_result.evaluation)
 
     append_event = getattr(provider, "append_session_event", None)
@@ -129,32 +127,26 @@ def _find_cached_evaluation_event(events: list[SessionEventRecord]) -> SessionEv
     return None
 
 
-def _is_guess_command(event: SessionEventRecord) -> bool:
+def _is_prediction_command(event: SessionEventRecord) -> bool:
     return (
         event.direction == "inbound"
         and event.event_source == "user"
         and event.event_type == "command"
-        and str(event.data.get(MongoColumns.COMMAND_NAME, "")).lower() == "guess"
+        and str(event.data.get(MongoColumns.COMMAND_NAME, "")).lower() == "predict-intent"
     )
 
 
 def _validate_infer_intent_session(session: SessionRecord) -> None:
     if session.game_name != INFER_INTENT_GAME_NAME:
-        raise InferIntentEvaluationUnavailableError(
-            "Infer Intent evaluation is only available for completed Infer Intent sessions."
-        )
+        raise InferIntentEvaluationUnavailableError("Infer Intent evaluation is only available for completed Infer Intent sessions.")
 
     termination_reason = str(session.data.get(MongoColumns.TERMINATION_REASON, "")).strip().lower()
     if termination_reason != "game_completed":
-        raise InferIntentEvaluationUnavailableError(
-            "Infer Intent evaluation is not available until the game is completed."
-        )
+        raise InferIntentEvaluationUnavailableError("Infer Intent evaluation is not available until the game is completed.")
 
 
 async def _load_session_npc(*, provider: Any, session: SessionRecord) -> CharacterRecord:
     npc_hid = str(session.data.get(MongoColumns.NPC_HID, "")).strip()
     if not npc_hid:
-        raise InferIntentEvaluationUnavailableError(
-            "Infer Intent evaluation is unavailable because the session does not have a saved NPC."
-        )
+        raise InferIntentEvaluationUnavailableError("Infer Intent evaluation is unavailable because the session does not have a saved NPC.")
     return await maybe_await(provider.get_character(hid=npc_hid))

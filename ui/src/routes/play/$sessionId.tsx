@@ -41,16 +41,24 @@ const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
   ],
   goalhorizon: [
     { command: '/help', description: 'Show the game instructions again.' },
-    { command: '/abilities', description: 'Show your character and NPC abilities.' },
+    {
+      command: '/predict-capabilities',
+      description: "Submit your read on the character's limits and end the game.",
+    },
   ],
   inferintent: [
     { command: '/help', description: 'Show the game instructions again.' },
-    { command: '/abilities', description: 'Show your character abilities.' },
-    { command: '/guess', description: 'Submit your intent inference and finish the game.' },
+    {
+      command: '/predict-intent',
+      description: "Submit your read on the character's intent and end the game.",
+    },
   ],
   foresight: [
     { command: '/help', description: 'Show the game instructions again.' },
-    { command: '/complete', description: 'Finish the game and submit your prediction notes.' },
+    {
+      command: '/predict-next',
+      description: 'Record what you think the system character will do next.',
+    },
   ],
 }
 

@@ -168,8 +168,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
 
         available_versions = sorted({str(doc.get("version", "")).strip() or "<none>" for _, doc in matches})
         raise FileNotFoundError(
-            f"No game config for {game!r} with version {version!r} found. "
-            f"Available versions for this game: {available_versions}"
+            f"No game config for {game!r} with version {version!r} found. Available versions for this game: {available_versions}"
         )
 
     # version == "latest": pick the latest stable release.
@@ -205,9 +204,7 @@ def get_game_config(game: str, version: str = "latest") -> str:
     if versioned_others:
         v, chosen_path = max(versioned_others, key=lambda x: x[0])
         chosen = str(chosen_path)
-        logger.debug(
-            f"No stable versions for {game!r}. Selected latest non-stable game config {chosen} with version={v}."
-        )
+        logger.debug(f"No stable versions for {game!r}. Selected latest non-stable game config {chosen} with version={v}.")
         return chosen
 
     # No parseable versions at all: fall back to latest by modification time.

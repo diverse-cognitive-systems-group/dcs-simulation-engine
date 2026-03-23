@@ -12,7 +12,6 @@ from dcs_simulation_engine.games.ai_client import (
 from dcs_simulation_engine.games.const import (
     GoalHorizon as C,
 )
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -24,11 +23,11 @@ class Command(StrEnum):
     """Game-level slash commands recognised by GoalHorizonGame."""
 
     HELP = "help"
-    ABILITIES = "abilities"
+    PREDICT_CAPABILITIES = "predict-capabilities"
 
 
 class GoalHorizonGame(Game):
-    """Goal Horizon game: player interacts with NPC across scenes to understand their goalspace."""
+    """Goal Horizon game: player interacts with NPC across scenes to understand their limits."""
 
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
@@ -52,6 +51,8 @@ class GoalHorizonGame(Game):
         self._entered = False
         self._exited = False
         self._exit_reason = ""
+        self._awaiting_capability_prediction = False
+        self._capability_prediction = ""
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
@@ -90,12 +91,16 @@ class GoalHorizonGame(Game):
         """Reason the game ended, or empty string."""
         return self._exit_reason
 
+    @property
+    def capability_prediction(self) -> str:
+        """Player's inferred capability limits, or empty string."""
+        return self._capability_prediction
+
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
             return
 
-        # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
             yield GameEvent.now(
@@ -114,8 +119,13 @@ class GoalHorizonGame(Game):
         if not user_input:
             return
 
-        # Game-level commands (/help, /abilities). Session-level exit commands
-        # are already handled by SessionManager.
+        if self._awaiting_capability_prediction:
+            self._capability_prediction = user_input
+            self._awaiting_capability_prediction = False
+            self.exit("game completed")
+            yield GameEvent.now(type="info", content="Thank you. Game complete.")
+            return
+
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -128,7 +138,6 @@ class GoalHorizonGame(Game):
             )
             return
 
-        # Validate before advancing the scene.
         validation = await self._validator.validate(user_input)
         if validation.get("type") == "error":
             self._retry_budget -= 1
@@ -153,24 +162,19 @@ class GoalHorizonGame(Game):
         command_body = stripped[1:].strip()
         if not command_body:
             return None
-        cmd = command_body.split()[0].lower()
+        parts = command_body.split(maxsplit=1)
+        cmd = parts[0].lower()
+        remainder = parts[1].strip() if len(parts) > 1 else ""
 
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+        if cmd == Command.PREDICT_CAPABILITIES:
+            if remainder:
+                self._capability_prediction = remainder
+                self._awaiting_capability_prediction = False
+                self.exit("game completed")
+                return GameEvent.now(type="info", content="Thank you. Game complete.", command_response=True)
+            self._awaiting_capability_prediction = True
+            return GameEvent.now(type="info", content=C.CAPABILITY_PREDICTION_QUESTION, command_response=True)
 
-        if cmd == Command.ABILITIES:
-            return GameEvent.now(
-                type="info",
-                content=C.ABILITIES_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
-                    npc_hid=self._npc.hid,
-                    npc_short_description=self._npc.short_description,
-                    npc_abilities=format_abilities_markdown(self._npc.data.get("abilities", "")),
-                ),
-                command_response=True,
-            )
-
-        # Unrecognised — return None so SessionManager can handle it.
         return None

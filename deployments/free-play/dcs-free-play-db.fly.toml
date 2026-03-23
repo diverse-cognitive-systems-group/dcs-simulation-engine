@@ -1,5 +1,5 @@
 app = "dcs-free-play-db"
-primary_region = "lax"
+primary_region = "iad"
 [build]
   dockerfile = "../../docker/mongo.fly.dockerfile"
 
@@ -18,4 +18,4 @@ primary_region = "lax"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory = "1gb"
+  memory = "512mb"

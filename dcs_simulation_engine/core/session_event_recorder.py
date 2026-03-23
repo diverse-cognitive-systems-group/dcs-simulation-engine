@@ -26,8 +26,7 @@ _ALLOWED_EVENT_CLASSIFICATIONS = {
 def _validate_event_classification(*, direction: str, event_source: str, event_type: str) -> None:
     if (direction, event_source, event_type) not in _ALLOWED_EVENT_CLASSIFICATIONS:
         raise ValueError(
-            f"Invalid session event classification: direction={direction!r}, "
-            f"event_source={event_source!r}, event_type={event_type!r}"
+            f"Invalid session event classification: direction={direction!r}, event_source={event_source!r}, event_type={event_type!r}"
         )
 
 

@@ -163,9 +163,7 @@ def ensure_fly_auth() -> None:
     except FileNotFoundError:
         raise FlyError("flyctl not found. Please install flyctl and ensure it's on your PATH.")
     except Exception as e:
-        raise FlyError(
-            "Failed to verify Fly authentication. Please ensure you're logged in via `fly auth login`."
-        ) from e
+        raise FlyError("Failed to verify Fly authentication. Please ensure you're logged in via `fly auth login`.") from e
 
 
 def load_env(env_file: Optional[Path] = Path(".env")) -> LoadedEnv:

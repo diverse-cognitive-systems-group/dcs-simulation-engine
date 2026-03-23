@@ -2,8 +2,9 @@
 
 This test suite validates the goal-horizon game's mechanics:
 1. Consent-required player access
-2. Standard enter/turn/exit flow
-3. Session persistence
+2. Standard enter/turn flow
+3. /predict-capabilities ends the game with a final answer
+4. Session persistence
 
 Tests use mocked LLMs to avoid external API dependencies.
 """
@@ -19,7 +20,6 @@ from dcs_simulation_engine.dal.mongo.const import (
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 
-# Test player ID for goal-horizon tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
 
 
@@ -68,6 +68,27 @@ async def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state, asyn
     assert session._events is not None, "Session events should exist after step"
 
 
+async def test_goal_horizon_predict_capabilities_completion(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /predict-capabilities collects a final answer and exits."""
+    session = await SessionManager.create_async(
+        game="Goal Horizon",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
+    )
+
+    await session.step_async("")
+    command_events = await session.step_async("/predict-capabilities")
+    assert any(e["type"] == "info" for e in command_events), "Expected info prompt from /predict-capabilities"
+    assert not session.exited
+
+    answer_events = await session.step_async("It seems limited to local sensing and cautious movement.")
+    assert any(e["type"] == "info" for e in answer_events), "Expected completion confirmation"
+    assert session.exited, "Session should exit after the prediction is submitted"
+    assert session.game.capability_prediction == "It seems limited to local sensing and cautious movement."
+
+
 async def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test goal-horizon game sessions can be exited and saved."""
     session = await SessionManager.create_async(
@@ -84,5 +105,4 @@ async def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state, a
     assert session.exited, "Session should be exited after exit()"
     assert session.exit_reason == "test complete"
 
-    # save() is called internally by exit(); calling again is a no-op
     session.save()

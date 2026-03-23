@@ -113,7 +113,7 @@ profile = "black"
 
 
 [tool.ruff]
-line-length = 120
+line-length = 140
 src = ["dcs_simulation_engine", "tests"]
 exclude = [
   "analysis/*", # analysis folder

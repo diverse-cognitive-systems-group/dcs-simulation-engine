@@ -2,8 +2,8 @@
 
 This test suite validates the infer-intent game's unique mechanics:
 1. PC is fixed to human-normative, NPC excludes human-normative
-2. /guess command triggers a 2-step completion form (goal inference + feedback)
-3. /help and /abilities command handlers
+2. /predict-intent command triggers a 2-step completion form (goal inference + feedback)
+3. /help command handler
 4. Goal-aligned NPC responses
 5. Completion form collects goal_inference and other_feedback, then exits
 
@@ -21,7 +21,6 @@ from dcs_simulation_engine.dal.mongo.const import (
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 
-# Test player ID for infer-intent tests (requires consent)
 TEST_PLAYER_ID = ObjectId()
 
 
@@ -81,8 +80,8 @@ async def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_
     assert not session.exited, "Session should not be exited after ENTER"
 
 
-async def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /guess command triggers goal-inference question."""
+async def test_infer_intent_predict_intent_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /predict-intent command triggers goal-inference question."""
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
@@ -94,13 +93,11 @@ async def test_infer_intent_guess_command(patch_llm_client, _isolate_db_state, a
     await session.step_async("")
     await session.step_async("I look around")
 
-    guess_events = await session.step_async("/guess")
+    guess_events = await session.step_async("/predict-intent")
 
     info_events = [e for e in guess_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected info event asking for goal inference"
-
-    # Session should NOT exit yet — awaiting goal inference answer
-    assert not session.exited, "Session should not exit after /guess"
+    assert not session.exited, "Session should not exit after /predict-intent"
 
 
 async def test_infer_intent_help_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -120,25 +117,6 @@ async def test_infer_intent_help_command(patch_llm_client, _isolate_db_state, as
     info_events = [e for e in help_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected info event from /help command"
     assert not session.exited, "Session should remain active after /help"
-
-
-async def test_infer_intent_abilities_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /abilities command returns character abilities."""
-    session = await SessionManager.create_async(
-        game="Infer Intent",
-        provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
-    )
-
-    await session.step_async("")
-
-    abilities_events = await session.step_async("/abilities")
-
-    info_events = [e for e in abilities_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected info event from /abilities command"
-    assert not session.exited, "Session should remain active after /abilities"
 
 
 async def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -170,7 +148,7 @@ async def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state
 
 
 async def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test 2-step completion form: /guess -> goal inference -> other feedback -> exit."""
+    """Test 2-step completion form: /predict-intent -> goal inference -> other feedback -> exit."""
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
@@ -182,18 +160,15 @@ async def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state,
     await session.step_async("")
     await session.step_async("I observe the creature")
 
-    # Step 1: /guess triggers goal inference question
-    guess_events = await session.step_async("/guess")
-    assert any(e["type"] == "info" for e in guess_events), "Expected info event from /guess"
+    guess_events = await session.step_async("/predict-intent")
+    assert any(e["type"] == "info" for e in guess_events), "Expected info event from /predict-intent"
     assert not session.exited
 
-    # Step 2: provide goal inference — triggers other feedback question
     inference_events = await session.step_async("The creature is trying to find food.")
     assert any(e["type"] == "info" for e in inference_events), "Expected follow-up question"
     assert not session.exited, "Session should not exit after first answer"
     assert session.game.goal_inference == "The creature is trying to find food."
 
-    # Step 3: provide other feedback — exits without inline scoring
     feedback_events = await session.step_async("Interesting behavior overall.")
     assert any(e["type"] == "info" for e in feedback_events), "Expected completion confirmation"
     assert session.exited, "Session should exit after second answer"
@@ -218,5 +193,4 @@ async def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state, a
     await session.exit_async("test complete")
     assert session.exited, "Session should be exited after exit()"
 
-    # save() is called internally by exit(); calling again is a no-op
     session.save()

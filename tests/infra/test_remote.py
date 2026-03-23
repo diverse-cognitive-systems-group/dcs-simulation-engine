@@ -169,18 +169,10 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
     assert "issued-secret-key" not in result.save_command
     assert len(deploy_calls) == 3
 
-    api_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-api.fly.toml").read_text(
-        encoding="utf-8"
-    )
-    ui_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-ui.fly.toml").read_text(
-        encoding="utf-8"
-    )
-    db_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-db.fly.toml").read_text(
-        encoding="utf-8"
-    )
-    copied_experiment = (
-        artifacts_root / "deployments" / "usability-ca" / "experiments" / "usability-ca.yaml"
-    ).read_text(encoding="utf-8")
+    api_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-api.fly.toml").read_text(encoding="utf-8")
+    ui_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-ui.fly.toml").read_text(encoding="utf-8")
+    db_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-db.fly.toml").read_text(encoding="utf-8")
+    copied_experiment = (artifacts_root / "deployments" / "usability-ca" / "experiments" / "usability-ca.yaml").read_text(encoding="utf-8")
 
     assert 'dockerfile = "../../docker/api.dockerfile"' in api_fly
     assert "--host 0.0.0.0 --port 8000" in api_fly

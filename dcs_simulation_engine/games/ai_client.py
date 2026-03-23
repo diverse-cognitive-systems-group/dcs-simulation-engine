@@ -39,8 +39,7 @@ def validate_openrouter_configuration() -> None:
     key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not key:
         raise RuntimeError(
-            "OPENROUTER_API_KEY is required to start the server. "
-            "Set it in the environment, or use --fake-ai-response for local mock mode."
+            "OPENROUTER_API_KEY is required to start the server. Set it in the environment, or use --fake-ai-response for local mock mode."
         )
 
 

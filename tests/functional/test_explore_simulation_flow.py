@@ -81,9 +81,7 @@ async def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_s
         assert len(session._events) > prev_event_count, f"Turn {turn_num}: _events should grow after each step"
 
         # Turn count should increment
-        assert session.turns == turn_num + 1, (
-            f"Turn {turn_num}: session.turns should be {turn_num + 1} (got {session.turns})"
-        )
+        assert session.turns == turn_num + 1, f"Turn {turn_num}: session.turns should be {turn_num + 1} (got {session.turns})"
 
     # Verify final turn count: 1 (ENTER) + 10 user turns
     assert session.turns == 11, f"Should have completed 11 turns (got {session.turns})"

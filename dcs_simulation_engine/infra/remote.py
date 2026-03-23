@@ -177,9 +177,7 @@ def _normalize_deploy_apps(deploy_apps: set[str] | None) -> list[str]:
     normalized = {app.strip().lower() for app in deploy_apps if app.strip()}
     invalid = sorted(normalized.difference(REMOTE_DEPLOY_APP_ORDER))
     if invalid:
-        raise RemoteLifecycleError(
-            f"deploy_apps must be drawn from {', '.join(REMOTE_DEPLOY_APP_ORDER)}; got {', '.join(invalid)}."
-        )
+        raise RemoteLifecycleError(f"deploy_apps must be drawn from {', '.join(REMOTE_DEPLOY_APP_ORDER)}; got {', '.join(invalid)}.")
     return [app for app in REMOTE_DEPLOY_APP_ORDER if app in normalized]
 
 
@@ -485,9 +483,7 @@ def _validate_mongo_seed_path(path: Path) -> Path:
     if resolved.suffix.lower() in {".json", ".ndjson"}:
         return resolved
 
-    raise RemoteLifecycleError(
-        "mongo_seed_path must be a directory, a .zip/.tar.gz/.tgz/.tar archive, or a .json/.ndjson file."
-    )
+    raise RemoteLifecycleError("mongo_seed_path must be a directory, a .zip/.tar.gz/.tgz/.tar archive, or a .json/.ndjson file.")
 
 
 @contextmanager

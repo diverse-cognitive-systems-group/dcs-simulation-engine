@@ -1,10 +1,10 @@
 app = "dcs-usability-ca-api"
-primary_region = "lax"
+primary_region = "iad"
 [build]
   dockerfile = "../../docker/api.dockerfile"
 
 [processes]
-  app = "dcs server --host 0.0.0.0 --port 8000 --remote-managed --default-experiment usability-ca --bootstrap-token dcs-bootstrap-usability-ca-qteImCBV1hAt6UMY --cors-origin https://dcs-usability-ca-ui.fly.dev"
+  app = "dcs server --host 0.0.0.0 --port 8000 --remote-managed --default-experiment usability-ca --bootstrap-token dcs-bootstrap-usability-ca-UK8NKj6C-n4cddYJ --cors-origin https://dcs-usability-ca-ui.fly.dev"
 
 [http_service]
   internal_port = 8000
@@ -17,4 +17,4 @@ primary_region = "lax"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory = "1gb"
+  memory = "512mb"

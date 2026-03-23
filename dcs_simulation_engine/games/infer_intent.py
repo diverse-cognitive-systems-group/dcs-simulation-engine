@@ -12,7 +12,6 @@ from dcs_simulation_engine.games.ai_client import (
 from dcs_simulation_engine.games.const import (
     InferIntent as C,
 )
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -24,8 +23,7 @@ class Command(StrEnum):
     """Game-level slash commands recognised by InferIntentGame."""
 
     HELP = "help"
-    ABILITIES = "abilities"
-    GUESS = "guess"
+    PREDICT_INTENT = "predict-intent"
 
 
 class InferIntentGame(Game):
@@ -54,7 +52,6 @@ class InferIntentGame(Game):
         self._exited = False
         self._exit_reason = ""
 
-        # Completion flow state
         self._awaiting_goal_inference = False
         self._awaiting_other_feedback = False
         self._goal_inference = ""
@@ -69,9 +66,7 @@ class InferIntentGame(Game):
             retry_budget (int): overrides DEFAULT_RETRY_BUDGET
             max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
         """
-        updater = UpdaterClient(
-            system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)
-        )
+        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
         return cls(
             pc=pc,
@@ -120,7 +115,6 @@ class InferIntentGame(Game):
         if self._exited:
             return
 
-        # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
             yield GameEvent.now(
@@ -137,7 +131,6 @@ class InferIntentGame(Game):
         if not user_input:
             return
 
-        # GOAL INFERENCE: first answer after /guess.
         if self._awaiting_goal_inference:
             self._goal_inference = user_input
             self._awaiting_goal_inference = False
@@ -145,7 +138,6 @@ class InferIntentGame(Game):
             yield GameEvent.now(type="info", content=C.OTHER_FEEDBACK_QUESTION)
             return
 
-        # OTHER FEEDBACK: second answer — then score and exit.
         if self._awaiting_other_feedback:
             self._other_feedback = user_input
             self._awaiting_other_feedback = False
@@ -153,8 +145,6 @@ class InferIntentGame(Game):
             yield GameEvent.now(type="info", content="Thank you. Game complete.")
             return
 
-        # Game-level commands (/help, /abilities, /guess). Session-level exit
-        # commands are already handled by SessionManager.
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -167,7 +157,6 @@ class InferIntentGame(Game):
             )
             return
 
-        # Validate before advancing the scene.
         validation = await self._validator.validate(user_input)
         if validation.get("type") == "error":
             self._retry_budget -= 1
@@ -197,18 +186,8 @@ class InferIntentGame(Game):
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
 
-        if cmd == Command.ABILITIES:
-            return GameEvent.now(
-                type="info",
-                content=C.ABILITIES_CONTENT.format(
-                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", ""))
-                ),
-                command_response=True,
-            )
-
-        if cmd == Command.GUESS:
+        if cmd == Command.PREDICT_INTENT:
             self._awaiting_goal_inference = True
             return GameEvent.now(type="info", content=C.GOAL_INFERENCE_QUESTION, command_response=True)
 
-        # Unrecognised — return None so SessionManager can handle it.
         return None

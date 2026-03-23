@@ -119,12 +119,11 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
         ("Explore", f"/{ExploreCommand.HELP.value}", ExploreCommand.HELP.value),
         ("Explore", f"/{ExploreCommand.ABILITIES.value}", ExploreCommand.ABILITIES.value),
         ("Foresight", f"/{ForesightCommand.HELP.value}", ForesightCommand.HELP.value),
-        ("Foresight", f"/{ForesightCommand.COMPLETE.value}", ForesightCommand.COMPLETE.value),
+        ("Foresight", f"/{ForesightCommand.PREDICT_NEXT.value}", ForesightCommand.PREDICT_NEXT.value),
         ("Infer Intent", f"/{InferIntentCommand.HELP.value}", InferIntentCommand.HELP.value),
-        ("Infer Intent", f"/{InferIntentCommand.ABILITIES.value}", InferIntentCommand.ABILITIES.value),
-        ("Infer Intent", f"/{InferIntentCommand.GUESS.value}", InferIntentCommand.GUESS.value),
+        ("Infer Intent", f"/{InferIntentCommand.PREDICT_INTENT.value}", InferIntentCommand.PREDICT_INTENT.value),
         ("Goal Horizon", f"/{GoalHorizonCommand.HELP.value}", GoalHorizonCommand.HELP.value),
-        ("Goal Horizon", f"/{GoalHorizonCommand.ABILITIES.value}", GoalHorizonCommand.ABILITIES.value),
+        ("Goal Horizon", f"/{GoalHorizonCommand.PREDICT_CAPABILITIES.value}", GoalHorizonCommand.PREDICT_CAPABILITIES.value),
     ],
 )
 async def test_game_level_command_filters_persist_command_events(

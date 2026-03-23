@@ -34,8 +34,8 @@ def _event(
 
 
 @pytest.mark.unit
-def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_guess() -> None:
-    """Transcript reconstruction ignores commands, hidden events, and post-guess feedback."""
+def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_prediction() -> None:
+    """Transcript reconstruction ignores commands, hidden events, and post-prediction feedback."""
     events = [
         _event(
             seq=9,
@@ -64,8 +64,8 @@ def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_guess() -
             direction="outbound",
             event_type="command",
             event_source="system",
-            content="What do you think the NPC's goal or intention was?",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "guess"},
+            content="What do you think the character's goal or intention was?",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
         ),
         _event(
             seq=3,
@@ -87,8 +87,8 @@ def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_guess() -
             direction="inbound",
             event_type="command",
             event_source="user",
-            content="/guess",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "guess"},
+            content="/predict-intent",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
         ),
         _event(
             seq=7,
@@ -119,8 +119,8 @@ def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_guess() -
 
 
 @pytest.mark.unit
-def test_extract_infer_intent_scoring_inputs_requires_saved_guess_command() -> None:
-    """A completed evaluation cannot be reconstructed without the saved /guess command."""
+def test_extract_infer_intent_scoring_inputs_requires_saved_prediction_command() -> None:
+    """A completed evaluation cannot be reconstructed without the saved prediction command."""
     events = [
         _event(
             seq=1,
@@ -138,5 +138,5 @@ def test_extract_infer_intent_scoring_inputs_requires_saved_guess_command() -> N
         ),
     ]
 
-    with pytest.raises(InferIntentEvaluationUnavailableError, match="no guess was saved"):
+    with pytest.raises(InferIntentEvaluationUnavailableError, match="no prediction was saved"):
         extract_infer_intent_scoring_inputs(events)

@@ -179,9 +179,7 @@ async def setup_options(game_name: str, request: Request) -> GameSetupOptionsRes
 
     get_valid = getattr(game_config, "get_valid_characters_async", None)
     if get_valid is None:
-        valid_pcs, valid_npcs = await maybe_await(
-            game_config.get_valid_characters(player_id=player_id, provider=provider)
-        )
+        valid_pcs, valid_npcs = await maybe_await(game_config.get_valid_characters(player_id=player_id, provider=provider))
     else:
         valid_pcs, valid_npcs = await maybe_await(get_valid(player_id=player_id, provider=provider))
     pcs = [CharacterChoice(hid=hid, label=label) for label, hid in valid_pcs]

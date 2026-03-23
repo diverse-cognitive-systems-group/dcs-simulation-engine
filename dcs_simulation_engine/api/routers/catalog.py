@@ -19,10 +19,7 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 @router.get("/games/list", response_model=GamesListResponse)
 def list_games_endpoint() -> GamesListResponse:
     """List available games."""
-    games = [
-        GameSummary(name=name, author=author, description=description)
-        for name, author, _path, _version, description in list_games()
-    ]
+    games = [GameSummary(name=name, author=author, description=description) for name, author, _path, _version, description in list_games()]
     return GamesListResponse(games=games)
 
 
