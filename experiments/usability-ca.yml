@@ -7,13 +7,13 @@ description: |
 assignment_strategy:
   strategy: random_unique
   games:
-    - explore
     - infer_intent
     - foresight
     - goal_horizon
   quota_per_game: 5
   max_assignments_per_player: 1
   seed: usability-ca-v1
+  pc_eligible_only: true
 
 forms:
   - name: intake

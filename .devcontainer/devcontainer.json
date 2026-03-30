@@ -2,10 +2,7 @@
     "name": "DCS Simulation Engine Dev",
     "build": {
         "dockerfile": "dev.Dockerfile",
-        "context": "..",
-        "args": {
-            "INSTALL_DEV": "true"
-        }
+        "context": ".."
     },
     "workspaceFolder": "/app",
     "overrideCommand": true,
@@ -52,7 +49,8 @@
                 "redhat.vscode-yaml",
                 "streetsidesoftware.code-spell-checker",
                 "tamasfe.even-better-toml",
-                "wholroyd.jinja"
+                "wholroyd.jinja",
+                "mechatroner.rainbow-csv"
             ],
             "settings": {
                 "editor.formatOnSave": true,
@@ -68,12 +66,12 @@
                 "python.defaultInterpreterPath": "/opt/venv/bin/python",
                 "python.testing.pytestEnabled": true,
                 "python.testing.unittestEnabled": false,
+                "terminal.integrated.defaultProfile.linux": "zsh",
                 "terminal.integrated.profiles.linux": {
                     "zsh": {
                         "path": "/usr/bin/zsh",
                         "args": [
-                            "-l", // login shell
-                            "-i" // interactive shell
+                            "-l" // login shell
                         ]
                     }
                 }

@@ -23,6 +23,7 @@ from dcs_simulation_engine.api.models import (
     SubmitSessionEventFeedbackRequest,
     SubmitSessionEventFeedbackResponse,
 )
+from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.utils.time import utc_now
 from fastapi import APIRouter, HTTPException, Request, status
 
@@ -140,11 +141,23 @@ async def request_infer_intent_evaluation(
             detail="Infer Intent evaluation is unavailable for this provider.",
         )
 
+    condition: str | None = None
+    get_assignment_fn = getattr(provider, "get_assignment_for_session_id", None)
+    if get_assignment_fn is not None:
+        assignment = await maybe_await(get_assignment_fn(session_id=session_id))
+        if assignment is not None and assignment.experiment_name:
+            try:
+                config = ExperimentManager.get_experiment_config_cached(assignment.experiment_name)
+                condition = config.condition
+            except Exception:
+                pass
+
     try:
         response = await generate_or_get_infer_intent_evaluation(
             provider=provider,
             session_id=session_id,
             player_id=player_id,
+            condition=condition,
         )
     except InferIntentEvaluationUnavailableError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
@@ -182,11 +195,13 @@ async def submit_session_event_feedback(
     now = utc_now()
     doesnt_make_sense = False if body.liked else body.doesnt_make_sense
     out_of_character = False if body.liked else body.out_of_character
+    other = False if body.liked else body.other
     feedback = SessionEventFeedback(
         liked=body.liked,
         comment=body.comment.strip(),
         doesnt_make_sense=doesnt_make_sense,
         out_of_character=out_of_character,
+        other=other,
         submitted_at=now,
     )
     stored = await maybe_await(

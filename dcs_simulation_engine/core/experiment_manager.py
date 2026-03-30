@@ -146,7 +146,14 @@ class ExperimentManager:
         strategy = cls._strategy_for(config=config)
         has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
 
-        if active_assignment is None and pending_post_play is None and has_submitted_before_forms and not has_finished_experiment:
+        is_player_choice = config.assignment_strategy.assignment_mode == "player_choice"
+        if (
+            active_assignment is None
+            and pending_post_play is None
+            and has_submitted_before_forms
+            and not has_finished_experiment
+            and not is_player_choice
+        ):
             player_record = await maybe_await(provider.get_player(player_id=player_id))
             if player_record is not None:
                 active_assignment = await cls.get_or_create_assignment_async(
@@ -435,6 +442,58 @@ class ExperimentManager:
             return normalized_values
 
         raise ValueError(f"Unsupported form field type: {answer_type}")
+
+    @classmethod
+    async def get_eligible_options_async(
+        cls,
+        *,
+        provider: Any,
+        experiment_name: str,
+        player: PlayerRecord,
+    ) -> list[dict[str, str]]:
+        """Return eligible {game_name, character_hid} options for a player in player_choice mode."""
+        config = cls.get_experiment_config_cached(experiment_name)
+        strategy = cls._strategy_for(config=config)
+        get_eligible = getattr(strategy, "get_eligible_options_async", None)
+        if get_eligible is None:
+            return []
+        return await maybe_await(get_eligible(provider=provider, config=config, player=player))
+
+    @classmethod
+    async def create_player_choice_assignment_async(
+        cls,
+        *,
+        provider: Any,
+        experiment_name: str,
+        player: PlayerRecord,
+        game_name: str,
+        character_hid: str,
+    ) -> AssignmentRecord:
+        """Create a specific assignment for a player who selected game+character manually."""
+        config = cls.get_experiment_config_cached(experiment_name)
+        eligible = await cls.get_eligible_options_async(
+            provider=provider,
+            experiment_name=experiment_name,
+            player=player,
+        )
+        eligible_set = {(opt["game_name"], opt["character_hid"]) for opt in eligible}
+        if (game_name, character_hid) not in eligible_set:
+            raise ValueError("The selected game and character are not available for assignment.")
+        assignment = await maybe_await(
+            provider.create_assignment(
+                assignment_doc={
+                    MongoColumns.EXPERIMENT_NAME: config.name,
+                    MongoColumns.PLAYER_ID: player.id,
+                    MongoColumns.GAME_NAME: game_name,
+                    MongoColumns.CHARACTER_HID: character_hid,
+                    MongoColumns.STATUS: "assigned",
+                    MongoColumns.FORM_RESPONSES: {},
+                }
+            )
+        )
+        if assignment is None:
+            raise ValueError("Failed to create the assignment.")
+        return assignment
 
     @classmethod
     def _strategy_for(cls, *, config: ExperimentConfig):

@@ -52,7 +52,9 @@ new_player_form:
     - key: prior_experience
       type: textarea
       label: Explain any prior experience or expertise you have had working with non-standard humans or other cognitive agents?
-      info: This includes personal or professional experience engaging with neurodivergent individuals or with humans or others who have atypical or unique cognitive abilities. For example, animal trainers, microbiologists working with yeast, special education teachers, biologists studying dophin behavior, etc.
+      info: |>
+        This includes personal or professional experience engaging with neurodivergent individuals or with humans or others who have atypical or unique cognitive abilities.
+        For example, animal trainers, microbiologists working with yeast, special education teachers, biologists studying dophin behavior, etc.
       pii: false
     - key: additional_comments
       type: textarea

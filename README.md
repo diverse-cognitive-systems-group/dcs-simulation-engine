@@ -6,7 +6,7 @@
 *A textual role-playing simulator for diverse cognitive systems to play and learn.*
 
 [![Web Demo](https://img.shields.io/badge/Demo%20-28A745)](https://dcs-free-play-ui.fly.dev) <!-- green -->
-[![Codebase Docs](https://img.shields.io/badge/Codebase%20Docs%20-FF8C00)](https://fuzzy-tribble.github.io/dcs-simulation-engine/) <!-- orange -->
+[![API Docs](https://img.shields.io/badge/API%20Docs%20-FF8C00)](https://dcs-simulation-demo.fly.io/docs) <!-- orange -->
 [![Project Wiki](https://img.shields.io/badge/Project%20Wiki%20-FF69B4)](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) <!-- pink -->
 [![Build Status](https://github.com/fuzzy-tribble/dcs-simulation-engine/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/fuzzy-tribble/dcs-simulation-engine/actions/workflows/ci.yaml)
 
@@ -36,9 +36,9 @@ ls ./runs
 
 It's both a research framework and a play space.
 
-For researchers, it offers a way to **study interactions between diverse cognitive systems in controlled, designed scenarios with reliablly simulated character responses**--from how neurodivergent humans collaborate on a task, to how AI systems with varying architectures generate communication protocols, to how neurotypical hummans interpret and engage with unfamiliar or radically different beings.
+For researchers, it offers a way to **study interactions between diverse cognitive systems in controlled, designed scenarios with reliably simulated character responses**--from how neurodivergent humans collaborate on a task, to how AI systems with varying architectures generate communication protocols, to how neurotypical humans interpret and engage with unfamiliar or radically different beings.
 
-For players, it's a collaborative improv arena where a player character (you) and a simulated character take on a cast of characters with distinct abilities and cognitive profiles. Everything unfolds through language: actions, imagination, and world-building in a style inspired by tabletop roleplaying games.
+For players, it's a collaborative improve arena where a player character (you) and a simulated character take on a cast of characters with distinct abilities and cognitive profiles. Everything unfolds through language: actions, imagination, and world-building in a style inspired by tabletop roleplaying games.
 
 Under the hood, it’s built to faithfully represent the actions and behavioral patterns of a curated range of real cognitive systems—from neurodivergent humans to simple mechanical homeostatic agents and biological systems with basal intelligence. This foundation supports rich, varied interactions that push participants to adapt and think differently, while giving researchers a structured way to observe and analyze the dynamics that emerge.
 
@@ -164,8 +164,7 @@ For example, the system might normally generate a line such as “I whistle soft
 - [Contributing Guide](CONTRIBUTING.md) - how to contribute to the project
 - [Researcher User Guide](USER_GUIDE.md) - how to create, run, and deploy your own experiments
 - [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) - background information on the project
-- [Codebase Docs](https://fuzzy-tribble.github.io/dcs-simulation-engine/) - documentation for the codebase
-- [Web Demo](https://dcs-simulation-demo.fly.dev/) - try the simulation engine online
-- [API Demo](https://dcs-simulation-demo.fly.io/redoc) - try the simulation engine API online
+- [Web Demo](https://dcs-free-play-ui.fly.dev) - try the simulation engine online
+- [API Docs](https://dcs-simulation-demo.fly.io/docs) - interactive Swagger API documentation
 - [Analysis Notebooks](analysis_notebooks/) - Jupyter notebooks containing anonymized analysis of simulation sessions
 - [Contact](mailto:dcs@psych.gatech.edu) - get in touch with the maintainers for questions, suggestions, etc. using the "Issues" tab on GitHub or email
