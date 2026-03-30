@@ -1,4 +1,4 @@
-site_name: DCS Simulation Engine Docs
+site_name: DCS Simulation Engine Codebase Docs
 theme:
   name: material
 plugins:
@@ -9,14 +9,13 @@ plugins:
           paths: ["."]
           options:
             docstring_style: google
-            show_source: true           # Adds "view source" links pointing to the file & line number in your repo
-            show_submodules: true       # Recursively documents submodules under the main package/module
+            show_source: true # Adds "view source" links pointing to the file & line number in your repo
+            show_submodules: true # Recursively documents submodules under the main package/module
             # show_if_no_docstring: true  # Renders members even if they have no docstring (shows at least the name/signature)
-            show_root_heading: true   # Adds a top-level heading for the root object/module on the page
+            show_root_heading: true # Adds a top-level heading for the root object/module on the page
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
 nav:
   - Home: index.md
   - Codebase: core_reference.md
-  # TODO: pre-release - update links to point to fly api docs/demo)
-  - API (ReDoc): "https://127.0.0.1:8000/redoc"
-  - API (Swagger UI): "http://127.0.0.1:8000/docs"
+  - API (ReDoc): "https://dcs-free-play-ui.fly.dev/redoc"
+  - API (Swagger UI): "https://dcs-free-play-ui.fly.dev/docs"
