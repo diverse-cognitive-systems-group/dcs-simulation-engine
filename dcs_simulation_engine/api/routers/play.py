@@ -27,6 +27,7 @@ from dcs_simulation_engine.api.models import (
     WSCloseRequest,
     WSErrorFrame,
     WSEventFrame,
+    WSSessionMetaFrame,
     WSStatusFrame,
     WSStatusRequest,
     WSTurnEndFrame,
@@ -289,6 +290,17 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                 await _send_error(websocket, "Unauthorized for this session")
                 await websocket.close()
                 return
+
+        # Send session metadata (pc/npc) immediately after auth, before any events.
+        game = entry.manager.game
+        pc = getattr(game, "_pc", None)
+        npc = getattr(game, "_npc", None)
+        meta_frame = WSSessionMetaFrame(
+            session_id=session_id,
+            pc_hid=getattr(pc, "hid", None),
+            npc_hid=getattr(npc, "hid", None),
+        )
+        await websocket.send_json(meta_frame.model_dump(mode="json"))
 
         if not entry.opening_sent and entry.status != "closed":
             opening_events = await entry.manager.step_async(None)

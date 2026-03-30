@@ -11,6 +11,8 @@ from dcs_simulation_engine.api.auth import (
 )
 from dcs_simulation_engine.api.models import (
     CreateGameResponse,
+    EligibleAssignmentOption,
+    EligibleAssignmentOptionsResponse,
     ExperimentAssignmentSummary,
     ExperimentGameStatusResponse,
     ExperimentPlayerRequest,
@@ -20,6 +22,7 @@ from dcs_simulation_engine.api.models import (
     ExperimentSessionRequest,
     ExperimentSetupResponse,
     ExperimentStatusResponse,
+    SelectAssignmentRequest,
 )
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from fastapi import APIRouter, HTTPException, Request, status
@@ -110,6 +113,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         current_assignment=_assignment_summary(current_assignment),
         pending_post_play=pending_post_play,
         assignment_completed=assignment_completed,
+        assignment_mode=config.assignment_strategy.assignment_mode,
     )
 
 
@@ -217,6 +221,53 @@ async def experiment_progress(experiment_name: str, request: Request) -> Experim
     progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=experiment_name)
     await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
     return _progress_response(progress)
+
+
+@router.get("/{experiment_name}/eligible-options", response_model=EligibleAssignmentOptionsResponse)
+async def get_eligible_options(experiment_name: str, request: Request) -> EligibleAssignmentOptionsResponse:
+    """Return eligible game/character pairs for the authenticated player in player_choice mode."""
+    require_standard_mode_from_request(
+        request,
+        detail="Experiment endpoints are disabled when the server is running in free play mode.",
+    )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+    provider = get_provider_from_request(request)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    options = await ExperimentManager.get_eligible_options_async(
+        provider=provider,
+        experiment_name=experiment_name,
+        player=player,
+    )
+    return EligibleAssignmentOptionsResponse(
+        options=[EligibleAssignmentOption(game_name=opt["game_name"], character_hid=opt["character_hid"]) for opt in options]
+    )
+
+
+@router.post("/{experiment_name}/assignments/select", response_model=ExperimentAssignmentSummary)
+async def select_assignment(
+    experiment_name: str,
+    body: SelectAssignmentRequest,
+    request: Request,
+) -> ExperimentAssignmentSummary:
+    """Create an assignment for the authenticated player based on their explicit game/character selection."""
+    require_standard_mode_from_request(
+        request,
+        detail="Experiment endpoints are disabled when the server is running in free play mode.",
+    )
+    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+    provider = get_provider_from_request(request)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    try:
+        assignment = await ExperimentManager.create_player_choice_assignment_async(
+            provider=provider,
+            experiment_name=experiment_name,
+            player=player,
+            game_name=body.game_name,
+            character_hid=body.character_hid,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return _assignment_summary(assignment)
 
 
 @router.get("/{experiment_name}/status", response_model=ExperimentStatusResponse)

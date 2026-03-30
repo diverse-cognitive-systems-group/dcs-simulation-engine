@@ -13,6 +13,7 @@ export interface MessageFeedback {
   comment: string
   doesntMakeSense: boolean
   outOfCharacter: boolean
+  other: boolean
   submittedAt: string
 }
 
@@ -35,6 +36,8 @@ export function useSessionWebSocket(sessionId: string) {
   const [wsState, setWsState] = useState<WsState>('connecting')
   const [turns, setTurns] = useState(0)
   const [exited, setExited] = useState(false)
+  const [pcHid, setPcHid] = useState<string | null>(null)
+  const [npcHid, setNpcHid] = useState<string | null>(null)
   // waiting is true between sendTurn() and the server's turn_end frame.
   const [waiting, setWaiting] = useState(false)
   // useRef holds a mutable value that does NOT trigger re-renders — used for the socket
@@ -96,6 +99,11 @@ export function useSessionWebSocket(sessionId: string) {
 
       // Any non-error frame after auth means authentication succeeded.
       setWsState('ready')
+
+      if (frame.type === 'session_meta') {
+        if (typeof frame.pc_hid === 'string') setPcHid(frame.pc_hid)
+        if (typeof frame.npc_hid === 'string') setNpcHid(frame.npc_hid)
+      }
 
       if (frame.type === 'event') {
         setMessages((prev) => [
@@ -174,5 +182,16 @@ export function useSessionWebSocket(sessionId: string) {
     [],
   )
 
-  return { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback }
+  return {
+    messages,
+    wsState,
+    turns,
+    exited,
+    waiting,
+    pcHid,
+    npcHid,
+    sendTurn,
+    closeSession,
+    setMessageFeedback,
+  }
 }

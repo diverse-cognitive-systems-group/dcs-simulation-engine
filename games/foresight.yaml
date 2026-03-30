@@ -10,4 +10,8 @@ stopping_conditions:
   runtime_seconds: [">=600"]
   turns: [">=10"]
 
+# Game-specific defaults (overridable via kwargs in session creation)
+# max_predictions: 3   # Game auto-ends after this many predictions
+# min_predictions: 1   # Minimum predictions required for a completed session
+
 game_class: dcs_simulation_engine.games.foresight.ForesightGame

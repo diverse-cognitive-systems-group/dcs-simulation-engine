@@ -66,18 +66,38 @@ function normalizeGameName(value: string): string {
   return value.replace(/[\s_-]+/g, '').toLowerCase()
 }
 
+function formatElapsed(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function PlayPage() {
   const { sessionId } = useParams({ from: '/play/$sessionId' })
   const { gameName, experimentName } = useSearch({ from: '/play/$sessionId' })
   const navigate = useNavigate()
   // useSessionWebSocket opens the WebSocket connection and returns reactive state plus
   // action callbacks; see hooks/use-session-websocket.ts for the protocol details.
-  const { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback } =
-    useSessionWebSocket(sessionId)
+  const {
+    messages,
+    wsState,
+    turns,
+    exited,
+    waiting,
+    pcHid,
+    npcHid,
+    sendTurn,
+    closeSession,
+    setMessageFeedback,
+  } = useSessionWebSocket(sessionId)
 
   const [input, setInput] = useState('')
   const [feedbackPendingEventId, setFeedbackPendingEventId] = useState<string | null>(null)
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const startTimeRef = useRef(Date.now())
   // bottomRef is attached to a sentinel div at the end of the message list so we can
   // scroll it into view whenever a new message arrives.
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -91,6 +111,16 @@ function PlayPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, waiting])
+
+  // Elapsed timer — counts up every second until the session ends.
+  const sessionEnded = wsState === 'closed' || exited
+  useEffect(() => {
+    if (sessionEnded) return
+    const id = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [sessionEnded])
 
   const availableCommands = useMemo(() => {
     const gameCommands = GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
@@ -189,6 +219,7 @@ function PlayPage() {
     comment: string
     doesntMakeSense: boolean
     outOfCharacter: boolean
+    other: boolean
   }): Promise<MessageFeedback> {
     setFeedbackPendingEventId(payload.eventId)
 
@@ -201,6 +232,7 @@ function PlayPage() {
           comment: payload.comment,
           doesnt_make_sense: payload.doesntMakeSense,
           out_of_character: payload.outOfCharacter,
+          other: payload.other,
         },
       })
       const result = unwrapOrvalData<SubmitSessionEventFeedbackResponse>(response)
@@ -213,6 +245,7 @@ function PlayPage() {
         comment: result.feedback.comment,
         doesntMakeSense: result.feedback.doesnt_make_sense,
         outOfCharacter: result.feedback.out_of_character,
+        other: result.feedback.other ?? false,
         submittedAt: result.feedback.submitted_at,
       }
       setMessageFeedback(payload.eventId, feedback)
@@ -257,11 +290,24 @@ function PlayPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <header className="border-b px-4 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <h1 className="font-semibold text-sm">{gameName || 'Game'}</h1>
           <Badge variant="outline" className="text-xs">
             Turn {turns}
           </Badge>
+          <Badge variant="outline" className="text-xs tabular-nums">
+            {formatElapsed(elapsedSeconds)}
+          </Badge>
+          {pcHid && (
+            <Badge variant="secondary" className="text-xs" title="Your character">
+              PC: {pcHid}
+            </Badge>
+          )}
+          {npcHid && (
+            <Badge variant="secondary" className="text-xs" title="Simulator character">
+              NPC: {npcHid}
+            </Badge>
+          )}
           {isClosed && (
             <Badge variant="secondary" className="text-xs">
               Ended
@@ -270,6 +316,16 @@ function PlayPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {!isClosed && ['foresight', 'explore'].includes(normalizeGameName(gameName ?? '')) && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isConnecting || waiting}
+              onClick={() => sendTurn('/exit')}
+            >
+              Finish Game
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleClose}>
             {experimentName ? 'Return to Study' : 'Close Session'}
           </Button>

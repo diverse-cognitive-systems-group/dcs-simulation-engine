@@ -1,9 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM astral/uv:python3.13-bookworm-slim
 
-# Kept for compatibility with the existing devcontainer.json build args.
-ARG INSTALL_DEV=true
-
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -22,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     curl \
+    gh \
     git \
     gnupg \
     gpg \
@@ -48,6 +46,7 @@ RUN mkdir -p /etc/apt/keyrings \
     && apt install -y eza \
     && rm -rf /var/lib/apt/lists/*
 
+# upgrade all packages to ensure we have the latest security updates
 RUN  apt update \
     && apt upgrade -y \
     && rm -rf /var/lib/apt/lists/*
@@ -99,9 +98,10 @@ RUN printf '%s\n' \
     'alias dcs="uv run dcs"' \
     >> /root/.zshrc
 
-# append zshrc file to the end of the default zshrc
-COPY .devcontainer/zshrc /tmp/zshrc
-RUN cat /tmp/zshrc >> /root/.zshrc \
-    && rm /tmp/zshrc
+# set the ~/.zshrc file 
+COPY .devcontainer/zshrc /root/.zshrc 
+
+# source the .zshrc file to ensure the aliases are available in the dev container
+RUN zsh -c "source /root/.zshrc"
 
 # ! NOTE: Make sure to use --network=host when running the container so the API server is reachable at localhost:8000

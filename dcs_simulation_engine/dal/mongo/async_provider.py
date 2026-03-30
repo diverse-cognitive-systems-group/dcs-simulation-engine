@@ -639,6 +639,13 @@ class AsyncMongoProvider:
             return None
         return _to_assignment_record(docs[0])
 
+    async def get_assignment_for_session_id(self, *, session_id: str) -> AssignmentRecord | None:
+        """Return the assignment that has this session as its active session."""
+        doc = await maybe_await(self._db[MongoColumns.ASSIGNMENTS].find_one({MongoColumns.ACTIVE_SESSION_ID: session_id}))
+        if not doc:
+            return None
+        return _to_assignment_record(doc)
+
     async def get_latest_experiment_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
         """Return the newest experiment assignment for one player."""
         cursor = self._db[MongoColumns.ASSIGNMENTS].find({MongoColumns.PLAYER_ID: player_id})

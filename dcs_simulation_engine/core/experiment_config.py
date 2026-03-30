@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, Optional
 
 import yaml
 from dcs_simulation_engine.core.forms import (
@@ -54,6 +54,8 @@ class AssignmentStrategyConfig(BaseModel):
     quota_per_game: int | None = None
     max_assignments_per_player: int | None = None
     seed: str | int | None = None
+    pc_eligible_only: bool = False
+    assignment_mode: Literal["auto", "player_choice"] = "auto"
 
     @field_validator("games")
     @classmethod
@@ -84,6 +86,7 @@ class ExperimentConfig(SerdeMixin, BaseModel):
 
     name: str
     description: str = ""
+    condition: Optional[Literal["learning", "static"]] = None
     assignment_strategy: AssignmentStrategyConfig
     forms: list[ExperimentForm] = Field(default_factory=list)
 

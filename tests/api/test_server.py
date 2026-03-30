@@ -35,6 +35,7 @@ class DummySessionManager:
         self._exit_reason = ""
         self.flush_calls = 0
         self.game_config = SimpleNamespace(name="Explore")
+        self.game = SimpleNamespace(_pc=None, _npc=None)
 
     @property
     def turns(self) -> int:
@@ -452,6 +453,9 @@ def test_free_play_create_game_and_websocket_without_auth(free_play_client: Test
     session_id = create_resp.json()["session_id"]
 
     with free_play_client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+        meta_frame = ws.receive_json()
+        assert meta_frame["type"] == "session_meta"
+
         opening_event = ws.receive_json()
         opening_turn_end = ws.receive_json()
 
@@ -512,6 +516,9 @@ def test_websocket_open_advance_status_close(client: TestClient) -> None:
 
     with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
         ws.send_json({"type": "auth", "api_key": "valid-key"})
+        meta_frame = ws.receive_json()
+        assert meta_frame["type"] == "session_meta"
+
         opening_event = ws.receive_json()
         opening_turn_end = ws.receive_json()
 
@@ -1286,6 +1293,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
                 name="usability-ca",
                 description="Usability study",
                 forms=[form],
+                assignment_strategy=SimpleNamespace(assignment_mode="random_unique"),
             ),
         ),
         patch(
@@ -1449,6 +1457,7 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
 
         with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
             ws.send_json({"type": "auth", "api_key": "valid-key"})
+            ws.receive_json()
             ws.receive_json()
             ws.receive_json()
             ws.send_json({"type": "close"})

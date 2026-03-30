@@ -63,6 +63,11 @@ interface ExperimentProgressResponse {
   is_complete: boolean
 }
 
+interface EligibleAssignmentOption {
+  game_name: string
+  character_hid: string
+}
+
 interface ExperimentSetupResponse {
   experiment_name: string
   description: string
@@ -72,6 +77,7 @@ interface ExperimentSetupResponse {
   current_assignment: ExperimentAssignmentSummary | null
   pending_post_play: boolean
   assignment_completed: boolean
+  assignment_mode: string
 }
 
 interface ExperimentPlayerResponse {
@@ -389,7 +395,7 @@ function ExperimentPage() {
   const [postResponses, setPostResponses] = useState<FormResponseMap>({})
   const [postErrors, setPostErrors] = useState<Record<string, Record<string, string>>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | null>(null)
+  const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | 'select' | null>(null)
 
   useEffect(() => {
     setActiveExperimentName(experimentName)
@@ -401,6 +407,23 @@ function ExperimentPage() {
     queryFn: () =>
       httpClient<ExperimentSetupResponse>(
         `/api/experiments/${encodeURIComponent(experimentName)}/setup`,
+      ),
+  })
+
+  const isPlayerChoice = data?.assignment_mode === 'player_choice'
+  const needsSelection =
+    isPlayerChoice &&
+    !data?.current_assignment &&
+    !data?.pending_post_play &&
+    !data?.assignment_completed &&
+    !!data?.is_open
+
+  const { data: eligibleOptions } = useQuery({
+    queryKey: ['eligible-options', experimentName],
+    enabled: authenticated && needsSelection,
+    queryFn: () =>
+      httpClient<{ options: EligibleAssignmentOption[] }>(
+        `/api/experiments/${encodeURIComponent(experimentName)}/eligible-options`,
       ),
   })
 
@@ -522,6 +545,27 @@ function ExperimentPage() {
     }
   }
 
+  async function handleSelectAssignment(gameName: string, characterHid: string) {
+    setSubmitError(null)
+    setSubmitting('select')
+    try {
+      await httpClient(
+        `/api/experiments/${encodeURIComponent(experimentName)}/assignments/select`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ game_name: gameName, character_hid: characterHid }),
+        },
+      )
+      await refetch()
+    } catch (selectErr) {
+      setSubmitError(
+        selectErr instanceof Error ? selectErr.message : 'Unable to select assignment.',
+      )
+    } finally {
+      setSubmitting(null)
+    }
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -610,7 +654,7 @@ function ExperimentPage() {
             <CardHeader>
               <CardTitle>Study Progress</CardTitle>
               <CardDescription>
-                {data.progress.completed} of {data.progress.total} target sessions completed
+                {data.progress.completed} of {data.progress.total} target assignments completed
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -638,7 +682,9 @@ function ExperimentPage() {
                   ? 'Your Assignment'
                   : data.assignment_completed
                     ? 'Study Status'
-                    : 'Before-Play Questions'}
+                    : needsSelection
+                      ? 'Choose Your Assignment'
+                      : 'Before-Play Questions'}
             </CardTitle>
             <CardDescription>
               {data.pending_post_play
@@ -647,7 +693,9 @@ function ExperimentPage() {
                   ? 'This study only allows play through the assigned session below.'
                   : data.assignment_completed
                     ? 'You have completed all assignments currently available to you.'
-                    : 'Complete the experiment-specific questions to receive your assignment.'}
+                    : needsSelection
+                      ? 'Select the game and character you would like to play.'
+                      : 'Complete the experiment-specific questions to receive your assignment.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -672,7 +720,8 @@ function ExperimentPage() {
             {!data.pending_post_play &&
               !data.current_assignment &&
               !data.assignment_completed &&
-              data.is_open && (
+              data.is_open &&
+              !isPlayerChoice && (
                 <form onSubmit={handleEntrySubmit} className="space-y-6">
                   {beforeForms.map((form) => (
                     <FormSection
@@ -690,6 +739,38 @@ function ExperimentPage() {
                   </Button>
                 </form>
               )}
+
+            {needsSelection && (
+              <div className="space-y-4">
+                {eligibleOptions?.options.length === 0 && (
+                  <Alert>
+                    <AlertDescription>
+                      No assignments are currently available. All slots may be filled.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(eligibleOptions?.options ?? []).map((option) => (
+                    <button
+                      key={`${option.game_name}:${option.character_hid}`}
+                      type="button"
+                      disabled={submitting === 'select'}
+                      onClick={() => handleSelectAssignment(option.game_name, option.character_hid)}
+                      className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-left transition-colors hover:bg-muted/40 disabled:opacity-50"
+                    >
+                      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Game
+                      </div>
+                      <div className="mt-1 text-lg font-semibold">{option.game_name}</div>
+                      <div className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        Character
+                      </div>
+                      <div className="mt-1 text-sm font-medium">{option.character_hid}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {data.pending_post_play && (
               <form onSubmit={handlePostPlaySubmit} className="space-y-6">

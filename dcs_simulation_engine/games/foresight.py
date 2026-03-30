@@ -24,6 +24,7 @@ class Command(StrEnum):
 
     HELP = "help"
     PREDICT_NEXT = "predict-next"
+    EXIT = "exit"
 
 
 class ForesightGame(Game):
@@ -31,6 +32,8 @@ class ForesightGame(Game):
 
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
+    DEFAULT_MAX_PREDICTIONS = 3
+    DEFAULT_MIN_PREDICTIONS = 1
 
     def __init__(
         self,
@@ -40,6 +43,8 @@ class ForesightGame(Game):
         validator: ValidatorClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+        max_predictions: int = DEFAULT_MAX_PREDICTIONS,
+        min_predictions: int = DEFAULT_MIN_PREDICTIONS,
     ) -> None:
         """Initialise the game. Use create_from_context() as the public entry point."""
         self._pc = pc
@@ -48,6 +53,8 @@ class ForesightGame(Game):
         self._validator = validator
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
+        self._max_predictions = max_predictions
+        self._min_predictions = min_predictions
         self._entered = False
         self._exited = False
         self._exit_reason = ""
@@ -62,6 +69,8 @@ class ForesightGame(Game):
         Accepted kwargs:
             retry_budget (int): overrides DEFAULT_RETRY_BUDGET
             max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+            max_predictions (int): overrides DEFAULT_MAX_PREDICTIONS
+            min_predictions (int): overrides DEFAULT_MIN_PREDICTIONS
         """
         updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES))
@@ -72,6 +81,8 @@ class ForesightGame(Game):
             validator=validator,
             retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
             max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
+            max_predictions=kwargs.get("max_predictions", cls.DEFAULT_MAX_PREDICTIONS),
+            min_predictions=kwargs.get("min_predictions", cls.DEFAULT_MIN_PREDICTIONS),
         )
 
     def exit(self, reason: str) -> None:
@@ -109,6 +120,8 @@ class ForesightGame(Game):
                 content=C.ENTER_CONTENT.format(
                     pc_hid=self._pc.hid,
                     pc_short_description=self._pc.short_description,
+                    max_predictions=self._max_predictions,
+                    min_predictions=self._min_predictions,
                 ),
             )
             opening = await self._updater.chat(None)
@@ -121,6 +134,16 @@ class ForesightGame(Game):
         if self._awaiting_prediction:
             self._predictions.append(user_input)
             self._awaiting_prediction = False
+            prediction_count = len(self._predictions)
+            if prediction_count >= self._max_predictions:
+                self.exit("max predictions reached")
+                yield GameEvent.now(
+                    type="info",
+                    content=C.EXIT_CONTENT.format(
+                        exit_note=f"You've made {prediction_count} prediction(s) — the maximum for this game. Great work!"
+                    ),
+                )
+                return
             yield GameEvent.now(type="info", content=C.PREDICT_NEXT_CONFIRMATION)
             return
 
@@ -170,8 +193,31 @@ class ForesightGame(Game):
         if cmd == Command.PREDICT_NEXT:
             if remainder:
                 self._predictions.append(remainder)
+                prediction_count = len(self._predictions)
+                if prediction_count >= self._max_predictions:
+                    self.exit("max predictions reached")
+                    return GameEvent.now(
+                        type="info",
+                        content=C.EXIT_CONTENT.format(
+                            exit_note=f"You've made {prediction_count} prediction(s) — the maximum for this game. Great work!"
+                        ),
+                        command_response=True,
+                    )
                 return GameEvent.now(type="info", content=C.PREDICT_NEXT_CONFIRMATION, command_response=True)
             self._awaiting_prediction = True
             return GameEvent.now(type="info", content=C.PREDICT_NEXT_QUESTION, command_response=True)
+
+        if cmd == Command.EXIT:
+            prediction_count = len(self._predictions)
+            if prediction_count >= self._min_predictions:
+                exit_note = f"You've made {prediction_count} prediction(s). Session complete — thanks for playing!"
+            else:
+                exit_note = f"You've made {prediction_count} of {self._min_predictions} required prediction(s). Exiting early."
+            self.exit("player exited")
+            return GameEvent.now(
+                type="info",
+                content=C.EXIT_CONTENT.format(exit_note=exit_note),
+                command_response=True,
+            )
 
         return None

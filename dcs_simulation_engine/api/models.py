@@ -168,6 +168,27 @@ class ExperimentSetupResponse(BaseModel):
     pending_post_play: bool = False
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
+    assignment_mode: str = "auto"
+
+
+class EligibleAssignmentOption(BaseModel):
+    """One eligible game+character option returned in player_choice mode."""
+
+    game_name: str
+    character_hid: str
+
+
+class EligibleAssignmentOptionsResponse(BaseModel):
+    """List of eligible assignment options for a player in player_choice mode."""
+
+    options: list[EligibleAssignmentOption]
+
+
+class SelectAssignmentRequest(BaseModel):
+    """Payload for player-directed assignment selection."""
+
+    game_name: str
+    character_hid: str
 
 
 class ExperimentPlayerRequest(BaseModel):
@@ -233,9 +254,10 @@ class SessionEventFeedback(BaseModel):
     """Stored reaction, comment, and issue flags attached to one assistant message."""
 
     liked: bool
-    comment: str = Field(min_length=1)
+    comment: str = ""
     doesnt_make_sense: bool
     out_of_character: bool
+    other: bool = False
     submitted_at: datetime
 
 
@@ -243,9 +265,10 @@ class SubmitSessionEventFeedbackRequest(BaseModel):
     """Payload for storing feedback on a single assistant session event."""
 
     liked: bool
-    comment: str = Field(min_length=1)
+    comment: str = ""
     doesnt_make_sense: bool
     out_of_character: bool
+    other: bool = False
 
 
 class SubmitSessionEventFeedbackResponse(BaseModel):
@@ -291,6 +314,15 @@ class WSCloseRequest(BaseModel):
 
 
 WSRequest = WSAdvanceRequest | WSStatusRequest | WSCloseRequest
+
+
+class WSSessionMetaFrame(BaseModel):
+    """WebSocket frame sent once after auth, carrying session metadata."""
+
+    type: Literal["session_meta"] = "session_meta"
+    session_id: str
+    pc_hid: str | None = None
+    npc_hid: str | None = None
 
 
 class WSEventFrame(BaseModel):
