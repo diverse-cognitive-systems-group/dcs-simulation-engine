@@ -72,7 +72,7 @@ The [Project Wiki](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki) 
 ### Try it instantly (no setup)
 Anybody can play the Explore game via the live web demo.
 
-[👉 Web Demo](https://dcs-free-play-api.fly.dev/)
+[👉 Web Demo](https://dcs-free-play-ui.fly.dev/)
 
 <img src="images/web-demo.png" alt="Web Demo">
 
