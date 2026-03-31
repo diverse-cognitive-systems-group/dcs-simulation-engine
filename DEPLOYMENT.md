@@ -20,23 +20,16 @@ export FLY_API_TOKEN=your-fly-token
 export OPENROUTER_API_KEY=your-openrouter-key
 ```
 
-### 3) Generate admin key
-
-```bash
-dcs admin keygen
-```
-
-### 4) Deploy
+### 3) Deploy
 
 ```bash
 dcs remote deploy \
-  --admin-key dcs-ak-YOUR_KEY_HERE \
-  --config path/to/run_config.yml \
+  --config path/to/example.yml \
   --mongo-seed-path database_seeds/prod \
   --region iad
 ```
 
-After deploy, save the printed admin key. It is required for authenticated status checks, DB export, and teardown.
+After deploy, save the printed **admin key** to your `.env` file using `DCS_ADMIN_KEY=your-admin-key` or use `--admin-key` flag on remote following commands.
 
 ## Workflow Options
 
@@ -44,8 +37,7 @@ After deploy, save the printed admin key. It is required for authenticated statu
 
 ```bash
 dcs remote status \
-  --uri https://dcs-experiment-a-api.fly.dev \
-  --admin-key your-admin-key
+  --uri https://dcs-example-api.fly.dev \
 ```
 
 ### Save database
@@ -54,9 +46,8 @@ Database can be saved at any time, independent of deployment or teardown.
 
 ```bash
 dcs remote save \
-  --uri https://dcs-experiment-a-api.fly.dev \
-  --admin-key your-admin-key \
-  --save-db-path experiment-a.zip
+  --uri https://dcs-example-api.fly.dev \
+  --save-db-path example.zip
 ```
 
 ### Stop + destroy (with final save)
@@ -65,12 +56,11 @@ dcs remote save \
 
 ```bash
 dcs remote stop \
-  --uri https://dcs-experiment-a-api.fly.dev \
-  --admin-key your-admin-key \
-  --save-db-path experiment-a-final.zip \
-  --api-app dcs-experiment-a-api \
-  --ui-app dcs-experiment-a-ui \
-  --db-app dcs-experiment-a-db
+  --uri https://dcs-example-api.fly.dev \
+  --save-db-path example-final.zip \
+  --api-app dcs-example-api \
+  --ui-app dcs-example-ui \
+  --db-app dcs-example-db
 ```
 
 ## Additional Deployment Options
@@ -88,7 +78,7 @@ dcs remote deploy \
 
 ```bash
 dcs remote deploy \
-  --config experiments/experiment-a.yaml \
+  --config /path/to/example.yaml \
   --mongo-seed-path database_seeds/dev \
   --regions lax,sjc,sea
 ```
@@ -101,7 +91,7 @@ Redeploy only the UI app to a new region, keeping the same API and DB apps:
 
 ```bash
 dcs remote deploy \
-  --config experiments/experiment-a.yaml \
+  --config /path/to/example.yaml \
   --mongo-seed-path dump/2026_03_20_07_35_09 \
   --region lax \
   --only-app ui
