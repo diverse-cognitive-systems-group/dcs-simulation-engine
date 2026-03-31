@@ -96,6 +96,50 @@ class RandomUniqueAssignmentStrategy:
             "per_game": per_game,
         }
 
+    async def get_eligible_options_async(
+        self,
+        *,
+        provider: Any,
+        config: "ExperimentConfig",
+        player: "PlayerRecord",
+    ) -> list[dict[str, str]]:
+        """Return all eligible {game_name, character_hid} options for the player to choose from."""
+        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
+        if active_assignment is not None:
+            return []
+
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        completed_count = sum(1 for item in player_assignments if item.status == "completed")
+        if completed_count >= self.max_assignments_per_player(config=config):
+            return []
+
+        counted_players_by_game = await self._players_by_game(
+            provider=provider,
+            experiment_name=config.name,
+            statuses=["in_progress", "completed"],
+        )
+        quota = int(config.assignment_strategy.quota_per_game or 0)
+        assigned_games = {item.game_name for item in player_assignments}
+        pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
+
+        options: list[dict[str, str]] = []
+        for game_name in config.games:
+            if game_name in assigned_games:
+                continue
+            if len(counted_players_by_game.get(game_name, set())) >= quota:
+                continue
+            game_config = SessionManager.get_game_config_cached(game_name)
+            get_valid = getattr(game_config, "get_valid_characters_async", None)
+            if get_valid is None:
+                valid_pcs, _ = await maybe_await(
+                    game_config.get_valid_characters(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only)
+                )
+            else:
+                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only))
+            for _, hid in valid_pcs:
+                options.append({"game_name": game_name, "character_hid": hid})
+        return options
+
     async def get_or_create_assignment_async(
         self,
         *,
@@ -134,11 +178,14 @@ class RandomUniqueAssignmentStrategy:
 
         for game_name in game_candidates:
             game_config = SessionManager.get_game_config_cached(game_name)
+            pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
             get_valid = getattr(game_config, "get_valid_characters_async", None)
             if get_valid is None:
-                valid_pcs, _ = await maybe_await(game_config.get_valid_characters(player_id=player.id, provider=provider))
+                valid_pcs, _ = await maybe_await(
+                    game_config.get_valid_characters(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only)
+                )
             else:
-                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider))
+                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only))
 
             valid_pc_hids = [hid for _, hid in valid_pcs]
             if not valid_pc_hids:

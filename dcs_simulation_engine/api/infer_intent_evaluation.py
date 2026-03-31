@@ -69,6 +69,7 @@ async def generate_or_get_infer_intent_evaluation(
     provider: Any,
     session_id: str,
     player_id: str,
+    condition: str | None = None,
 ) -> InferIntentEvaluationResponse | None:
     """Return a cached Infer Intent evaluation or generate and persist it once."""
     session = await maybe_await(provider.get_session(session_id=session_id, player_id=player_id))
@@ -106,7 +107,7 @@ async def generate_or_get_infer_intent_evaluation(
             content=scorer_result.raw_json,
             content_format="json",
             turn_index=int(session.data.get(MongoColumns.TURNS_COMPLETED, 0) or 0),
-            visible_to_user=False,
+            visible_to_user=(condition == "learning"),
         )
     )
     if stored is None:

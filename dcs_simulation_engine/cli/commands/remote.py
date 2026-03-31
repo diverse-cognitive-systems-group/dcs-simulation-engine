@@ -141,6 +141,7 @@ def deploy(
     admin_key: Optional[str] = typer.Option(
         None,
         "--admin-key",
+        envvar="DCS_ADMIN_KEY",
         help="Optional explicit remote admin key to install during bootstrap. Must match the dcs-ak- key format.",
     ),
     region: Optional[str] = typer.Option(
@@ -230,7 +231,7 @@ def deploy(
 def status(
     ctx: typer.Context,
     uri: str = typer.Option(..., "--uri", help="Remote API base URL."),
-    admin_key: str = typer.Option(..., "--admin-key", help="Saved remote admin access key."),
+    admin_key: str = typer.Option(..., "--admin-key", envvar="DCS_ADMIN_KEY", help="Saved remote admin access key."),
     json_output: bool = typer.Option(False, "--json", help="Print the status result as JSON."),
 ) -> None:
     """Return the authenticated status payload for one remote deployment."""
@@ -254,7 +255,7 @@ def status(
 def save(
     ctx: typer.Context,
     uri: str = typer.Option(..., "--uri", help="Remote API base URL."),
-    admin_key: str = typer.Option(..., "--admin-key", help="Admin access key returned by remote deploy."),
+    admin_key: str = typer.Option(..., "--admin-key", envvar="DCS_ADMIN_KEY", help="Admin access key returned by remote deploy."),
     save_db_path: Path = typer.Option(
         ...,
         "--save-db-path",
@@ -280,7 +281,7 @@ def save(
 def stop(
     ctx: typer.Context,
     uri: str = typer.Option(..., "--uri", help="Remote API base URL."),
-    admin_key: str = typer.Option(..., "--admin-key", help="Admin access key returned by remote deploy."),
+    admin_key: str = typer.Option(..., "--admin-key", envvar="DCS_ADMIN_KEY", help="Admin access key returned by remote deploy."),
     save_db_path: Path = typer.Option(
         ...,
         "--save-db-path",

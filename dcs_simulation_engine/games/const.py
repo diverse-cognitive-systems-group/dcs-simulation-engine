@@ -54,13 +54,15 @@ class Foresight:
 Engage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.
 
 - You are playing as: {pc_hid} ({pc_short_description})
+- **Goal:** Make up to **{max_predictions}** predictions. At least **{min_predictions}** prediction is required to complete the session.
+- The game ends automatically after {max_predictions} predictions, or you can type `/exit` to leave early.
 
 Type `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\
 """
 
     HELP_CONTENT = """\
 ##### Objective
-Interact with the other character and learn to predict their next action.
+Interact with the other character and learn to predict their next action. Make at least 1 prediction to complete the session (up to 3 total).
 
 ##### Actions
 Describe an action your character takes.
@@ -73,8 +75,10 @@ Use `/predict-next` whenever you want to record what you think the simulator cha
 ##### Commands
 Type `/help` to see this message again.
 Type `/predict-next` to record a prediction. You can also use `/predict-next <prediction>` to submit it immediately.
-Type `/exit` to leave the game.\
+Type `/exit` to leave the game early.\
 """
+
+    EXIT_CONTENT = "Game ended. {exit_note}"
 
     PREDICT_NEXT_QUESTION = """\
 What do you predict the simulator character will do next?

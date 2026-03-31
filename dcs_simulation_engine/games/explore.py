@@ -23,6 +23,7 @@ class Command(StrEnum):
 
     HELP = "help"
     ABILITIES = "abilities"
+    EXIT = "exit"
 
 
 class ExploreGame(Game):
@@ -167,6 +168,14 @@ class ExploreGame(Game):
                     npc_short_description=self._npc.short_description,
                     npc_abilities=format_abilities_markdown(self._npc.data.get("abilities", "")),
                 ),
+                command_response=True,
+            )
+
+        if cmd == Command.EXIT:
+            self.exit("player exited")
+            return GameEvent.now(
+                type="info",
+                content=C.EXIT_CONTENT.format(exit_reason="player exited"),
                 command_response=True,
             )
 

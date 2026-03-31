@@ -134,18 +134,7 @@ function LoginPage() {
                 Register here
               </Link>
             </p>
-            {defaultExperimentName && (
-              <p className="text-center text-sm text-muted-foreground">
-                Joining the default study?{' '}
-                <Link
-                  to="/experiments/$experimentName"
-                  params={{ experimentName: defaultExperimentName }}
-                  className="underline underline-offset-4 hover:text-primary"
-                >
-                  Start here
-                </Link>
-              </p>
-            )}
+
             <p className="text-center text-xs text-muted-foreground">
               By continuing, you agree to the{' '}
               <Link to="/terms" className="underline underline-offset-4 hover:text-primary">
