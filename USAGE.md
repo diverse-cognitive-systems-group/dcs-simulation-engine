@@ -1,4 +1,4 @@
-# User Guide
+# Usage
 
 The DCS Simulation Engine allows users to run and manage interactive games involving diverse cognitive systems.
 

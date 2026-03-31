@@ -51,7 +51,7 @@ ls ./runs
 
 Users can design, run, and deploy custom engine configurations—including their own games and characters.
 
-[👉 Full User Guide](USER_GUIDE.md) for detailed instructions.
+[👉 Usage](USAGE.md) for detailed instructions.
 
 ## Why'd we build this?
 Interfacing between different cognitive systems--even within the same species and cultures--is often difficult. **We lack reliable metrics for evaluating how well an AI, human, or any cognitive system understands the goals and perspectives of minds unlike its own.** 
