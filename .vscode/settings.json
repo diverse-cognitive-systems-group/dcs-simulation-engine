@@ -8,9 +8,13 @@
             "path": "/bin/zsh",
             "args": [
                 "-l", // login shell
-                "-i"  // interactive shell
+                "-i" // interactive shell
             ]
         }
     },
     "evenBetterToml.formatter.reorderKeys": true,
+    "cSpell.words": [
+        "goalspace",
+        "improv"
+    ],
 }
