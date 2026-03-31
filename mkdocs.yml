@@ -17,5 +17,5 @@ plugins:
 nav:
   - Home: index.md
   - Codebase: core_reference.md
-  - API (ReDoc): "https://dcs-free-play-ui.fly.dev/redoc"
-  - API (Swagger UI): "https://dcs-free-play-ui.fly.dev/docs"
+  - API (ReDoc): "https://dcs-free-play-api.fly.dev/redoc"
+  - API (Swagger UI): "https://dcs-free-play-api.fly.dev/docs"
