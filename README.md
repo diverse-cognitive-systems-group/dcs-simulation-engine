@@ -5,9 +5,8 @@
 *A playground for engaging with diverse cognitive systems.*
 
 [![Web Demo](https://img.shields.io/badge/Web%20Demo-blue)](https://dcs-free-play-ui.fly.dev)
-[![API Docs](https://img.shields.io/badge/API%20Docs-blue)](https://dcs-free-play-api.fly.dev/docs)
-[![Codebase Docs](https://img.shields.io/badge/Codebase%20Docs-blue)](https://diverse-cognitive-systems-group.github.io/dcs-simulation-engine/)
-[![Project Wiki](https://img.shields.io/badge/Project%20Wiki-blue)](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/wiki)
+[![API Demo](https://img.shields.io/badge/API%20Demo-blue)](https://dcs-free-play-api.fly.dev/docs)
+[![Docs](https://img.shields.io/badge/Docs-blue)](https://diverse-cognitive-systems-group.github.io/dcs-simulation-engine/)
 [![Build Status](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/actions/workflows/ci.yml)
 
 ## What is this?
@@ -72,8 +71,6 @@ Behind the scenes, every simulated response comes from a dedicated model trained
 A configurable game layer sits on top of this core. The scenario, what information is hidden or revealed, and how the interaction should flow is configurable. Some games, for example, conceal the character’s type so the player must infer it through behavior alone.
 
 In short: you take an action, the engine performs a world step through the simulation model, and the story advances — always in character.
-
- 👉 [Project Wiki](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/wiki) contains more technical background.
 
 ## Contact
 
