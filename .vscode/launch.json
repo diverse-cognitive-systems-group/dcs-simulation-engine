@@ -24,7 +24,7 @@
             "args": [
                 "server",
                 "--mongo-seed-dir=database_seeds/dev",
-                "--default-experiment=usability-ca",
+                "--default-experiment=usability",
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "start-mongo",
