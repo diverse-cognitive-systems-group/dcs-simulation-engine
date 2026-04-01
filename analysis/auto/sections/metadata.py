@@ -15,10 +15,8 @@ from analysis.common.loader import AnalysisData
 def render(data: AnalysisData) -> str:
     exp = data.experiment
     cfg = exp.get("config_snapshot") or {}
-    strategy = (cfg.get("assignment_strategy") or {}).get("strategy", "—")
     games = (cfg.get("assignment_strategy") or {}).get("games") or []
     games_str = ", ".join(games) if games else "—"
-    condition = cfg.get("condition") or "—"
 
     n_runs = len(data.runs_df)
     n_players = len(data.players_df)
@@ -35,28 +33,22 @@ def render(data: AnalysisData) -> str:
     else:
         n_assignments_completed = 0
 
-    # Duration stats
-    dur_info = ""
-    if not data.runs_df.empty and "duration_minutes" in data.runs_df.columns:
-        valid = data.runs_df["duration_minutes"].dropna()
-        if not valid.empty:
-            dur_info = (
-                f"{valid.min():.1f} – {valid.max():.1f} min "
-                f"(mean {valid.mean():.1f} min)"
-            )
+    pct = f" ({n_assignments_completed / n_assignments:.0%})" if n_assignments else ""
+    assignments_str = f"{n_assignments_completed} / {n_assignments}{pct}"
+
+    n_games_played = (
+        int(data.runs_df["game_name"].nunique())
+        if not data.runs_df.empty and "game_name" in data.runs_df.columns
+        else 0
+    )
 
     rows = [
-        ("Experiment", _esc(exp.get("name") or "—")),
-        ("Description", _esc(cfg.get("description") or exp.get("description") or "—")),
-        ("Condition", _esc(condition)),
-        ("Assignment strategy", _esc(strategy)),
-        ("Games", _esc(games_str)),
-        ("Players", str(n_players)),
-        ("Gameplay sessions", str(n_runs)),
-        ("Assignments", f"{n_assignments_completed} / {n_assignments}"),
+        ("Experiment",    _esc(exp.get("name") or "—")),
+        ("Description",   _esc(cfg.get("description") or exp.get("description") or "—")),
+        ("Games Played",  str(n_games_played)),
+        ("Players",       str(n_players)),
+        ("Assignments",   assignments_str),
     ]
-    if dur_info:
-        rows.append(("Run duration range", _esc(dur_info)))
 
     dl_items = "".join(
         f"<dt class='col-sm-3'>{label}</dt><dd class='col-sm-9'>{value}</dd>"

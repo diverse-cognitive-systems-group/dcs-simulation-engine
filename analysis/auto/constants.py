@@ -13,37 +13,39 @@ from __future__ import annotations
 
 SECTION_DESCRIPTIONS: dict[str, str] = {
     "metadata": (
-        "High-level facts about this experiment: its configuration, participant "
-        "counts, and links to raw data artifacts."
+        "Experiment configuration and participant counts at a glance. "
+        "Confirms the right games, players, and assignment settings were used."
     ),
     "runs_overview": (
-        "A searchable, filterable table of every gameplay session alongside a "
-        "PC/NPC pairing heatmap showing which character combinations were played "
-        "together and how often."
+        "Health snapshot of all gameplay sessions: character pairings, daily "
+        "activity, exit reasons, session length and depth, game coverage, and "
+        "how participation funneled from assignment through completion. "
+        "Start here to spot data gaps or imbalances before reading deeper sections."
     ),
     "system_performance": (
-        "Charts and metrics covering how the game engine performed across all "
-        "sessions — durations, pacing, exit reasons, retry usage, and a "
-        "chronological session timeline."
+        "Engine-level diagnostics: how long sessions ran, how turns mapped to "
+        "wall-clock time, NPC response latency, and where sessions fell short "
+        "of expected depth. Use this to identify infrastructure bottlenecks or "
+        "sessions that behaved abnormally."
     ),
     "player_engagement": (
-        "Charts showing how much each player participated and how engagement "
-        "varied across player attributes such as consent status and prior "
-        "experience."
+        "How much each player participated and how activity broke down by "
+        "player attributes. Useful for spotting drop-out patterns and "
+        "understanding which participant groups engaged most."
     ),
     "player_feedback": (
-        "In-play reactions (thumbs-up, flags, and freeform comments left on "
-        "individual NPC messages) alongside structured survey responses collected "
-        "before or after sessions."
+        "In-session reactions (likes, flags, freeform comments on NPC messages) "
+        "and structured survey responses. Use this to connect player sentiment "
+        "to specific moments in gameplay."
     ),
     "player_performance": (
-        "Outcome metrics measuring how well players performed during gameplay "
-        "sessions. (Section not yet implemented.)"
+        "Outcome metrics measuring how well players performed during gameplay. "
+        "(Not yet implemented.)"
     ),
     "transcripts": (
-        "Full event log for all sessions. Use the Transcript column to read "
-        "dialogue turns, and filter by session, player, or turn index to focus "
-        "on specific interactions."
+        "Turn-by-turn event log for all sessions. Filter by session, player, "
+        "PC, or NPC to read specific exchanges. Use alongside Feedback to "
+        "find the dialogue that prompted a reaction."
     ),
 }
 
@@ -56,114 +58,162 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
 CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
     "runs_overview": {
         "pairing_heatmap": (
-            "How many times each PC was paired with each NPC across all runs. "
-            "Uneven distribution may reflect assignment strategy constraints or "
-            "player drop-out."
+            "Session count for every PC × NPC combination. Blank cells mean "
+            "that pairing was never played; dark cells flag over-represented "
+            "pairs. Use this to verify that character coverage matches the "
+            "intended assignment strategy."
+        ),
+        "sessions_over_time": (
+            "Sessions started per day. Identifies recruitment bursts, quiet "
+            "periods, and whether data collection was concentrated or spread "
+            "across the study window."
+        ),
+        "exit_reasons": (
+            "Breakdown of how sessions ended. A healthy experiment shows most "
+            "sessions completing normally; elevated timeouts, errors, or "
+            "abandoned counts point to UX or stability issues worth investigating."
+        ),
+        "turns_distribution": (
+            "How many dialogue turns players completed per session. A spike at "
+            "low turn counts suggests early drop-out; a long right tail means "
+            "some players went well beyond the typical session length."
+        ),
+        "duration_distribution": (
+            "Session lengths in minutes. Very short sessions often indicate "
+            "immediate exits; very long ones may be idle sessions left open. "
+            "Compare with the turns distribution to distinguish deep engagement "
+            "from slow or stalled sessions."
+        ),
+        "runs_per_game": (
+            "Total sessions per game. Shows whether play was spread across "
+            "games as intended or skewed toward a subset — useful for catching "
+            "assignment imbalances early."
+        ),
+        "participation_funnel": (
+            "Players at each stage: assigned → started at least one session → "
+            "completed at least one session. The size of each drop reveals "
+            "where participants disengaged."
+        ),
+        "completion_by_game": (
+            "Completed vs. non-completed sessions for each game. Games with "
+            "disproportionate non-completion may have content, pacing, or "
+            "technical issues driving players to quit."
+        ),
+        "sessions_per_player": (
+            "How many sessions each player finished. A heavily skewed "
+            "distribution (few players, many sessions) can bias per-session "
+            "averages elsewhere in the report."
         ),
         "sessions_table": (
-            "One row per gameplay session. Use the column search boxes to filter "
-            "by player, game, or exit reason, and the export buttons to download "
-            "a CSV or Excel file."
+            "One row per gameplay session with player, characters, turn count, "
+            "duration, and exit reason. Filter by any column or export to CSV / "
+            "Excel for further analysis."
         ),
     },
     "system_performance": {
         "exit_reasons": (
-            "How each session ended — e.g., completed normally, timed out, or "
-            "hit an error. A high proportion of error exits may indicate "
-            "stability issues."
+            "Session exit reason counts. Complements the Overview breakdown "
+            "with system-level context — error exits here are worth cross-"
+            "referencing with the logs table."
         ),
         "duration_distribution": (
-            "Distribution of session lengths across all runs. Outliers on the "
-            "high end may indicate sessions that stalled or were left idle."
+            "Session lengths in minutes across all runs. A heavy right tail "
+            "often indicates sessions that stalled or were abandoned while still "
+            "technically open."
         ),
         "duration_by_game": (
-            "Compares session length distributions across games. Useful for "
-            "spotting games with consistently shorter or longer play times."
+            "Session length distributions split by game. Reveals whether one "
+            "game consistently runs shorter or longer, which can affect "
+            "turn-count and latency comparisons elsewhere."
         ),
         "turns_vs_runtime": (
-            "Relationship between number of turns completed and total session "
-            "duration. Points far from the overall trend may indicate slow turns, "
-            "long player think-times, or pauses mid-session."
+            "Turns completed vs. total session duration (scatter). Points well "
+            "above the trend line had unusually slow turns — possible NPC "
+            "latency spikes or long player think-times."
         ),
         "retry_budget": (
-            "Frequency of each last-sequence value across sessions. A high "
-            "count at low values may indicate sessions ending much earlier than "
-            "expected."
+            "Distribution of last-sequence values reached per session. Low "
+            "values mean the session ended before the NPC could reach its "
+            "normal conclusion — a proxy for how much of the intended content "
+            "players actually experienced."
         ),
         "session_timeline": (
-            "Chronological Gantt view of all sessions. Useful for spotting "
-            "concurrency, maintenance windows, or unexpected gaps in data "
-            "collection."
+            "Gantt chart of all sessions by start and end time. Useful for "
+            "spotting concurrent sessions, maintenance windows, or unexpected "
+            "gaps in data collection."
         ),
         "lt_game_duration_by_player": (
-            "Distribution of total game duration (ms) for each player. Wide or "
-            "skewed violins indicate high variability in how long that player's "
-            "sessions ran."
+            "Total game duration (ms) per player as a violin plot. Wide or "
+            "multi-modal violins indicate high variability — worth checking "
+            "whether specific players experienced consistently slow sessions."
         ),
         "lt_wait_by_player": (
-            "Distribution of NPC response wait times (ms) during turn-phase "
-            "exchanges, grouped by player. Captures how long each player waited "
-            "for an NPC reply across all their turns."
+            "NPC response wait time (ms) per player across all turn-phase "
+            "exchanges. Identifies players who consistently waited longer — "
+            "could reflect network conditions or model load at the time they played."
         ),
         "lt_wait_by_player_and_game": (
-            "Same wait-response distributions as above, further split by game "
-            "number (g1, g2, …) to reveal whether response latency changed across "
-            "successive sessions for each player."
+            "Same NPC wait-time distributions split further by game number "
+            "(g1, g2, …). Use this to check whether latency degraded or "
+            "improved across successive sessions for the same player."
         ),
         "lt_hist_game_duration": (
-            "Overall game-duration density across all players and sessions. "
-            "Reference lines mark the mean, median, p90, p95, and p99 to "
-            "highlight the tail of unusually long sessions."
+            "Density of total game durations across all sessions. Percentile "
+            "reference lines (mean, median, p90, p95, p99) highlight how extreme "
+            "the long-session tail is."
         ),
         "lt_hist_wait_turn": (
-            "Density of NPC response wait times during turn-phase exchanges across "
-            "all players and sessions. Percentile markers help quantify the worst-"
-            "case latency experienced during normal gameplay turns."
+            "Density of NPC response wait times during normal (non-opening, "
+            "non-closing) turns. Percentile markers show worst-case latency "
+            "experienced during typical gameplay exchanges."
         ),
         "lt_hist_wait_opening": (
-            "Density of NPC response wait times specifically during the opening "
-            "turn (turn_index 0) of each session. Opening turns often show higher "
-            "latency due to cold-start or context-loading overhead."
+            "NPC response wait times for the first turn of each session "
+            "(turn_index 0). Opening turns tend to be slower due to context "
+            "loading; compare with turn-phase wait times to quantify the "
+            "cold-start overhead."
         ),
         "lt_hist_wait_close": (
-            "Density of NPC response wait times during the final turn of each "
-            "session. Elevated close-phase latency may indicate resource contention "
-            "or slow session-teardown paths."
+            "NPC response wait times during the final turn of each session. "
+            "Elevated close-phase latency relative to mid-session turns may "
+            "point to slow teardown logic or resource contention at session end."
         ),
     },
     "player_engagement": {
         "runs_per_player": (
-            "Number of sessions completed by each player, sorted highest to "
-            "lowest. Highly uneven distribution may indicate player drop-out or "
-            "a small group of repeat participants."
+            "Sessions completed per player, sorted descending. A long tail of "
+            "low-count players alongside a few high-count players can skew "
+            "aggregate metrics — worth noting before drawing per-session conclusions."
         ),
         "engagement_by_consent": (
-            "Total runs grouped by whether the player consented to follow-up "
-            "contact. Useful for understanding the reachable subset of "
-            "participants for future studies."
+            "Session counts grouped by follow-up consent status. Shows the "
+            "size of the reachable participant pool for any post-study contact "
+            "or longitudinal follow-up."
         ),
         "engagement_by_experience": (
-            "Total runs grouped by the player's self-reported prior experience "
-            "with similar games or AI systems."
+            "Session counts grouped by self-reported prior experience with "
+            "similar games or AI. Useful for checking whether novice and "
+            "experienced players engaged at different rates."
         ),
     },
     "player_feedback": {
         "inplay_feedback_table": (
-            "Reactions left by players on individual NPC messages during "
-            "gameplay — likes, flags, and freeform comments. Sorted by session "
-            "and turn."
+            "Every in-session reaction (like, flag, or comment) left on an "
+            "NPC message, with session and turn context. Sort by turn or "
+            "session to find clusters of negative reactions."
         ),
         "form_responses_table": (
-            "Answers to structured pre- and post-session survey questions. "
-            "Filter by player or form name to compare responses across "
-            "participants."
+            "Structured survey answers collected before or after sessions. "
+            "Filter by player or form name to compare how different participants "
+            "responded to the same questions."
         ),
     },
     "transcripts": {
         "transcripts_table": (
-            "Complete turn-by-turn event log with gameplay context columns "
-            "(player, PC, NPC) joined from session data. Long transcript entries "
-            "are truncated — hover to read the full text."
+            "Full turn-by-turn event log with player, PC, and NPC columns "
+            "joined from session data. Long entries are truncated — hover to "
+            "read the full text. Cross-reference with Feedback to find the "
+            "dialogue that prompted a specific reaction."
         ),
     },
 }

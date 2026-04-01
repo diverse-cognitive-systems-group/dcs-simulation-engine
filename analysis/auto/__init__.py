@@ -29,10 +29,10 @@ from analysis.common.loader import AnalysisData
 # Registry of sections in display order: (anchor_slug, display_title, module)
 SECTIONS = [
     ("metadata",            "Metadata",            metadata),
-    ("runs-overview",       "Overview",       runs_overview),
+    ("runs-overview",       "Overview",            runs_overview),
     ("system-performance",  "System Performance",  system_performance),
-    ("player-feedback",     "Player Feedback",     player_feedback),
     ("player-performance",  "Player Performance",  player_performance),
+    ("player-feedback",     "Player Feedback",     player_feedback),
     ("transcripts",         "Transcripts",         transcripts),
 ]
 

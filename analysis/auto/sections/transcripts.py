@@ -62,4 +62,9 @@ def render(data: AnalysisData) -> str:
         truncate_cols=["content"],
         truncate_at=400,
     )
-    return section_intro("transcripts") + table + chart_caption("transcripts", "transcripts_table")
+    return (
+        section_intro("transcripts")
+        + '<h3 class="h5 mb-2">Session Events</h3>'
+        + table
+        + chart_caption("transcripts", "transcripts_table")
+    )
