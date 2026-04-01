@@ -1,6 +1,6 @@
 # Games
 
-Game definitions are python files that implement the `Game` interface. They define the rules, objectives, and interactions.
+*Games* are python files that implement the `Game` interface. They define any rules or objectives for the interaction.
 
 ## Core Games
 

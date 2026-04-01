@@ -1,4 +1,4 @@
-# Overview
+# DCS Simulation Engine Documentation
 
 The simulation engine is a tool designed and developed by the Diverse Cognitive Systems (DCS) group at Georgia Tech under the [Sonification Lab](http://sonify.psych.gatech.edu/) to facilitate training and evaluation of interactions between diverse cognitive systems.
 

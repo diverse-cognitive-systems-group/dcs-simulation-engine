@@ -46,10 +46,9 @@ nav:
       - Characters: characters.md
   - Studies:
       - Overview: studies_overview.md
-      - Usability: studies/usability/
-      - Simulation Quality: studies/simulation_quality/
-      - Performance Benchmarking: studies/performance_benchmarking/
+      - Usability: studies/usability.html
+      - Simulation Quality: studies/simulation_quality.html
+      - Performance Benchmarking: studies/performance_benchmarking.html
   - DCS-SE Reference: dcs_se_reference.md
-  - DCS-Utils Reference: dcs_utils_reference.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
   - FAQ: faq.md

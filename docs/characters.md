@@ -1,5 +1,7 @@
 # Characters
 
+*Characters* are the cognitive systems that players or simulators can use as player characters (PCs) or non-player characters (NPCs) in games. 
+
 ## Core Characters
 We maintain a curated database of diverse cognitive systems called "core characters" that are included with the simulation engine.
 
@@ -9,15 +11,25 @@ Each character is selected for its ability to behaviorally represent a distinct 
 Core characters were selected based on whether they meaningfully represent cognitive systems that differ in ways relevant to our research. In other words, a character is included if it helps model a form of cognition or interaction that challenges, extends, or diversifies typical assumptions.
 
 Forms of divergence represented include, but are not limited to:
+
 - Alien-like intelligences with unfamiliar goal spaces or conceptual structures
+
 - Humans or human-like systems that vary in sensory, perceptual, regulatory, or motor/action modalities (e.g., neurodivergent individuals, synesthetes, people with sensory processing differences, low-vision or non-ambulatory individuals)
+
 - Artificial intelligences across different architectures and embodiments
+
 - Abstract goal-directed systems, such as algorithms
+
 - Distributed or collective intelligences (e.g., hive minds, decentralized systems)
+
 - Basal or minimal intelligences (e.g., plants, single-celled organisms)
+
 - Hybrid systems (e.g., cyborgs, human–AI integrations)
+
 - Non-human biological intelligences (e.g., animals with distinct cognitive structures)
+
 - Embryonic or cellular collectives
+
 - And additional forms as needed
 
 ### Character Quality Control and Validation
