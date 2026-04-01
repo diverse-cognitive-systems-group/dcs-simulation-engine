@@ -3,7 +3,7 @@
 # ── Top-level ────────────────────────────────────────────────────────────────
 
 # Unique identifier (used in API routes)
-name: example-run
+name: example
 
 # Human-readable description
 description: |
@@ -33,7 +33,7 @@ assignment_strategy:
   max_assignments_per_player: 1
 
   # Seed for deterministic assignment (change to reshuffle)
-  seed: example-run-v1
+  seed: 42
 
   # If true, only PC-eligible players are considered
   pc_eligible_only: true
