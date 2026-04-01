@@ -90,7 +90,7 @@ def _cmd(
         title = (
             (run_config.get("name") if isinstance(run_config, dict) else None)
             or data.experiment.get("name")
-            or "DCS Analysis Report"
+            or "Results Report"
         )
 
     with _console.status(f"Generating report: {title!r}...", spinner="dots"):

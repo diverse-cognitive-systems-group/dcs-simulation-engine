@@ -1,24 +1,23 @@
 """Section 3 — System Performance.
 
-Seven Plotly charts covering run durations, pacing, exit reasons,
-retry budget, PC/NPC pairings, and a session timeline (Gantt).
+Plotly charts covering run durations, pacing, exit reasons,
+retry budget, PC/NPC pairings, and a session timeline (Gantt), followed by
+system error details.
 """
 
 from __future__ import annotations
 
-from datetime import timezone, datetime
+from datetime import timezone
 
 import pandas as pd
 
 from analysis.auto.rendering.chart_utils import plotly_to_html
+from analysis.auto.sections import system_errors
 from analysis.common.loader import AnalysisData
 
 
 def render(data: AnalysisData) -> str:
     df = data.runs_df
-    if df.empty:
-        return '<div class="alert alert-info">No run data found.</div>'
-
     parts: list[str] = []
 
     # Two-column grid rows
@@ -30,19 +29,24 @@ def render(data: AnalysisData) -> str:
         cols = "".join(f'<div class="col-12 chart-container">{d}</div>' for d in divs)
         return f'<div class="row">{cols}</div>'
 
-    parts.append(_row(
-        _pairing_heatmap(df),
-        _exit_reasons(df),
-    ))
-    parts.append(_row(
-        _duration_histogram(df),
-        _duration_by_game(df),
-    ))
-    parts.append(_row(
-        _turns_vs_runtime(df),
-        _retry_budget(df),
-    ))
-    parts.append(_full(_session_timeline(df)))
+    if df.empty:
+        parts.append('<div class="alert alert-info">No run data found.</div>')
+    else:
+        parts.append(_row(
+            _exit_reasons(df),
+            _duration_histogram(df),
+        ))
+        parts.append(_row(
+            _duration_by_game(df),
+            _turns_vs_runtime(df),
+        ))
+        parts.append(_row(
+            _retry_budget(df),
+        ))
+        parts.append(_full(_session_timeline(df)))
+
+    parts.append('<h3 class="h5 mt-4">System Errors</h3>')
+    parts.append(system_errors.render(data))
 
     return "\n".join(parts)
 
@@ -57,10 +61,8 @@ def _pairing_heatmap(df: pd.DataFrame) -> str:
     games = df["game_name"].dropna().unique() if "game_name" in df.columns else []
 
     if len(games) <= 1 or "pc_hid" not in df.columns or "npc_hid" not in df.columns:
-        # Single heatmap
         return _single_heatmap(df, title="PC / NPC Pairing Heatmap")
 
-    # Per-game tabs
     tab_nav = []
     tab_content = []
     for i, game in enumerate(sorted(games)):
@@ -184,9 +186,7 @@ def _exit_reasons(df: pd.DataFrame) -> str:
     if "termination_reason" not in df.columns:
         return '<div class="alert alert-secondary">No exit reason data.</div>'
 
-    counts = (
-        df["termination_reason"].value_counts().reset_index()
-    )
+    counts = df["termination_reason"].value_counts().reset_index()
     counts.columns = ["termination_reason", "count"]
     fig = px.bar(
         counts,
@@ -205,16 +205,14 @@ def _retry_budget(df: pd.DataFrame) -> str:
     if "last_seq" not in df.columns:
         return '<div class="alert alert-secondary">No sequence data.</div>'
 
-    counts = (
-        df["last_seq"].value_counts().sort_index().reset_index()
-    )
+    counts = df["last_seq"].value_counts().sort_index().reset_index()
     counts.columns = ["last_seq", "count"]
     fig = px.bar(
         counts,
         x="count",
         y="last_seq",
         orientation="h",
-        title="Runs by Last Sequence Number",
+        title="Runs by Event Count",
         labels={"last_seq": "Last Seq", "count": "Run Count"},
     )
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=40, b=20))
@@ -232,28 +230,23 @@ def _session_timeline(df: pd.DataFrame) -> str:
     if gantt.empty:
         return '<div class="alert alert-secondary">No timeline data.</div>'
 
-    # Fill open sessions with now
     now = pd.Timestamp.now(tz=timezone.utc)
     gantt["session_ended_at"] = gantt["session_ended_at"].fillna(now)
     gantt = gantt.sort_values("session_started_at")
 
-    # Short label for y axis
-    label_col = "session_id" if "session_id" in gantt.columns else gantt.index.astype(str)
-    gantt["label"] = gantt[label_col].astype(str).str[:12] + "…"
+    gantt["session_label"] = gantt.get("session_id", gantt.index).astype(str)
+    if "game_name" in gantt.columns:
+        gantt["session_label"] = gantt["game_name"].fillna("Run") + " • " + gantt["session_label"]
 
     fig = px.timeline(
         gantt,
         x_start="session_started_at",
         x_end="session_ended_at",
-        y="label",
-        color="game_name" if "game_name" in gantt.columns else None,
-        hover_data=[c for c in ["session_id", "pc_hid", "npc_hid", "termination_reason"] if c in gantt.columns],
+        y="session_label",
+        color="termination_reason" if "termination_reason" in gantt.columns else None,
         title="Session Timeline",
-        labels={"label": "Run", "game_name": "Game"},
+        hover_data=[c for c in ["player_id", "pc_hid", "npc_hid"] if c in gantt.columns],
     )
     fig.update_yaxes(autorange="reversed")
-    fig.update_layout(
-        height=max(300, 60 + len(gantt) * 40),
-        margin=dict(l=20, r=20, t=40, b=20),
-    )
+    fig.update_layout(height=max(350, 24 * len(gantt)), margin=dict(l=20, r=20, t=40, b=20))
     return plotly_to_html(fig)

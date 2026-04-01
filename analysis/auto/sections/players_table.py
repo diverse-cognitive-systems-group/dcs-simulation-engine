@@ -51,7 +51,6 @@ def render(data: AnalysisData) -> str:
         display,
         table_id="players-table",
         rename=rename,
-        page_length=25,
         truncate_cols=["consent_to_followup", "consent_signature"],
         truncate_at=120,
     )

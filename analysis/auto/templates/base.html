@@ -31,6 +31,13 @@
       font-size: 0.9rem;
     }
 
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
     /* Sidebar */
     .sidebar {
       position: sticky;
@@ -86,13 +93,18 @@
       font-size: 0.82rem;
     }
 
-    .dt-buttons .btn {
-      font-size: 0.78rem;
+    /* Per-column filter inputs in second header row */
+    tr.dt-filter-row th {
+      padding: 4px 8px;
     }
 
-    /* Per-column filter inputs in table footers */
-    tfoot input {
+    tr.dt-filter-row input {
       min-width: 3rem;
+    }
+
+    /* Export buttons */
+    .dt-buttons .btn {
+      font-size: 0.75rem;
     }
 
     /* Charts */
@@ -109,6 +121,21 @@
     .dl-meta dd {
       color: #212529;
       margin-bottom: 0.4rem;
+    }
+
+    @media print {
+      .sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      main.col-md-10 {
+        width: 100% !important;
+      }
+
+      section {
+        break-inside: avoid;
+      }
     }
   </style>
 </head>
@@ -132,10 +159,21 @@
 
       <!-- Main content -->
       <main class="col-md-10 px-4 py-3">
-        <h1 class="mb-1">{{ title }}</h1>
-        <p class="text-muted mb-4" style="font-size:0.8rem;">
-          Auto-generated {{ generated_at }}
-        </p>
+        <div class="report-header mb-4">
+          <div>
+            <h1 class="mb-1">{{ title }}</h1>
+            <p class="text-muted mb-0" style="font-size:0.8rem;">
+              Generated {{ generated_at }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm no-print"
+            onclick="window.print()"
+          >
+            Download PDF
+          </button>
+        </div>
 
         {% for anchor, section_title, html_fragment in sections %}
         <section id="section-{{ anchor }}" class="mb-5">

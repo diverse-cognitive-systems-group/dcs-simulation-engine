@@ -1,13 +1,13 @@
-"""Section 1 — Metadata Summary.
+"""Section 1 — Metadata.
 
-Renders a Bootstrap card with key facts about the experiment and the
-results directory: experiment name, description, DB info, run/player
-counts, and report generation timestamp.
+Renders a Bootstrap card with key facts about the experiment and links to
+raw result artifacts when available.
 """
 
 from __future__ import annotations
 
 import html
+from pathlib import Path
 
 from analysis.common.loader import AnalysisData
 
@@ -20,14 +20,20 @@ def render(data: AnalysisData) -> str:
     games_str = ", ".join(games) if games else "—"
     condition = cfg.get("condition") or "—"
 
-    created_at = data.manifest.get("created_at") or "—"
-    db_name = data.manifest.get("db_name") or "—"
-
     n_runs = len(data.runs_df)
     n_players = len(data.players_df)
     n_assignments = len(data.assignments_df)
-    n_events = len(data.transcripts_df)
-    n_characters = len(data.characters_df)
+    if not data.assignments_df.empty:
+        if "status" in data.assignments_df.columns:
+            n_assignments_completed = int(
+                data.assignments_df["status"].fillna("").eq("completed").sum()
+            )
+        elif "completed_at" in data.assignments_df.columns:
+            n_assignments_completed = int(data.assignments_df["completed_at"].notna().sum())
+        else:
+            n_assignments_completed = 0
+    else:
+        n_assignments_completed = 0
 
     # Duration stats
     dur_info = ""
@@ -39,20 +45,28 @@ def render(data: AnalysisData) -> str:
                 f"(mean {valid.mean():.1f} min)"
             )
 
+    raw_results_link = _artifact_link(
+        data.results_dir.with_suffix('.zip'),
+        label='raw results (.zip)',
+        placeholder='Raw results (.zip)'
+    )
+    run_config_link = _artifact_link(
+        data.results_dir / 'run_config.yml',
+        label='run_config.yml',
+        placeholder='run_config.yml'
+    )
+
     rows = [
         ("Experiment", _esc(exp.get("name") or "—")),
         ("Description", _esc(cfg.get("description") or exp.get("description") or "—")),
         ("Condition", _esc(condition)),
         ("Assignment strategy", _esc(strategy)),
         ("Games", _esc(games_str)),
-        ("DB name", _esc(db_name)),
-        ("Exported at", _esc(str(created_at))),
-        ("Results directory", f"<code>{_esc(str(data.results_dir))}</code>"),
-        ("Runs (sessions)", str(n_runs)),
+        ("Raw results", raw_results_link),
+        ("Run config", run_config_link),
         ("Players", str(n_players)),
-        ("Assignments", str(n_assignments)),
-        ("Session events", str(n_events)),
-        ("Characters available", str(n_characters)),
+        ("Gameplay sessions", str(n_runs)),
+        ("Assignments", f"{n_assignments_completed} / {n_assignments}"),
     ]
     if dur_info:
         rows.append(("Run duration range", _esc(dur_info)))
@@ -71,6 +85,12 @@ def render(data: AnalysisData) -> str:
   </div>
 </div>
 """
+
+
+def _artifact_link(path: Path, *, label: str, placeholder: str) -> str:
+    if path.exists():
+        return f'<a href="{_esc(path.as_uri())}">{_esc(label)}</a>'
+    return f'<a href="#" class="text-muted">{_esc(placeholder)}</a>'
 
 
 def _esc(s: str) -> str:

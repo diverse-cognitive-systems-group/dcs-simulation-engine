@@ -3,7 +3,7 @@
 df_to_datatable(df, table_id, ...) returns a self-contained HTML string
 containing a <table> and a <script> block that initialises the DataTables
 plugin for that table. The page must load jQuery, DataTables core, and the
-DataTables Bootstrap 5 + Buttons plugins from CDN.
+DataTables Bootstrap 5 + Buttons plugins from CDN (all in <head>).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ def df_to_datatable(
     table_id: str,
     columns: list[str] | None = None,
     rename: dict[str, str] | None = None,
-    page_length: int = 25,
+    scroll_y: str = "400px",
     scroll_x: bool = True,
     export_buttons: bool = True,
     truncate_cols: list[str] | None = None,
@@ -37,8 +37,9 @@ def df_to_datatable(
         Subset and order of columns to include. All columns used if None.
     rename:
         Optional {source_col: display_name} map applied after column selection.
-    page_length:
-        Rows shown per page.
+    scroll_y:
+        Max height of the table body before vertical scrolling kicks in.
+        Set to "" to disable (falls back to pagination). Default "400px".
     scroll_x:
         Enable horizontal scrolling.
     export_buttons:
@@ -49,7 +50,7 @@ def df_to_datatable(
     truncate_at:
         Character limit for truncated columns (default 400).
     column_filters:
-        Add per-column search inputs in the table footer (default True).
+        Add per-column search inputs in a second header row (default True).
     """
     display = df[columns].copy() if columns else df.copy()
     if rename:
@@ -99,43 +100,65 @@ def df_to_datatable(
             escape=False,
         )
 
-    # Inject <tfoot> for per-column filter inputs
+    # Inject a second <tr> in <thead> for per-column filter inputs.
+    # Using the header (not footer) avoids scrollX null-return issues.
     if column_filters:
         n_cols = len(display.columns)
-        tfoot_cells = "".join("<th></th>" for _ in range(n_cols))
-        table_html = table_html.replace("</table>", f"<tfoot><tr>{tfoot_cells}</tr></tfoot>\n</table>")
+        filter_cells = "".join("<th></th>" for _ in range(n_cols))
+        filter_row = f'<tr class="dt-filter-row">{filter_cells}</tr>'
+        table_html = table_html.replace("</thead>", f"{filter_row}\n</thead>", 1)
 
-    # Build DataTables init <script>
-    dom = "Bfrtip" if export_buttons else "frtip"
+    use_scroll_y = bool(scroll_y)
+
+    # Bootstrap 5 DataTables DOM layout.
+    # When scrollY is active, pagination is replaced by vertical scrolling
+    # so 'p' (pagination) and 'l' (length menu) are dropped from the dom.
+    if use_scroll_y:
+        dom = (
+            "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>>"
+            "<'row'<'col-sm-12'tr>>"
+            "<'row mt-2'<'col-sm-12'i>>"
+        )
+    else:
+        dom = (
+            "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>>"
+            "<'row'<'col-sm-12'tr>>"
+            "<'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+        )
+
     buttons_js = (
-        """buttons: ['copy', 'csv', 'excel', 'colvis'],"""
-        if export_buttons
-        else ""
+        """buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },"""
+        if export_buttons else ""
     )
-    scroll_js = "true" if scroll_x else "false"
+    scroll_x_js = "true" if scroll_x else "false"
+    scroll_y_js = f'scrollY: "{scroll_y}", scrollCollapse: true, paging: false,' if use_scroll_y else "pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],"
 
     col_filter_js = ""
     if column_filters:
-        col_filter_js = """
-        initComplete: function () {
+        col_filter_js = f"""
+        orderCellsTop: true,
+        initComplete: function () {{
             var api = this.api();
-            api.columns().every(function () {
+            var wrapper = $('#{table_id}').closest('.dataTables_wrapper');
+            api.columns().every(function () {{
                 var col = this;
-                var footer = col.footer();
-                if (!footer) return;
-                $('<input type="text" placeholder="Filter\u2026" class="form-control form-control-sm mt-1"/>')
-                    .appendTo($(footer).empty())
-                    .on('input', function () { col.search(this.value).draw(); });
-            });
-        },"""
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter\u2026" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () {{ col.search(this.value).draw(); }});
+            }});
+        }},"""
 
     script = f"""
 <script>
 $(document).ready(function () {{
     $('#{table_id}').DataTable({{
-        pageLength: {page_length},
-        scrollX: {scroll_js},
-        dom: '{dom}',
+        {scroll_y_js}
+        scrollX: {scroll_x_js},
+        dom: "{dom}",
         {buttons_js}
         order: [],{col_filter_js}
     }});

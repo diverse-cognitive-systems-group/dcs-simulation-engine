@@ -1,8 +1,7 @@
 """Section 7 — Transcripts.
 
-Full session-events DataTable. PC/NPC/player columns are joined from
-runs_df since session_events only carries session_id.
-Content is truncated at 400 chars in-cell (full text in title tooltip).
+Transcript-focused session-events DataTable. PC/NPC/player columns are joined
+from runs_df since session_events only carries session_id.
 """
 
 from __future__ import annotations
@@ -17,27 +16,21 @@ _COLUMNS = [
     "npc_hid",
     "turn_index",
     "event_source",
-    "direction",
     "event_type",
-    "command_name",
     "content",
     "event_ts",
-    "visible_to_user",
 ]
 
 _RENAME = {
-    "session_id":    "Run ID",
-    "player_id":     "Player",
-    "pc_hid":        "PC",
-    "npc_hid":       "NPC",
-    "turn_index":    "Turn",
-    "event_source":  "Source",
-    "direction":     "Direction",
-    "event_type":    "Type",
-    "command_name":  "Command",
-    "content":       "Content",
-    "event_ts":      "Timestamp",
-    "visible_to_user": "Visible",
+    "session_id": "Gameplay Session",
+    "player_id": "Player",
+    "pc_hid": "PC",
+    "npc_hid": "NPC",
+    "turn_index": "Turn",
+    "event_source": "Source",
+    "event_type": "Type",
+    "content": "Transcript",
+    "event_ts": "Timestamp",
 }
 
 
@@ -47,22 +40,31 @@ def render(data: AnalysisData) -> str:
     if df.empty:
         return '<div class="alert alert-info">No transcript events found.</div>'
 
-    # Join PC/NPC/player from runs_df
     if not data.runs_df.empty:
         run_attrs = data.runs_df[
             [c for c in ["session_id", "pc_hid", "npc_hid", "player_id"] if c in data.runs_df.columns]
         ].drop_duplicates("session_id")
         df = df.merge(run_attrs, on="session_id", how="left")
 
+    sort_cols = [c for c in ["session_id", "turn_index", "event_ts"] if c in df.columns]
+    if sort_cols:
+        df = df.sort_values(sort_cols)
+
     cols = [c for c in _COLUMNS if c in df.columns]
     rename = {k: v for k, v in _RENAME.items() if k in cols}
 
-    return df_to_datatable(
+    intro = (
+        '<p class="text-muted" style="font-size:0.85rem;">'
+        'Transcript view of session events with gameplay context columns preserved.'
+        '</p>'
+    )
+
+    table = df_to_datatable(
         df,
         table_id="transcripts-table",
         columns=cols,
         rename=rename,
-        page_length=50,
         truncate_cols=["content"],
         truncate_at=400,
     )
+    return intro + table

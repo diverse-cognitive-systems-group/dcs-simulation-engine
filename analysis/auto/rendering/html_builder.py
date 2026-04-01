@@ -12,7 +12,7 @@ _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 def build_html(
     sections: list[tuple[str, str, str]],
-    title: str = "DCS Analysis Report",
+    title: str = "Results Report",
 ) -> str:
     """Render the Jinja2 base template with all section fragments.
 

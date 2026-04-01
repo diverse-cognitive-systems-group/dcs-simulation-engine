@@ -71,7 +71,6 @@ def render(data: AnalysisData) -> str:
             table_id="event-feedback-table",
             columns=cols,
             rename=rename,
-            page_length=50,
             truncate_cols=["comment"],
             truncate_at=300,
         ))
@@ -87,7 +86,6 @@ def render(data: AnalysisData) -> str:
             table_id="feedback-table",
             columns=cols,
             rename=rename,
-            page_length=50,
             truncate_cols=["answer", "question_prompt"],
             truncate_at=300,
         ))

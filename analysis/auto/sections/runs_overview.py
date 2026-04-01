@@ -7,6 +7,7 @@ showing player, game, characters, turn count, duration, exit reason, etc.
 from __future__ import annotations
 
 from analysis.auto.rendering.table_utils import df_to_datatable
+from analysis.auto.sections.system_performance import _pairing_heatmap
 from analysis.common.loader import AnalysisData
 
 # Source-column → display-name mapping (in display order)
@@ -51,12 +52,16 @@ def render(data: AnalysisData) -> str:
     cols = [c for c in _COLUMNS if c in df.columns]
     rename = {k: v for k, v in _RENAME.items() if k in cols}
 
-    return df_to_datatable(
+    table_html = df_to_datatable(
         df,
         table_id="runs-overview-table",
         columns=cols,
         rename=rename,
-        page_length=25,
         scroll_x=True,
         export_buttons=True,
     )
+
+    return "\n".join([
+        '<div class="chart-container mb-4">' + _pairing_heatmap(df) + '</div>',
+        table_html,
+    ])

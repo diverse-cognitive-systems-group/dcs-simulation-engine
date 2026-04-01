@@ -61,7 +61,6 @@ def render(data: AnalysisData) -> str:
         table_id="errors-table",
         columns=cols,
         rename=rename,
-        page_length=50,
         truncate_cols=["message", "exception"],
         truncate_at=300,
     )
