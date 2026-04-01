@@ -190,7 +190,7 @@ def remote_managed_client(mock_provider: MagicMock) -> TestClient:
         provider=mock_provider,
         server_mode="standard",
         mongo_uri="mongodb://example",
-        default_experiment_name="usability-ca",
+        default_experiment_name="usability",
         remote_management_enabled=True,
         bootstrap_token="bootstrap-secret",
         session_ttl_seconds=3600,
@@ -490,7 +490,7 @@ def test_free_play_disables_player_experiment_and_session_prefixes(
             "consent_signature": "Ada",
         },
     )
-    experiment = free_play_client.get("/api/experiments/usability-ca/setup")
+    experiment = free_play_client.get("/api/experiments/usability/setup")
     sessions = free_play_client.get("/api/sessions/list")
 
     assert registration.status_code == 409
@@ -1290,7 +1290,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
         patch(
             "dcs_simulation_engine.api.routers.experiments.ExperimentManager.get_experiment_config_cached",
             return_value=SimpleNamespace(
-                name="usability-ca",
+                name="usability",
                 description="Usability study",
                 forms=[form],
                 assignment_strategy=SimpleNamespace(assignment_mode="random_unique"),
@@ -1324,13 +1324,13 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
         ),
     ):
         response = client.get(
-            "/api/experiments/usability-ca/setup",
+            "/api/experiments/usability/setup",
             headers={"Authorization": "Bearer valid-key"},
         )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["experiment_name"] == "usability-ca"
+    assert payload["experiment_name"] == "usability"
     assert payload["current_assignment"]["assignment_id"] == "asg-1"
     assert payload["progress"] == {"total": 20, "completed": 4, "is_complete": False}
     assert payload["pending_post_play"] is False
@@ -1354,7 +1354,7 @@ def test_experiment_before_play_submission_returns_assignment(
         new=AsyncMock(return_value=assignment),
     ):
         response = client.post(
-            "/api/experiments/usability-ca/players",
+            "/api/experiments/usability/players",
             headers={"Authorization": "Bearer valid-key"},
             json={"responses": {"intake": {"full_name": "Ada"}}},
         )
@@ -1373,7 +1373,7 @@ def test_experiment_before_play_submission_returns_assignment(
 @pytest.mark.unit
 def test_experiment_setup_requires_auth(client: TestClient) -> None:
     """Experiment setup should not expose progress or state without authentication."""
-    response = client.get("/api/experiments/usability-ca/setup")
+    response = client.get("/api/experiments/usability/setup")
 
     assert response.status_code == 401
 
@@ -1391,7 +1391,7 @@ def test_experiment_session_creation_returns_ws_path(
         new=AsyncMock(return_value=(entry, assignment)),
     ):
         response = client.post(
-            "/api/experiments/usability-ca/sessions",
+            "/api/experiments/usability/sessions",
             headers={"Authorization": "Bearer valid-key"},
             json={"source": "experiment"},
         )
@@ -1411,7 +1411,7 @@ def test_generic_play_blocks_experiment_gated_players(
 ) -> None:
     """Generic play endpoints should reject players who are assigned through an experiment."""
     mock_provider.get_latest_experiment_assignment_for_player.return_value = SimpleNamespace(
-        experiment_name="usability-ca",
+        experiment_name="usability",
     )
 
     response = client.post(
@@ -1449,7 +1449,7 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
         ) as handle_terminal_mock,
     ):
         create_resp = client.post(
-            "/api/experiments/usability-ca/sessions",
+            "/api/experiments/usability/sessions",
             headers={"Authorization": "Bearer valid-key"},
             json={"source": "experiment"},
         )
@@ -1465,7 +1465,7 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
 
     handle_terminal_mock.assert_awaited_once()
     kwargs = handle_terminal_mock.await_args.kwargs
-    assert kwargs["experiment_name"] == "usability-ca"
+    assert kwargs["experiment_name"] == "usability"
     assert kwargs["assignment_id"] == "asg-live-1"
 
 
@@ -1484,7 +1484,7 @@ def test_experiment_post_play_submission_persists_response(client: TestClient) -
         new=AsyncMock(return_value=assignment),
     ):
         response = client.post(
-            "/api/experiments/usability-ca/post-play",
+            "/api/experiments/usability/post-play",
             headers={"Authorization": "Bearer valid-key"},
             json={"responses": {"usability_feedback": {"usability_issues": "None"}}},
         )
@@ -1522,7 +1522,7 @@ def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
         ),
     ):
         response = client.get(
-            "/api/experiments/usability-ca/status",
+            "/api/experiments/usability/status",
             headers={"Authorization": "Bearer valid-key"},
         )
 
@@ -1541,7 +1541,7 @@ def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
 @pytest.mark.unit
 def test_experiment_status_requires_auth(client: TestClient) -> None:
     """Experiment status should not be exposed without authentication."""
-    response = client.get("/api/experiments/usability-ca/status")
+    response = client.get("/api/experiments/usability/status")
 
     assert response.status_code == 401
 
@@ -1557,7 +1557,7 @@ def test_remote_managed_server_config_reports_default_experiment(remote_managed_
         "authentication_required": True,
         "registration_enabled": True,
         "experiments_enabled": True,
-        "default_experiment_name": "usability-ca",
+        "default_experiment_name": "usability",
     }
 
 
@@ -1587,7 +1587,7 @@ def test_remote_bootstrap_seeds_and_returns_admin_key(
     assert response.json() == {
         "player_id": "player-owner",
         "admin_api_key": "valid-key",
-        "experiment_name": "usability-ca",
+        "experiment_name": "usability",
     }
     seed_admin.assert_called_once()
     kwargs = mock_provider.create_player.call_args.kwargs
@@ -1656,7 +1656,7 @@ def test_remote_status_is_public_and_reports_experiment_progress(
     assert response.status_code == 200
     payload = response.json()
     assert payload["mode"] == "experiment"
-    assert payload["experiment_name"] == "usability-ca"
+    assert payload["experiment_name"] == "usability"
     assert payload["progress"] == {"total": 4, "completed": 1, "is_complete": False}
     assert payload["experiment_status"] == {
         "is_open": True,
@@ -1679,7 +1679,7 @@ def test_remote_export_requires_admin_role(async_mongo_provider) -> None:
     app = create_app(
         provider=async_mongo_provider,
         server_mode="standard",
-        default_experiment_name="usability-ca",
+        default_experiment_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1705,7 +1705,7 @@ def test_remote_export_streams_tarball_for_admin(async_mongo_provider) -> None:
     app = create_app(
         provider=async_mongo_provider,
         server_mode="standard",
-        default_experiment_name="usability-ca",
+        default_experiment_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1739,7 +1739,7 @@ def test_remote_export_streams_zip_for_admin(async_mongo_provider) -> None:
     app = create_app(
         provider=async_mongo_provider,
         server_mode="standard",
-        default_experiment_name="usability-ca",
+        default_experiment_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1765,7 +1765,7 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
     app = create_app(
         provider=async_mongo_provider,
         server_mode="standard",
-        default_experiment_name="usability-ca",
+        default_experiment_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,

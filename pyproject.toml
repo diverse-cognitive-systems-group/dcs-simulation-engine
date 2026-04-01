@@ -91,11 +91,13 @@ Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engi
 # https://docs.pytest.org/en/stable/customize.html#pyproject-toml
 [tool.pytest.ini_options]
 markers = [
-  "functional: end-to-end functional tests (may require DB/LLM mocks)",
-  "unit: fast isolated unit tests",
-  "compile: game config compilation tests",
-  "slow: mark test as slow (longer running)"
+    "unit: fast, isolated, no I/O",
+    "functional: end-to-end flows with mocked LLM/DB",
+    "compile: game config compilation tests",
+    "slow: long-running tests",
+    "infra: remote infrastructure tests",
 ]
+filterwarnings = ["error"]
 addopts = [
   "--cache-clear",
   "--cov-report=term",

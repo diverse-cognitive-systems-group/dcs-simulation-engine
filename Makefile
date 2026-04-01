@@ -16,7 +16,7 @@ fmt:
 	uv run ruff format && uv run ruff check --select I --fix
 	cd ui && bun format
 
-# Run test suite quietly (currently only functional tests work)
+# Run test suite quietly
 test:
 	uv run pytest
 
