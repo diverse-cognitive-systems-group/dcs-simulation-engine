@@ -106,4 +106,3 @@ dcs remote deploy \
 - Database exports written by `dcs remote save` and `dcs dump` include collection JSON plus manifest/index metadata, and those artifacts can be used again with `--mongo-seed-path`.
 - When `--regions` is provided, deploy attempts the listed regions in order and uses the first region that succeeds.
 - You can deploy multiple experiments independently by running `dcs remote deploy` once per experiment config, or deploy one free-play stack with `--free-play`.
- 
