@@ -1,6 +1,31 @@
-site_name: DCS Simulation Engine Codebase Docs
+site_name: DCS Docs
+use_directory_urls: false
 theme:
   name: material
+  palette:
+    # Follow the user's OS preference on first visit.
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Light palette.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Dark palette.
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
 plugins:
   - search
   - mkdocstrings:
@@ -15,7 +40,15 @@ plugins:
             show_root_heading: true # Adds a top-level heading for the root object/module on the page
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
 nav:
-  - Home: index.md
-  - Codebase: core_reference.md
-  - API (ReDoc): "https://dcs-free-play-api.fly.dev/redoc"
-  - API (Swagger UI): "https://dcs-free-play-api.fly.dev/docs"
+  - Design:
+      - Overview: design_overview.md
+      - Games: games.md
+      - Characters: characters.md
+  - Studies:
+      - Overview: studies_overview.md
+      - Usability: studies/usability.html
+      - Simulation Quality: studies/simulation_quality.html
+      - Performance Benchmarking: studies/performance_benchmarking.html
+  - DCS-SE Reference: dcs_se_reference.md
+  - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
+  - FAQ: faq.md
