@@ -68,6 +68,21 @@
       font-weight: 600;
     }
 
+    .sidebar .nav-link-sub {
+      padding-left: 1.75rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .sidebar .nav-link-sub:hover {
+      color: #0d6efd;
+    }
+
+    .sidebar .nav-link-sub.active {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
     .sidebar-heading {
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -149,9 +164,9 @@
       <nav class="col-md-2 d-none d-md-block sidebar">
         <div class="sidebar-heading">Sections</div>
         <ul class="nav flex-column">
-          {% for anchor, section_title, _ in sections %}
+          {% for anchor, section_title, _, is_sub in sections %}
           <li class="nav-item">
-            <a class="nav-link" href="#section-{{ anchor }}">{{ section_title }}</a>
+            <a class="nav-link{% if is_sub %} nav-link-sub{% endif %}" href="#section-{{ anchor }}">{{ section_title }}</a>
           </li>
           {% endfor %}
         </ul>
@@ -185,7 +200,7 @@
           </div>
         </div>
 
-        {% for anchor, section_title, html_fragment in sections %}
+        {% for anchor, section_title, html_fragment, is_sub in sections %}
         <section id="section-{{ anchor }}" class="mb-5">
           <h2>{{ section_title }}</h2>
           {{ html_fragment | safe }}

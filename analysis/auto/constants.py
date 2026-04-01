@@ -42,6 +42,13 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "Outcome metrics measuring how well players performed during gameplay. "
         "(Not yet implemented.)"
     ),
+    "system_errors": (
+        "Three views of errors across the experiment: a summary card, "
+        "in-game error events delivered to players (from session events), "
+        "and filtered engine log entries. Use this section to distinguish "
+        "player-visible failures from internal warnings, and to spot "
+        "recurring or session-specific problems."
+    ),
     "transcripts": (
         "Turn-by-turn event log for all sessions. Filter by session, player, "
         "PC, or NPC to read specific exchanges. Use alongside Feedback to "
@@ -206,6 +213,37 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "Structured survey answers collected before or after sessions. "
             "Filter by player or form name to compare how different participants "
             "responded to the same questions."
+        ),
+    },
+    "system_errors": {
+        "summary_card": (
+            "Counts of WARNING / ERROR / CRITICAL log entries, in-game error "
+            "events shown to players, and sessions that ended with retry budget "
+            "exhausted. Use as a quick severity triage before reading the tables."
+        ),
+        "log_level_breakdown": (
+            "Distribution of log entries by severity level across all log files. "
+            "A large ERROR or CRITICAL bar relative to WARNING warrants immediate "
+            "investigation."
+        ),
+        "error_events_per_session": (
+            "Number of in-game error events (event_type='error') per session. "
+            "Sessions with multiple errors likely had a degraded player experience."
+        ),
+        "top_error_messages": (
+            "The 20 most frequent distinct error messages from the engine logs. "
+            "High-count messages indicate systematic failures worth fixing; "
+            "low-count messages are likely one-offs."
+        ),
+        "inplay_error_events_table": (
+            "Every error event delivered to a player during gameplay, with "
+            "session, player, game, turn, and message content. Cross-reference "
+            "with the Transcripts section to see surrounding dialogue."
+        ),
+        "errors_log_table": (
+            "Raw WARNING / ERROR / CRITICAL log entries from engine log files. "
+            "Rows are highlighted by severity. Use the search box to filter by "
+            "module, function, or message text."
         ),
     },
     "transcripts": {

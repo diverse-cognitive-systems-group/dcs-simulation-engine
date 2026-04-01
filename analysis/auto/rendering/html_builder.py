@@ -13,7 +13,7 @@ _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def build_html(
-    sections: list[tuple[str, str, str]],
+    sections: list[tuple[str, str, str, bool]],
     title: str = "Results Report",
     artifacts: dict[str, Any] | None = None,
 ) -> str:
@@ -22,7 +22,9 @@ def build_html(
     Parameters
     ----------
     sections:
-        List of (anchor_slug, section_title, html_fragment) tuples in display order.
+        List of (anchor_slug, section_title, html_fragment, is_sub) tuples in
+        display order. is_sub=True renders the sidebar entry as an indented
+        child of the preceding top-level item.
     title:
         Report title shown in <h1> and <title>.
 
