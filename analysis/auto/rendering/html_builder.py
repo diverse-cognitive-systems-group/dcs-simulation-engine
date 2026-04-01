@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -13,6 +15,7 @@ _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 def build_html(
     sections: list[tuple[str, str, str]],
     title: str = "Results Report",
+    artifacts: dict[str, Any] | None = None,
 ) -> str:
     """Render the Jinja2 base template with all section fragments.
 
@@ -32,6 +35,7 @@ def build_html(
         loader=FileSystemLoader(str(_TEMPLATES_DIR)),
         autoescape=False,  # sections contain trusted HTML we generated
     )
+    env.filters["tojson"] = json.dumps
     template = env.get_template("base.html")
 
     generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -40,4 +44,5 @@ def build_html(
         title=title,
         sections=sections,
         generated_at=generated_at,
+        artifacts_json=json.dumps(artifacts or {}),
     )

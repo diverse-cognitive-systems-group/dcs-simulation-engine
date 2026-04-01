@@ -166,13 +166,23 @@
               Generated {{ generated_at }}
             </p>
           </div>
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm no-print"
-            onclick="window.print()"
-          >
-            Download PDF
-          </button>
+          <div class="dropdown no-print">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
+              <li><a class="dropdown-item" href="#" id="dl-raw-results" onclick="downloadArtifact('raw_results'); return false;">Raw Results (.zip)</a></li>
+              <li><a class="dropdown-item" href="#" id="dl-run-config" onclick="downloadArtifact('run_config'); return false;">Run Config (.yml)</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
+            </ul>
+          </div>
         </div>
 
         {% for anchor, section_title, html_fragment in sections %}
@@ -213,6 +223,53 @@
 
   <!-- Bootstrap JS (loaded here so it doesn't block initial render) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Download helpers -->
+  <script>
+    (function () {
+      var _artifacts = {{ artifacts_json }};
+      var _reportSlug = {{ title | e | tojson }}.replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '_').toLowerCase();
+      var _reportFilename = _reportSlug + '.html';
+
+      // Disable menu items for missing artifacts
+      ['raw_results', 'run_config'].forEach(function (key) {
+        var idMap = { raw_results: 'dl-raw-results', run_config: 'dl-run-config' };
+        if (!_artifacts[key] || !_artifacts[key].b64) {
+          var el = document.getElementById(idMap[key]);
+          if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
+        }
+      });
+
+      function _triggerDownload(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      window.downloadArtifact = function (key) {
+        var art = _artifacts[key];
+        if (!art || !art.b64) return;
+        var bytes = Uint8Array.from(atob(art.b64), function (c) { return c.charCodeAt(0); });
+        var blob = new Blob([bytes], { type: art.mime });
+        _triggerDownload(URL.createObjectURL(blob), art.filename);
+      };
+
+      window.downloadAll = function () {
+        var zip = new JSZip();
+        zip.file(_reportFilename, document.documentElement.outerHTML);
+        Object.values(_artifacts).forEach(function (art) {
+          if (art && art.b64) zip.file(art.filename, art.b64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(function (content) {
+          _triggerDownload(URL.createObjectURL(content), _reportSlug + '_package.zip');
+        });
+      };
+    })();
+  </script>
 
 </body>
 

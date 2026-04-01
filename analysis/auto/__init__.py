@@ -12,6 +12,9 @@ Or via CLI:
 
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+
 from analysis.auto.rendering.html_builder import build_html
 from analysis.auto.sections import (
     metadata,
@@ -34,6 +37,13 @@ SECTIONS = [
 ]
 
 
+def _read_b64(path: Path) -> str | None:
+    try:
+        return base64.b64encode(path.read_bytes()).decode()
+    except OSError:
+        return None
+
+
 def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
     """Render all registered sections and return the complete HTML string."""
     rendered: list[tuple[str, str, str]] = []
@@ -49,4 +59,11 @@ def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
             )
         rendered.append((anchor, section_title, fragment))
 
-    return build_html(rendered, title=title)
+    raw_results_path = data.results_dir.with_suffix(".zip")
+    run_config_path = data.results_dir / "run_config.yml"
+    artifacts = {
+        "raw_results": {"b64": _read_b64(raw_results_path), "filename": raw_results_path.name, "mime": "application/zip"},
+        "run_config": {"b64": _read_b64(run_config_path), "filename": "run_config.yml", "mime": "text/yaml"},
+    }
+
+    return build_html(rendered, title=title, artifacts=artifacts)
