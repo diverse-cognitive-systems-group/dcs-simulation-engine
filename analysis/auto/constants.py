@@ -95,6 +95,41 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "concurrency, maintenance windows, or unexpected gaps in data "
             "collection."
         ),
+        "lt_game_duration_by_player": (
+            "Distribution of total game duration (ms) for each player. Wide or "
+            "skewed violins indicate high variability in how long that player's "
+            "sessions ran."
+        ),
+        "lt_wait_by_player": (
+            "Distribution of NPC response wait times (ms) during turn-phase "
+            "exchanges, grouped by player. Captures how long each player waited "
+            "for an NPC reply across all their turns."
+        ),
+        "lt_wait_by_player_and_game": (
+            "Same wait-response distributions as above, further split by game "
+            "number (g1, g2, …) to reveal whether response latency changed across "
+            "successive sessions for each player."
+        ),
+        "lt_hist_game_duration": (
+            "Overall game-duration density across all players and sessions. "
+            "Reference lines mark the mean, median, p90, p95, and p99 to "
+            "highlight the tail of unusually long sessions."
+        ),
+        "lt_hist_wait_turn": (
+            "Density of NPC response wait times during turn-phase exchanges across "
+            "all players and sessions. Percentile markers help quantify the worst-"
+            "case latency experienced during normal gameplay turns."
+        ),
+        "lt_hist_wait_opening": (
+            "Density of NPC response wait times specifically during the opening "
+            "turn (turn_index 0) of each session. Opening turns often show higher "
+            "latency due to cold-start or context-loading overhead."
+        ),
+        "lt_hist_wait_close": (
+            "Density of NPC response wait times during the final turn of each "
+            "session. Elevated close-phase latency may indicate resource contention "
+            "or slow session-teardown paths."
+        ),
     },
     "player_engagement": {
         "runs_per_player": (
