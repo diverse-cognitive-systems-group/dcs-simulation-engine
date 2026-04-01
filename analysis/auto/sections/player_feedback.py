@@ -1,7 +1,8 @@
 """Section 5 — Player Feedback.
 
-Interactive DataTable of all form responses from assignments,
-one row per answered question.
+Renders two sub-sections:
+1. In-play feedback — inline thumbs/flags/comments left on individual NPC messages.
+2. Form responses — flattened assignment form answers (pre/post-game surveys).
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.common.loader import AnalysisData
 
-_COLUMNS = [
+_FORM_COLUMNS = [
     "player_id",
     "game_name",
     "form_name",
@@ -21,7 +22,7 @@ _COLUMNS = [
     "submitted_at",
 ]
 
-_RENAME = {
+_FORM_RENAME = {
     "player_id":       "Player",
     "game_name":       "Game",
     "form_name":       "Form",
@@ -33,22 +34,65 @@ _RENAME = {
     "submitted_at":    "Submitted At",
 }
 
+_EVENT_COLUMNS = [
+    "session_id",
+    "game_name",
+    "player_id",
+    "turn_index",
+    "liked",
+    "flags",
+    "comment",
+    "submitted_at",
+]
+
+_EVENT_RENAME = {
+    "session_id":  "Session",
+    "game_name":   "Game",
+    "player_id":   "Player",
+    "turn_index":  "Turn",
+    "liked":       "Liked",
+    "flags":       "Flags",
+    "comment":     "Comment",
+    "submitted_at": "Submitted At",
+}
+
 
 def render(data: AnalysisData) -> str:
-    df = data.feedback_df
+    parts = []
 
-    if df.empty:
+    # --- In-play (per-message) feedback ---
+    edf = data.event_feedback_df
+    if not edf.empty:
+        cols = [c for c in _EVENT_COLUMNS if c in edf.columns]
+        rename = {k: v for k, v in _EVENT_RENAME.items() if k in cols}
+        parts.append("<h5>In-Play Feedback</h5>")
+        parts.append(df_to_datatable(
+            edf,
+            table_id="event-feedback-table",
+            columns=cols,
+            rename=rename,
+            page_length=50,
+            truncate_cols=["comment"],
+            truncate_at=300,
+        ))
+
+    # --- Form-based (survey) feedback ---
+    fdf = data.feedback_df
+    if not fdf.empty:
+        cols = [c for c in _FORM_COLUMNS if c in fdf.columns]
+        rename = {k: v for k, v in _FORM_RENAME.items() if k in cols}
+        parts.append("<h5>Form Responses</h5>")
+        parts.append(df_to_datatable(
+            fdf,
+            table_id="feedback-table",
+            columns=cols,
+            rename=rename,
+            page_length=50,
+            truncate_cols=["answer", "question_prompt"],
+            truncate_at=300,
+        ))
+
+    if not parts:
         return '<div class="alert alert-info">No feedback responses found.</div>'
 
-    cols = [c for c in _COLUMNS if c in df.columns]
-    rename = {k: v for k, v in _RENAME.items() if k in cols}
-
-    return df_to_datatable(
-        df,
-        table_id="feedback-table",
-        columns=cols,
-        rename=rename,
-        page_length=50,
-        truncate_cols=["answer", "question_prompt"],
-        truncate_at=300,
-    )
+    return "\n".join(parts)

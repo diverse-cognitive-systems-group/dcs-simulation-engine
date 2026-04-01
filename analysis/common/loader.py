@@ -128,6 +128,7 @@ class AnalysisData:
     transcripts_df: pd.DataFrame # session_events — one row per event
     assignments_df: pd.DataFrame # assignments — one row per assignment
     feedback_df: pd.DataFrame    # flattened form answers
+    event_feedback_df: pd.DataFrame  # inline per-message feedback from session_events
     logs_df: pd.DataFrame        # log events (empty if no logs/ dir)
     characters_df: pd.DataFrame  # characters
     errors_df: pd.DataFrame      # WARNING/ERROR/CRITICAL subset of logs_df
@@ -160,6 +161,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
     transcripts_df = _load_transcripts(results_dir)
     assignments_df = _load_assignments(results_dir)
     feedback_df = _build_feedback(assignments_df)
+    event_feedback_df = _build_event_feedback(transcripts_df, runs_df)
     characters_df = _load_characters(results_dir)
     logs_df = _load_logs_safe(results_dir)
     errors_df = _filter_errors(logs_df)
@@ -173,6 +175,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
         transcripts_df=transcripts_df,
         assignments_df=assignments_df,
         feedback_df=feedback_df,
+        event_feedback_df=event_feedback_df,
         logs_df=logs_df,
         characters_df=characters_df,
         errors_df=errors_df,
@@ -374,6 +377,52 @@ def _build_feedback(assignments_df: pd.DataFrame) -> pd.DataFrame:
                     "answer_type":     ans_obj.get("answer_type"),
                     "answer":          answer,
                 })
+
+    return pd.DataFrame(rows)
+
+
+def _build_event_feedback(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -> pd.DataFrame:
+    """Extract inline per-message feedback from session_events into one row per feedback."""
+    if transcripts_df.empty or "feedback.liked" not in transcripts_df.columns:
+        return pd.DataFrame()
+
+    mask = transcripts_df["feedback.liked"].notna()
+    df = transcripts_df[mask].copy()
+    if df.empty:
+        return pd.DataFrame()
+
+    # Join game_name and player_id from sessions
+    if not runs_df.empty and "session_id" in runs_df.columns:
+        session_meta = runs_df[
+            [c for c in ["session_id", "game_name", "player_id"] if c in runs_df.columns]
+        ]
+        df = df.merge(session_meta, on="session_id", how="left")
+
+    flags = []
+    for col, label in [
+        ("feedback.doesnt_make_sense", "doesn't make sense"),
+        ("feedback.out_of_character", "out of character"),
+        ("feedback.other", "other"),
+    ]:
+        if col in df.columns:
+            flags.append((col, label))
+
+    rows = []
+    for _, row in df.iterrows():
+        liked = row.get("feedback.liked")
+        comment = str(row.get("feedback.comment") or "").strip()
+        active_flags = [label for col, label in flags if row.get(col)]
+        rows.append({
+            "session_id":   row.get("session_id"),
+            "game_name":    row.get("game_name"),
+            "player_id":    row.get("player_id"),
+            "seq":          row.get("seq"),
+            "turn_index":   row.get("turn_index"),
+            "liked":        liked,
+            "flags":        ", ".join(active_flags) if active_flags else "",
+            "comment":      comment,
+            "submitted_at": _parse_dt(row.get("feedback.submitted_at")),
+        })
 
     return pd.DataFrame(rows)
 

@@ -23,6 +23,7 @@ def df_to_datatable(
     export_buttons: bool = True,
     truncate_cols: list[str] | None = None,
     truncate_at: int = 400,
+    column_filters: bool = True,
 ) -> str:
     """Render *df* as a Bootstrap 5 DataTable HTML string.
 
@@ -47,6 +48,8 @@ def df_to_datatable(
         chars with the full text in a `title` attribute.
     truncate_at:
         Character limit for truncated columns (default 400).
+    column_filters:
+        Add per-column search inputs in the table footer (default True).
     """
     display = df[columns].copy() if columns else df.copy()
     if rename:
@@ -96,6 +99,12 @@ def df_to_datatable(
             escape=False,
         )
 
+    # Inject <tfoot> for per-column filter inputs
+    if column_filters:
+        n_cols = len(display.columns)
+        tfoot_cells = "".join("<th></th>" for _ in range(n_cols))
+        table_html = table_html.replace("</table>", f"<tfoot><tr>{tfoot_cells}</tr></tfoot>\n</table>")
+
     # Build DataTables init <script>
     dom = "Bfrtip" if export_buttons else "frtip"
     buttons_js = (
@@ -105,6 +114,21 @@ def df_to_datatable(
     )
     scroll_js = "true" if scroll_x else "false"
 
+    col_filter_js = ""
+    if column_filters:
+        col_filter_js = """
+        initComplete: function () {
+            var api = this.api();
+            api.columns().every(function () {
+                var col = this;
+                var footer = col.footer();
+                if (!footer) return;
+                $('<input type="text" placeholder="Filter\u2026" class="form-control form-control-sm mt-1"/>')
+                    .appendTo($(footer).empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },"""
+
     script = f"""
 <script>
 $(document).ready(function () {{
@@ -113,7 +137,7 @@ $(document).ready(function () {{
         scrollX: {scroll_js},
         dom: '{dom}',
         {buttons_js}
-        order: [],
+        order: [],{col_filter_js}
     }});
 }});
 </script>"""
