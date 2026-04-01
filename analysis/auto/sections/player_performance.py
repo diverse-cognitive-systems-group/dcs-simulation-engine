@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from analysis.auto.constants import section_intro
 from analysis.common.loader import AnalysisData
 
 
 def render(data: AnalysisData) -> str:
     return (
-        '<div class="alert alert-secondary mb-0">'
+        section_intro("player_performance")
+        + '<div class="alert alert-secondary mb-0">'
         'TODO - add performance data'
         '</div>'
     )

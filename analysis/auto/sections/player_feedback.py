@@ -7,6 +7,7 @@ Renders two sub-sections:
 
 from __future__ import annotations
 
+from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.common.loader import AnalysisData
 
@@ -58,7 +59,7 @@ _EVENT_RENAME = {
 
 
 def render(data: AnalysisData) -> str:
-    parts = []
+    parts = [section_intro("player_feedback")]
 
     # --- In-play (per-message) feedback ---
     edf = data.event_feedback_df
@@ -74,6 +75,7 @@ def render(data: AnalysisData) -> str:
             truncate_cols=["comment"],
             truncate_at=300,
         ))
+        parts.append(chart_caption("player_feedback", "inplay_feedback_table"))
 
     # --- Form-based (survey) feedback ---
     fdf = data.feedback_df
@@ -89,6 +91,7 @@ def render(data: AnalysisData) -> str:
             truncate_cols=["answer", "question_prompt"],
             truncate_at=300,
         ))
+        parts.append(chart_caption("player_feedback", "form_responses_table"))
 
     if not parts:
         return '<div class="alert alert-info">No feedback responses found.</div>'

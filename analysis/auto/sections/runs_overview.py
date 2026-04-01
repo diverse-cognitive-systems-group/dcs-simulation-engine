@@ -6,6 +6,7 @@ showing player, game, characters, turn count, duration, exit reason, etc.
 
 from __future__ import annotations
 
+from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.auto.sections.system_performance import _pairing_heatmap
 from analysis.common.loader import AnalysisData
@@ -62,6 +63,9 @@ def render(data: AnalysisData) -> str:
     )
 
     return "\n".join([
+        section_intro("runs_overview"),
         '<div class="chart-container mb-4">' + _pairing_heatmap(df) + '</div>',
+        chart_caption("runs_overview", "pairing_heatmap"),
         table_html,
+        chart_caption("runs_overview", "sessions_table"),
     ])

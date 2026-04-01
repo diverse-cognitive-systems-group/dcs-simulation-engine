@@ -6,6 +6,7 @@ from runs_df since session_events only carries session_id.
 
 from __future__ import annotations
 
+from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.common.loader import AnalysisData
 
@@ -53,12 +54,6 @@ def render(data: AnalysisData) -> str:
     cols = [c for c in _COLUMNS if c in df.columns]
     rename = {k: v for k, v in _RENAME.items() if k in cols}
 
-    intro = (
-        '<p class="text-muted" style="font-size:0.85rem;">'
-        'Transcript view of session events with gameplay context columns preserved.'
-        '</p>'
-    )
-
     table = df_to_datatable(
         df,
         table_id="transcripts-table",
@@ -67,4 +62,4 @@ def render(data: AnalysisData) -> str:
         truncate_cols=["content"],
         truncate_at=400,
     )
-    return intro + table
+    return section_intro("transcripts") + table + chart_caption("transcripts", "transcripts_table")

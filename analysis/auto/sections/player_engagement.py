@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.chart_utils import plotly_to_html
 from analysis.common.loader import AnalysisData
 
@@ -25,7 +26,7 @@ def render(data: AnalysisData) -> str:
         .reset_index(name="runs")
     )
 
-    parts: list[str] = []
+    parts: list[str] = [section_intro("player_engagement")]
 
     def _row(*divs: str) -> str:
         cols = "".join(f'<div class="col-md-6 chart-container">{d}</div>' for d in divs)
@@ -33,14 +34,14 @@ def render(data: AnalysisData) -> str:
 
     # Chart 1: runs per player
     parts.append(_row(
-        _runs_per_player(run_counts),
-        _engagement_by(run_counts, data.players_df, "consent_to_followup"),
+        _runs_per_player(run_counts) + chart_caption("player_engagement", "runs_per_player"),
+        _engagement_by(run_counts, data.players_df, "consent_to_followup") + chart_caption("player_engagement", "engagement_by_consent"),
     ))
 
     # Chart 3: prior_experience (only if the column exists)
     if not data.players_df.empty and "prior_experience" in data.players_df.columns:
         parts.append(_row(
-            _engagement_by(run_counts, data.players_df, "prior_experience"),
+            _engagement_by(run_counts, data.players_df, "prior_experience") + chart_caption("player_engagement", "engagement_by_experience"),
         ))
 
     return "\n".join(parts)

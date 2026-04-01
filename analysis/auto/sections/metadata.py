@@ -9,6 +9,7 @@ from __future__ import annotations
 import html
 from pathlib import Path
 
+from analysis.auto.constants import section_intro
 from analysis.common.loader import AnalysisData
 
 
@@ -76,7 +77,7 @@ def render(data: AnalysisData) -> str:
         for label, value in rows
     )
 
-    return f"""
+    return section_intro("metadata") + f"""
 <div class="card">
   <div class="card-body">
     <dl class="row dl-meta mb-0">

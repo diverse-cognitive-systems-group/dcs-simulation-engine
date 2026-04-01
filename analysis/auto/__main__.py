@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import webbrowser
 from pathlib import Path
 from typing import Optional
@@ -35,6 +36,14 @@ def _find_latest_run(runs_dir: Path) -> Path:
     return candidates[-1]
 
 
+def _slugify(text: str) -> str:
+    """Convert a title to a safe filename stem."""
+    slug = text.lower().strip()
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[\s_-]+", "_", slug)
+    return slug.strip("_") or "report"
+
+
 @app.command()
 def _cmd(
     results_dir: Optional[Path] = typer.Argument(
@@ -44,12 +53,12 @@ def _cmd(
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output-dir",
-        help="Directory to write the HTML report. Defaults to the current working directory.",
+        help="Directory to write the HTML report. Defaults to <cwd>/results/.",
     ),
-    output_file: str = typer.Option(
-        "auto_analysis_report.html",
+    output_file: Optional[str] = typer.Option(
+        None,
         "--output-file",
-        help="Output filename.",
+        help="Output filename. Defaults to <title>.html (auto-incremented to avoid overwrites).",
     ),
     title: Optional[str] = typer.Option(
         None,
@@ -77,9 +86,8 @@ def _cmd(
         _console.print(f"ERROR: not a directory: {results_dir}", style="error")
         raise typer.Exit(1)
 
-    out_dir = (output_dir or cwd).resolve()
+    out_dir = (output_dir or cwd / "results").resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    output_path = out_dir / output_file
 
     with _console.status("Loading results...", spinner="dots"):
         data = load_all(results_dir)
@@ -92,6 +100,11 @@ def _cmd(
             or data.experiment.get("name")
             or "Results Report"
         )
+
+    if output_file is not None:
+        output_path = out_dir / output_file
+    else:
+        output_path = out_dir / f"{_slugify(title)}.html"
 
     with _console.status(f"Generating report: {title!r}...", spinner="dots"):
         html = run_analysis(data, title=title)

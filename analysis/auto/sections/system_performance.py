@@ -11,6 +11,7 @@ from datetime import timezone
 
 import pandas as pd
 
+from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.chart_utils import plotly_to_html
 from analysis.auto.sections import system_errors
 from analysis.common.loader import AnalysisData
@@ -32,18 +33,21 @@ def render(data: AnalysisData) -> str:
     if df.empty:
         parts.append('<div class="alert alert-info">No run data found.</div>')
     else:
+        parts.append(section_intro("system_performance"))
         parts.append(_row(
-            _exit_reasons(df),
-            _duration_histogram(df),
+            _exit_reasons(df) + chart_caption("system_performance", "exit_reasons"),
+            _duration_histogram(df) + chart_caption("system_performance", "duration_distribution"),
         ))
         parts.append(_row(
-            _duration_by_game(df),
-            _turns_vs_runtime(df),
+            _duration_by_game(df) + chart_caption("system_performance", "duration_by_game"),
+            _turns_vs_runtime(df) + chart_caption("system_performance", "turns_vs_runtime"),
         ))
         parts.append(_row(
-            _retry_budget(df),
+            _retry_budget(df) + chart_caption("system_performance", "retry_budget"),
         ))
-        parts.append(_full(_session_timeline(df)))
+        parts.append(_full(
+            _session_timeline(df) + chart_caption("system_performance", "session_timeline")
+        ))
 
     parts.append('<h3 class="h5 mt-4">System Errors</h3>')
     parts.append(system_errors.render(data))
