@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from dcs_utils.analysis.auto.rendering.chart_utils import plotly_to_html
-from dcs_utils.analysis.common.loader import AnalysisData
+from analysis.auto.rendering.chart_utils import plotly_to_html
+from analysis.common.loader import AnalysisData
 
 
 def render(data: AnalysisData) -> str:

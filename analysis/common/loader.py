@@ -1,7 +1,7 @@
 """Load a DCS results directory into analysis-ready DataFrames.
 
 Usage:
-    from dcs_utils.analysis.common import load_all
+    from analysis.common import load_all
     data = load_all("/path/to/results")
 """
 

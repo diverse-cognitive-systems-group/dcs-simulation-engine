@@ -6,8 +6,8 @@ one row per answered question.
 
 from __future__ import annotations
 
-from dcs_utils.analysis.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.analysis.common.loader import AnalysisData
+from analysis.auto.rendering.table_utils import df_to_datatable
+from analysis.common.loader import AnalysisData
 
 _COLUMNS = [
     "player_id",

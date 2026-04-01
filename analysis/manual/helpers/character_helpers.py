@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from dcs_utils.analysis.manual.helpers import message
+from analysis.manual.helpers import message
 
 
 def build_character_context(characters_df, characters_abilities_df, hid):

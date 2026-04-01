@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import html
 
-from dcs_utils.analysis.common.loader import AnalysisData
+from analysis.common.loader import AnalysisData
 
 
 def render(data: AnalysisData) -> str:

@@ -1,0 +1,82 @@
+{
+  "_id_": {
+    "key": [
+      [
+        "_id",
+        1
+      ]
+    ],
+    "v": 2
+  },
+  "active_session_id_1": {
+    "key": [
+      [
+        "active_session_id",
+        1
+      ]
+    ],
+    "sparse": true,
+    "v": 2
+  },
+  "assignment_id_1": {
+    "key": [
+      [
+        "assignment_id",
+        1
+      ]
+    ],
+    "unique": true,
+    "v": 2
+  },
+  "experiment_name_1_game_name_1_status_1": {
+    "key": [
+      [
+        "experiment_name",
+        1
+      ],
+      [
+        "game_name",
+        1
+      ],
+      [
+        "status",
+        1
+      ]
+    ],
+    "v": 2
+  },
+  "experiment_name_1_player_id_1_updated_at_-1": {
+    "key": [
+      [
+        "experiment_name",
+        1
+      ],
+      [
+        "player_id",
+        1
+      ],
+      [
+        "updated_at",
+        -1
+      ]
+    ],
+    "v": 2
+  },
+  "experiment_name_1_status_1_updated_at_-1": {
+    "key": [
+      [
+        "experiment_name",
+        1
+      ],
+      [
+        "status",
+        1
+      ],
+      [
+        "updated_at",
+        -1
+      ]
+    ],
+    "v": 2
+  }
+}

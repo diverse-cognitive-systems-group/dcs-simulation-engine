@@ -2,18 +2,18 @@
 
 Entry point:
 
-    from dcs_utils.analysis.auto import run_analysis
+    from analysis.auto import run_analysis
     html = run_analysis(data, title="My Study")
 
 Or via CLI:
 
-    python -m dcs_utils.analysis.auto <results_dir> [--title "..."] [--open]
+    python -m analysis.auto <results_dir> [--title "..."] [--open]
 """
 
 from __future__ import annotations
 
-from dcs_utils.analysis.auto.rendering.html_builder import build_html
-from dcs_utils.analysis.auto.sections import (
+from analysis.auto.rendering.html_builder import build_html
+from analysis.auto.sections import (
     logs_table,
     metadata,
     player_engagement,
@@ -25,7 +25,7 @@ from dcs_utils.analysis.auto.sections import (
     system_performance,
     transcripts,
 )
-from dcs_utils.analysis.common.loader import AnalysisData
+from analysis.common.loader import AnalysisData
 
 # Registry of sections in display order: (anchor_slug, display_title, module)
 SECTIONS = [

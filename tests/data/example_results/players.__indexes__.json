@@ -1,0 +1,22 @@
+{
+  "_id_": {
+    "key": [
+      [
+        "_id",
+        1
+      ]
+    ],
+    "v": 2
+  },
+  "access_key_1": {
+    "key": [
+      [
+        "access_key",
+        1
+      ]
+    ],
+    "sparse": true,
+    "unique": true,
+    "v": 2
+  }
+}

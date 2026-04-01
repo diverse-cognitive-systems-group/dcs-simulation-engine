@@ -1,83 +1,111 @@
-"""CLI entry point.
-
-Usage:
-    python -m dcs_utils.analysis.auto <results_dir> [options]
-
-Options:
-    --output-dir DIR    Directory to write the report (default: results_dir)
-    --output-file FILE  Output filename (default: auto_analysis_report.html)
-    --title TEXT        Report title (default: experiment name or generic title)
-    --open              Open the report in the default browser after generation
-"""
+"""CLI entry point for dcs-analyze."""
 
 from __future__ import annotations
 
-import argparse
-import sys
 import webbrowser
 from pathlib import Path
+from typing import Optional
 
-from dcs_utils.analysis.auto import run_analysis
-from dcs_utils.analysis.common.loader import load_all
+import typer
+from rich.console import Console
+from rich.theme import Theme
+
+from analysis.auto import run_analysis
+from analysis.common.loader import load_all
+
+_cli_theme = Theme(
+    {
+        "success": "green",
+        "warning": "bold bright_yellow",
+        "error": "bold bright_red",
+    }
+)
+_console = Console(theme=_cli_theme)
+
+app = typer.Typer(help="Generate a self-contained HTML analysis report from DCS results.")
+
+
+def _find_latest_run(runs_dir: Path) -> Path:
+    candidates = sorted(
+        (p for p in runs_dir.iterdir() if p.is_dir()),
+        key=lambda p: p.name,
+    )
+    if not candidates:
+        raise typer.BadParameter(f"No run directories found in {runs_dir}")
+    return candidates[-1]
+
+
+@app.command()
+def _cmd(
+    results_dir: Optional[Path] = typer.Argument(
+        default=None,
+        help="Path to the results directory. Defaults to the latest run in ./runs/.",
+    ),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output-dir",
+        help="Directory to write the HTML report. Defaults to the current working directory.",
+    ),
+    output_file: str = typer.Option(
+        "auto_analysis_report.html",
+        "--output-file",
+        help="Output filename.",
+    ),
+    title: Optional[str] = typer.Option(
+        None,
+        "--title",
+        help="Report title. Defaults to the run_config name from the experiment record.",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the report in the default browser after generation.",
+    ),
+) -> None:
+    cwd = Path.cwd()
+
+    if results_dir is None:
+        runs_dir = cwd / "runs"
+        if not runs_dir.is_dir():
+            _console.print("ERROR: no results_dir given and ./runs/ not found", style="error")
+            raise typer.Exit(1)
+        results_dir = _find_latest_run(runs_dir)
+        _console.print(f"Using latest run: {results_dir}", style="dim")
+
+    results_dir = results_dir.resolve()
+    if not results_dir.is_dir():
+        _console.print(f"ERROR: not a directory: {results_dir}", style="error")
+        raise typer.Exit(1)
+
+    out_dir = (output_dir or cwd).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output_path = out_dir / output_file
+
+    with _console.status("Loading results...", spinner="dots"):
+        data = load_all(results_dir)
+    _console.print(f"[green]✔[/green] Loaded results from: {results_dir}", style="dim")
+
+    if title is None:
+        run_config = data.experiment.get("run_config") or {}
+        title = (
+            (run_config.get("name") if isinstance(run_config, dict) else None)
+            or data.experiment.get("name")
+            or "DCS Analysis Report"
+        )
+
+    with _console.status(f"Generating report: {title!r}...", spinner="dots"):
+        html = run_analysis(data, title=title)
+    _console.print(f"[green]✔[/green] Generating report: {title!r}", style="dim")
+
+    output_path.write_text(html, encoding="utf-8")
+    _console.print(f"Report written to: {output_path}", style="success")
+
+    if open_browser:
+        webbrowser.open(output_path.as_uri())
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="python -m dcs_utils.analysis.auto",
-        description="Generate a self-contained HTML analysis report from DCS results.",
-    )
-    parser.add_argument(
-        "results_dir",
-        type=Path,
-        help="Path to the results directory (contains sessions.json, players.json, etc.).",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=None,
-        help="Directory to write the HTML report (default: results_dir).",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=str,
-        default="auto_analysis_report.html",
-        help="Output filename (default: auto_analysis_report.html).",
-    )
-    parser.add_argument(
-        "--title",
-        type=str,
-        default=None,
-        help="Report title (default: experiment name from experiments.json).",
-    )
-    parser.add_argument(
-        "--open",
-        action="store_true",
-        default=False,
-        help="Open the report in the default browser after generation.",
-    )
-    args = parser.parse_args()
-
-    results_dir = args.results_dir.resolve()
-    if not results_dir.is_dir():
-        print(f"ERROR: not a directory: {results_dir}", file=sys.stderr)
-        sys.exit(1)
-
-    output_dir = (args.output_dir or results_dir).resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / args.output_file
-
-    print(f"Loading results from: {results_dir}")
-    data = load_all(results_dir)
-
-    title = args.title or data.experiment.get("name") or "DCS Analysis Report"
-    print(f"Generating report: {title!r}")
-
-    html = run_analysis(data, title=title)
-    output_path.write_text(html, encoding="utf-8")
-    print(f"Report written to:  {output_path}")
-
-    if args.open:
-        webbrowser.open(output_path.as_uri())
+    app()
 
 
 if __name__ == "__main__":
