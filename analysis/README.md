@@ -1,9 +1,6 @@
-# Foundational Analyses
+# Analysis
 
-Contains manual analyses relevant to DCS Simulation Engine.
+Contains analyses for DCS-SE workflows
 
-Analyses are self-contained, with dependencies defined in the [analysis] TOML. Only relevant analyses are re-run and appended when changes occur.
-
-- Each evaluate specific aspect of the engine's performance and user experience.
-
-For example, major interface updates trigger a usability analysis refresh, while character additions or changes update character coverage and simulation quality to reflect their impact.
+- run auto-analysis to investigate any engine run results (generates an explorable HTML report)
+- run manual analyses for deep-dives into specific aspects of the engine runs, such as metadata, performance, etc.

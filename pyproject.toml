@@ -6,10 +6,10 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=61"]
 
 [project]
-authors = [{email = "dcs@psych.gatech.edu", name = "dcs"}]
+authors = [{ email = "dcs@psych.gatech.edu", name = "dcs" }]
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.13"
+  "Programming Language :: Python :: 3.13",
 ]
 # Declare any runtime pip dependencies (such as numpy)
 # Do NOT put test dependencies (such as pytest) here.
@@ -49,6 +49,18 @@ version = "0.1.0"
 # runtime dependencies here. These libraries will not be included when
 # the package "deploys".
 [project.optional-dependencies]
+analysis = [
+  "ipykernel>=6.31.0",
+  "itables>=2.7.0",
+  "jupyter>=1.1.1",
+  "matplotlib>=3.10.8",
+  "networkx>=3.6.1",
+  "pandas>=3.0.1",
+  "plotly>=6.6.0",
+  "scikit-learn>=1.8.0",
+  "seaborn>=0.13.2",
+  "sentence-transformers>=5.2.3",
+]
 dev = [
   "httpx>=0.28.1,<0.29.0",
   "ipykernel>=6.30.1,<7.0.0",
@@ -64,17 +76,6 @@ dev = [
   "types-pyyaml>=6.0.12.20250822",
   "yamale>=6.0.0,<7.0.0",
 ]
-analysis = [
-    "ipykernel>=6.31.0",
-    "itables>=2.7.0",
-    "jupyter>=1.1.1",
-    "matplotlib>=3.10.8",
-    "networkx>=3.6.1",
-    "pandas>=3.0.1",
-    "scikit-learn>=1.8.0",
-    "seaborn>=0.13.2",
-    "sentence-transformers>=5.2.3",
-]
 
 # This allows you to defines "scripts" so that your package can install executables into the current
 # python environment which will include the system PATH so they may be invoked from the command line.
@@ -82,6 +83,9 @@ analysis = [
 # after this package is pip installed, to invoke the main function in the my_app package.
 [project.scripts]
 dcs = "dcs_simulation_engine.cli.app:app"
+# NOTE: dcs-analyze is an easy way to run analysis for now but should be replaced when e2e 
+# CLI commands for engine management, fleet management, analysis, etc are decided
+dcs-analyze = "analysis.auto.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
@@ -90,14 +94,6 @@ Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engi
 # Pytest configuration
 # https://docs.pytest.org/en/stable/customize.html#pyproject-toml
 [tool.pytest.ini_options]
-markers = [
-    "unit: fast, isolated, no I/O",
-    "functional: end-to-end flows with mocked LLM/DB",
-    "compile: game config compilation tests",
-    "slow: long-running tests",
-    "infra: remote infrastructure tests",
-]
-filterwarnings = ["error"]
 addopts = [
   "--cache-clear",
   "--cov-report=term",
@@ -107,6 +103,14 @@ addopts = [
   "--verbose",
   # "-x" # stop tests after first failure
 ]
+filterwarnings = ["error"]
+markers = [
+  "unit: fast, isolated, no I/O",
+  "functional: end-to-end flows with mocked LLM/DB",
+  "compile: game config compilation tests",
+  "slow: long-running tests",
+  "infra: remote infrastructure tests",
+]
 
 [tool.isort]
 combine_as_imports = true
@@ -115,23 +119,24 @@ profile = "black"
 
 
 [tool.ruff]
-line-length = 140
-src = ["dcs_simulation_engine", "tests"]
 exclude = [
   "analysis/*", # analysis folder
   "**/*.ipynb", # all notebooks
 ]
+line-length = 140
+src = ["dcs_simulation_engine", "tests"]
 
 [tool.ruff.lint]
 exclude = [
-  "*.ipynb", # all notebooks
-  "analysis_notebooks/*" # specific folder
+  "*.ipynb",              # all notebooks
+  "analysis_notebooks/*", # specific folder
 ]
+ignore = ["E501"]
 select = [
   "D", # docstring rules
   "E", # pycodestyle rules
   "F", # pyflakes rules
-  "I" # import rules
+  "I", # import rules
 ]
 
 [tool.ruff.lint.isort]
@@ -154,8 +159,8 @@ include = ["dcs_simulation_engine*"]
 
 [dependency-groups]
 dev = [
-    "matplotlib>=3.10.8",
-    "py-spy>=0.4.1",
-    "pytest-xdist>=3.8.0",
-    "seaborn>=0.13.2",
+  "matplotlib>=3.10.8",
+  "py-spy>=0.4.1",
+  "pytest-xdist>=3.8.0",
+  "seaborn>=0.13.2",
 ]

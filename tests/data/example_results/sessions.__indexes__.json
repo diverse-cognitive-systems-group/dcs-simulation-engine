@@ -1,0 +1,47 @@
+{
+  "_id_": {
+    "key": [
+      [
+        "_id",
+        1
+      ]
+    ],
+    "v": 2
+  },
+  "player_id_1_session_started_at_-1": {
+    "key": [
+      [
+        "player_id",
+        1
+      ],
+      [
+        "session_started_at",
+        -1
+      ]
+    ],
+    "v": 2
+  },
+  "session_id_1": {
+    "key": [
+      [
+        "session_id",
+        1
+      ]
+    ],
+    "unique": true,
+    "v": 2
+  },
+  "status_1_updated_at_-1": {
+    "key": [
+      [
+        "status",
+        1
+      ],
+      [
+        "updated_at",
+        -1
+      ]
+    ],
+    "v": 2
+  }
+}

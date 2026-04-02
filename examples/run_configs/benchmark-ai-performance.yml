@@ -1,0 +1,31 @@
+# ================================================================
+#  Run Configuration — Benchmarking AI Performance
+# ================================================================
+#
+# This configuration specifies:
+#
+#   • No forms required since players are AI
+#
+#   • Assignment protocol:
+#       - Single fixed character ID
+#       - Player may select any valid game
+#       - No character reassignment
+#
+#   • No automatic stop condition
+#
+# ================================================================
+
+name: benchmark-ai-models
+description: |
+  Used for benchmarking the performance of different AI models across games and character assignments.
+players:
+  # Custom AI player
+  - id: "helpers.oe_player.py"
+  # AND/OR specific OR models:
+  - id: "openrouter:openai-gpt-4o"
+  - id: "openrouter:anthropic-claude-2"
+  - id: "openrouter:google-palm-2.0-pro"
+  - id: "openrouter:deepseek-odin-1.0"
+
+# Define custom assignment protocol
+assignment_protocol: "helpers.oe_assignment_strategy.py"

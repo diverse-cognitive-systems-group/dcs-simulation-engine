@@ -88,3 +88,4 @@ ui/.vite
 ui/openapi.snapshot.json
 runs/
 deployments/
+results/

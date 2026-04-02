@@ -1,0 +1,7 @@
+[
+{"_id": {"$oid": "a75918596d03a4328db58502"},"player_id": "000000000000000000000001","fields": {"full_name": "Alice Chen","email": "alice.chen@example.com","phone_number": "+1-555-201-1001"},"created_at": {"$date": "2026-03-01T00:00:00Z"},"updated_at": {"$date": "2026-03-01T00:00:00Z"}},
+{"_id": {"$oid": "7e352dfe3448b4316ab1ef0c"},"player_id": "000000000000000000000002","fields": {"full_name": "Bob Martinez","email": "bob.martinez@example.com","phone_number": "+1-555-202-1002"},"created_at": {"$date": "2026-03-01T00:00:00Z"},"updated_at": {"$date": "2026-03-01T00:00:00Z"}},
+{"_id": {"$oid": "a0032e7997329a05a14c630f"},"player_id": "000000000000000000000003","fields": {"full_name": "Carol Wright","email": "carol.wright@example.com","phone_number": "+1-555-203-1003"},"created_at": {"$date": "2026-03-01T00:00:00Z"},"updated_at": {"$date": "2026-03-01T00:00:00Z"}},
+{"_id": {"$oid": "d0ad4b6b38957a9d8f2e914d"},"player_id": "000000000000000000000004","fields": {"full_name": "David Kim","email": "david.kim@example.com","phone_number": "+1-555-204-1004"},"created_at": {"$date": "2026-03-01T00:00:00Z"},"updated_at": {"$date": "2026-03-01T00:00:00Z"}},
+{"_id": {"$oid": "beb31cde81701fb5f59c8e00"},"player_id": "000000000000000000000005","fields": {"full_name": "Emma Patel","email": "emma.patel@example.com","phone_number": "+1-555-205-1005"},"created_at": {"$date": "2026-03-01T00:00:00Z"},"updated_at": {"$date": "2026-03-01T00:00:00Z"}}
+]
