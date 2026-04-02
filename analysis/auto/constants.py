@@ -204,10 +204,22 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
         ),
     },
     "player_feedback": {
+        "flags_over_turns": (
+            "Frequency of each flag type (out of character, doesn't make sense, other) "
+            "at each turn index across all sessions. Peaks reveal which turns in the "
+            "conversation arc the NPC most often breaks character or produces unclear responses."
+        ),
         "inplay_feedback_table": (
             "Every in-session reaction (like, flag, or comment) left on an "
-            "NPC message, with session and turn context. Sort by turn or "
-            "session to find clusters of negative reactions."
+            "NPC message, with session and turn context. The Transcript Context column "
+            "shows the preceding turns leading up to the flagged message — hover to read "
+            "the full excerpt. Sort by turn or session to find clusters of negative reactions."
+        ),
+        "player_segments_table": (
+            "Per-player feedback summary with a segment label (only positive, only negative, "
+            "high/low feedback volume, mixed). Thresholds are set at the 25th and 75th "
+            "percentile of total feedback count. Use this to identify outlier players whose "
+            "feedback patterns may skew aggregate statistics."
         ),
         "form_responses_table": (
             "Structured survey answers collected before or after sessions. "
