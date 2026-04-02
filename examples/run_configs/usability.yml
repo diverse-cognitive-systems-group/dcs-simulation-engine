@@ -1,0 +1,166 @@
+# ================================================================
+#  Run Configuration — Usability
+# ================================================================
+#
+# This configuration specifies:
+#
+#   • New player form: consent required, technical experience 
+#     required.
+#
+#   • Assignment protocol: players can chose any game and
+#     any character that the is valid for a game (repeat assignments allowed).
+#
+#   • Game overrides: none; all games allowed and run using default
+#     settings (eval at end)
+#
+#   • Post play form: report any usability issues
+#   
+#   • Stopping condition: no auto-stop
+#
+# ================================================================
+
+name: usability-ca
+description: |
+  Used in a usability study component where players interact with the simulator across different games and characters (default configuration) to identify any usability issues. Players provide feedback on their experience, including any difficulties or positive aspects of the interface, to inform iterative design improvements.
+
+# No specific assignment; default game assignments are fine (i.e., players can select any valid game with any PC/NPCs allowed by the game)
+assignment: null
+
+# No game overrides; all games allowed and run using default settings (score at end)
+games:
+  - explore
+  - infer intent
+  - foresight
+  - goal horizon
+  - teamwork
+
+new_player_form:
+  preamble: |
+    # Informed Consent for Research Study Participation
+
+    You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one's ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
+
+    Identifiable information is only collected for voluntary follow-up; it is otherwise anonymous. Any identifiable information will be coded. The risks involved are no greater than those involved in daily activities. You will receive one SONA credit for this study.    
+
+    We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact dcs@psych.gatech.edu
+    
+    If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
+  questions:
+    - key: full_name
+      type: text
+      placeholder: Jane Doe
+      label: Full Name
+      info: The name you'd like us to associate with your responses.
+      required: true
+      pii: true
+
+    - key: email
+      type: email
+      label: Email Address
+      required: true
+      pii: true
+
+    - key: phone_number
+      type: phone
+      label: Phone Number
+      required: true
+      pii: true
+
+    - key: age
+      type: number
+      label: Age
+      required: true
+      pii: false
+
+    - key: technical_experience
+      type: checkboxes
+      label: Technical Experience
+      info: Select any that apply.
+      options:
+        - Casual computer user
+        - Regular gamer
+        - Competitive / experienced gamer
+        - Programming or scripting experience
+        - Software engineer / developer
+        - Data science / machine learning
+        - IT / system administration
+        - Technical researcher or engineer
+        - Other technical background
+
+    - key: technical_savviness
+      type: radios
+      label: How technically savvy do you consider yourself?
+      required: true
+      options:
+        - Low — mostly basic computer use (email, browsing, documents)
+        - Medium — comfortable with computers and technology
+        - High — very comfortable with technology (e.g., gamer, programmer, engineer)
+
+    - key: technical_experience_details
+      type: textarea
+      label: Briefly describe your technical experience (optional)
+      info: You may elaborate on the selections above or describe any background experience that may affect how easily you use this simulation engine.
+      pii: false
+      required: false
+
+    - key: additional_comments
+      type: textarea
+      label: Any additional comments or questions?
+      required: false
+      info: Optional feedback for the research team. Please do not include any identifiable information here.
+
+    - key: consent_to_followup
+      label: Follow-ups
+      type: checkboxes
+      options: 
+        - I consent to being contacted for a voluntary follow-up regarding this study.
+      required: false
+
+    - key: consent_signature
+      label: Consent Signature
+      type: checkboxes
+      options:
+        - I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature.
+      required: true
+
+post-play-form:
+  preamble: |
+    # DCS-SE Usability Study Data Collection Form
+
+    Thank you for taking the time to help us evaluate the usability of our simulator!
+
+  questions:
+
+    - key: usability_issues
+      type: textarea
+      label: Were any parts of the interface confusing or difficult to use?
+      info: Please describe anything that was unclear, frustrating, or took time to figure out.
+      required: false
+      pii: false
+
+    - key: positive_usability
+      type: textarea
+      label: Were there parts of the interface that worked especially well?
+      info: For example: features that were easy to understand, helpful feedback, or smooth interactions.
+      required: false
+      pii: false
+
+    - key: bugs_or_issues
+      type: textarea
+      label: Did you encounter any bugs or technical issues?
+      info: If so, please describe them and include the game, device, browser, or platform if possible.
+      required: false
+      pii: false
+
+    - key: experience_preferences
+      type: textarea
+      label: What did you enjoy or dislike about the overall experience?
+      info: This can include gameplay, pacing, clarity of goals, or general impressions.
+      required: false
+      pii: false
+
+    - key: additional_feedback
+      type: textarea
+      label: Anything else you would like to share?
+      required: false
+      pii: false
