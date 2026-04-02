@@ -5,7 +5,7 @@ full_name) are already stripped from players_df by the loader.
 Run count is added by joining against runs_df.
 """
 
-from __future__ import annotations
+
 
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.common.loader import AnalysisData

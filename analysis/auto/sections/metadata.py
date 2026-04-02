@@ -4,7 +4,7 @@ Renders a Bootstrap card with key facts about the experiment and links to
 raw result artifacts when available.
 """
 
-from __future__ import annotations
+
 
 import html
 

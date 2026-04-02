@@ -1,7 +1,5 @@
 """Random unique assignment strategy implementation."""
 
-from __future__ import annotations
-
 import random
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any

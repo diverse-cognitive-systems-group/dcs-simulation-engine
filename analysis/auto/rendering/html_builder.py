@@ -1,6 +1,6 @@
 """Assemble the final HTML document from rendered section fragments."""
 
-from __future__ import annotations
+
 
 import json
 from datetime import datetime, timezone

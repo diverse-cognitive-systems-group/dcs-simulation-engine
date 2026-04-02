@@ -6,7 +6,7 @@ Three Plotly charts:
   - Engagement by prior_experience if available (grouped bar)
 """
 
-from __future__ import annotations
+
 
 import pandas as pd
 

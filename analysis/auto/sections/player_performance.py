@@ -1,6 +1,6 @@
 """Section 6 — Player Performance."""
 
-from __future__ import annotations
+
 
 from analysis.auto.constants import section_intro
 from analysis.common.loader import AnalysisData

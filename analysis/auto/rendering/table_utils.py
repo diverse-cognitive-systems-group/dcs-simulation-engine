@@ -6,7 +6,7 @@ plugin for that table. The page must load jQuery, DataTables core, and the
 DataTables Bootstrap 5 + Buttons plugins from CDN (all in <head>).
 """
 
-from __future__ import annotations
+
 
 import html as _html
 

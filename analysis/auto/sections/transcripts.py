@@ -4,7 +4,7 @@ Transcript-focused session-events DataTable. PC/NPC/player columns are joined
 from runs_df since session_events only carries session_id.
 """
 
-from __future__ import annotations
+
 
 from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.table_utils import df_to_datatable

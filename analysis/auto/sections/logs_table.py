@@ -3,7 +3,7 @@
 Full interactive DataTable of all log events parsed from *.log files.
 """
 
-from __future__ import annotations
+
 
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.common.loader import AnalysisData

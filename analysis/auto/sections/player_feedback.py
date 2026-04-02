@@ -6,7 +6,7 @@ Renders:
 3. Player feedback patterns — per-player segmentation by feedback behaviour.
 """
 
-from __future__ import annotations
+
 
 import html as _html
 

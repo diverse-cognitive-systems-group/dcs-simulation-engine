@@ -7,7 +7,7 @@ Three views of errors:
   3. Tables — top error messages, in-game error events, raw filtered log table.
 """
 
-from __future__ import annotations
+
 
 import pandas as pd
 

@@ -3,7 +3,7 @@
 Renders flattened assignment form answers (pre/post-game surveys).
 """
 
-from __future__ import annotations
+
 
 from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.table_utils import df_to_datatable

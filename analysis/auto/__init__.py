@@ -10,8 +10,6 @@ Or via CLI:
     python -m analysis.auto <results_dir> [--title "..."] [--open]
 """
 
-from __future__ import annotations
-
 import base64
 from pathlib import Path
 

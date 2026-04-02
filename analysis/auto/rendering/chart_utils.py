@@ -4,7 +4,7 @@ plotly_to_html  — Plotly Figure → embeddable <div> string (no bundled JS).
 matplotlib_to_base64 — matplotlib Figure → <img src="data:..."> string.
 """
 
-from __future__ import annotations
+
 
 import base64
 import io

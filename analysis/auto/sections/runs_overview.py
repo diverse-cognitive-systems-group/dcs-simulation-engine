@@ -4,7 +4,7 @@ Renders a DataTables interactive table with one row per session (run),
 showing player, game, characters, turn count, duration, exit reason, etc.
 """
 
-from __future__ import annotations
+
 
 import pandas as pd
 

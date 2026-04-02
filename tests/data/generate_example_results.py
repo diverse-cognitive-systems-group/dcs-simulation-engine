@@ -1,11 +1,11 @@
+"""Generates synthetic test data for test/data/example_results/.
+
+Run: python test/data/generate_example_results.py.
 """
-Generates synthetic test data for test/data/example_results/.
-Run: python test/data/generate_example_results.py
-"""
+import hashlib
 import json
 import uuid
-import hashlib
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 OUT = "test/data/example_results"
 
@@ -15,6 +15,7 @@ def oid(seed: str) -> dict:
     return {"$oid": h}
 
 def dt(iso: str) -> dict:
+    """Wrap an ISO timestamp string in a MongoDB $date envelope."""
     return {"$date": iso}
 
 def uid() -> str:
@@ -23,16 +24,22 @@ def uid() -> str:
 
 # ── Deterministic UUIDs seeded from string ──────────────────────────────────
 def suuid(seed: str) -> str:
+    """Return a deterministic UUID derived from a seed string via MD5."""
     h = hashlib.md5(seed.encode()).hexdigest()
     return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
 
 # ── Players ──────────────────────────────────────────────────────────────────
 PLAYERS = [
-    {"id": "000000000000000000000001", "name": "Alice Chen",    "email": "alice.chen@example.com",    "phone": "+1-555-201-1001", "access_key": "alice-key-01"},
-    {"id": "000000000000000000000002", "name": "Bob Martinez",  "email": "bob.martinez@example.com",  "phone": "+1-555-202-1002", "access_key": "bob-key-02"},
-    {"id": "000000000000000000000003", "name": "Carol Wright",  "email": "carol.wright@example.com",  "phone": "+1-555-203-1003", "access_key": "carol-key-03"},
-    {"id": "000000000000000000000004", "name": "David Kim",     "email": "david.kim@example.com",     "phone": "+1-555-204-1004", "access_key": "david-key-04"},
-    {"id": "000000000000000000000005", "name": "Emma Patel",    "email": "emma.patel@example.com",    "phone": "+1-555-205-1005", "access_key": "emma-key-05"},
+    {"id": "000000000000000000000001", "name": "Alice Chen",
+     "email": "alice.chen@example.com", "phone": "+1-555-201-1001", "access_key": "alice-key-01"},
+    {"id": "000000000000000000000002", "name": "Bob Martinez",
+     "email": "bob.martinez@example.com", "phone": "+1-555-202-1002", "access_key": "bob-key-02"},
+    {"id": "000000000000000000000003", "name": "Carol Wright",
+     "email": "carol.wright@example.com", "phone": "+1-555-203-1003", "access_key": "carol-key-03"},
+    {"id": "000000000000000000000004", "name": "David Kim",
+     "email": "david.kim@example.com", "phone": "+1-555-204-1004", "access_key": "david-key-04"},
+    {"id": "000000000000000000000005", "name": "Emma Patel",
+     "email": "emma.patel@example.com", "phone": "+1-555-205-1005", "access_key": "emma-key-05"},
 ]
 
 # ── Sessions ─────────────────────────────────────────────────────────────────

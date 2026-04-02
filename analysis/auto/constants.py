@@ -4,8 +4,6 @@ Edit the strings here to update what appears in the generated HTML report
 without touching any rendering or section code.
 """
 
-from __future__ import annotations
-
 # ---------------------------------------------------------------------------
 # Section-level descriptions
 # Shown once at the top of each section, immediately below the <h2> heading.
