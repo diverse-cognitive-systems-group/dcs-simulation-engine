@@ -295,13 +295,10 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
         game = entry.manager.game
         pc = getattr(game, "_pc", None)
         npc = getattr(game, "_npc", None)
-        game_config = SessionManager.get_game_config_cached(entry.game_name)
-        has_game_feedback = any(f.before_or_after == "after" for f in game_config.forms)
         meta_frame = WSSessionMetaFrame(
             session_id=session_id,
             pc_hid=getattr(pc, "hid", None),
             npc_hid=getattr(npc, "hid", None),
-            has_game_feedback=has_game_feedback,
         )
         await websocket.send_json(meta_frame.model_dump(mode="json"))
 

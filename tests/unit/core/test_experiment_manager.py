@@ -20,8 +20,8 @@ def _entry_form_payload() -> dict[str, dict[str, object]]:
     }
 
 
-async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
-    """Submitting before-play answers should persist the form in the forms collection, not on the assignment."""
+async def test_submit_before_play_stores_entry_form_on_assignment(async_mongo_provider, cached_usability_experiment) -> None:
+    """Submitting before-play answers should persist the form on the player's assignment."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Ada Lovelace"}})
     assignment = await ExperimentManager.submit_before_play_async(
         provider=async_mongo_provider,
@@ -31,39 +31,7 @@ async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mo
     )
 
     assert assignment is not None
-    # Before-play forms now live in the forms collection, not on the assignment.
-    assert assignment.data.get(MongoColumns.FORM_RESPONSES, {}).get("intake") is None
-    player_forms = await async_mongo_provider.get_player_forms(
-        player_id=player.id,
-        experiment_name=cached_usability_experiment.name,
-    )
-    assert player_forms is not None
-    assert player_forms.data["intake"]["answers"]["age"]["answer"] == 28
-
-
-@pytest.mark.parametrize(
-    "reason,expected",
-    [
-        ("game_completed", True),
-        ("game_complete", True),
-        ("game completed", True),
-        ("Game Completed", True),
-        ("max predictions reached", True),
-        ("max_predictions_reached", True),
-        ("player exited", True),
-        ("player_exited", True),
-        ("stopping_condition_met:max_turns", True),
-        ("stopping_condition_met:anything", True),
-        ("retry budget exhausted", False),
-        ("websocket_disconnect", False),
-        ("server_error", False),
-        ("received close request", False),
-        ("", False),
-    ],
-)
-def test_is_completion_reason(reason: str, expected: bool) -> None:
-    """Test that _is_completion_reason correctly identifies completion reasons."""
-    assert ExperimentManager._is_completion_reason(reason) is expected
+    assert assignment.data[MongoColumns.FORM_RESPONSES]["intake"]["answers"]["age"]["answer"] == 28
 
 
 async def test_interrupted_assignment_is_reused(async_mongo_provider, cached_usability_experiment) -> None:
@@ -400,66 +368,3 @@ async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
 
     assert result is assignment
     strategy.get_or_create_assignment_async.assert_awaited_once()
-
-
-async def test_completed_assignment_reflected_in_player_state_after_multi_assignment_game(
-    async_mongo_provider, cached_multi_assignment_experiment
-) -> None:
-    """After completing one game in a 3-assignment experiment, get_player_state_async must.
-
-    Return one completed assignment and two assigned ones — confirming that progress (1 of 3)
-    is correctly reflected for the player.
-    """
-    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Progress Tester"}})
-
-    # Register: creates assignment 1 and pre-generates assignments 2 & 3.
-    await ExperimentManager.submit_before_play_async(
-        provider=async_mongo_provider,
-        experiment_name=cached_multi_assignment_experiment.name,
-        player_id=player.id,
-        responses={"intake": {"age": 30}},
-    )
-
-    # Retrieve the active assignment (whichever was selected) and mark it completed.
-    state_before = await ExperimentManager.get_player_state_async(
-        provider=async_mongo_provider,
-        experiment_name=cached_multi_assignment_experiment.name,
-        player_id=player.id,
-    )
-    active = state_before["active_assignment"]
-    assert active is not None
-    assert len(state_before["assignments"]) == 3, "All 3 assignments should be pre-generated"
-
-    await async_mongo_provider.update_assignment_status(
-        assignment_id=active.assignment_id,
-        status="completed",
-    )
-
-    # Submit post-play so pending_post_play is cleared.
-    await ExperimentManager.store_post_play_async(
-        provider=async_mongo_provider,
-        experiment_name=cached_multi_assignment_experiment.name,
-        player_id=player.id,
-        responses={
-            "usability_feedback": {
-                "usability_issues": "",
-                "positive_usability": "Good",
-                "bugs_or_issues": "",
-                "experience_preferences": "Fine",
-                "additional_feedback": "",
-            }
-        },
-    )
-
-    state_after = await ExperimentManager.get_player_state_async(
-        provider=async_mongo_provider,
-        experiment_name=cached_multi_assignment_experiment.name,
-        player_id=player.id,
-    )
-
-    statuses = [a.status for a in state_after["assignments"]]
-    completed_count = statuses.count("completed")
-    assert len(state_after["assignments"]) == 3, "All 3 assignments must still be present"
-    assert completed_count == 1, f"Expected 1 completed assignment, got {completed_count} — statuses: {statuses}"
-    assert state_after["has_finished_experiment"] is False
-    assert state_after["active_assignment"] is not None

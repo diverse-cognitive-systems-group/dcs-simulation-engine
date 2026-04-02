@@ -88,7 +88,6 @@ function PlayPage() {
     waiting,
     pcHid,
     npcHid,
-    hasGameFeedback,
     sendTurn,
     closeSession,
     setMessageFeedback,
@@ -285,10 +284,8 @@ function PlayPage() {
   const isClosed = wsState === 'closed' || exited
   // Allow drafting at all times except terminal states (closed/error).
   const inputDisabled = isClosed || isError
-
   // Send is blocked while the simulation is loading or awaiting the next turn response.
-  // turns === 0 means the initial NPC message hasn't arrived yet (game not started).
-  const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting || turns === 0
+  const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -337,7 +334,7 @@ function PlayPage() {
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto w-full max-w-[96vw] sm:max-w-[92vw] lg:max-w-[86vw] xl:max-w-[80vw] space-y-3">
-          {(isConnecting || (turns === 0 && wsState === 'ready')) && (
+          {isConnecting && (
             <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
               {/* CSS-only spinner: a bordered circle with one colored arc, rotated by animation */}
               <div className="w-6 h-6 rounded-full border-2 border-muted/70 border-t-primary animate-spin" />
@@ -378,8 +375,18 @@ function PlayPage() {
               <div>
                 <Badge variant="secondary">Simulation ended</Badge>
               </div>
-              {hasGameFeedback && (
-                <Button className="mx-auto">Continue to Post Game Feedback</Button>
+              {experimentName && (
+                <Button
+                  className="mx-auto"
+                  onClick={() =>
+                    navigate({
+                      to: '/experiments/$experimentName',
+                      params: { experimentName },
+                    })
+                  }
+                >
+                  Continue to Post Game Feedback
+                </Button>
               )}
             </div>
           )}

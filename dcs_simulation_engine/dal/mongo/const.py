@@ -23,7 +23,6 @@ class MongoColumns:
     SESSION_EVENTS = "session_events"
     EXPERIMENTS = "experiments"
     ASSIGNMENTS = "assignments"
-    FORMS = "forms"
 
     ID = "_id"
     ASSIGNMENT_ID = "assignment_id"

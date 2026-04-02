@@ -38,7 +38,6 @@ export function useSessionWebSocket(sessionId: string) {
   const [exited, setExited] = useState(false)
   const [pcHid, setPcHid] = useState<string | null>(null)
   const [npcHid, setNpcHid] = useState<string | null>(null)
-  const [hasGameFeedback, setHasGameFeedback] = useState(false)
   // waiting is true between sendTurn() and the server's turn_end frame.
   const [waiting, setWaiting] = useState(false)
   // useRef holds a mutable value that does NOT trigger re-renders — used for the socket
@@ -104,8 +103,6 @@ export function useSessionWebSocket(sessionId: string) {
       if (frame.type === 'session_meta') {
         if (typeof frame.pc_hid === 'string') setPcHid(frame.pc_hid)
         if (typeof frame.npc_hid === 'string') setNpcHid(frame.npc_hid)
-        if (typeof frame.has_game_feedback === 'boolean')
-          setHasGameFeedback(frame.has_game_feedback)
       }
 
       if (frame.type === 'event') {
@@ -193,7 +190,6 @@ export function useSessionWebSocket(sessionId: string) {
     waiting,
     pcHid,
     npcHid,
-    hasGameFeedback,
     sendTurn,
     closeSession,
     setMessageFeedback,

@@ -167,7 +167,6 @@ class ExperimentSetupResponse(BaseModel):
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
     assignment_mode: str = "auto"
-    assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
 
 
 class EligibleAssignmentOption(BaseModel):
@@ -322,7 +321,6 @@ class WSSessionMetaFrame(BaseModel):
     session_id: str
     pc_hid: str | None = None
     npc_hid: str | None = None
-    has_game_feedback: bool = False
 
 
 class WSEventFrame(BaseModel):

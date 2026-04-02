@@ -114,7 +114,6 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         pending_post_play=pending_post_play,
         assignment_completed=assignment_completed,
         assignment_mode=config.assignment_strategy.assignment_mode,
-        assignments=[_assignment_summary(a) for a in player_state.get("assignments", [])],
     )
 
 

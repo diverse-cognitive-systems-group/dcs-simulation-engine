@@ -81,10 +81,6 @@ def ensure_default_indexes(db: Database[Any]) -> None:
         ]
     )
     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
-    db[MongoColumns.FORMS].create_index(
-        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
-        unique=True,
-    )
 
     for collection_name, defs in INDEX_DEFS.items():
         coll = db[collection_name]
@@ -129,10 +125,6 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
         ]
     )
     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
-    await db[MongoColumns.FORMS].create_index(
-        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
-        unique=True,
-    )
 
     for collection_name, defs in INDEX_DEFS.items():
         coll = db[collection_name]
