@@ -215,6 +215,14 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "shows the preceding turns leading up to the flagged message — hover to read "
             "the full excerpt. Sort by turn or session to find clusters of negative reactions."
         ),
+        "flags_over_turns_by_game": (
+            "Flag frequency per turn split by game. Reveals whether specific games "
+            "produce character or coherence issues at particular dialogue stages."
+        ),
+        "flags_over_turns_by_player": (
+            "Per-player flag counts across turn indices. Use the dropdown to select "
+            "a player and identify individuals whose feedback clusters at specific turns."
+        ),
         "player_segments_table": (
             "Per-player feedback summary with a segment label (only positive, only negative, "
             "high/low feedback volume, mixed). Thresholds are set at the 25th and 75th "

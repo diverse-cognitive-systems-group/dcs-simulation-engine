@@ -171,6 +171,164 @@ def _flags_over_turns_chart(transcripts_df: pd.DataFrame) -> str:
     return plotly_to_html(fig, div_id="flags-over-turns")
 
 
+_FLAG_LABELS = [label for _, label in _FLAG_COLS]
+_FLAG_COLORS = ["#e45f3c", "#3c8ee4", "#8e44ad"]
+
+
+def _parse_flag_cols(edf: pd.DataFrame) -> pd.DataFrame:
+    """Add a boolean column per flag type by parsing the comma-separated flags string."""
+    edf = edf.copy()
+    for label in _FLAG_LABELS:
+        edf[label] = edf["flags"].fillna("").str.contains(label, regex=False)
+    return edf
+
+
+def _flags_over_turns_by_game(edf: pd.DataFrame) -> str:
+    """Return a Plotly faceted bar chart of flag counts by turn, split by game."""
+    if edf.empty or "game_name" not in edf.columns or "flags" not in edf.columns:
+        return ""
+
+    flagged = edf[edf["flags"].fillna("") != ""].copy()
+    if flagged.empty or "turn_index" not in flagged.columns:
+        return ""
+
+    flagged = _parse_flag_cols(flagged)
+
+    games = sorted(flagged["game_name"].dropna().unique())
+    if not games:
+        return ""
+
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    n = len(games)
+    fig = make_subplots(
+        rows=1,
+        cols=n,
+        shared_yaxes=True,
+        subplot_titles=[str(g) for g in games],
+    )
+
+    for col_idx, game in enumerate(games, start=1):
+        subset = flagged[flagged["game_name"] == game]
+        for trace_idx, (label, color) in enumerate(zip(_FLAG_LABELS, _FLAG_COLORS)):
+            counts = (
+                subset[subset[label]]
+                .groupby("turn_index")
+                .size()
+                .reset_index(name="count")
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=counts["turn_index"],
+                    y=counts["count"],
+                    name=label,
+                    marker_color=color,
+                    legendgroup=label,
+                    showlegend=(col_idx == 1),
+                ),
+                row=1,
+                col=col_idx,
+            )
+
+    fig.update_layout(
+        barmode="group",
+        legend_title="Flag type",
+        margin={"t": 50, "b": 40, "l": 50, "r": 20},
+        height=350,
+    )
+    fig.update_xaxes(title_text="Turn")
+    fig.update_yaxes(title_text="Flag count", col=1)
+
+    return plotly_to_html(fig, div_id="flags-over-turns-by-game")
+
+
+def _flags_over_turns_by_player(edf: pd.DataFrame) -> str:
+    """Return a Plotly bar chart of flag counts by turn with a per-player dropdown."""
+    if edf.empty or "player_id" not in edf.columns or "flags" not in edf.columns:
+        return ""
+
+    flagged = edf[edf["flags"].fillna("") != ""].copy()
+    if flagged.empty or "turn_index" not in flagged.columns:
+        return ""
+
+    flagged = _parse_flag_cols(flagged)
+
+    players = sorted(flagged["player_id"].dropna().astype(str).unique())
+    if not players:
+        return ""
+
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+    n_flag_types = len(_FLAG_LABELS)
+
+    for p_idx, player in enumerate(players):
+        subset = flagged[flagged["player_id"].astype(str) == player]
+        for label, color in zip(_FLAG_LABELS, _FLAG_COLORS):
+            counts = (
+                subset[subset[label]]
+                .groupby("turn_index")
+                .size()
+                .reset_index(name="count")
+            )
+            fig.add_trace(go.Bar(
+                x=counts["turn_index"],
+                y=counts["count"],
+                name=label,
+                marker_color=color,
+                legendgroup=label,
+                showlegend=(p_idx == 0),
+                visible=(p_idx == 0),
+            ))
+
+    # Build dropdown: each button makes only the selected player's traces visible
+    buttons = []
+    for p_idx, player in enumerate(players):
+        visible = [
+            (i // n_flag_types == p_idx)
+            for i in range(len(players) * n_flag_types)
+        ]
+        buttons.append(dict(
+            label=str(player),
+            method="update",
+            args=[
+                {"visible": visible},
+                {"title": ""},
+            ],
+        ))
+
+    fig.update_layout(
+        updatemenus=[dict(
+            buttons=buttons,
+            direction="down",
+            x=0.0,
+            xanchor="left",
+            y=1.15,
+            yanchor="top",
+            showactive=True,
+        )],
+        annotations=[dict(
+            text="Select Player:",
+            x=0.0,
+            xanchor="right",
+            xref="paper",
+            y=1.15,
+            yanchor="top",
+            yref="paper",
+            showarrow=False,
+        )],
+        barmode="group",
+        xaxis_title="Turn",
+        yaxis_title="Flag count",
+        legend_title="Flag type",
+        margin={"t": 60, "b": 40, "l": 50, "r": 20},
+        height=350,
+    )
+
+    return plotly_to_html(fig, div_id="flags-over-turns-by-player")
+
+
 def _player_segments_table(edf: pd.DataFrame) -> str:
     """Return a DataTable HTML of per-player feedback segments, or '' if no data."""
     if edf.empty or "player_id" not in edf.columns:
@@ -313,6 +471,20 @@ def render(data: AnalysisData) -> str:
         parts.append("<h5>Flag Distribution Over Turns</h5>")
         parts.append(f'<div class="row"><div class="col-12 chart-container">{flags_chart}</div></div>')
         parts.append(chart_caption("player_feedback", "flags_over_turns"))
+
+    # --- Flag distribution by game ---
+    by_game_chart = _flags_over_turns_by_game(edf)
+    if by_game_chart:
+        parts.append("<h5>Flag Distribution Over Turns — by Game</h5>")
+        parts.append(f'<div class="row"><div class="col-12 chart-container">{by_game_chart}</div></div>')
+        parts.append(chart_caption("player_feedback", "flags_over_turns_by_game"))
+
+    # --- Flag distribution by player ---
+    by_player_chart = _flags_over_turns_by_player(edf)
+    if by_player_chart:
+        parts.append("<h5>Flag Distribution Over Turns — by Player</h5>")
+        parts.append(f'<div class="row"><div class="col-12 chart-container">{by_player_chart}</div></div>')
+        parts.append(chart_caption("player_feedback", "flags_over_turns_by_player"))
 
     # --- In-play (per-message) feedback ---
     if not edf.empty:
