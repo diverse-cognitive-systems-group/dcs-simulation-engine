@@ -17,6 +17,7 @@ from pathlib import Path
 
 from analysis.auto.rendering.html_builder import build_html
 from analysis.auto.sections import (
+    form_responses,
     metadata,
     player_feedback,
     player_performance,
@@ -27,16 +28,22 @@ from analysis.auto.sections import (
 )
 from analysis.common.loader import AnalysisData
 
-# Registry of sections in display order: (anchor_slug, display_title, module, is_sub)
-# is_sub=True renders the entry as an indented child in the sidebar.
+# Registry of sections in display order: (anchor_slug, display_title, module, kind)
+# kind:
+#   "top"   — full section with <h2> heading, rendered in main content
+#   "sub"   — indented sidebar entry, rendered in main content (same as top but visually nested)
+#   "group" — sidebar label only (no anchor, no content); anchor and module are None
 SECTIONS = [
-    ("metadata",            "Metadata",            metadata,            False),
-    ("runs-overview",       "Overview",            runs_overview,       False),
-    ("system-performance",  "System Performance",  system_performance,  False),
-    ("system-errors",       "System Errors",       system_errors,       True),
-    ("player-performance",  "Player Performance",  player_performance,  False),
-    ("player-feedback",     "Player Feedback",     player_feedback,     False),
-    ("transcripts",         "Transcripts",         transcripts,         False),
+    ("metadata",            "Metadata",       metadata,            "top"),
+    ("runs-overview",       "Overview",       runs_overview,       "top"),
+    (None,                  "Player",         None,                "group"),
+    ("player-performance",  "Performance",    player_performance,  "sub"),
+    ("player-feedback",     "Feedback",       player_feedback,     "sub"),
+    ("form-responses",      "Form Responses", form_responses,      "sub"),
+    (None,                  "System",         None,                "group"),
+    ("system-performance",  "Performance",    system_performance,  "sub"),
+    ("system-errors",       "Errors",         system_errors,       "sub"),
+    ("transcripts",         "Transcripts",    transcripts,         "top"),
 ]
 
 
@@ -49,8 +56,11 @@ def _read_b64(path: Path) -> str | None:
 
 def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
     """Render all registered sections and return the complete HTML string."""
-    rendered: list[tuple[str, str, str, bool]] = []
-    for anchor, section_title, module, is_sub in SECTIONS:
+    rendered: list[tuple[str | None, str, str, str]] = []
+    for anchor, section_title, module, kind in SECTIONS:
+        if kind == "group":
+            rendered.append((None, section_title, "", "group"))
+            continue
         try:
             fragment = module.render(data)
         except Exception as exc:
@@ -60,7 +70,7 @@ def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
                 f"{exc}"
                 f"</div>"
             )
-        rendered.append((anchor, section_title, fragment, is_sub))
+        rendered.append((anchor, section_title, fragment, kind))
 
     raw_results_path = data.results_dir.with_suffix(".zip")
     run_config_path = data.results_dir / "run_config.yml"

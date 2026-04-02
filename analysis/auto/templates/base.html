@@ -164,10 +164,16 @@
       <nav class="col-md-2 d-none d-md-block sidebar">
         <div class="sidebar-heading">Sections</div>
         <ul class="nav flex-column">
-          {% for anchor, section_title, _, is_sub in sections %}
+          {% for anchor, section_title, _, kind in sections %}
+            {% if kind == "group" %}
           <li class="nav-item">
-            <a class="nav-link{% if is_sub %} nav-link-sub{% endif %}" href="#section-{{ anchor }}">{{ section_title }}</a>
+            <div class="sidebar-heading mt-2">{{ section_title }}</div>
           </li>
+            {% else %}
+          <li class="nav-item">
+            <a class="nav-link{% if kind == "sub" %} nav-link-sub{% endif %}" href="#section-{{ anchor }}">{{ section_title }}</a>
+          </li>
+            {% endif %}
           {% endfor %}
         </ul>
       </nav>
@@ -200,11 +206,13 @@
           </div>
         </div>
 
-        {% for anchor, section_title, html_fragment, is_sub in sections %}
+        {% for anchor, section_title, html_fragment, kind in sections %}
+          {% if kind != "group" %}
         <section id="section-{{ anchor }}" class="mb-5">
           <h2>{{ section_title }}</h2>
           {{ html_fragment | safe }}
         </section>
+          {% endif %}
         {% endfor %}
       </main>
 

@@ -45,8 +45,8 @@ def render(data: AnalysisData) -> str:
     rows = [
         ("Experiment",    _esc(exp.get("name") or "—")),
         ("Description",   _esc(cfg.get("description") or exp.get("description") or "—")),
-        ("Games Played",  str(n_games_played)),
         ("Players",       str(n_players)),
+        ("Games Played",  str(n_games_played)),
         ("Assignments",   assignments_str),
     ]
 

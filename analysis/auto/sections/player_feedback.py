@@ -1,13 +1,14 @@
-"""Section 5 — Player Feedback.
+"""Section — Player Feedback.
 
-Renders three sub-sections:
+Renders:
 1. Flag distribution chart — how often each flag type fires per turn.
 2. In-play feedback — inline thumbs/flags/comments on NPC messages, with transcript context.
 3. Player feedback patterns — per-player segmentation by feedback behaviour.
-4. Form responses — flattened assignment form answers (pre/post-game surveys).
 """
 
 from __future__ import annotations
+
+import html as _html
 
 import pandas as pd
 
@@ -15,30 +16,6 @@ from analysis.auto.constants import chart_caption, section_intro
 from analysis.auto.rendering.chart_utils import plotly_to_html
 from analysis.auto.rendering.table_utils import df_to_datatable
 from analysis.common.loader import AnalysisData
-
-_FORM_COLUMNS = [
-    "player_id",
-    "game_name",
-    "form_name",
-    "before_or_after",
-    "question_key",
-    "question_prompt",
-    "answer_type",
-    "answer",
-    "submitted_at",
-]
-
-_FORM_RENAME = {
-    "player_id":       "Player",
-    "game_name":       "Game",
-    "form_name":       "Form",
-    "before_or_after": "When",
-    "question_key":    "Question Key",
-    "question_prompt": "Question",
-    "answer_type":     "Type",
-    "answer":          "Answer",
-    "submitted_at":    "Submitted At",
-}
 
 _EVENT_COLUMNS = [
     "session_id",
@@ -82,12 +59,11 @@ def _build_context_column(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> pd
     if transcripts_df.empty:
         return edf
 
-    has_role = "role" in transcripts_df.columns
     has_content = "content" in transcripts_df.columns
     has_turn = "turn_index" in transcripts_df.columns
     has_session = "session_id" in transcripts_df.columns
 
-    if not (has_role and has_content and has_turn and has_session):
+    if not (has_content and has_turn and has_session):
         return edf
 
     # Pre-index transcripts by session_id for efficiency
@@ -117,10 +93,15 @@ def _build_context_column(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> pd
 
         lines = []
         for _, evt in window.iterrows():
-            role = str(evt.get("role") or "").strip() or "?"
+            # Use event_source if available (e.g. "user"/"npc"), else event_type, else "?"
+            source = (
+                str(evt.get("event_source") or "").strip()
+                or str(evt.get("event_type") or "").strip()
+                or "?"
+            )
             content = str(evt.get("content") or "").strip()
             t = int(evt["turn_index"]) if pd.notna(evt["turn_index"]) else "?"
-            lines.append(f"[{role} T{t}]: {content}")
+            lines.append(f"[{source} T{t}]: {content}")
 
         contexts.append("\n".join(lines))
 
@@ -245,11 +226,86 @@ def _player_segments_table(edf: pd.DataFrame) -> str:
     )
 
 
+def _fmt_pct(numerator: int, denominator: int) -> str:
+    if denominator == 0:
+        return "—"
+    return f"{numerator} / {denominator} ({numerator / denominator:.0%})"
+
+
+def _feedback_summary_card(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> str:
+    """Return a titled Bootstrap card summarising key feedback proportion metrics."""
+    total_fb = len(edf) if not edf.empty else 0
+    positive = int((edf["liked"] == True).sum()) if not edf.empty and "liked" in edf.columns else 0   # noqa: E712
+    negative = int((edf["liked"] == False).sum()) if not edf.empty and "liked" in edf.columns else 0  # noqa: E712
+
+    # Total NPC turns across all sessions — denominator for ICF / flag rates
+    if not transcripts_df.empty and "event_source" in transcripts_df.columns:
+        total_npc_turns = int((transcripts_df["event_source"].fillna("") == "npc").sum())
+    else:
+        total_npc_turns = 0
+
+    def _flag_count(col: str) -> int:
+        if transcripts_df.empty or col not in transcripts_df.columns:
+            return 0
+        return int(transcripts_df[col].fillna(False).astype(bool).sum())
+
+    ooc_count   = _flag_count("feedback.out_of_character")
+    dms_count   = _flag_count("feedback.doesnt_make_sense")
+    other_count = _flag_count("feedback.other")
+    in_char     = total_npc_turns - ooc_count
+
+    ast = '<span style="color:red;">*</span>'
+
+    def _row(label: str, value: str) -> str:
+        return (
+            f"<dt class='col-sm-6'>{label}</dt>"
+            f"<dd class='col-sm-6'>{value}</dd>"
+        )
+
+    def _subrow(label: str, value: str) -> str:
+        return (
+            f"<dt class='col-sm-6' style='color:#6c757d;'>{label}</dt>"
+            f"<dd class='col-sm-6' style='color:#6c757d;'>{value}</dd>"
+        )
+
+    top_rows = (
+        _row("Feedback / Total NPC Turns", _fmt_pct(total_fb,  total_npc_turns))
+        + _row("👍 Thumbs Up",              _fmt_pct(positive,  total_fb))
+        + _row("👎 Thumbs Down",            _fmt_pct(negative,  total_fb))
+    )
+
+    sub_rows = (
+        _subrow(f"In-Character Fidelity (ICF) {ast}", _fmt_pct(in_char,     total_npc_turns))
+        + _subrow(f"Narrative Coherence (NCo) {ast}",        _fmt_pct(dms_count,   total_npc_turns))
+        + _subrow(f"Other {ast}",                      _fmt_pct(other_count, total_npc_turns))
+    )
+
+    note = (
+        "All flagged and feedback reports reflect only what players chose to report "
+        "during this study. Values are raw percentages of total NPC turns and should "
+        "be interpreted relative to each player's overall tendency to provide feedback — "
+        "not as an exhaustive ground-truth assessment of character or narrative quality."
+    )
+
+    return (
+        '<h3 class="h5 mb-2">Proportion Summary</h3>'
+        '<div class="card mb-4"><div class="card-body">'
+        f'<dl class="row dl-meta mb-2">{top_rows}{sub_rows}</dl>'
+        f'<p class="mb-0 text-muted" style="font-size:0.8rem;">'
+        f'<span style="color:red;">*</span> {_html.escape(note)}'
+        f'</p>'
+        '</div></div>'
+    )
+
+
 def render(data: AnalysisData) -> str:
     parts = [section_intro("player_feedback")]
 
     edf = data.event_feedback_df
     tdf = data.transcripts_df
+
+    # --- Summary card ---
+    parts.append(_feedback_summary_card(edf, tdf))
 
     # --- Flag distribution over turns ---
     flags_chart = _flags_over_turns_chart(tdf)
@@ -282,23 +338,7 @@ def render(data: AnalysisData) -> str:
             parts.append(segments_table)
             parts.append(chart_caption("player_feedback", "player_segments_table"))
 
-    # --- Form-based (survey) feedback ---
-    fdf = data.feedback_df
-    if not fdf.empty:
-        cols = [c for c in _FORM_COLUMNS if c in fdf.columns]
-        rename = {k: v for k, v in _FORM_RENAME.items() if k in cols}
-        parts.append("<h5>Form Responses</h5>")
-        parts.append(df_to_datatable(
-            fdf,
-            table_id="feedback-table",
-            columns=cols,
-            rename=rename,
-            truncate_cols=["answer", "question_prompt"],
-            truncate_at=300,
-        ))
-        parts.append(chart_caption("player_feedback", "form_responses_table"))
-
-    if len(parts) <= 1:
+    if edf.empty and not _flags_over_turns_chart(tdf):
         return '<div class="alert alert-info">No feedback responses found.</div>'
 
     return "\n".join(parts)
