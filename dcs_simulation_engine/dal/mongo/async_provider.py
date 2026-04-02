@@ -9,6 +9,7 @@ from dcs_simulation_engine.dal.base import (
     AssignmentRecord,
     CharacterRecord,
     ExperimentRecord,
+    PlayerFormsRecord,
     PlayerRecord,
     SessionEventRecord,
     SessionRecord,
@@ -591,16 +592,17 @@ class AsyncMongoProvider:
         )
         return await self.get_experiment(experiment_name=experiment_name)
 
-    async def create_assignment(self, *, assignment_doc: dict[str, Any]) -> AssignmentRecord:
+    async def create_assignment(self, *, assignment_doc: dict[str, Any], allow_concurrent: bool = False) -> AssignmentRecord:
         """Persist a new experiment assignment row."""
         experiment_name = str(assignment_doc.get(MongoColumns.EXPERIMENT_NAME) or "")
         player_id = str(assignment_doc.get(MongoColumns.PLAYER_ID) or "")
         if not experiment_name or not player_id:
             raise ValueError("assignment_doc must include experiment_name and player_id")
 
-        existing = await self.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
-        if existing is not None:
-            raise ValueError("Player already has an active assignment for this experiment")
+        if not allow_concurrent:
+            existing = await self.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
+            if existing is not None:
+                raise ValueError("Player already has an active assignment for this experiment")
 
         now = utc_now()
         doc = dict(assignment_doc)
@@ -735,6 +737,52 @@ class AsyncMongoProvider:
             )
         )
         return await self.get_assignment(assignment_id=assignment_id)
+
+    async def set_player_form_response(
+        self,
+        *,
+        player_id: str,
+        experiment_name: str,
+        form_key: str,
+        response: dict[str, Any],
+    ) -> PlayerFormsRecord | None:
+        """Upsert one before-play form response into the forms collection."""
+        now = utc_now()
+        await maybe_await(
+            self._db[MongoColumns.FORMS].update_one(
+                {MongoColumns.PLAYER_ID: player_id, MongoColumns.EXPERIMENT_NAME: experiment_name},
+                {
+                    "$set": {f"data.{form_key}": response, MongoColumns.UPDATED_AT: now},
+                    "$setOnInsert": {
+                        MongoColumns.PLAYER_ID: player_id,
+                        MongoColumns.EXPERIMENT_NAME: experiment_name,
+                        MongoColumns.CREATED_AT: now,
+                    },
+                },
+                upsert=True,
+            )
+        )
+        return await self.get_player_forms(player_id=player_id, experiment_name=experiment_name)
+
+    async def get_player_forms(
+        self,
+        *,
+        player_id: str,
+        experiment_name: str,
+    ) -> PlayerFormsRecord | None:
+        """Return the before-play form responses for a player in an experiment."""
+        doc = await maybe_await(
+            self._db[MongoColumns.FORMS].find_one({MongoColumns.PLAYER_ID: player_id, MongoColumns.EXPERIMENT_NAME: experiment_name})
+        )
+        if not doc:
+            return None
+        return PlayerFormsRecord(
+            player_id=doc[MongoColumns.PLAYER_ID],
+            experiment_name=doc[MongoColumns.EXPERIMENT_NAME],
+            data=doc.get("data", {}),
+            created_at=doc.get(MongoColumns.CREATED_AT),
+            updated_at=doc.get(MongoColumns.UPDATED_AT),
+        )
 
     async def get_session_reconstruction(
         self,
