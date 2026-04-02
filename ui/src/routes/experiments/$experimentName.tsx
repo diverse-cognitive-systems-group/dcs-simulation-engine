@@ -78,6 +78,7 @@ interface ExperimentSetupResponse {
   pending_post_play: boolean
   assignment_completed: boolean
   assignment_mode: string
+  assignments: ExperimentAssignmentSummary[]
 }
 
 interface ExperimentPlayerResponse {
@@ -396,6 +397,8 @@ function ExperimentPage() {
   const [postErrors, setPostErrors] = useState<Record<string, Record<string, string>>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | 'select' | null>(null)
+  const [selectedGame, setSelectedGame] = useState<string | null>(null)
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
 
   useEffect(() => {
     setActiveExperimentName(experimentName)
@@ -404,6 +407,7 @@ function ExperimentPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['experiment-setup', experimentName, authenticated],
     enabled: authenticated,
+    refetchOnMount: 'always',
     queryFn: () =>
       httpClient<ExperimentSetupResponse>(
         `/api/experiments/${encodeURIComponent(experimentName)}/setup`,
@@ -649,29 +653,34 @@ function ExperimentPage() {
           </div>
         </div>
 
-        <div>
+        {(data.assignments ?? []).length > 0 && (
           <Card className="border-border/70 shadow-sm">
             <CardHeader>
-              <CardTitle>Study Progress</CardTitle>
+              <CardTitle>Your Progress</CardTitle>
               <CardDescription>
-                {data.progress.completed} of {data.progress.total} target assignments completed
+                {(data.assignments ?? []).filter((a) => a.status === 'completed').length} of{' '}
+                {(data.assignments ?? []).length} assignments completed
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="h-3 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (data.progress.completed / Math.max(data.progress.total, 1)) * 100,
-                    )}%`,
-                  }}
-                />
-              </div>
+            <CardContent>
+              {(() => {
+                const total = (data.assignments ?? []).length
+                const completed = (data.assignments ?? []).filter(
+                  (a) => a.status === 'completed',
+                ).length
+                const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+                return (
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
-        </div>
+        )}
 
         <Card className="border-border/70 shadow-sm">
           <CardHeader>
@@ -679,7 +688,7 @@ function ExperimentPage() {
               {data.pending_post_play
                 ? 'Post-Play Feedback'
                 : data.current_assignment
-                  ? 'Your Assignment'
+                  ? 'Current Assignment'
                   : data.assignment_completed
                     ? 'Study Status'
                     : needsSelection
@@ -749,26 +758,79 @@ function ExperimentPage() {
                     </AlertDescription>
                   </Alert>
                 )}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {(eligibleOptions?.options ?? []).map((option) => (
-                    <button
-                      key={`${option.game_name}:${option.character_hid}`}
-                      type="button"
-                      disabled={submitting === 'select'}
-                      onClick={() => handleSelectAssignment(option.game_name, option.character_hid)}
-                      className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-left transition-colors hover:bg-muted/40 disabled:opacity-50"
-                    >
-                      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Game
+                {(eligibleOptions?.options ?? []).length > 0 &&
+                  (() => {
+                    const gameOptions = [
+                      ...new Set((eligibleOptions?.options ?? []).map((o) => o.game_name)),
+                    ]
+                    const characterOptions = (eligibleOptions?.options ?? [])
+                      .filter((o) => o.game_name === selectedGame)
+                      .map((o) => o.character_hid)
+                    return (
+                      <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Game
+                          </Label>
+                          <Select
+                            value={selectedGame ?? ''}
+                            onValueChange={(val) => {
+                              setSelectedGame(val)
+                              setSelectedCharacter(null)
+                            }}
+                            disabled={submitting === 'select'}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a game…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {gameOptions.map((game) => (
+                                <SelectItem key={game} value={game}>
+                                  {game}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Character
+                          </Label>
+                          <Select
+                            value={selectedCharacter ?? ''}
+                            onValueChange={setSelectedCharacter}
+                            disabled={!selectedGame || submitting === 'select'}
+                          >
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  selectedGame ? 'Select a character…' : 'Select a game first'
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {characterOptions.map((char) => (
+                                <SelectItem key={char} value={char}>
+                                  {char}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          type="button"
+                          disabled={!selectedGame || !selectedCharacter || submitting === 'select'}
+                          onClick={() =>
+                            selectedGame &&
+                            selectedCharacter &&
+                            handleSelectAssignment(selectedGame, selectedCharacter)
+                          }
+                        >
+                          {submitting === 'select' ? 'Selecting…' : 'Select Assignment'}
+                        </Button>
                       </div>
-                      <div className="mt-1 text-lg font-semibold">{option.game_name}</div>
-                      <div className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                        Character
-                      </div>
-                      <div className="mt-1 text-sm font-medium">{option.character_hid}</div>
-                    </button>
-                  ))}
-                </div>
+                    )
+                  })()}
               </div>
             )}
 
