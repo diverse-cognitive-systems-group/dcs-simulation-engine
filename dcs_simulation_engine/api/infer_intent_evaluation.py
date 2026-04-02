@@ -1,5 +1,7 @@
 """Helpers for generating or loading Infer Intent evaluations from persisted sessions."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from dcs_simulation_engine.api.models import (

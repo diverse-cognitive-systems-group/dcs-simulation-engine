@@ -1,5 +1,7 @@
 """High-level remote Fly deployment lifecycle helpers."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
