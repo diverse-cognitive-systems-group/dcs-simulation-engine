@@ -131,6 +131,7 @@ exclude = [
   "*.ipynb",              # all notebooks
   "analysis_notebooks/*", # specific folder
 ]
+ignore = ["E501"]
 select = [
   "D", # docstring rules
   "E", # pycodestyle rules
