@@ -132,9 +132,9 @@ class ExperimentManager:
         completed_assignments = [item for item in player_assignments if item.status == "completed"]
         before_form_names = {form.name for form in config.forms_for_phase(before_or_after="before")}
         after_form_names = {form.name for form in config.forms_for_phase(before_or_after="after")}
-        has_submitted_before_forms = not before_form_names or any(
-            before_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys())) for item in player_assignments
-        )
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, experiment_name=experiment_name))
+        submitted_before_keys = set((player_forms.data if player_forms else {}).keys())
+        has_submitted_before_forms = not before_form_names or before_form_names.issubset(submitted_before_keys)
         pending_post_play = next(
             (
                 item
@@ -198,12 +198,20 @@ class ExperimentManager:
             experiment_name=config.name,
             player=player_record,
         )
-        if assignment is not None:
-            assignment = await cls.store_form_payloads_async(
-                provider=provider,
-                assignment_id=assignment.assignment_id,
-                forms_payload=normalized_before_forms,
-            )
+        if assignment is not None and config.assignment_strategy.assignment_mode == "auto":
+            strategy = cls._strategy_for(config=config)
+            if hasattr(strategy, "generate_remaining_assignments_async"):
+                await strategy.generate_remaining_assignments_async(
+                    provider=provider,
+                    config=config,
+                    player=player_record,
+                )
+        await cls.store_player_form_payloads_async(
+            provider=provider,
+            player_id=player_id,
+            experiment_name=config.name,
+            forms_payload=normalized_before_forms,
+        )
         return assignment
 
     @classmethod
@@ -328,6 +336,26 @@ class ExperimentManager:
                 )
             )
         return updated
+
+    @classmethod
+    async def store_player_form_payloads_async(
+        cls,
+        *,
+        provider: Any,
+        player_id: str,
+        experiment_name: str,
+        forms_payload: dict[str, dict[str, Any]],
+    ) -> None:
+        """Store one or more named before-play form payloads on the player forms record."""
+        for form_key, payload in forms_payload.items():
+            await maybe_await(
+                provider.set_player_form_response(
+                    player_id=player_id,
+                    experiment_name=experiment_name,
+                    form_key=form_key,
+                    response=payload,
+                )
+            )
 
     @classmethod
     async def get_latest_assignment_for_player_async(cls, *, provider: Any, player_id: str) -> AssignmentRecord | None:
@@ -503,4 +531,10 @@ class ExperimentManager:
     @classmethod
     def _is_completion_reason(cls, reason: str) -> bool:
         normalized = reason.strip().lower().replace(" ", "_")
-        return normalized in {"game_completed", "game_complete"} or normalized.startswith("stopping_condition_met:")
+        completion_reasons = {
+            "game_completed",
+            "game_complete",
+            "max_predictions_reached",
+            "player_exited",
+        }
+        return normalized in completion_reasons or normalized.startswith("stopping_condition_met:")
