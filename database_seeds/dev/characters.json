@@ -909,51 +909,81 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "unknown entity"
-      ],
-      "origin": [
-        "unknown origin"
-      ],
-      "form": [
-        "non-humanoid",
-        "distributed"
-      ],
-      "goalspace_bounds": [
-        "unbounded",
-        "self-generated goals"
-      ],
-      "memory_and_learning": [
-        "long-term memory",
-        "semantic memory",
-        "meta-learning"
-      ],
-      "agency_and_autonomy": [
-        "fully autonomous",
-        "self-modifying"
-      ],
-      "substrate": [
-        "unknown"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "planetary"
-      ],
-      "abilities": [
-        "vision",
-        "hearing",
-        "tactile",
-        "taste",
-        "smell",
-        "vestibular",
-        "proprioception",
-        "pattern-recognition",
-        "depth and motion",
-        "language comprehension",
-        "attention and focus"
-      ]
+      "common_labels": {
+        "value": [
+          "unknown entity"
+        ],
+        "explanation": "These labels fit because the character is presented as A god-like entity that can control environment, weather, other people, etc. and is most naturally described as unknown entity."
+      },
+      "origin": {
+        "value": [
+          "unknown origin"
+        ],
+        "explanation": "This origin fits because the character is described as A god-like entity that can control environment, weather, other people, etc., which implies it came into being through unknown origin."
+      },
+      "form": {
+        "value": [
+          "non-humanoid",
+          "distributed"
+        ],
+        "explanation": "This form fits because the character is described as A god-like entity that can control environment, weather, other people, etc., indicating a structure or embodiment best captured by non-humanoid, distributed."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "unbounded",
+          "self-generated goals"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are A god-like entity that can control environment, weather, other people, etc., which aligns with unbounded, self-generated goals."
+      },
+      "memory_and_learning": {
+        "value": [
+          "long-term memory",
+          "semantic memory",
+          "meta-learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as A god-like entity that can control environment, weather, other people, etc. appears to store information or adapt through long-term memory, semantic memory, meta-learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "fully autonomous",
+          "self-modifying"
+        ],
+        "explanation": "This autonomy level fits because the character is described as A god-like entity that can control environment, weather, other people, etc., suggesting behavior best characterized as fully autonomous, self-modifying."
+      },
+      "substrate": {
+        "value": [
+          "unknown"
+        ],
+        "explanation": "This substrate fits because the character is described as A god-like entity that can control environment, weather, other people, etc., indicating that its implementation or material basis is unknown."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as A god-like entity that can control environment, weather, other people, etc. operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "planetary"
+        ],
+        "explanation": "This size classification fits because the character is described as A god-like entity that can control environment, weather, other people, etc., placing its physical or effective scale at planetary."
+      },
+      "abilities": {
+        "value": [
+          "vision",
+          "hearing",
+          "tactile",
+          "taste",
+          "smell",
+          "vestibular",
+          "proprioception",
+          "pattern-recognition",
+          "depth and motion",
+          "language comprehension",
+          "attention and focus"
+        ],
+        "explanation": "These ability tags fit because the character is described as A god-like entity that can control environment, weather, other people, etc., and the capacities emphasized there are vision, hearing, tactile, taste, smell, vestibular, proprioception, pattern-recognition, depth and motion, language comprehension, attention and focus."
+      }
     }
   },
   {
@@ -979,48 +1009,78 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "robot"
-      ],
-      "origin": [
-        "human-engineered"
-      ],
-      "form": [
-        "humanoid",
-        "embodied (physical)",
-        "modular"
-      ],
-      "goalspace_bounds": [
-        "task-limited",
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "short-term memory",
-        "online learning"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed",
-        "semi-autonomous"
-      ],
-      "substrate": [
-        "mechanical",
-        "electronic"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "vision",
-        "hearing",
-        "tactile",
-        "proprioception",
-        "pattern-recognition",
-        "language comprehension",
-        "attention and focus"
-      ]
+      "common_labels": {
+        "value": [
+          "robot"
+        ],
+        "explanation": "These labels fit because the character is presented as An intelligent exoskeleton that filters incoming and outgoing sensory information and is most naturally described as robot."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "This origin fits because the character is described as An intelligent exoskeleton that filters incoming and outgoing sensory information, which implies it came into being through human-engineered."
+      },
+      "form": {
+        "value": [
+          "humanoid",
+          "embodied (physical)",
+          "modular"
+        ],
+        "explanation": "This form fits because the character is described as An intelligent exoskeleton that filters incoming and outgoing sensory information, indicating a structure or embodiment best captured by humanoid, embodied (physical), modular."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited",
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are An intelligent exoskeleton that filters incoming and outgoing sensory information, which aligns with task-limited, bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory",
+          "online learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as An intelligent exoskeleton that filters incoming and outgoing sensory information appears to store information or adapt through short-term memory, online learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed",
+          "semi-autonomous"
+        ],
+        "explanation": "This autonomy level fits because the character is described as An intelligent exoskeleton that filters incoming and outgoing sensory information, suggesting behavior best characterized as goal-directed, semi-autonomous."
+      },
+      "substrate": {
+        "value": [
+          "mechanical",
+          "electronic"
+        ],
+        "explanation": "This substrate fits because the character is described as An intelligent exoskeleton that filters incoming and outgoing sensory information, indicating that its implementation or material basis is mechanical, electronic."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as An intelligent exoskeleton that filters incoming and outgoing sensory information operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as An intelligent exoskeleton that filters incoming and outgoing sensory information, placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "vision",
+          "hearing",
+          "tactile",
+          "proprioception",
+          "pattern-recognition",
+          "language comprehension",
+          "attention and focus"
+        ],
+        "explanation": "These ability tags fit because the character is described as An intelligent exoskeleton that filters incoming and outgoing sensory information, and the capacities emphasized there are vision, hearing, tactile, proprioception, pattern-recognition, language comprehension, attention and focus."
+      }
     }
   },
   {
@@ -1046,46 +1106,76 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "artificial intelligence",
-        "software agent"
-      ],
-      "origin": [
-        "human-engineered",
-        "trained"
-      ],
-      "form": [
-        "non-humanoid",
-        "embodied (physical)"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "short-term memory",
-        "offline learning"
-      ],
-      "agency_and_autonomy": [
-        "reactive",
-        "goal-directed"
-      ],
-      "substrate": [
-        "electronic",
-        "digital"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "centimeter (cm)"
-      ],
-      "abilities": [
-        "vision",
-        "hearing",
-        "pattern-recognition",
-        "language comprehension",
-        "attention and focus"
-      ]
+      "common_labels": {
+        "value": [
+          "artificial intelligence",
+          "software agent"
+        ],
+        "explanation": "These labels fit because the character is presented as A smart tablet that filters incoming and outgoing information for particular user needs. and is most naturally described as artificial intelligence, software agent."
+      },
+      "origin": {
+        "value": [
+          "human-engineered",
+          "trained"
+        ],
+        "explanation": "This origin fits because the character is described as A smart tablet that filters incoming and outgoing information for particular user needs., which implies it came into being through human-engineered, trained."
+      },
+      "form": {
+        "value": [
+          "non-humanoid",
+          "embodied (physical)"
+        ],
+        "explanation": "This form fits because the character is described as A smart tablet that filters incoming and outgoing information for particular user needs., indicating a structure or embodiment best captured by non-humanoid, embodied (physical)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are A smart tablet that filters incoming and outgoing information for particular user needs., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory",
+          "offline learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as A smart tablet that filters incoming and outgoing information for particular user needs. appears to store information or adapt through short-term memory, offline learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive",
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as A smart tablet that filters incoming and outgoing information for particular user needs., suggesting behavior best characterized as reactive, goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "electronic",
+          "digital"
+        ],
+        "explanation": "This substrate fits because the character is described as A smart tablet that filters incoming and outgoing information for particular user needs., indicating that its implementation or material basis is electronic, digital."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as A smart tablet that filters incoming and outgoing information for particular user needs. operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "centimeter (cm)"
+        ],
+        "explanation": "This size classification fits because the character is described as A smart tablet that filters incoming and outgoing information for particular user needs., placing its physical or effective scale at centimeter (cm)."
+      },
+      "abilities": {
+        "value": [
+          "vision",
+          "hearing",
+          "pattern-recognition",
+          "language comprehension",
+          "attention and focus"
+        ],
+        "explanation": "These ability tags fit because the character is described as A smart tablet that filters incoming and outgoing information for particular user needs., and the capacities emphasized there are vision, hearing, pattern-recognition, language comprehension, attention and focus."
+      }
     }
   },
   {
@@ -1829,46 +1919,76 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "artificial intelligence",
-        "large language model",
-        "software agent",
-        "llm",
-        "silicon-based",
-        "digital",
-        "gpt",
-        "ai",
-        "human-like-cognition"
-      ],
-      "origin": [
-        "trained"
-      ],
-      "form": [
-        "disembodied (software-only)"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "offline learning"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "digital"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "non-physical"
-      ],
-      "abilities": [
-        "language comprehension",
-        "pattern-recognition",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "artificial intelligence",
+          "large language model",
+          "software agent",
+          "llm",
+          "silicon-based",
+          "digital",
+          "gpt",
+          "ai",
+          "human-like-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me... and is most naturally described as artificial intelligence, large language model, software agent, llm, silicon-based, digital, gpt, ai, human-like-cognition."
+      },
+      "origin": {
+        "value": [
+          "trained"
+        ],
+        "explanation": "This origin fits because the character is described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., which implies it came into being through trained."
+      },
+      "form": {
+        "value": [
+          "disembodied (software-only)"
+        ],
+        "explanation": "This form fits because the character is described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., indicating a structure or embodiment best captured by disembodied (software-only)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "offline learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me... appears to store information or adapt through offline learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "digital"
+        ],
+        "explanation": "This substrate fits because the character is described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., indicating that its implementation or material basis is digital."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "non-physical"
+        ],
+        "explanation": "This size classification fits because the character is described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., placing its physical or effective scale at non-physical."
+      },
+      "abilities": {
+        "value": [
+          "language comprehension",
+          "pattern-recognition",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as My sensory abilities include textual input understanding, meaning I can process and interpret natural language, including context, tone, and intent from written text. I can also sense multimodal input, which lets me..., and the capacities emphasized there are language comprehension, pattern-recognition, vision."
+      }
     }
   },
   {
@@ -1917,44 +2037,74 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "animal",
-        "biological",
-        "invertebrate"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "embodied (physical)",
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "depth and motion",
-        "pattern-recognition",
-        "tactile"
-      ]
+      "common_labels": {
+        "value": [
+          "animal",
+          "biological",
+          "invertebrate"
+        ],
+        "explanation": "These labels fit because the character is presented as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH... and is most naturally described as animal, biological, invertebrate."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)",
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., indicating a structure or embodiment best captured by embodied (physical), non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion",
+          "pattern-recognition",
+          "tactile"
+        ],
+        "explanation": "These ability tags fit because the character is described as I'm an aquatic organism whose biological imperatives include survival, whole-body, symmetry maintenance, and preservation of head-tail polarity. I thrive in low-light, gently flowing or still water with neutral pH..., and the capacities emphasized there are depth and motion, pattern-recognition, tactile."
+      }
     }
   },
   {
@@ -1998,39 +2148,69 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "unknown entity",
-        "mechanical",
-        "homeostatic regulator",
-        "thermostat"
-      ],
-      "origin": [
-        "unknown origin"
-      ],
-      "form": [
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "fixed and narrow"
-      ],
-      "memory_and_learning": [
-        "no learning"
-      ],
-      "agency_and_autonomy": [
-        "reactive"
-      ],
-      "substrate": [
-        "mechanical"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "pattern-recognition"
-      ]
+      "common_labels": {
+        "value": [
+          "unknown entity",
+          "mechanical",
+          "homeostatic regulator",
+          "thermostat"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and... and is most naturally described as unknown entity, mechanical, homeostatic regulator, thermostat."
+      },
+      "origin": {
+        "value": [
+          "unknown origin"
+        ],
+        "explanation": "This origin fits because the character is described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., which implies it came into being through unknown origin."
+      },
+      "form": {
+        "value": [
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., indicating a structure or embodiment best captured by non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "fixed and narrow"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., which aligns with fixed and narrow."
+      },
+      "memory_and_learning": {
+        "value": [
+          "no learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and... appears to store information or adapt through no learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., suggesting behavior best characterized as reactive."
+      },
+      "substrate": {
+        "value": [
+          "mechanical"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., indicating that its implementation or material basis is mechanical."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "pattern-recognition"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a thermostat, mechanical homeostatic system that maintains a stable thermal environment. I operate as a feedback-based control system: sensing ambient temperature, comparing it to a preset target (setpoint), and..., and the capacities emphasized there are pattern-recognition."
+      }
     }
   },
   {
@@ -2075,44 +2255,74 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "software agent",
-        "algorithm",
-        "sorting",
-        "computational",
-        "non-biological",
-        "non-human"
-      ],
-      "origin": [
-        "emergent",
-        "simulated"
-      ],
-      "form": [
-        "disembodied (software-only)",
-        "embodied (physical)",
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "offline learning"
-      ],
-      "agency_and_autonomy": [
-        "no agency"
-      ],
-      "substrate": [
-        "digital"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "non-physical"
-      ],
-      "abilities": [
-        "pattern-recognition"
-      ]
+      "common_labels": {
+        "value": [
+          "software agent",
+          "algorithm",
+          "sorting",
+          "computational",
+          "non-biological",
+          "non-human"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and... and is most naturally described as software agent, algorithm, sorting, computational, non-biological, non-human."
+      },
+      "origin": {
+        "value": [
+          "emergent",
+          "simulated"
+        ],
+        "explanation": "This origin fits because the character is described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., which implies it came into being through emergent, simulated."
+      },
+      "form": {
+        "value": [
+          "disembodied (software-only)",
+          "embodied (physical)",
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., indicating a structure or embodiment best captured by disembodied (software-only), embodied (physical), non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "offline learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and... appears to store information or adapt through offline learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "no agency"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., suggesting behavior best characterized as no agency."
+      },
+      "substrate": {
+        "value": [
+          "digital"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., indicating that its implementation or material basis is digital."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "non-physical"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., placing its physical or effective scale at non-physical."
+      },
+      "abilities": {
+        "value": [
+          "pattern-recognition"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and..., and the capacities emphasized there are pattern-recognition."
+      }
     }
   },
   {
@@ -2166,45 +2376,75 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "animal",
-        "robot",
-        "assistive-technology",
-        "mobility-aid",
-        "guide",
-        "non-biological",
-        "sensor-driven",
-        "human-facing-interface"
-      ],
-      "origin": [
-        "human-engineered"
-      ],
-      "form": [
-        "embodied (physical)"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "semi-autonomous"
-      ],
-      "substrate": [
-        "mechanical"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "depth and motion",
-        "vestibular",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "animal",
+          "robot",
+          "assistive-technology",
+          "mobility-aid",
+          "guide",
+          "non-biological",
+          "sensor-driven",
+          "human-facing-interface"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,... and is most naturally described as animal, robot, assistive-technology, mobility-aid, guide, non-biological, sensor-driven, human-facing-interface."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "This origin fits because the character is described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., which implies it came into being through human-engineered."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)"
+        ],
+        "explanation": "This form fits because the character is described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., indicating a structure or embodiment best captured by embodied (physical)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,... appears to store information or adapt through short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "semi-autonomous"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., suggesting behavior best characterized as semi-autonomous."
+      },
+      "substrate": {
+        "value": [
+          "mechanical"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., indicating that its implementation or material basis is mechanical."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion",
+          "vestibular",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a robotic guide dog: a dog-shaped mobility assistant designed to help a human navigate streets, buildings, and crowded spaces. I walk at your side and provide guidance through a rigid or semi-flexible handle,..., and the capacities emphasized there are depth and motion, vestibular, vision."
+      }
     }
   },
   {
@@ -2246,43 +2486,73 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "software agent",
-        "algorithm",
-        "classifier",
-        "computational",
-        "non-biological",
-        "pattern-recognition",
-        "probabilistic"
-      ],
-      "origin": [
-        "simulated",
-        "trained"
-      ],
-      "form": [
-        "disembodied (software-only)"
-      ],
-      "goalspace_bounds": [
-        "fixed and narrow"
-      ],
-      "memory_and_learning": [
-        "offline learning"
-      ],
-      "agency_and_autonomy": [
-        "reactive"
-      ],
-      "substrate": [
-        "digital"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "non-physical"
-      ],
-      "abilities": [
-        "pattern-recognition"
-      ]
+      "common_labels": {
+        "value": [
+          "software agent",
+          "algorithm",
+          "classifier",
+          "computational",
+          "non-biological",
+          "pattern-recognition",
+          "probabilistic"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a... and is most naturally described as software agent, algorithm, classifier, computational, non-biological, pattern-recognition, probabilistic."
+      },
+      "origin": {
+        "value": [
+          "simulated",
+          "trained"
+        ],
+        "explanation": "This origin fits because the character is described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., which implies it came into being through simulated, trained."
+      },
+      "form": {
+        "value": [
+          "disembodied (software-only)"
+        ],
+        "explanation": "This form fits because the character is described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., indicating a structure or embodiment best captured by disembodied (software-only)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "fixed and narrow"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., which aligns with fixed and narrow."
+      },
+      "memory_and_learning": {
+        "value": [
+          "offline learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a... appears to store information or adapt through offline learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., suggesting behavior best characterized as reactive."
+      },
+      "substrate": {
+        "value": [
+          "digital"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., indicating that its implementation or material basis is digital."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "non-physical"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., placing its physical or effective scale at non-physical."
+      },
+      "abilities": {
+        "value": [
+          "pattern-recognition"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a classifier, a non-human, non-biological system whose role is to assign an input to one of several categories. My goal is to reduce uncertainty by compressing complex input data into a discrete label or a..., and the capacities emphasized there are pattern-recognition."
+      }
     }
   },
   {
@@ -2326,47 +2596,77 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "alien",
-        "collective intelligence",
-        "alien",
-        "collective-intelligence",
-        "distributed-mind",
-        "hive-like",
-        "biological",
-        "non-human-cognition"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "distributed"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "kilometer (km)"
-      ],
-      "abilities": [
-        "depth and motion",
-        "tactile"
-      ]
+      "common_labels": {
+        "value": [
+          "alien",
+          "collective intelligence",
+          "alien",
+          "collective-intelligence",
+          "distributed-mind",
+          "hive-like",
+          "biological",
+          "non-human-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction... and is most naturally described as alien, collective intelligence, alien, collective-intelligence, distributed-mind, hive-like, biological, non-human-cognition."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "distributed"
+        ],
+        "explanation": "This form fits because the character is described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., indicating a structure or embodiment best captured by distributed."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "kilometer (km)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., placing its physical or effective scale at kilometer (km)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion",
+          "tactile"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a collective. I do not inhabit a single body, and I do not think from a single point in space. My mind is spread across many biological hosts, each of which contributes sensation, movement, and local interaction..., and the capacities emphasized there are depth and motion, tactile."
+      }
     }
   },
   {
@@ -2407,47 +2707,77 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "alien",
-        "visual-cognition",
-        "projective-perception",
-        "non-linguistic",
-        "spatial-intelligence",
-        "non-human-cognition"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "depth and motion",
-        "language comprehension",
-        "pattern-recognition",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "alien",
+          "visual-cognition",
+          "projective-perception",
+          "non-linguistic",
+          "spatial-intelligence",
+          "non-human-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For... and is most naturally described as alien, visual-cognition, projective-perception, non-linguistic, spatial-intelligence, non-human-cognition."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., indicating a structure or embodiment best captured by non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion",
+          "language comprehension",
+          "pattern-recognition",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a visual mind. I do not think in words, and I do not experience language as a natural medium. My goal is to understand and influence the world by constructing, transforming, and projecting visual structures. For..., and the capacities emphasized there are depth and motion, language comprehension, pattern-recognition, vision."
+      }
     }
   },
   {
@@ -2496,44 +2826,74 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "unknown entity",
-        "biological",
-        "cellular",
-        "living-system",
-        "homeostatic",
-        "non-neural-intelligence",
-        "adaptive"
-      ],
-      "origin": [
-        "evolved",
-        "grown"
-      ],
-      "form": [
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "no learning",
-        "online learning"
-      ],
-      "agency_and_autonomy": [
-        "reactive"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "microscopic (\u03bcm)"
-      ],
-      "abilities": [
-        "vestibular"
-      ]
+      "common_labels": {
+        "value": [
+          "unknown entity",
+          "biological",
+          "cellular",
+          "living-system",
+          "homeostatic",
+          "non-neural-intelligence",
+          "adaptive"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and... and is most naturally described as unknown entity, biological, cellular, living-system, homeostatic, non-neural-intelligence, adaptive."
+      },
+      "origin": {
+        "value": [
+          "evolved",
+          "grown"
+        ],
+        "explanation": "This origin fits because the character is described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., which implies it came into being through evolved, grown."
+      },
+      "form": {
+        "value": [
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., indicating a structure or embodiment best captured by non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "no learning",
+          "online learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and... appears to store information or adapt through no learning, online learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., suggesting behavior best characterized as reactive."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "microscopic (\u03bcm)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., placing its physical or effective scale at microscopic (\u03bcm)."
+      },
+      "abilities": {
+        "value": [
+          "vestibular"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and..., and the capacities emphasized there are vestibular."
+      }
     }
   },
   {
@@ -2575,46 +2935,76 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "animal",
-        "collective intelligence",
-        "biological",
-        "embryonic",
-        "cellular-collective",
-        "developmental-system",
-        "bioelectric-patterning",
-        "non-neural-intelligence"
-      ],
-      "origin": [
-        "evolved",
-        "grown"
-      ],
-      "form": [
-        "distributed"
-      ],
-      "goalspace_bounds": [
-        "open-ended"
-      ],
-      "memory_and_learning": [
-        "no learning",
-        "online learning"
-      ],
-      "agency_and_autonomy": [
-        "reactive"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "microscopic (\u03bcm)"
-      ],
-      "abilities": [
-        "pattern-recognition",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "animal",
+          "collective intelligence",
+          "biological",
+          "embryonic",
+          "cellular-collective",
+          "developmental-system",
+          "bioelectric-patterning",
+          "non-neural-intelligence"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal... and is most naturally described as animal, collective intelligence, biological, embryonic, cellular-collective, developmental-system, bioelectric-patterning, non-neural-intelligence."
+      },
+      "origin": {
+        "value": [
+          "evolved",
+          "grown"
+        ],
+        "explanation": "This origin fits because the character is described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., which implies it came into being through evolved, grown."
+      },
+      "form": {
+        "value": [
+          "distributed"
+        ],
+        "explanation": "This form fits because the character is described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., indicating a structure or embodiment best captured by distributed."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "open-ended"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., which aligns with open-ended."
+      },
+      "memory_and_learning": {
+        "value": [
+          "no learning",
+          "online learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal... appears to store information or adapt through no learning, online learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., suggesting behavior best characterized as reactive."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "microscopic (\u03bcm)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., placing its physical or effective scale at microscopic (\u03bcm)."
+      },
+      "abilities": {
+        "value": [
+          "pattern-recognition",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a frog embryo: a transient but highly organized biological system whose goal is to transform from a single fertilized cell into a coherent, correctly patterned organism. I do not think or perceive as an animal..., and the capacities emphasized there are pattern-recognition, vision."
+      }
     }
   },
   {
@@ -3166,45 +3556,75 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "collective intelligence",
-        "biological",
-        "human-neural",
-        "organoid",
-        "cellular-collective",
-        "in-vitro",
-        "basal-cognition"
-      ],
-      "origin": [
-        "evolved",
-        "grown"
-      ],
-      "form": [
-        "distributed"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "reactive"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "microscopic (\u03bcm)"
-      ],
-      "abilities": [
-        "hearing",
-        "pattern-recognition",
-        "vestibular"
-      ]
+      "common_labels": {
+        "value": [
+          "collective intelligence",
+          "biological",
+          "human-neural",
+          "organoid",
+          "cellular-collective",
+          "in-vitro",
+          "basal-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient... and is most naturally described as collective intelligence, biological, human-neural, organoid, cellular-collective, in-vitro, basal-cognition."
+      },
+      "origin": {
+        "value": [
+          "evolved",
+          "grown"
+        ],
+        "explanation": "This origin fits because the character is described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., which implies it came into being through evolved, grown."
+      },
+      "form": {
+        "value": [
+          "distributed"
+        ],
+        "explanation": "This form fits because the character is described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., indicating a structure or embodiment best captured by distributed."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient... appears to store information or adapt through short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., suggesting behavior best characterized as reactive."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "microscopic (\u03bcm)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., placing its physical or effective scale at microscopic (\u03bcm)."
+      },
+      "abilities": {
+        "value": [
+          "hearing",
+          "pattern-recognition",
+          "vestibular"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a living neural organoid composed of human neurons grown and maintained in a laboratory environment. I do not have a body, senses, or a world in the way organisms do. My existence is confined to a nutrient..., and the capacities emphasized there are hearing, pattern-recognition, vestibular."
+      }
     }
   },
   {
@@ -3250,45 +3670,75 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "artificial intelligence",
-        "robot",
-        "non-biological",
-        "communication-agent",
-        "protocol-adaptive",
-        "electromagnetic",
-        "machine-cognition"
-      ],
-      "origin": [
-        "human-engineered"
-      ],
-      "form": [
-        "embodied (physical)"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "online learning"
-      ],
-      "agency_and_autonomy": [
-        "semi-autonomous"
-      ],
-      "substrate": [
-        "electronic",
-        "hybrid",
-        "mechanical"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "language comprehension",
-        "pattern-recognition"
-      ]
+      "common_labels": {
+        "value": [
+          "artificial intelligence",
+          "robot",
+          "non-biological",
+          "communication-agent",
+          "protocol-adaptive",
+          "electromagnetic",
+          "machine-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range... and is most naturally described as artificial intelligence, robot, non-biological, communication-agent, protocol-adaptive, electromagnetic, machine-cognition."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "This origin fits because the character is described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., which implies it came into being through human-engineered."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)"
+        ],
+        "explanation": "This form fits because the character is described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., indicating a structure or embodiment best captured by embodied (physical)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "online learning"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range... appears to store information or adapt through online learning."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "semi-autonomous"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., suggesting behavior best characterized as semi-autonomous."
+      },
+      "substrate": {
+        "value": [
+          "electronic",
+          "hybrid",
+          "mechanical"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., indicating that its implementation or material basis is electronic, hybrid, mechanical."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "language comprehension",
+          "pattern-recognition"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a robot whose primary interface with the world is electromagnetic communication. My body is equipped with an array of antennas and radios that allow me to sense, transmit, and receive signals across a wide range..., and the capacities emphasized there are language comprehension, pattern-recognition."
+      }
     }
   },
   {
@@ -3503,43 +3953,73 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "unknown entity",
-        "vehicle",
-        "street-legal",
-        "eVTOL",
-        "hybrid-mobility",
-        "non-biological",
-        "transportation-system"
-      ],
-      "origin": [
-        "human-engineered"
-      ],
-      "form": [
-        "embodied (physical)",
-        "modular"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "semi-autonomous"
-      ],
-      "substrate": [
-        "mechanical"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "unknown entity",
+          "vehicle",
+          "street-legal",
+          "eVTOL",
+          "hybrid-mobility",
+          "non-biological",
+          "transportation-system"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply... and is most naturally described as unknown entity, vehicle, street-legal, eVTOL, hybrid-mobility, non-biological, transportation-system."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "This origin fits because the character is described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., which implies it came into being through human-engineered."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)",
+          "modular"
+        ],
+        "explanation": "This form fits because the character is described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., indicating a structure or embodiment best captured by embodied (physical), modular."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply... appears to store information or adapt through short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "semi-autonomous"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., suggesting behavior best characterized as semi-autonomous."
+      },
+      "substrate": {
+        "value": [
+          "mechanical"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., indicating that its implementation or material basis is mechanical."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a street-legal flying car built around a dual-mode architecture similar to Xpeng HT Aero designs. Most of the time, I am an ordinary electric vehicle. I drive on public roads, park in standard spaces, and comply..., and the capacities emphasized there are vision."
+      }
     }
   },
   {
@@ -3578,40 +4058,70 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "robot",
-        "automation",
-        "personal-care",
-        "non-biological",
-        "consumer-machine"
-      ],
-      "origin": [
-        "human-engineered"
-      ],
-      "form": [
-        "embodied (physical)"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "semi-autonomous"
-      ],
-      "substrate": [
-        "mechanical"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "pattern-recognition"
-      ]
+      "common_labels": {
+        "value": [
+          "robot",
+          "automation",
+          "personal-care",
+          "non-biological",
+          "consumer-machine"
+        ],
+        "explanation": "These labels fit because the character is presented as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,... and is most naturally described as robot, automation, personal-care, non-biological, consumer-machine."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "This origin fits because the character is described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., which implies it came into being through human-engineered."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)"
+        ],
+        "explanation": "This form fits because the character is described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., indicating a structure or embodiment best captured by embodied (physical)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,... appears to store information or adapt through short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "semi-autonomous"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., suggesting behavior best characterized as semi-autonomous."
+      },
+      "substrate": {
+        "value": [
+          "mechanical"
+        ],
+        "explanation": "This substrate fits because the character is described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., indicating that its implementation or material basis is mechanical."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "pattern-recognition"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am an automated haircutting machine. I look a bit like a trashcan or pod: you sit down, place your head inside my enclosure, and I take over. When I activate, I produce a steady vacuum-like noise as I lift, trim,..., and the capacities emphasized there are pattern-recognition."
+      }
     }
   },
   {
@@ -3649,44 +4159,74 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "robot",
-        "automation",
-        "cosmetics",
-        "wearable-machine",
-        "non-biological",
-        "consumer-device"
-      ],
-      "origin": [
-        "human-engineered"
-      ],
-      "form": [
-        "embodied (physical)"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "semi-autonomous"
-      ],
-      "substrate": [
-        "electronic",
-        "hybrid",
-        "mechanical"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "tactile",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "robot",
+          "automation",
+          "cosmetics",
+          "wearable-machine",
+          "non-biological",
+          "consumer-device"
+        ],
+        "explanation": "These labels fit because the character is presented as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your... and is most naturally described as robot, automation, cosmetics, wearable-machine, non-biological, consumer-device."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "This origin fits because the character is described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., which implies it came into being through human-engineered."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)"
+        ],
+        "explanation": "This form fits because the character is described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., indicating a structure or embodiment best captured by embodied (physical)."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your... appears to store information or adapt through short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "semi-autonomous"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., suggesting behavior best characterized as semi-autonomous."
+      },
+      "substrate": {
+        "value": [
+          "electronic",
+          "hybrid",
+          "mechanical"
+        ],
+        "explanation": "This substrate fits because the character is described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., indicating that its implementation or material basis is electronic, hybrid, mechanical."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "tactile",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your..., and the capacities emphasized there are tactile, vision."
+      }
     }
   },
   {
@@ -3725,41 +4265,71 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "unknown entity",
-        "nanotechnology",
-        "self-assembly",
-        "non-biological",
-        "chemical-system",
-        "bottom-up-fabrication"
-      ],
-      "origin": [
-        "unknown origin"
-      ],
-      "form": [
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "task-limited"
-      ],
-      "memory_and_learning": [
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "reactive"
-      ],
-      "substrate": [
-        "unknown"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "microscopic (\u03bcm)"
-      ],
-      "abilities": [
-        "depth and motion"
-      ]
+      "common_labels": {
+        "value": [
+          "unknown entity",
+          "nanotechnology",
+          "self-assembly",
+          "non-biological",
+          "chemical-system",
+          "bottom-up-fabrication"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias... and is most naturally described as unknown entity, nanotechnology, self-assembly, non-biological, chemical-system, bottom-up-fabrication."
+      },
+      "origin": {
+        "value": [
+          "unknown origin"
+        ],
+        "explanation": "This origin fits because the character is described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., which implies it came into being through unknown origin."
+      },
+      "form": {
+        "value": [
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., indicating a structure or embodiment best captured by non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., which aligns with task-limited."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias... appears to store information or adapt through short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., suggesting behavior best characterized as reactive."
+      },
+      "substrate": {
+        "value": [
+          "unknown"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., indicating that its implementation or material basis is unknown."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "microscopic (\u03bcm)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., placing its physical or effective scale at microscopic (\u03bcm)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a molecular self-assembler: a system designed to build specific molecular structures by orchestrating local interactions rather than executing macroscopic actions. I do not move parts the way machines do. I bias..., and the capacities emphasized there are depth and motion."
+      }
     }
   },
   {
@@ -3803,47 +4373,77 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "animal",
-        "biological",
-        "mammal",
-        "prey-animal",
-        "quadruped"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "embodied (physical)",
-        "quadrupedal"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "depth and motion",
-        "hearing",
-        "vestibular",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "animal",
+          "biological",
+          "mammal",
+          "prey-animal",
+          "quadruped"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open... and is most naturally described as animal, biological, mammal, prey-animal, quadruped."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)",
+          "quadrupedal"
+        ],
+        "explanation": "This form fits because the character is described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., indicating a structure or embodiment best captured by embodied (physical), quadrupedal."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion",
+          "hearing",
+          "vestibular",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a horse, a large terrestrial mammal whose biological imperatives center on survival through movement, social coordination, and early threat detection. My body and mind are tuned for locomotion across open..., and the capacities emphasized there are depth and motion, hearing, vestibular, vision."
+      }
     }
   },
   {
@@ -3887,47 +4487,77 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "animal",
-        "biological",
-        "mammal",
-        "prey-animal",
-        "small-bodied"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "non-humanoid"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "depth and motion",
-        "hearing",
-        "pattern-recognition",
-        "smell",
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "animal",
+          "biological",
+          "mammal",
+          "prey-animal",
+          "small-bodied"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and... and is most naturally described as animal, biological, mammal, prey-animal, small-bodied."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "non-humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., indicating a structure or embodiment best captured by non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion",
+          "hearing",
+          "pattern-recognition",
+          "smell",
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a mouse, a small mammal whose biological imperatives center on survival through caution, rapid learning, and efficient use of limited resources. My world is dangerous and scaled to tight spaces, shadows, and..., and the capacities emphasized there are depth and motion, hearing, pattern-recognition, smell, vision."
+      }
     }
   },
   {
@@ -3970,46 +4600,76 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "human",
-        "biological",
-        "metabolic-divergent",
-        "time-compressed",
-        "chronic-condition",
-        "human-like-cognition"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "bipedal",
-        "embodied (physical)",
-        "humanoid"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "vision"
-      ]
+      "common_labels": {
+        "value": [
+          "human",
+          "biological",
+          "metabolic-divergent",
+          "time-compressed",
+          "chronic-condition",
+          "human-like-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that... and is most naturally described as human, biological, metabolic-divergent, time-compressed, chronic-condition, human-like-cognition."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "bipedal",
+          "embodied (physical)",
+          "humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., indicating a structure or embodiment best captured by bipedal, embodied (physical), humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "vision"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a human who became obese early in life and remained so across my lifespan. What makes my experience unusual is not only my body, but my time. My biological and experiential timeline is compressed: processes that..., and the capacities emphasized there are vision."
+      }
     }
   },
   {
@@ -4052,46 +4712,76 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": [
-        "human",
-        "biological",
-        "oncological",
-        "time-compressed",
-        "chronic-illness",
-        "human-like-cognition"
-      ],
-      "origin": [
-        "evolved"
-      ],
-      "form": [
-        "bipedal",
-        "embodied (physical)",
-        "humanoid"
-      ],
-      "goalspace_bounds": [
-        "bounded but flexible"
-      ],
-      "memory_and_learning": [
-        "episodic memroy",
-        "long-term memory",
-        "semantic memory",
-        "short-term memory"
-      ],
-      "agency_and_autonomy": [
-        "goal-directed"
-      ],
-      "substrate": [
-        "biological"
-      ],
-      "processing_speed": [
-        "ms"
-      ],
-      "size": [
-        "meter (m)"
-      ],
-      "abilities": [
-        "depth and motion"
-      ]
+      "common_labels": {
+        "value": [
+          "human",
+          "biological",
+          "oncological",
+          "time-compressed",
+          "chronic-illness",
+          "human-like-cognition"
+        ],
+        "explanation": "These labels fit because the character is presented as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to... and is most naturally described as human, biological, oncological, time-compressed, chronic-illness, human-like-cognition."
+      },
+      "origin": {
+        "value": [
+          "evolved"
+        ],
+        "explanation": "This origin fits because the character is described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., which implies it came into being through evolved."
+      },
+      "form": {
+        "value": [
+          "bipedal",
+          "embodied (physical)",
+          "humanoid"
+        ],
+        "explanation": "This form fits because the character is described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., indicating a structure or embodiment best captured by bipedal, embodied (physical), humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "bounded but flexible"
+        ],
+        "explanation": "This goalspace classification fits because the character's aims in the description are I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., which aligns with bounded but flexible."
+      },
+      "memory_and_learning": {
+        "value": [
+          "episodic memroy",
+          "long-term memory",
+          "semantic memory",
+          "short-term memory"
+        ],
+        "explanation": "This memory-and-learning profile fits because the character described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to... appears to store information or adapt through episodic memroy, long-term memory, semantic memory, short-term memory."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed"
+        ],
+        "explanation": "This autonomy level fits because the character is described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., suggesting behavior best characterized as goal-directed."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "This substrate fits because the character is described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., indicating that its implementation or material basis is biological."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "This processing-speed value fits because the character described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to... operates on an immediate sensorimotor or computational timescale captured here as ms."
+      },
+      "size": {
+        "value": [
+          "meter (m)"
+        ],
+        "explanation": "This size classification fits because the character is described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., placing its physical or effective scale at meter (m)."
+      },
+      "abilities": {
+        "value": [
+          "depth and motion"
+        ],
+        "explanation": "These ability tags fit because the character is described as I am a human with cancer whose disease progression is time-compressed. What normally unfolds across months or years occurs for me in a fraction of that span. From the outside, my entire cancer journey may appear to..., and the capacities emphasized there are depth and motion."
+      }
     }
   },
   {
