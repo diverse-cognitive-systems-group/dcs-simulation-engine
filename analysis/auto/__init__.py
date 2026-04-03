@@ -26,6 +26,12 @@ from analysis.auto.sections import (
 )
 from analysis.common.loader import AnalysisData
 
+_TODO_PLACEHOLDER = (
+    '<div class="alert alert-warning mt-3" role="alert">'
+    "<strong>TODO:</strong> Add your interpretations and results discussion here."
+    "</div>"
+)
+
 # Registry of sections in display order: (anchor_slug, display_title, module, kind)
 # kind:
 #   "top"   — full section with <h2> heading, rendered in main content
@@ -52,7 +58,11 @@ def _read_b64(path: Path) -> str | None:
         return None
 
 
-def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
+def run_analysis(
+    data: AnalysisData,
+    title: str = "Results Report",
+    with_todos: bool = False,
+) -> str:
     """Render all registered sections and return the complete HTML string."""
     rendered: list[tuple[str | None, str, str, str]] = []
     for anchor, section_title, module, kind in SECTIONS:
@@ -68,6 +78,8 @@ def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
                 f"{exc}"
                 f"</div>"
             )
+        if with_todos:
+            fragment = fragment + _TODO_PLACEHOLDER
         rendered.append((anchor, section_title, fragment, kind))
 
     raw_results_path = data.results_dir.with_suffix(".zip")
@@ -78,3 +90,51 @@ def run_analysis(data: AnalysisData, title: str = "Results Report") -> str:
     }
 
     return build_html(rendered, title=title, artifacts=artifacts)
+
+
+def _find_repo_root(start: Path | None = None) -> Path:
+    """Walk up from *start* (default: cwd) looking for pyproject.toml + database_seeds/."""
+    candidate = (start or Path.cwd()).resolve()
+    for p in [candidate, *candidate.parents]:
+        if (p / "pyproject.toml").exists() and (p / "database_seeds").exists():
+            return p
+    # Fallback: analysis/auto/__init__.py → parents[2] = repo root
+    return Path(__file__).parents[2]
+
+
+def run_coverage_report(
+    repo_root: Path | None = None,
+    hids_filter: list[str] | None = None,
+) -> str:
+    """Render the character coverage report and return the complete HTML string.
+
+    Loads character data directly from database_seeds/; does not use AnalysisData.
+    """
+    from analysis.auto.sections import coverage_human, coverage_nonhuman
+
+    root = repo_root or _find_repo_root()
+
+    coverage_sections = [
+        (None,             "Non-human",      None,              "group"),
+        ("dim-coverage",   "Dimensions",     coverage_nonhuman, "sub"),
+        (None,             "Human",          None,              "group"),
+        ("hsn-divergence", "HSN Divergence", coverage_human,    "sub"),
+    ]
+
+    rendered: list[tuple[str | None, str, str, str]] = []
+    for anchor, section_title, module, kind in coverage_sections:
+        if kind == "group":
+            rendered.append((None, section_title, "", "group"))
+            continue
+        try:
+            fragment = module.render(root, hids_filter=hids_filter)
+        except Exception as exc:
+            fragment = (
+                f'<div class="alert alert-danger">'
+                f"<strong>Error rendering &ldquo;{section_title}&rdquo;:</strong> "
+                f"{exc}"
+                f"</div>"
+            )
+        rendered.append((anchor, section_title, fragment, kind))
+
+    return build_html(rendered, title="Character Coverage Report", artifacts=None)

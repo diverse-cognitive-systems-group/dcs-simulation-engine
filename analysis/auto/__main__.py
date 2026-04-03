@@ -1,15 +1,15 @@
-"""CLI entry point for dcs-analyze."""
+"""CLI entry point for dcs-utils."""
 
 
 
 import re
 import webbrowser
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import typer
 import typer.rich_utils as ru
-from analysis.auto import run_analysis
+from analysis.auto import run_analysis, run_coverage_report
 from analysis.common.loader import load_all
 from rich.console import Console
 from rich.theme import Theme
@@ -47,7 +47,9 @@ ru.STYLE_ERRORS_PANEL_BORDER = "white"
 ru.STYLE_ERRORS_SUGGESTION = "dim"
 ru.STYLE_ABORTED = "white"
 
-app = typer.Typer(help="Generate a self-contained HTML analysis report from DCS results.")
+app = typer.Typer(help="DCS utility commands.")
+generate_app = typer.Typer(help="Generate artifacts (reports, etc.).")
+app.add_typer(generate_app, name="generate")
 
 
 def _find_latest_run(runs_dir: Path) -> Path:
@@ -68,26 +70,43 @@ def _slugify(text: str) -> str:
     return slug.strip("_") or "report"
 
 
-@app.command()
-def _cmd(
+_VALID_TEMPLATES = {"default", "usability", "simulation_quality", "character_coverage"}
+_TEMPLATE_TITLES = {
+    "usability": "Usability Report",
+    "simulation_quality": "Simulation Quality Report",
+    "character_coverage": "Character Coverage Report",
+}
+
+
+@generate_app.command("report")
+def _generate_report_cmd(
     results_dir: Optional[Path] = typer.Argument(
         default=None,
-        help="Path to the results directory. Defaults to the latest run in ./runs/.",
+        help=(
+            "Path to the results directory. "
+            "Defaults to the latest run in ./runs/. "
+            "Ignored for --template character_coverage."
+        ),
     ),
-    output_dir: Optional[Path] = typer.Option(
-        None,
-        "--output-dir",
-        help="Directory to write the HTML report. Defaults to <cwd>/results/.",
+    template: str = typer.Option(
+        "default",
+        "--template",
+        help="Report template: default | usability | simulation_quality | character_coverage.",
     ),
-    output_file: Optional[str] = typer.Option(
+    report_path: Optional[Path] = typer.Option(
         None,
-        "--output-file",
-        help="Output filename. Defaults to <title>.html (auto-incremented to avoid overwrites).",
+        "--report_path",
+        help="Output path for the HTML file. Defaults to ./results/<title>.html.",
+    ),
+    character_hids: Optional[List[str]] = typer.Option(
+        None,
+        "--character_hids",
+        help="(character_coverage only) Limit analysis to these character HIDs.",
     ),
     title: Optional[str] = typer.Option(
         None,
         "--title",
-        help="Report title. Defaults to the run_config name from the experiment record.",
+        help="Override the report title.",
     ),
     open_browser: bool = typer.Option(
         False,
@@ -97,6 +116,37 @@ def _cmd(
 ) -> None:
     cwd = Path.cwd()
 
+    if template not in _VALID_TEMPLATES:
+        valid = " | ".join(sorted(_VALID_TEMPLATES))
+        _console.print(f"ERROR: unknown template {template!r}. Valid options: {valid}", style="error")
+        raise typer.Exit(1)
+
+    # ------------------------------------------------------------------
+    # character_coverage: standalone path — no results dir needed
+    # ------------------------------------------------------------------
+    if template == "character_coverage":
+        final_title = title or _TEMPLATE_TITLES["character_coverage"]
+        if report_path is not None:
+            output_path = report_path.resolve()
+        else:
+            out_dir = (cwd / "results").resolve()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            output_path = out_dir / "character_coverage_report.html"
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with _console.status("Generating character coverage report...", spinner="dots"):
+            html = run_coverage_report(hids_filter=character_hids or None)
+        _console.print("[green]✔[/green] Generated character coverage report", style="dim")
+        output_path.write_text(html, encoding="utf-8")
+        _console.print(f"Report written to: {output_path}", style="dim")
+        if open_browser:
+            webbrowser.open(output_path.as_uri())
+        return
+
+    # ------------------------------------------------------------------
+    # All other templates require a results directory
+    # ------------------------------------------------------------------
     if results_dir is None:
         runs_dir = cwd / "runs"
         if not runs_dir.is_dir():
@@ -110,28 +160,33 @@ def _cmd(
         _console.print(f"ERROR: not a directory: {results_dir}", style="error")
         raise typer.Exit(1)
 
-    out_dir = (output_dir or cwd / "results").resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
-
     with _console.status("Loading results...", spinner="dots"):
         data = load_all(results_dir)
     _console.print(f"[green]✔[/green] Loaded results from: {results_dir}", style="dim")
 
-    if title is None:
-        run_config = data.experiment.get("run_config") or {}
-        title = (
-            (run_config.get("name") if isinstance(run_config, dict) else None)
-            or data.experiment.get("name")
-            or "Results Report"
-        )
+    with_todos = template in ("usability", "simulation_quality")
 
-    if output_file is not None:
-        output_path = out_dir / output_file
+    if title is None:
+        title = _TEMPLATE_TITLES.get(template)
+        if title is None:  # "default"
+            run_config = data.experiment.get("run_config") or {}
+            title = (
+                (run_config.get("name") if isinstance(run_config, dict) else None)
+                or data.experiment.get("name")
+                or "Results Report"
+            )
+
+    if report_path is not None:
+        output_path = report_path.resolve()
     else:
+        out_dir = (cwd / "results").resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
         output_path = out_dir / f"{_slugify(title)}.html"
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     with _console.status(f"Generating report: {title!r}...", spinner="dots"):
-        html = run_analysis(data, title=title)
+        html = run_analysis(data, title=title, with_todos=with_todos)
     _console.print(f"[green]✔[/green] Generating report: {title!r}", style="dim")
 
     output_path.write_text(html, encoding="utf-8")
@@ -142,7 +197,7 @@ def _cmd(
 
 
 def main() -> None:
-    """Entrypoint for the dcs-analyze CLI."""
+    """Entrypoint for the dcs-utils CLI."""
     app()
 
 
