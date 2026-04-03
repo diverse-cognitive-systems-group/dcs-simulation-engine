@@ -1,5 +1,7 @@
 site_name: DCS Documentation
 use_directory_urls: false
+repo_name: dcs-simulation-engine
+repo_url: https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine
 theme:
   name: material
   palette:
@@ -28,6 +30,7 @@ theme:
         name: Switch to system preference
 plugins:
   - search
+  # - tags
   - mkdocstrings:
       handlers:
         python:
@@ -71,5 +74,4 @@ nav:
   - Codebase Reference: codebase_reference.md
   - Examples: examples.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
-  - Tags: tags.md
   - FAQ: faq.md
