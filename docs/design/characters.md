@@ -1,16 +1,14 @@
 # Characters
 
-*Characters* are the cognitive systems that players or simulators can use as player characters (PCs) or non-player characters (NPCs) in games. 
+*Characters* are cognitive systems that can be used as player characters (PCs) or non-player characters (NPCs) in simulations.
 
 ## Core Characters
-We maintain a curated database of diverse cognitive systems called "core characters" that are included with the simulation engine.
+Core characters are a curated set of cognitive systems included with the simulation engine. Each is selected to represent a distinct type of cognition—differing in goals, structure, or behavior—and is tested to ensure the engine can model it reliably.
 
-Each character is selected for its ability to behaviorally represent a distinct type of cognitive system—differing in goals, form, function, or other meaningful dimensions. Core characters have been tested to ensure the simulation engine can accurately model their behavior within scenarios.
+### Selection Criteria
+A character is included if it meaningfully expands the range of cognitive systems we can model. This includes systems that challenge or extend typical assumptions about cognition and interaction.
 
-### Representative Set of Core Characters
-Core characters were selected based on whether they meaningfully represent cognitive systems that differ in ways relevant to our research. In other words, a character is included if it helps model a form of cognition or interaction that challenges, extends, or diversifies typical assumptions.
-
-Forms of divergence represented include, but are not limited to:
+Examples include:
 
 - Alien-like intelligences with unfamiliar goal spaces or conceptual structures
 
@@ -32,17 +30,98 @@ Forms of divergence represented include, but are not limited to:
 
 - And additional forms as needed
 
-### Character Quality Control and Validation
-Each character represents a fixed snapshot of a cognitive system—capturing its sensory, perceptual, regulatory, cognitive, and motor/action modalities, as well as its goals. Characters are designed to be consistent and reliable so the simulation engine can model their behavior and interactions accurately over time.
+> See the [character coverage report](../reports/character_coverage.md) for details on coverage and gaps in our current character database.
 
-### Validation with Real-World Counterparts
-When a real-world counterpart exists and humans can meaningfully interact with or observe it, we use Turing-style validation tests. In these tests, experts evaluate whether the simulated character’s “next action” or behavior is practically indistinguishable from what the real system would do in the same situation. For example, the flatworm character could be validated by biologists specializing in flatworm behavior, who assess whether its simulated actions aligned with real-world expectations.
+----
 
-### Validation of Non-Observable or Hypothetical Systems
-For characters without real-world counterparts or direct observers—such as alien, abstract, or imagined cognitive systems—we use an informal validation process. This consists of a structured justification and consensus within the DCS group, ensuring that each character is a useful, thoughtfully constructed and a coherent representation of an imagined cognitive system.
+## Character Quality and Evaluation
+
+Each character is a fixed snapshot of a cognitive system, including its:
+
+- Persona
+- Abilities
+- Goals
+
+Characters are designed to behave consistently so simulations remain reliable over time.
+
+### Development Workflow
+
+Character sheets define each character and are refined through iterative testing.
+
+**1. Develop and Test**
+
+- Create or modify a character sheet based on research (e.g., primary source materials, interviews with experts, etc.)
+- Add it to database (`database_seeds/dev/characters.json`)
+- Run simulations and observe behavior
+
+**2. Evaluate Fidelity**
+- Flag character behavior that doesn't align with expectations (e.g., "Out of Character" flags)
+- Iterate until the character meets an in-character fidelity (ICF) threshold across scenarios
+
+**3. Generate Report**
+
+Generate a character quality report using:
+
+```sh
+dcs generate report character_quality <path/to/results>
+```
+
+Then complete the manual sections of the report including:
+- authorship
+- data/chart/score interpretations
+- evaluation method details
+- character strengths and weaknesses observed
+- failure modes and drift behavior
+- recommended use cases and guardrails
+- pass/fail justification
+
+**4. Publish for Review**
+
+Publish the character quality report using:
+
+```sh
+dcs publish report character_quality <path/to/results>
+```
+
+Or manually update the following:
+- Add results to `character_evaluations.json`
+- Add report to `docs/design/simulation_quality`
+- Add character to `database_seeds/prod/characters.json`    
+
+Then open a PR for peer review of the character.
+
+### Production Quality and Evaluation Consistency
+
+Character behavior depends on both the **character sheet** and the **model + system prompt** used to role-play it.
+
+To ensure consistency:
+
+- All evaluations are fingerprinted with the exact model and system prompt used
+- Evaluations are only valid of for the exact fingerprint + character hid they were run against
+
+If the model or system prompt changes, the character must be re-evaluated before it can be used in production.
+
+Because character evaluations are costly, we aim to keep role-playing models and prompts **as stable as possible**. When changes do occur, affected character undergo re-evaluation (including internal and, when applicable, external expert review).
+
+## Validation
+
+### Real-World Systems
+
+When a real-world counterpart exists, we use external expert evaluations.
+
+### Hypothetical or Non-Observable Systems
+
+For systems without real-world counterparts (e.g., alien, abstract, or imagined systems), validation is based on:
+
+- internal justification
+- coherence of the design
+- DCS research group consensus on usefulness and plausibility
 
 ## Custom Characters
-TODO
+
+Anyone can create custom characters using the workflow above.
+
+To propose inclusion in the core set, submit a PR with supporting evaluation and rationale.
 
 ## Future Development
 

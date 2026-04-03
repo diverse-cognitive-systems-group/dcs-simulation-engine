@@ -20,3 +20,6 @@ We use the following terminology:
 
 Users decide to run the engine (e.g., for training or research purposes) using CLI --> they use existing games with default characters or define their own --> if configured for human players, they share the gameplay link with players; if configured for AI players, they use the run harness with their model or manually play via API --> users start/monitor and stop the engine and then analyze results data.
 
+## Foundational Studies
+
+Foundational studies including usability, quality and baseline performance benchmarking for human and AI players are maintained and refreshed ...

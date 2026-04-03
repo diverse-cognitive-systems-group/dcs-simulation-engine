@@ -1,4 +1,4 @@
-# Games
+# Environments and Tasks
 
 *Games* are python files that implement the `Game` interface. They define any rules or objectives for the interaction.
 
