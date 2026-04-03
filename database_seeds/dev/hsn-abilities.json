@@ -1,0 +1,46 @@
+{
+    "physical_ability_assumptions": {
+        "ambulation": "People can walk, stand, climb stairs, and navigate uneven terrain.",
+        "manual_dexterity": "People have two hands with usable fingers and sufficient fine motor control for tasks like typing, writing, grasping, and manipulating small objects.",
+        "reach_and_stature": "People have approximately average adult height, arm length, and physical strength, allowing interaction with doors, shelves, counters, and controls as designed.",
+        "vision": "People have functional eyesight sufficient for reading text, recognizing faces, and interpreting visual signage and cues.",
+        "hearing": "People can hear speech, alarms, announcements, and ambient auditory cues.",
+        "speech": "People can produce intelligible spoken language in ways that meet social and institutional expectations.",
+        "physical_endurance": "People can sit, stand, move, or remain alert for extended periods without undue fatigue or physical consequence."
+    },
+    "cognitive_and_perceptual_assumptions": {
+        "literacy": "People can read and write at a functional adult level.",
+        "numeracy": "People can perform basic arithmetic, manage time, and handle money.",
+        "attention_control": "People can sustain focus, switch tasks, and filter distractions as required by typical environments.",
+        "memory": "People have sufficient short-term and working memory to follow instructions, remember sequences, and manage deadlines.",
+        "processing_speed": "People can comprehend information and respond within socially expected timeframes.",
+        "executive_function": "People can plan, prioritize, regulate impulses, and monitor their own behavior."
+    },
+    "psychological_and_emotional_assumptions": {
+        "emotional_regulation": "People can manage emotions within socially tolerated bounds.",
+        "stress_tolerance": "People can function under noise, time pressure, uncertainty, and moderate stress.",
+        "predictable_behavior": "People’s mood and conduct are reasonably consistent across contexts."
+    },
+    "social_and_communicative_assumptions": {
+        "norm_interpretation": "People can infer unwritten social rules and expectations.",
+        "neurotypical_communication": "People communicate and interpret communication using expected patterns of eye contact, tone, turn-taking, and facial expression.",
+        "theory_of_mind": "People can model others’ intentions, beliefs, and perspectives.",
+        "self_advocacy": "People can request help, articulate needs, and navigate bureaucratic or institutional systems."
+    },
+    "temporal_and_logistical_assumptions": {
+        "time_awareness": "People can keep schedules, meet deadlines, and be punctual.",
+        "independent_navigation": "People can navigate physical and institutional spaces independently using maps, signage, and standard wayfinding systems.",
+        "energy_predictability": "People have relatively stable daily energy levels and functioning without sudden or severe depletion."
+    },
+    "institutional_assumptions": {
+        "independence_by_default": "People require minimal assistance in work, education, healthcare, and daily life.",
+        "consistency_over_accommodation": "People can participate under uniform conditions without individualized adjustment.",
+        "cost_neutral_access": "Participation does not require significant additional personal resources, equipment, time, or support."
+    },
+    "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": "People can function safely without frequent attention to bodily signals (fatigue, pain, hunger, sensory overload, autonomic stress), and short-term neglect of self-care does not result in rapid or severe consequences."
+    },
+    "stability_assumptions": {
+        "functional_stability": "People’s functional capacities, sensory thresholds, regulatory needs, and access requirements are generally stable and predictable over time rather than fluctuating, cyclical, or episodic."
+    }
+}
