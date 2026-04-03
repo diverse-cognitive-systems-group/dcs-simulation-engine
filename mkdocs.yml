@@ -1,5 +1,7 @@
-site_name: DCS Docs
+site_name: DCS Documentation
 use_directory_urls: false
+repo_name: dcs-simulation-engine
+repo_url: https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine
 theme:
   name: material
   palette:
@@ -28,6 +30,7 @@ theme:
         name: Switch to system preference
 plugins:
   - search
+  # - tags
   - mkdocstrings:
       handlers:
         python:
@@ -40,15 +43,35 @@ plugins:
             show_root_heading: true # Adds a top-level heading for the root object/module on the page
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
 nav:
+  - Home: index.md
+
+  - Getting Started: getting_started.md
+
+  - User Guide:
+      - Overview: user_guide/overview.md
+      - Configuration: user_guide/configuration.md
+      - Running Locally: user_guide/running_locally.md
+      - Playing Games: user_guide/playing.md
+      - Analyzing Results: user_guide/analyzing_results.md
+      - Deployment: user_guide/deployment.md
+
+  - Use Cases:
+      - Researcher Running a Study: use_cases/general-researcher.md
+      - AI Practitioner Evaluating an Agent: use_cases/ai-researcher.md
+      - Educator / Training Session: use_cases/educator.md
+
   - Design:
-      - Overview: design_overview.md
-      - Games: games.md
-      - Characters: characters.md
+      - Overview: design/overview.md
+      - Games: design/games.md
+      - Characters: design/characters.md
+
   - Studies:
-      - Overview: studies_overview.md
+      - Overview: studies/overview.md
       - Usability: studies/usability.html
       - Simulation Quality: studies/simulation_quality.html
       - Performance Benchmarking: studies/performance_benchmarking.html
-  - DCS-SE Reference: dcs_se_reference.md
+
+  - Codebase Reference: codebase_reference.md
+  - Examples: examples.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
   - FAQ: faq.md
