@@ -1,5 +1,0 @@
-// characters for production based on evaluations matching fingerprint (roleplaymodel + prompt) and score above a threshold
-{
-  "engine_version": "dcs-se@0.0.0",
-  "approved_characters": []
-}
