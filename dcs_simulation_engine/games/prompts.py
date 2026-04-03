@@ -11,7 +11,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 _jinja_env = SandboxedEnvironment()
 
-_UPDATER_SYSTEM_TEMPLATE = """
+UPDATER_SYSTEM_TEMPLATE = """
 You are the scene-advancer. The user controls their own character. You play only the simulator's character (NPC). You must not speak or act for the user's character.
 
 - User's character is: {{ pc_short_description }} ({{ pc_hid }})
@@ -97,7 +97,7 @@ Output format: {
 
 def build_updater_prompt(pc: CharacterRecord, npc: CharacterRecord, additional_rules: str = "") -> str:
     """Render the updater system prompt from PC/NPC character records."""
-    return _jinja_env.from_string(_UPDATER_SYSTEM_TEMPLATE).render(
+    return _jinja_env.from_string(UPDATER_SYSTEM_TEMPLATE).render(
         pc_hid=pc.hid,
         pc_short_description=pc.short_description,
         npc_hid=npc.hid,
