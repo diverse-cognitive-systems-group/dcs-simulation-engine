@@ -1,8 +1,9 @@
-# Usage
+# Overview
 
-The DCS Simulation Engine allows users to run and manage interactive games involving diverse cognitive systems.
+This is a comprehensive guide covering how users can configure, run, manage and analyze data from the DCS-SE.
 
 It is used by:
+
 - **Researchers** (including internal DCS teams) designing experiments to study cognition across conditions and scenarios
 - **Team leaders** and educators training groups in diverse engagement and decision-making
 - **AI practitioners** using games as a sandbox for agent learning and evaluation

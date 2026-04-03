@@ -1,4 +1,4 @@
-# Run Configs
+# Configuration
 
 A run configuration specifies how the engine should be run including:
 
@@ -9,6 +9,8 @@ A run configuration specifies how the engine should be run including:
 ---
 
 ## Example Configs
+
+These examples are provided in `examples/run_configs` of the main repository and can be used as templates for your own configurations.
 
 | Example File | Description | Use Case |
 |---|---|---|
