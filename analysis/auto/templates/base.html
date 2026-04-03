@@ -198,8 +198,9 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
-              <li><a class="dropdown-item" href="#" id="dl-raw-results" onclick="downloadArtifact('raw_results'); return false;">Raw Results (.zip)</a></li>
-              <li><a class="dropdown-item" href="#" id="dl-run-config" onclick="downloadArtifact('run_config'); return false;">Run Config (.yml)</a></li>
+              {% for label, key in download_items %}
+              <li><a class="dropdown-item" href="#" id="dl-{{ key }}" onclick="downloadArtifact('{{ key }}'); return false;">{{ label }}</a></li>
+              {% endfor %}
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
             </ul>
@@ -255,10 +256,10 @@
       var _reportFilename = _reportSlug + '.html';
 
       // Disable menu items for missing artifacts
-      ['raw_results', 'run_config'].forEach(function (key) {
-        var idMap = { raw_results: 'dl-raw-results', run_config: 'dl-run-config' };
+      {{ download_items | tojson }}.forEach(function (item) {
+        var key = item[1];
         if (!_artifacts[key] || !_artifacts[key].b64) {
-          var el = document.getElementById(idMap[key]);
+          var el = document.getElementById('dl-' + key);
           if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
         }
       });

@@ -112,15 +112,22 @@ def run_coverage_report(
 
     Loads character data directly from database_seeds/; does not use AnalysisData.
     """
-    from analysis.auto.sections import coverage_human, coverage_nonhuman
+    from analysis.auto.sections import (
+        coverage_human,
+        coverage_metadata,
+        coverage_nonhuman,
+        coverage_overview,
+    )
 
     root = repo_root or _find_repo_root()
 
     coverage_sections = [
-        (None,             "Non-human",      None,              "group"),
-        ("dim-coverage",   "Dimensions",     coverage_nonhuman, "sub"),
-        (None,             "Human",          None,              "group"),
-        ("hsn-divergence", "HSN Divergence", coverage_human,    "sub"),
+        ("metadata",       "Metadata",       coverage_metadata,  "top"),
+        ("overview",       "Overview",       coverage_overview,  "top"),
+        (None,             "Non-human",      None,               "group"),
+        ("dim-coverage",   "Dimensions",     coverage_nonhuman,  "sub"),
+        (None,             "Human",          None,               "group"),
+        ("hsn-divergence", "HSN Divergence", coverage_human,     "sub"),
     ]
 
     rendered: list[tuple[str | None, str, str, str]] = []
@@ -139,4 +146,37 @@ def run_coverage_report(
             )
         rendered.append((anchor, section_title, fragment, kind))
 
-    return build_html(rendered, title="Character Coverage Report", artifacts=None)
+    dims_path = root / "database_seeds" / "dev" / "character_dimensions.json"
+    hsn_path = root / "database_seeds" / "dev" / "hsn-abilities.json"
+    chars_path = root / "database_seeds" / "prod" / "characters.json"
+
+    artifacts = {
+        "dimensions": {
+            "b64": _read_b64(dims_path),
+            "filename": "dimensions.json",
+            "mime": "application/json",
+        },
+        "hsn_assumptions": {
+            "b64": _read_b64(hsn_path),
+            "filename": "hsn_assumptions.json",
+            "mime": "application/json",
+        },
+        "characters": {
+            "b64": _read_b64(chars_path),
+            "filename": "characters.json",
+            "mime": "application/json",
+        },
+    }
+
+    download_items = [
+        ("dimensions.json", "dimensions"),
+        ("hsn_assumptions.json", "hsn_assumptions"),
+        ("characters.json", "characters"),
+    ]
+
+    return build_html(
+        rendered,
+        title="Character Coverage Report",
+        artifacts=artifacts,
+        download_items=download_items,
+    )

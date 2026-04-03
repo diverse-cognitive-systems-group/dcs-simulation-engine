@@ -16,6 +16,7 @@ def build_html(
     sections: list[tuple[str, str, str, bool]],
     title: str = "Results Report",
     artifacts: dict[str, Any] | None = None,
+    download_items: list[tuple[str, str]] | None = None,
 ) -> str:
     """Render the Jinja2 base template with all section fragments.
 
@@ -27,6 +28,12 @@ def build_html(
         child of the preceding top-level item.
     title:
         Report title shown in <h1> and <title>.
+    artifacts:
+        Mapping of artifact key → {b64, filename, mime} for downloadable files.
+    download_items:
+        List of (label, key) pairs rendered as dropdown menu items. Each key
+        must match an entry in *artifacts*. Defaults to the standard
+        raw_results / run_config pair.
 
     Returns
     -------
@@ -42,9 +49,15 @@ def build_html(
 
     generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
+    _download_items = download_items if download_items is not None else [
+        ("Raw Results (.zip)", "raw_results"),
+        ("Run Config (.yml)", "run_config"),
+    ]
+
     return template.render(
         title=title,
         sections=sections,
         generated_at=generated_at,
         artifacts_json=json.dumps(artifacts or {}),
+        download_items=_download_items,
     )
