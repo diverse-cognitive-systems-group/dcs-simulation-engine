@@ -98,7 +98,7 @@ def _session_record(
     player_id: str | None,
     game_name: str,
     termination_reason: str | None,
-    npc_hid: str = "flatworm",
+    npc_hid: str = "FW",
     turns_completed: int = 4,
 ) -> SessionRecord:
     return SessionRecord(
@@ -719,7 +719,7 @@ def test_infer_intent_evaluation_endpoint_generates_then_returns_cached_result(
     mock_provider.list_session_events = AsyncMock(side_effect=lambda **_kwargs: list(persisted_events))
     mock_provider.get_character = AsyncMock(
         return_value=CharacterRecord(
-            hid="flatworm",
+            hid="FW",
             name="Flatworm",
             short_description="A flatworm.",
             data={"long_description": "A cautious feeder.", "abilities": "Can move and feed."},
@@ -869,7 +869,7 @@ def test_infer_intent_evaluation_endpoint_supports_free_play_sessions(
     mock_provider.list_session_events = AsyncMock(side_effect=lambda **_kwargs: list(persisted_events))
     mock_provider.get_character = AsyncMock(
         return_value=CharacterRecord(
-            hid="flatworm",
+            hid="FW",
             name="Flatworm",
             short_description="A flatworm.",
             data={"long_description": "A cautious feeder.", "abilities": "Can move and feed."},

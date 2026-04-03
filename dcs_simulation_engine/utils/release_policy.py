@@ -10,13 +10,12 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
 from dcs_simulation_engine.utils.fingerprint import compute_character_evaluation_fingerprint
-
 
 # ---------------------------------------------------------------------------
 # Policy loading
 # ---------------------------------------------------------------------------
+
 
 def load_policy(path: Path) -> dict[str, Any]:
     """Load and return the character release policy from a YAML file."""
@@ -26,6 +25,7 @@ def load_policy(path: Path) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Approval computation
 # ---------------------------------------------------------------------------
+
 
 def compute_approved_characters(
     policy: dict[str, Any],

@@ -31,8 +31,8 @@ async def test_basic_ungated_simulation_10_turns(patch_llm_client, _isolate_db_s
     session = await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
 
     assert not session.exited, "Session should not be exited initially"

@@ -43,8 +43,8 @@ async def test_goal_horizon_initialization(patch_llm_client, _isolate_db_state, 
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -57,8 +57,8 @@ async def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state, asyn
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -73,8 +73,8 @@ async def test_goal_horizon_predict_capabilities_completion(patch_llm_client, _i
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -94,8 +94,8 @@ async def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state, a
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
