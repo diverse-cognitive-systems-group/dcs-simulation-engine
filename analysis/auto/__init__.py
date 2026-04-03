@@ -41,8 +41,9 @@ _TODO_PLACEHOLDER = (
 SECTIONS = [
     ("metadata",            "Metadata",       metadata,            "top"),
     ("runs-overview",       "Overview",          runs_overview,       "top"),
-    ("sim-quality",         "Simulation Quality", simulation_quality,  "top"),
-    (None,                  "Player",            None,                "group"),
+    (None,                  "Simulator",          None,                "group"),
+    ("sim-quality",         "Quality",            simulation_quality,  "sub"),
+    (None,                  "Player",             None,                "group"),
     ("player-performance",  "Performance",    player_performance,  "sub"),
     ("player-feedback",     "Feedback",       player_feedback,     "sub"),
     ("form-responses",      "Form Responses", form_responses,      "sub"),

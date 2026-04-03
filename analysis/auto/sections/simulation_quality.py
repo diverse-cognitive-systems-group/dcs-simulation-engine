@@ -57,7 +57,11 @@ def _scores_summary_card(transcripts_df: pd.DataFrame) -> str:
     )
 
 
-def _per_npc_scores_table(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -> str:
+def _per_npc_scores_table(
+    transcripts_df: pd.DataFrame,
+    runs_df: pd.DataFrame,
+    characters_df: pd.DataFrame,
+) -> str:
     """Return a DataTable of ICF, NCo, and Other scores per NPC character."""
     if transcripts_df.empty or "event_source" not in transcripts_df.columns:
         return ""
@@ -96,6 +100,11 @@ def _per_npc_scores_table(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -
             npc_turns[col] = False
         npc_turns[col] = npc_turns[col].fillna(False).astype(bool)
 
+    # Build hid → short_description lookup from characters_df
+    desc_by_hid: dict[str, str] = {}
+    if not characters_df.empty and "hid" in characters_df.columns and "short_description" in characters_df.columns:
+        desc_by_hid = dict(zip(characters_df["hid"], characters_df["short_description"].fillna("")))
+
     rows = []
     for npc_hid, grp in npc_turns.groupby("npc_hid", sort=True):
         total  = len(grp)
@@ -104,11 +113,12 @@ def _per_npc_scores_table(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -
         other  = int(grp[flag_cols["other"]].sum())
         in_char = total - ooc
         rows.append({
-            "npc_hid": npc_hid,
-            "turns":   total,
-            "icf":     _fmt_pct(in_char, total),
-            "nco":     _fmt_pct(dms,     total),
-            "other":   _fmt_pct(other,   total),
+            "npc_hid":    npc_hid,
+            "descriptor": desc_by_hid.get(str(npc_hid), ""),
+            "turns":      total,
+            "icf":        _fmt_pct(in_char, total),
+            "nco":        _fmt_pct(dms,     total),
+            "other":      _fmt_pct(other,   total),
         })
 
     if not rows:
@@ -118,16 +128,19 @@ def _per_npc_scores_table(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -
     return df_to_datatable(
         df,
         table_id="sim-quality-per-npc-table",
-        columns=["npc_hid", "turns", "icf", "nco", "other"],
+        columns=["npc_hid", "descriptor", "turns", "icf", "nco", "other"],
         rename={
-            "npc_hid": "NPC",
-            "turns":   "Turns",
-            "icf":     "ICF",
-            "nco":     "NCo",
-            "other":   "Other",
+            "npc_hid":    "HID",
+            "descriptor": "Character",
+            "turns":      "Turns",
+            "icf":        "ICF",
+            "nco":        "NCo",
+            "other":      "Other",
         },
         scroll_y="",
         export_buttons=True,
+        truncate_cols=["descriptor"],
+        truncate_at=80,
     )
 
 
@@ -141,7 +154,7 @@ def render(data: AnalysisData) -> str:
     parts = [section_intro("simulation_quality")]
     parts.append(_scores_summary_card(tdf))
 
-    table = _per_npc_scores_table(tdf, rdf)
+    table = _per_npc_scores_table(tdf, rdf, data.characters_df)
     if table:
         parts.append('<h3 class="h5 mt-4 mb-2">Scores per NPC</h3>')
         parts.append(table)
