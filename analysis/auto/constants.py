@@ -14,6 +14,11 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "Experiment configuration and participant counts at a glance. "
         "Confirms the right games, players, and assignment settings were used."
     ),
+    "simulation_quality": (
+        "Aggregate and per-character simulation quality scores. "
+        "ICF (In-Character Fidelity) measures the proportion of NPC turns not flagged as out-of-character; "
+        "NCo (Narrative Coherence) measures the proportion flagged as not making sense."
+    ),
     "runs_overview": (
         "Health snapshot of all gameplay sessions: character pairings, daily "
         "activity, exit reasons, session length and depth, game coverage, and "
@@ -61,6 +66,14 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
+    "simulation_quality": {
+        "per_npc_scores_table": (
+            "ICF, NCo, and Other flag rates per NPC character. "
+            "Values are percentages of total NPC turns for that character. "
+            "ICF = proportion of turns not flagged as out-of-character; "
+            "NCo = proportion flagged as not making sense."
+        ),
+    },
     "runs_overview": {
         "pairing_heatmap": (
             "Session count for every PC × NPC combination. Blank cells mean "

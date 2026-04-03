@@ -20,6 +20,7 @@ from analysis.auto.sections import (
     player_feedback,
     player_performance,
     runs_overview,
+    simulation_quality,
     system_errors,
     system_performance,
     transcripts,
@@ -39,8 +40,9 @@ _TODO_PLACEHOLDER = (
 #   "group" — sidebar label only (no anchor, no content); anchor and module are None
 SECTIONS = [
     ("metadata",            "Metadata",       metadata,            "top"),
-    ("runs-overview",       "Overview",       runs_overview,       "top"),
-    (None,                  "Player",         None,                "group"),
+    ("runs-overview",       "Overview",          runs_overview,       "top"),
+    ("sim-quality",         "Simulation Quality", simulation_quality,  "top"),
+    (None,                  "Player",            None,                "group"),
     ("player-performance",  "Performance",    player_performance,  "sub"),
     ("player-feedback",     "Feedback",       player_feedback,     "sub"),
     ("form-responses",      "Form Responses", form_responses,      "sub"),
