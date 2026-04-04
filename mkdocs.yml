@@ -47,13 +47,6 @@ nav:
 
   - Getting Started: getting_started.md
 
-  - Design:
-      - Overview: design/overview.md
-      - Games: design/games.md
-      - Characters: design/characters.md
-      - Usability: design/usability.md
-      - Simulation Quality: design/simulation_quality.md
-
   - User Guide:
       - 1. Configure: user_guide/configure.md
       - 2. Run: user_guide/run.md
@@ -64,6 +57,13 @@ nav:
       - Psych Research: use_cases/psych-research.md
       - AI Research: use_cases/ai-research.md
       - Education & Training: use_cases/education.md
+
+  - Design:
+      - Overview: design/overview.md
+      - Games: design/games.md
+      - Characters: design/characters.md
+      - Usability: design/usability.md
+      - Simulation Quality: design/simulation_quality.md
 
   - Codebase Reference: codebase_reference.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
