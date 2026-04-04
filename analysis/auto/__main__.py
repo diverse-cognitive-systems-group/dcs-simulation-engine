@@ -9,7 +9,7 @@ from typing import List, Optional
 
 import typer
 import typer.rich_utils as ru
-from analysis.auto import _find_repo_root, run_analysis, run_coverage_report, USABILITY_SECTIONS
+from analysis.auto import _find_repo_root, run_analysis, run_coverage_report, DEFAULT_SECTIONS, SECTIONS
 from analysis.common.loader import load_all
 from rich.console import Console
 from rich.theme import Theme
@@ -57,15 +57,6 @@ publish_app.add_typer(publish_report_app, name="report")
 app.add_typer(publish_app, name="publish")
 
 
-def _find_latest_run(runs_dir: Path) -> Path:
-    candidates = sorted(
-        (p for p in runs_dir.iterdir() if p.is_dir()),
-        key=lambda p: p.name,
-    )
-    if not candidates:
-        raise typer.BadParameter(f"No run directories found in {runs_dir}")
-    return candidates[-1]
-
 
 def _slugify(text: str) -> str:
     """Convert a title to a safe filename stem."""
@@ -75,38 +66,63 @@ def _slugify(text: str) -> str:
     return slug.strip("_") or "report"
 
 
-_VALID_TEMPLATES = {"default", "usability", "simulation_quality", "character_coverage"}
-_TEMPLATE_TITLES = {
-    "usability": "Usability Report",
-    "simulation_quality": "Simulation Quality Report",
-    "character_coverage": "Character Coverage Report",
-}
+_VALID_INCLUDES = {"quality"}
+
+
+@generate_app.command("coverage")
+def _generate_coverage_cmd(
+    report_path: Optional[Path] = typer.Option(
+        None,
+        "--report_path",
+        help="Output path for the HTML file. Defaults to ./results/character_coverage_report.html.",
+    ),
+    title: Optional[str] = typer.Option(
+        None,
+        "--title",
+        help="Override the report title.",
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the report in the default browser after generation.",
+    ),
+) -> None:
+    """Generate the character coverage report from the full database."""
+    cwd = Path.cwd()
+
+    if report_path is not None:
+        output_path = report_path.resolve()
+    else:
+        out_dir = (cwd / "results").resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        output_path = out_dir / "character_coverage_report.html"
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with _console.status("Generating character coverage report...", spinner="dots"):
+        html = run_coverage_report()
+    _console.print("[green]✔[/green] Generated character coverage report", style="dim")
+    output_path.write_text(html, encoding="utf-8")
+    _console.print(f"Report written to: {output_path}", style="dim")
+    if open_browser:
+        webbrowser.open(output_path.as_uri())
 
 
 @generate_app.command("report")
 def _generate_report_cmd(
-    results_dir: Optional[Path] = typer.Argument(
-        default=None,
-        help=(
-            "Path to the results directory. "
-            "Defaults to the latest run in ./runs/. "
-            "Ignored for --template character_coverage."
-        ),
+    results_dir: Path = typer.Argument(
+        ...,
+        help="Path to the results directory.",
     ),
-    template: str = typer.Option(
-        "default",
-        "--template",
-        help="Report template: default | usability | simulation_quality | character_coverage.",
+    include: Optional[List[str]] = typer.Option(
+        None,
+        "--include",
+        help=f"Additional sections to include. Valid values: {', '.join(sorted(_VALID_INCLUDES))}.",
     ),
     report_path: Optional[Path] = typer.Option(
         None,
         "--report_path",
         help="Output path for the HTML file. Defaults to ./results/<title>.html.",
-    ),
-    character_hids: Optional[List[str]] = typer.Option(
-        None,
-        "--character_hids",
-        help="(character_coverage only) Limit analysis to these character HIDs.",
     ),
     title: Optional[str] = typer.Option(
         None,
@@ -121,44 +137,15 @@ def _generate_report_cmd(
 ) -> None:
     cwd = Path.cwd()
 
-    if template not in _VALID_TEMPLATES:
-        valid = " | ".join(sorted(_VALID_TEMPLATES))
-        _console.print(f"ERROR: unknown template {template!r}. Valid options: {valid}", style="error")
-        raise typer.Exit(1)
-
-    # ------------------------------------------------------------------
-    # character_coverage: generated from db seeds; no results dir needed 
-    # ------------------------------------------------------------------
-    if template == "character_coverage":
-        final_title = title or _TEMPLATE_TITLES["character_coverage"]
-        if report_path is not None:
-            output_path = report_path.resolve()
-        else:
-            out_dir = (cwd / "results").resolve()
-            out_dir.mkdir(parents=True, exist_ok=True)
-            output_path = out_dir / "character_coverage_report.html"
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with _console.status("Generating character coverage report...", spinner="dots"):
-            html = run_coverage_report(hids_filter=character_hids or None)
-        _console.print("[green]✔[/green] Generated character coverage report", style="dim")
-        output_path.write_text(html, encoding="utf-8")
-        _console.print(f"Report written to: {output_path}", style="dim")
-        if open_browser:
-            webbrowser.open(output_path.as_uri())
-        return
-
-    # ------------------------------------------------------------------
-    # All other templates require a results directory
-    # ------------------------------------------------------------------
-    if results_dir is None:
-        runs_dir = cwd / "runs"
-        if not runs_dir.is_dir():
-            _console.print("ERROR: no results_dir given and ./runs/ not found", style="error")
+    if include:
+        unknown = [i for i in include if i not in _VALID_INCLUDES]
+        if unknown:
+            valid = ", ".join(sorted(_VALID_INCLUDES))
+            _console.print(
+                f"ERROR: unknown --include value(s): {', '.join(unknown)}. Valid: {valid}",
+                style="error",
+            )
             raise typer.Exit(1)
-        results_dir = _find_latest_run(runs_dir)
-        _console.print(f"Using latest run: {results_dir}", style="dim")
 
     results_dir = results_dir.resolve()
     if not results_dir.is_dir():
@@ -169,43 +156,30 @@ def _generate_report_cmd(
         data = load_all(results_dir)
     _console.print(f"[green]✔[/green] Loaded results from: {results_dir}", style="dim")
 
-    with_todos = template in ("usability", "simulation_quality")
-
     if title is None:
-        title = _TEMPLATE_TITLES.get(template)
-        if title is None:  # "default"
-            run_config = data.experiment.get("run_config") or {}
-            title = (
-                (run_config.get("name") if isinstance(run_config, dict) else None)
-                or data.experiment.get("name")
-                or "Results Report"
-            )
+        run_config = data.experiment.get("run_config") or {}
+        title = (
+            (run_config.get("name") if isinstance(run_config, dict) else None)
+            or data.experiment.get("name")
+            or "Results Report"
+        )
 
-    sections = USABILITY_SECTIONS if template == "usability" else None
-    with _console.status(f"Generating report: {title!r}...", spinner="dots"):
-        html = run_analysis(data, title=title, with_todos=with_todos, sections=sections)
-    _console.print(f"[green]✔[/green] Generating report: {title!r}", style="dim")
-
-    # ------------------------------------------------------------------
-    # simulation_quality: default output path derived from NPC HIDs
-    # ------------------------------------------------------------------
-    if template == "simulation_quality" and report_path is None:
+    sections = list(DEFAULT_SECTIONS)
+    if include and "quality" in include:
+        sim_q = next(s for s in SECTIONS if s[0] == "sim-quality")
         try:
-            from analysis.auto.publish import parse_sim_quality_table
-            npc_rows = parse_sim_quality_table(html)
-            if npc_rows:
-                sorted_hids = "_".join(sorted(r["npc_hid"] for r in npc_rows))
-                out_dir = (cwd / "results").resolve()
-                out_dir.mkdir(parents=True, exist_ok=True)
-                output_path = out_dir / f"{sorted_hids}.html"
-            else:
-                output_path = None
-        except Exception:
-            output_path = None
+            insert_after = next(i for i, s in enumerate(sections) if s[0] == "system-errors")
+            sections.insert(insert_after + 1, sim_q)
+        except StopIteration:
+            sections.append(sim_q)
+
+    with _console.status(f"Generating report: {title!r}...", spinner="dots"):
+        html = run_analysis(data, title=title, sections=sections)
+    _console.print(f"[green]✔[/green] Generating report: {title!r}", style="dim")
 
     if report_path is not None:
         output_path = report_path.resolve()
-    elif template != "simulation_quality" or output_path is None:
+    else:
         out_dir = (cwd / "results").resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         output_path = out_dir / f"{_slugify(title)}.html"

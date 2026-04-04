@@ -11,10 +11,13 @@ Or via CLI:
 """
 
 import base64
+import types
 from pathlib import Path
 
 from analysis.auto.rendering.html_builder import build_html
 from analysis.auto.sections import (
+    coverage_human,
+    coverage_nonhuman,
     form_responses,
     metadata,
     player_feedback,
@@ -33,27 +36,47 @@ _TODO_PLACEHOLDER = (
     "</div>"
 )
 
+# Adapters: coverage sections use render(repo_root) but default report uses render(data).
+# HIDs are scoped to characters that actually appeared in the run.
+def _render_pc_coverage(data):
+    pc_hids = None
+    if not data.runs_df.empty and "pc_hid" in data.runs_df.columns:
+        pc_hids = data.runs_df["pc_hid"].dropna().unique().tolist()
+    return coverage_human.render(_find_repo_root(), hids_filter=pc_hids or None)
+
+
+def _render_npc_coverage(data):
+    npc_hids = None
+    if not data.runs_df.empty and "npc_hid" in data.runs_df.columns:
+        npc_hids = data.runs_df["npc_hid"].dropna().unique().tolist()
+    return coverage_nonhuman.render(_find_repo_root(), hids_filter=npc_hids or None)
+
+
+_pc_coverage = types.SimpleNamespace(render=_render_pc_coverage)
+_npc_coverage = types.SimpleNamespace(render=_render_npc_coverage)
+
 # Registry of sections in display order: (anchor_slug, display_title, module, kind)
 # kind:
 #   "top"   — full section with <h2> heading, rendered in main content
 #   "sub"   — indented sidebar entry, rendered in main content (same as top but visually nested)
 #   "group" — sidebar label only (no anchor, no content); anchor and module are None
 SECTIONS = [
-    ("metadata",            "Metadata",       metadata,            "top"),
-    ("runs-overview",       "Overview",          runs_overview,       "top"),
-    (None,                  "Simulator",          None,                "group"),
-    ("sim-quality",         "Quality",            simulation_quality,  "sub"),
+    ("metadata",            "Metadata",           metadata,            "top"),
+    ("runs-overview",       "Overview",           runs_overview,       "top"),
     (None,                  "Player",             None,                "group"),
-    ("player-performance",  "Performance",    player_performance,  "sub"),
-    ("player-feedback",     "Feedback",       player_feedback,     "sub"),
-    ("form-responses",      "Form Responses", form_responses,      "sub"),
-    (None,                  "System",         None,                "group"),
-    ("system-performance",  "Performance",    system_performance,  "sub"),
-    ("system-errors",       "Errors",         system_errors,       "sub"),
-    ("transcripts",         "Transcripts",    transcripts,         "top"),
+    ("player-performance",  "Performance",        player_performance,  "sub"),
+    ("player-feedback",     "Feedback",           player_feedback,     "sub"),
+    ("form-responses",      "Form Responses",     form_responses,      "sub"),
+    ("pc-coverage",         "PC Coverage",        _pc_coverage,        "sub"),
+    (None,                  "System",             None,                "group"),
+    ("system-performance",  "Performance",        system_performance,  "sub"),
+    ("system-errors",       "Errors",             system_errors,       "sub"),
+    ("sim-quality",         "Simulation Quality", simulation_quality,  "sub"),
+    ("npc-coverage",        "NPC Coverage",       _npc_coverage,       "sub"),
+    ("transcripts",         "Transcripts",        transcripts,         "top"),
 ]
 
-USABILITY_SECTIONS = [s for s in SECTIONS if s[1] != "Simulator" and s[0] != "sim-quality"]
+DEFAULT_SECTIONS = [s for s in SECTIONS if s[0] != "sim-quality"]
 
 
 def _read_b64(path: Path) -> str | None:
