@@ -8,8 +8,6 @@ Renders:
 
 
 
-import html as _html
-
 import pandas as pd
 
 from analysis.auto.constants import chart_caption, section_intro
@@ -402,56 +400,22 @@ def _feedback_summary_card(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> s
     else:
         total_npc_turns = 0
 
-    def _flag_count(col: str) -> int:
-        if transcripts_df.empty or col not in transcripts_df.columns:
-            return 0
-        return int(transcripts_df[col].fillna(False).astype(bool).sum())
-
-    ooc_count   = _flag_count("feedback.out_of_character")
-    dms_count   = _flag_count("feedback.doesnt_make_sense")
-    other_count = _flag_count("feedback.other")
-    in_char     = total_npc_turns - ooc_count
-
-    ast = '<span style="color:red;">*</span>'
-
     def _row(label: str, value: str) -> str:
         return (
             f"<dt class='col-sm-6'>{label}</dt>"
             f"<dd class='col-sm-6'>{value}</dd>"
         )
 
-    def _subrow(label: str, value: str) -> str:
-        return (
-            f"<dt class='col-sm-6' style='color:#6c757d;'>{label}</dt>"
-            f"<dd class='col-sm-6' style='color:#6c757d;'>{value}</dd>"
-        )
-
-    top_rows = (
-        _row("Feedback / Total NPC Turns", _fmt_pct(total_fb,  total_npc_turns))
-        + _row("👍 Thumbs Up",              _fmt_pct(positive,  total_fb))
-        + _row("👎 Thumbs Down",            _fmt_pct(negative,  total_fb))
-    )
-
-    sub_rows = (
-        _subrow(f"In-Character Fidelity (ICF) {ast}", _fmt_pct(in_char,     total_npc_turns))
-        + _subrow(f"Narrative Coherence (NCo) {ast}",        _fmt_pct(dms_count,   total_npc_turns))
-        + _subrow(f"Other {ast}",                      _fmt_pct(other_count, total_npc_turns))
-    )
-
-    note = (
-        "All flagged and feedback reports reflect only what players chose to report "
-        "during this study. Values are raw percentages of total NPC turns and should "
-        "be interpreted relative to each player's overall tendency to provide feedback — "
-        "not as an exhaustive ground-truth assessment of character or narrative quality."
+    rows = (
+        _row("Feedback Rate", _fmt_pct(total_fb,  total_npc_turns))
+        + _row("👍 Thumbs Up", _fmt_pct(positive, total_fb))
+        + _row("👎 Thumbs Down", _fmt_pct(negative, total_fb))
     )
 
     return (
-        '<h3 class="h5 mb-2">Proportion Summary</h3>'
+        '<h3 class="h5 mb-2">Summary</h3>'
         '<div class="card mb-4"><div class="card-body">'
-        f'<dl class="row dl-meta mb-2">{top_rows}{sub_rows}</dl>'
-        f'<p class="mb-0 text-muted" style="font-size:0.8rem;">'
-        f'<span style="color:red;">*</span> {_html.escape(note)}'
-        f'</p>'
+        f'<dl class="row dl-meta mb-0">{rows}</dl>'
         '</div></div>'
     )
 

@@ -58,8 +58,8 @@ async def test_foresight_initialization(patch_llm_client, _isolate_db_state, asy
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -72,8 +72,8 @@ async def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_sta
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -93,8 +93,8 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -125,8 +125,8 @@ async def test_foresight_predict_next_command(patch_llm_client, _isolate_db_stat
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -146,8 +146,8 @@ async def test_foresight_predict_next_answer_is_repeatable(patch_llm_client, _is
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -172,8 +172,8 @@ async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mon
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 

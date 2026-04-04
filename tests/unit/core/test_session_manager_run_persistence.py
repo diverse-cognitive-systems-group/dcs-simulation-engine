@@ -37,8 +37,8 @@ async def _play_and_persist_session(*, provider: Any, game_name: str, player_id:
     session = await SessionManager.create_async(
         game=game_name,
         provider=provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=player_id,
     )
     enter_events = await session.step_async("")
@@ -114,8 +114,8 @@ async def _run_session_with_async_persistence(
     session = await SessionManager.create_async(
         game="Explore",
         provider=provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=player_id,
     )
     session._provider = _FakePersistenceProvider(persistence_db)
