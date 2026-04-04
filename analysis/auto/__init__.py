@@ -53,6 +53,8 @@ SECTIONS = [
     ("transcripts",         "Transcripts",    transcripts,         "top"),
 ]
 
+USABILITY_SECTIONS = [s for s in SECTIONS if s[1] != "Simulator" and s[0] != "sim-quality"]
+
 
 def _read_b64(path: Path) -> str | None:
     try:
@@ -65,10 +67,13 @@ def run_analysis(
     data: AnalysisData,
     title: str = "Results Report",
     with_todos: bool = False,
+    sections: list | None = None,
 ) -> str:
     """Render all registered sections and return the complete HTML string."""
+    if sections is None:
+        sections = SECTIONS
     rendered: list[tuple[str | None, str, str, str]] = []
-    for anchor, section_title, module, kind in SECTIONS:
+    for anchor, section_title, module, kind in sections:
         if kind == "group":
             rendered.append((None, section_title, "", "group"))
             continue

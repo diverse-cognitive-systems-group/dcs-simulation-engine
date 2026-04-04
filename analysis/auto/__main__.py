@@ -9,7 +9,7 @@ from typing import List, Optional
 
 import typer
 import typer.rich_utils as ru
-from analysis.auto import _find_repo_root, run_analysis, run_coverage_report
+from analysis.auto import _find_repo_root, run_analysis, run_coverage_report, USABILITY_SECTIONS
 from analysis.common.loader import load_all
 from rich.console import Console
 from rich.theme import Theme
@@ -181,8 +181,9 @@ def _generate_report_cmd(
                 or "Results Report"
             )
 
+    sections = USABILITY_SECTIONS if template == "usability" else None
     with _console.status(f"Generating report: {title!r}...", spinner="dots"):
-        html = run_analysis(data, title=title, with_todos=with_todos)
+        html = run_analysis(data, title=title, with_todos=with_todos, sections=sections)
     _console.print(f"[green]✔[/green] Generating report: {title!r}", style="dim")
 
     # ------------------------------------------------------------------
@@ -232,21 +233,15 @@ def _publish_sim_quality_cmd(
         "--hids",
         help="Comma-separated list of NPC HIDs to publish (default: prompt to select).",
     ),
-    yes: bool = typer.Option(
-        False,
-        "--yes",
-        "-y",
-        help="Auto-accept all steps without prompting.",
-    ),
     evaluator_id: Optional[str] = typer.Option(
         None,
-        "--evaluator-id",
-        help="Evaluator identifier recorded in the evaluation entry (default: report filename stem).",
+        "--evaluator_id",
+        help="Your evaluator ID to record in the evaluation entry.",
     ),
-    expertise: str = typer.Option(
-        "simulation",
-        "--expertise",
-        help="Expertise type recorded in the evaluation entry.",
+    expertise: Optional[str] = typer.Option(
+        None,
+        "--evaluator_expertise",
+        help="Your expertise type to record in the evaluation entry.",
     ),
 ) -> None:
     """Publish character evaluation results from a simulation quality report.
@@ -310,24 +305,24 @@ def _publish_sim_quality_cmd(
         selected_hids = all_hids
     else:
         _console.print("\nNPCs found in report:")
-        for i, row in enumerate(npc_rows, 1):
+        for row in npc_rows:
             _console.print(
-                f"  [{i}] {row['npc_hid']}  ICF={row['icf']:.1%}  NCo={row['dms']:.1%}  turns={row['turns']}",
+                f"  [{row['npc_hid']}]  ICF={row['icf']:.1%}  NCo={row['dms']:.1%}  turns={row['turns']}",
                 style="dim",
             )
         _console.print("")
-        raw = typer.prompt(
-            "HIDs to publish (comma-separated, or Enter for all)",
-            default="",
-        ).strip()
-        if not raw:
-            selected_hids = all_hids
-        else:
-            selected_hids = [h.strip() for h in raw.split(",") if h.strip()]
-            unknown = [h for h in selected_hids if h not in rows_by_hid]
-            if unknown:
-                _console.print(f"ERROR: unknown HIDs: {', '.join(unknown)}", style="error")
-                raise typer.Exit(1)
+        raw = ""
+        while not raw:
+            raw = typer.prompt(
+                f"HIDs to publish (comma-separated) [{', '.join(all_hids)}]",
+            ).strip()
+            if not raw:
+                _console.print("ERROR: you must enter at least one HID.", style="error")
+        selected_hids = [h.strip() for h in raw.split(",") if h.strip()]
+        unknown = [h for h in selected_hids if h not in rows_by_hid]
+        if unknown:
+            _console.print(f"ERROR: unknown HIDs: {', '.join(unknown)}", style="error")
+            raise typer.Exit(1)
 
     selected_rows = [rows_by_hid[h] for h in selected_hids]
 
@@ -352,7 +347,12 @@ def _publish_sim_quality_cmd(
     # 4. Pre-compute what will change
     # ------------------------------------------------------------------
     report_id = "_".join(sorted(selected_hids))
-    eval_id   = evaluator_id or report_path.stem
+
+    if not evaluator_id:
+        evaluator_id = typer.prompt("evaluator_id").strip()
+    if not expertise:
+        expertise = typer.prompt("expertise").strip()
+    eval_id = evaluator_id
 
     new_eval_entries: list[dict] = []
     chars_to_add: list[dict] = []
@@ -442,12 +442,11 @@ def _publish_sim_quality_cmd(
     # ------------------------------------------------------------------
     # 6. Confirm
     # ------------------------------------------------------------------
-    if not yes:
-        _console.print("")
-        confirmed = typer.confirm("Proceed?")
-        if not confirmed:
-            _console.print("Aborted.", style="warning")
-            raise typer.Exit(0)
+    _console.print("")
+    confirmed = typer.confirm("Proceed?")
+    if not confirmed:
+        _console.print("Aborted.", style="warning")
+        raise typer.Exit(0)
 
     # ------------------------------------------------------------------
     # 7. Execute step 1 — append evaluation entries
