@@ -127,7 +127,7 @@ def _generate_report_cmd(
         raise typer.Exit(1)
 
     # ------------------------------------------------------------------
-    # character_coverage: standalone path — no results dir needed
+    # character_coverage: generated from db seeds; no results dir needed 
     # ------------------------------------------------------------------
     if template == "character_coverage":
         final_title = title or _TEMPLATE_TITLES["character_coverage"]
@@ -216,11 +216,6 @@ def _generate_report_cmd(
 
     if open_browser:
         webbrowser.open(output_path.as_uri())
-
-
-# ---------------------------------------------------------------------------
-# publish report simulation_quality
-# ---------------------------------------------------------------------------
 
 @publish_report_app.command("simulation_quality")
 def _publish_sim_quality_cmd(

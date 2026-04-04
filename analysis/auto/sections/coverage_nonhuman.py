@@ -5,7 +5,7 @@ the dimension schema from database_seeds/dev/character_dimensions.json,
 then renders:
   - Per-dimension distribution bar charts (10, 2 per row)
   - Coverage heatmap (dimension × option, binary covered/not)
-  - Combination gap tables (substrate × size, common_labels × form)
+  - Combination gap tables (substrate × size, origin × form)
 """
 
 import json
@@ -101,8 +101,8 @@ def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
     )
     parts.append("<h5>substrate × size</h5>")
     parts.append(_combo_table_html(long_df, "substrate", "size", "combo-substrate-size"))
-    parts.append("<h5 class='mt-3'>common_labels × form</h5>")
-    parts.append(_combo_table_html(long_df, "common_labels", "form", "combo-labels-form"))
+    parts.append("<h5 class='mt-3'>origin × form</h5>")
+    parts.append(_combo_table_html(long_df, "origin", "form", "combo-origin-form"))
 
     return "\n".join(parts)
 
@@ -230,6 +230,8 @@ def _combo_table_html(long_df: pd.DataFrame, dim_a: str, dim_b: str, table_id: s
             count = len(hids_a & hids_b)
             rows.append({dim_a: a, dim_b: b, "count": count})
 
+    if not rows:
+        return '<p class="text-muted">No data available for this dimension pair.</p>'
     df = pd.DataFrame(rows).sort_values(["count"], ascending=[True])
 
     table_html = df_to_datatable(

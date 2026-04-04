@@ -909,12 +909,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "unknown entity"
-        ],
-        "explanation": "A god-like entity falls outside every standard scientific or social taxonomy; 'unknown entity' is the only label that captures something whose fundamental nature is undefined by design."
-      },
       "origin": {
         "value": [
           "unknown origin"
@@ -1009,12 +1003,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "robot"
-        ],
-        "explanation": "An intelligent exoskeleton is a designed robotic body-worn shell — a robot in the sense of an engineered physical machine that interacts with and extends human action."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -1106,13 +1094,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "artificial intelligence",
-          "software agent"
-        ],
-        "explanation": "A smart tablet is a handheld consumer device running AI software to assist users — it functions as an artificial intelligence system (AI-driven filtering) and a software agent (executing tasks on behalf of the user)."
-      },
       "origin": {
         "value": [
           "human-engineered",
@@ -1919,20 +1900,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "artificial intelligence",
-          "large language model",
-          "software agent",
-          "llm",
-          "silicon-based",
-          "digital",
-          "gpt",
-          "ai",
-          "human-like-cognition"
-        ],
-        "explanation": "Large language models are a class of deep-learning AI systems trained on text; they are commonly identified as artificial intelligence, software agents, and specifically as LLMs or GPT-family models."
-      },
       "origin": {
         "value": [
           "trained"
@@ -2037,14 +2004,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "animal",
-          "biological",
-          "invertebrate"
-        ],
-        "explanation": "A planarian is an animal in the phylum Platyhelminthes — a living multicellular organism; the additional labels capture its invertebrate, aquatic, and biologically substrate-based nature."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -2148,15 +2107,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "unknown entity",
-          "mechanical",
-          "homeostatic regulator",
-          "thermostat"
-        ],
-        "explanation": "A thermostat is a mechanical control device — none of the standard taxonomy labels (human, animal, AI, robot) fit cleanly; 'unknown entity' captures its status as a purpose-built artifact outside biological and AI categories."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -2255,17 +2205,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "software agent",
-          "algorithm",
-          "sorting",
-          "computational",
-          "non-biological",
-          "non-human"
-        ],
-        "explanation": "Bubble sort is a classical sorting algorithm — a named computational procedure codified in computer science; it runs as software and has no biological substrate."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -2373,19 +2312,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "animal",
-          "robot",
-          "assistive-technology",
-          "mobility-aid",
-          "guide",
-          "non-biological",
-          "sensor-driven",
-          "human-facing-interface"
-        ],
-        "explanation": "A robotic guide dog is a dog-shaped mobility robot — it is labeled 'animal' for its form factor but is non-biological and engineered; the other labels describe its role as assistive technology and sensor-driven guidance system."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -2483,18 +2409,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "software agent",
-          "algorithm",
-          "classifier",
-          "computational",
-          "non-biological",
-          "pattern-recognition",
-          "probabilistic"
-        ],
-        "explanation": "A classification algorithm is software that assigns inputs to categories — it is a software agent and algorithm running on digital hardware; the additional labels (classifier, computational, non-biological, pattern-recognition, probabilistic) describe its computational and functional character."
-      },
       "origin": {
         "value": [
           "simulated",
@@ -2593,19 +2507,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "alien",
-          "collective intelligence",
-          "alien",
-          "collective-intelligence",
-          "distributed-mind",
-          "hive-like",
-          "biological",
-          "non-human-cognition"
-        ],
-        "explanation": "UNI is a distributed alien hive-mind — alien by origin, collective intelligence by cognitive architecture; the additional labels (distributed-mind, hive-like, biological) describe its physical and operational nature."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -2708,17 +2609,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "alien",
-          "visual-cognition",
-          "projective-perception",
-          "non-linguistic",
-          "spatial-intelligence",
-          "non-human-cognition"
-        ],
-        "explanation": "AV is an alien entity whose cognition operates through visual-spatial structures rather than symbolic language — the labels capture its alien nature, visual-cognitive architecture, and non-linguistic mode of thought."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -2827,18 +2717,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "unknown entity",
-          "biological",
-          "cellular",
-          "living-system",
-          "homeostatic",
-          "non-neural-intelligence",
-          "adaptive"
-        ],
-        "explanation": "A single cell is a living biological entity — 'unknown entity' captures its borderline status between mechanism and agent, while the additional labels describe its material basis (biological, cellular) and functional character (homeostatic, adaptive, non-neural intelligence)."
-      },
       "origin": {
         "value": [
           "evolved",
@@ -2936,19 +2814,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "animal",
-          "collective intelligence",
-          "biological",
-          "embryonic",
-          "cellular-collective",
-          "developmental-system",
-          "bioelectric-patterning",
-          "non-neural-intelligence"
-        ],
-        "explanation": "A frog embryo is an animal — a developing amphibian organism; the additional labels capture that its intelligence is collective (millions of cells coordinating without a brain) and operates through bioelectric patterning rather than neural signaling."
-      },
       "origin": {
         "value": [
           "evolved",
@@ -4975,18 +4840,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "collective intelligence",
-          "biological",
-          "human-neural",
-          "organoid",
-          "cellular-collective",
-          "in-vitro",
-          "basal-cognition"
-        ],
-        "explanation": "A neural organoid is a self-organized mass of human neurons grown in vitro — it is a form of collective intelligence (many neurons coordinating activity) derived from biological cells, making it 'collective intelligence' and 'biological' by nature."
-      },
       "origin": {
         "value": [
           "evolved",
@@ -5087,18 +4940,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "artificial intelligence",
-          "robot",
-          "non-biological",
-          "communication-agent",
-          "protocol-adaptive",
-          "electromagnetic",
-          "machine-cognition"
-        ],
-        "explanation": "RNE is a purpose-built robot that interacts with the world exclusively through electromagnetic signals — it is an artificial intelligence (protocol inference), a robot (physical chassis), and a communication agent by design."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -5370,18 +5211,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "unknown entity",
-          "vehicle",
-          "street-legal",
-          "eVTOL",
-          "hybrid-mobility",
-          "non-biological",
-          "transportation-system"
-        ],
-        "explanation": "A flying car is a novel hybrid vehicle — it fits none of the standard taxonomy categories (human, animal, AI, robot) cleanly; 'unknown entity' captures its status as a new category of machine that straddles automotive and aviation domains."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -5475,16 +5304,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "robot",
-          "automation",
-          "personal-care",
-          "non-biological",
-          "consumer-machine"
-        ],
-        "explanation": "An automated haircutting machine is a purpose-built consumer robot — robotic (it operates autonomously with sensors and actuators), automation (executing a task without human intervention), and personal-care (its domain is grooming)."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -5576,17 +5395,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "robot",
-          "automation",
-          "cosmetics",
-          "wearable-machine",
-          "non-biological",
-          "consumer-device"
-        ],
-        "explanation": "KPW is a wearable robotic device for cosmetic application — robot (autonomous actuation), automation (executes a task without human guidance), wearable-machine (worn on the face), consumer-device (designed for personal use)."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -5682,17 +5490,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "unknown entity",
-          "nanotechnology",
-          "self-assembly",
-          "non-biological",
-          "chemical-system",
-          "bottom-up-fabrication"
-        ],
-        "explanation": "A molecular self-assembler is a novel nanotechnology system — it is not biological, not a robot, and not a software agent; 'unknown entity' fits, with the additional labels (nanotechnology, self-assembly, chemical-system) providing descriptive precision."
-      },
       "origin": {
         "value": [
           "human-engineered"
@@ -5790,16 +5587,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "animal",
-          "biological",
-          "mammal",
-          "prey-animal",
-          "quadruped"
-        ],
-        "explanation": "A horse is an animal — a large quadrupedal mammal; the additional labels (biological, mammal, prey-animal, quadruped) precisely describe its phylogenetic and ecological position."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -5905,16 +5692,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "animal",
-          "biological",
-          "mammal",
-          "prey-animal",
-          "small-bodied"
-        ],
-        "explanation": "A mouse is an animal — a small quadrupedal mammal; the additional labels (biological, mammal, prey-animal, small-bodied) describe its size class, ecology, and substrate."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -6018,17 +5795,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "human",
-          "biological",
-          "metabolic-divergent",
-          "time-compressed",
-          "chronic-condition",
-          "human-like-cognition"
-        ],
-        "explanation": "HTC is biologically a human — a time-compressed archetype of a person living with obesity; the labels capture its human nature alongside the defining feature of metabolic and temporal compression."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -6140,17 +5906,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "human",
-          "biological",
-          "oncological",
-          "time-compressed",
-          "chronic-illness",
-          "human-like-cognition"
-        ],
-        "explanation": "TCC is biologically a human — a time-compressed archetype of a person undergoing cancer progression; the labels capture its human and biological nature alongside the oncological and temporal framing."
-      },
       "origin": {
         "value": [
           "evolved"
@@ -6270,12 +6025,6 @@
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {
-      "common_labels": {
-        "value": [
-          "unknown entity"
-        ],
-        "explanation": "SMR is not an independent organism but a coordinative sub-system embedded within a biological body. 'Unknown entity' captures its status as a system that blurs the boundary between mechanism and agent."
-      },
       "origin": {
         "value": [
           "evolved",
