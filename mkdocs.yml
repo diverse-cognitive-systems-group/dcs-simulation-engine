@@ -47,31 +47,24 @@ nav:
 
   - Getting Started: getting_started.md
 
-  - User Guide:
-      - Overview: user_guide/overview.md
-      - Configuration: user_guide/configuration.md
-      - Running Locally: user_guide/running_locally.md
-      - Playing Games: user_guide/playing.md
-      - Analyzing Results: user_guide/analyzing_results.md
-      - Deployment: user_guide/deployment.md
-
-  - Use Cases:
-      - Researcher Running a Study: use_cases/general-researcher.md
-      - AI Practitioner Evaluating an Agent: use_cases/ai-researcher.md
-      - Educator / Training Session: use_cases/educator.md
-
   - Design:
       - Overview: design/overview.md
       - Games: design/games.md
       - Characters: design/characters.md
+      - Usability: design/usability.md
+      - Simulation Quality: design/simulation_quality.md
 
-  - Studies:
-      - Overview: studies/overview.md
-      - Usability: studies/usability.html
-      - Simulation Quality: studies/simulation_quality.html
-      - Performance Benchmarking: studies/performance_benchmarking.html
+  - User Guide:
+      - 1. Configure: user_guide/configure.md
+      - 2. Run: user_guide/run.md
+      - 3. Play: user_guide/play.md
+      - 4. Analyze Results: user_guide/analyze_results.md
+
+  - Use Cases:
+      - Psych Research: use_cases/psych-research.md
+      - AI Research: use_cases/ai-research.md
+      - Education & Training: use_cases/education.md
 
   - Codebase Reference: codebase_reference.md
-  - Examples: examples.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
   - FAQ: faq.md

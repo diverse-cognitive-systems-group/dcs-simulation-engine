@@ -1,1 +1,0 @@
-# Use Case - General Researcher Running a Study

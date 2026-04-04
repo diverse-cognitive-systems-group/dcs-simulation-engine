@@ -2,10 +2,16 @@
 
 *Characters* are cognitive systems that can be used as player characters (PCs) or non-player characters (NPCs) in simulations.
 
+Each character is a fixed snapshot of a cognitive system, including its:
+
+- Persona
+- Abilities
+- Goals
+
 ## Core Characters
 Core characters are a curated set of cognitive systems included with the simulation engine. Each is selected to represent a distinct type of cognition—differing in goals, structure, or behavior—and is tested to ensure the engine can model it reliably.
 
-### Selection Criteria
+### Coverage & Inclusion Criteria
 A character is included if it meaningfully expands the range of cognitive systems we can model. This includes systems that challenge or extend typical assumptions about cognition and interaction.
 
 Examples include:
@@ -30,21 +36,13 @@ Examples include:
 
 - And additional forms as needed
 
-> See the [character coverage report](../reports/character_coverage.md) for details on coverage and gaps in our current character database.
+> See the [character coverage report](../reports/character_coverage_report.html) for details on coverage and gaps in our current character database.
 
-----
-
-## Character Quality and Evaluation
-
-Each character is a fixed snapshot of a cognitive system, including its:
-
-- Persona
-- Abilities
-- Goals
+### Simulation Quality Control
 
 Characters are designed to behave consistently so simulations remain reliable over time.
 
-### Development Workflow
+#### Character Development Process
 
 Character sheets define each character and are refined through iterative testing.
 
@@ -90,7 +88,7 @@ Or manually update the following:
 
 Then open a PR for peer review of the character.
 
-### Production Quality and Evaluation Consistency
+#### Production Consistency & Stability
 
 Character behavior depends on both the **character sheet** and the **model + system prompt** used to role-play it.
 
@@ -103,13 +101,15 @@ If the model or system prompt changes, the character must be re-evaluated before
 
 Because character evaluations are costly, we aim to keep role-playing models and prompts **as stable as possible**. When changes do occur, affected character undergo re-evaluation (including internal and, when applicable, external expert review).
 
-## Validation
+### External Validation of Simulation Quality
 
-### Real-World Systems
+In addition to internal evaluation, ...
+
+##### Real-World Systems
 
 When a real-world counterpart exists, we use external expert evaluations.
 
-### Hypothetical or Non-Observable Systems
+#### Hypothetical or Non-Observable Systems
 
 For systems without real-world counterparts (e.g., alien, abstract, or imagined systems), validation is based on:
 

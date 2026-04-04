@@ -1,4 +1,10 @@
-# DCS-SE Usability Study 
+Ensuring that DCS-SE us easy to use is a core design principle. Usability is a foundational study that evaluates this and is re-run when user-facing changes are made. It is intended to identify and reduce usability-related confounds prior to downstream experimental use of DCS-SE.
+
+The complete study design, including research questions, methods, and results, is documented below and results for all release versions are linked in the results section.
+
+---
+
+# DCS-SE Usability Study
 
 ## Purpose and Contribution 
 
@@ -160,6 +166,6 @@ Finally, iterative refinements may occur between data collection rounds. While t
 
 ## Results
 
-Results are reported in a separate document that is updated iteratively as DCS-SE evolves.
+Results for the latest engine are linked here: [DCS-SE Usability Study Results](../reports/usability_report.html)
 
  

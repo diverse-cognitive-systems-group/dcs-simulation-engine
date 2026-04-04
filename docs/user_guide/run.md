@@ -1,4 +1,12 @@
-# Deployment
+# Run the engine
+
+The engine can be run locally and played just on your local computer or it can be run remotely (on an external server, called a "deployment") so that the access link can be shared with players (human or AI).
+
+## Run locally
+
+TODO: complete localy deployment instructions when CLI is finalized
+
+## Run remotely (deployment)
 
 By default the engine supports Fly.io for remote deployment however it is dockerized and can be deployed on any platform that supports Docker containers. 
 
@@ -6,9 +14,9 @@ The `dcs` CLI provides a streamlined interface for deploying to Fly.io, and the 
 
 Each remote deployment creates three Fly apps: `db`, `api`, and `ui`.
 
-## Quickstart (Example Real Deployment)
+### Example Real Deployment (quickstart)
 
-### 1) Prerequisites
+#### 1) Prerequisites
 
 - `flyctl` installed
 - Fly.io account access
@@ -16,7 +24,7 @@ Each remote deployment creates three Fly apps: `db`, `api`, and `ui`.
 - Experiment config YAML file
 - `dcs` CLI available (or use `uv run dcs` from this repo)
 
-### 2) Authenticate and set keys
+#### 2) Authenticate and set keys
 
 ```bash
 flyctl auth login
@@ -24,7 +32,7 @@ export FLY_API_TOKEN=your-fly-token
 export OPENROUTER_API_KEY=your-openrouter-key
 ```
 
-### 3) Deploy
+#### 3) Deploy
 
 ```bash
 dcs remote deploy \
@@ -35,16 +43,16 @@ dcs remote deploy \
 
 After deploy, save the printed **admin key** to your `.env` file using `DCS_ADMIN_KEY=your-admin-key` or use `--admin-key` flag on remote following commands.
 
-## Workflow Options
+### Workflow Options
 
-### Check status
+#### Check status
 
 ```bash
 dcs remote status \
   --uri https://dcs-example-api.fly.dev \
 ```
 
-### Save database
+#### Save database
 
 Database can be saved at any time, independent of deployment or teardown.
 
@@ -54,7 +62,7 @@ dcs remote save \
   --save-db-path example.zip
 ```
 
-### Stop + destroy (with final save)
+#### Stop + destroy (with final save)
 
 `remote stop` saves first; if save fails, app destruction does not proceed.
 
@@ -67,9 +75,9 @@ dcs remote stop \
   --db-app dcs-example-db
 ```
 
-## Additional Deployment Options
+### Additional Deployment Options
 
-### Free-play mode
+#### Free-play mode
 
 ```bash
 dcs remote deploy \
@@ -78,7 +86,7 @@ dcs remote deploy \
   --region lax
 ```
 
-### Fallback regions
+#### Fallback regions
 
 ```bash
 dcs remote deploy \
@@ -89,7 +97,7 @@ dcs remote deploy \
 
 Fly regions reference: https://fly.io/docs/reference/regions/
 
-### Targeted redeploy
+#### Targeted redeploy
 
 Redeploy only the UI app to a new region, keeping the same API and DB apps:
 
@@ -101,7 +109,7 @@ dcs remote deploy \
   --only-app ui
 ```
 
-## Additional Notes
+### Additional Notes
 - Generated Fly configs are written to `deployments/<deployment-slug>/` each time you run `dcs remote deploy`, and deploy uses those saved files directly.
 - No local deployment manifest is written beyond those generated Fly config files. Keep the deploy output or use `--json` and store it yourself.
 - The UI is built for the paired API automatically during deploy.
