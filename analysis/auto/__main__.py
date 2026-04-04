@@ -188,6 +188,19 @@ def _generate_report_cmd(
     output_path.write_text(html, encoding="utf-8")
     _console.print(f"Report written to: {output_path}", style="dim")
 
+    if include and "quality" in include:
+        from analysis.auto.sections.simulation_quality import build_character_quality_report
+
+        npc_hids: list[str] = []
+        if not data.runs_df.empty and "npc_hid" in data.runs_df.columns:
+            npc_hids = sorted(data.runs_df["npc_hid"].dropna().unique().tolist())
+
+        for hid in npc_hids:
+            char_html = build_character_quality_report(hid, data)
+            char_path = output_path.parent / f"{hid}_quality_report.html"
+            char_path.write_text(char_html, encoding="utf-8")
+            _console.print(f"Character report written to: {char_path}", style="dim")
+
     if open_browser:
         webbrowser.open(output_path.as_uri())
 
