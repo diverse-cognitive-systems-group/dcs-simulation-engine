@@ -1,3 +1,4 @@
+[
 {
   "dimensions": {
     "description": "A set of analytic dimensions used for coverage analysis to assess how well the core characters represent diverse cognitive systems. The dimensions are drawn from multiple fields, including psychology, theory of mind, and artificial intelligence, and capture commonly used axes for characterizing and distinguishing cognitive systems. Because this work adopts a broad definition of intelligence—any entity that navigates a space to achieve a goal—these dimensions enable evaluation of representational coverage across categorizations relevant to different disciplines. Each dimension includes a definition and a set of allowable classification options.",
@@ -126,3 +127,4 @@
     }
   }
 }
+]

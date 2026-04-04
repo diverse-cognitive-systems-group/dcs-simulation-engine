@@ -1,3 +1,4 @@
+[
 {
     "physical_ability_assumptions": {
         "ambulation": "People can walk, stand, climb stairs, and navigate uneven terrain.",
@@ -44,3 +45,4 @@
         "functional_stability": "People’s functional capacities, sensory thresholds, regulatory needs, and access requirements are generally stable and predictable over time rather than fluctuating, cyclical, or episodic."
     }
 }
+]
