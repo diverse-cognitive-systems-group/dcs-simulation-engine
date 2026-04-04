@@ -148,7 +148,7 @@ def run_coverage_report(
         rendered.append((anchor, section_title, fragment, kind))
 
     dims_path = root / "database_seeds" / "dev" / "character_dimensions.json"
-    hsn_path = root / "database_seeds" / "dev" / "hsn-abilities.json"
+    hsn_path = root / "database_seeds" / "dev" / "hsn_assumptions.json"
     chars_path = root / "database_seeds" / "prod" / "characters.json"
 
     artifacts = {

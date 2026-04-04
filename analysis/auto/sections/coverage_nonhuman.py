@@ -22,7 +22,7 @@ def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
     dims_path = repo_root / "database_seeds" / "dev" / "character_dimensions.json"
 
     chars_raw: list[dict] = json.loads(chars_path.read_text(encoding="utf-8"))
-    dims_raw: dict = json.loads(dims_path.read_text(encoding="utf-8"))
+    dims_raw: dict = json.loads(dims_path.read_text(encoding="utf-8"))[0]
 
     nonhuman = [c for c in chars_raw if not c.get("is_human") and c.get("dimensions")]
     if hids_filter:
