@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 
 
-def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
-    chars_path = repo_root / "database_seeds" / "prod" / "characters.json"
+def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "prod") -> str:
+    chars_path = repo_root / "database_seeds" / db / "characters.json"
     chars_raw: list[dict] = json.loads(chars_path.read_text(encoding="utf-8"))
 
     if hids_filter:

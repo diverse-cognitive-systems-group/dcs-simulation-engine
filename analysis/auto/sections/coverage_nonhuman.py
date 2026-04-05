@@ -15,10 +15,11 @@ import pandas as pd
 
 from analysis.auto.rendering.chart_utils import plotly_to_html
 from analysis.auto.rendering.table_utils import df_to_datatable
+from analysis.auto.sections import coverage_shared
 
 
-def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
-    chars_path = repo_root / "database_seeds" / "prod" / "characters.json"
+def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "prod") -> str:
+    chars_path = repo_root / "database_seeds" / db / "characters.json"
     dims_path = repo_root / "database_seeds" / "dev" / "character_dimensions.json"
 
     chars_raw: list[dict] = json.loads(chars_path.read_text(encoding="utf-8"))
@@ -46,6 +47,8 @@ def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
     if long_df.empty:
         parts.append('<p class="text-muted">No non-human characters found.</p>')
         return "\n".join(parts)
+
+    parts.append(coverage_shared.nonhuman_score_card(nonhuman))
 
     parts.append(
         '<p class="text-muted mb-3" style="font-size:0.9rem;">'

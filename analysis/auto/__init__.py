@@ -78,6 +78,65 @@ SECTIONS = [
 
 DEFAULT_SECTIONS = [s for s in SECTIONS if s[0] != "sim-quality"]
 
+VALID_SECTION_SLUGS: frozenset[str] = frozenset(
+    anchor for anchor, _, _, _ in SECTIONS if anchor is not None
+)
+_DEFAULT_SECTION_SLUGS: frozenset[str] = frozenset(
+    anchor for anchor, _, _, _ in DEFAULT_SECTIONS if anchor is not None
+)
+
+
+def resolve_sections(
+    only: list[str] | None,
+    include: list[str] | None,
+    exclude: list[str] | None,
+) -> list[tuple]:
+    """Return an ordered section list derived from the flag arguments.
+
+    Exactly one of *only*, *include*, *exclude* may be non-None.
+    Raises ValueError for invalid slug names or mutual-exclusion violations.
+    """
+    active = [f for f in (only, include, exclude) if f is not None]
+    if len(active) > 1:
+        raise ValueError("--only, --include, and --exclude are mutually exclusive.")
+
+    def _validate(slugs: list[str]) -> None:
+        unknown = [s for s in slugs if s not in VALID_SECTION_SLUGS]
+        if unknown:
+            valid = ", ".join(sorted(VALID_SECTION_SLUGS))
+            raise ValueError(
+                f"unknown section name(s): {', '.join(repr(s) for s in unknown)}. "
+                f"Valid: {valid}"
+            )
+
+    if only is not None:
+        _validate(only)
+        candidate = frozenset(only)
+    elif include is not None:
+        _validate(include)
+        candidate = _DEFAULT_SECTION_SLUGS | frozenset(include)
+    elif exclude is not None:
+        _validate(exclude)
+        candidate = _DEFAULT_SECTION_SLUGS - frozenset(exclude)
+    else:
+        candidate = _DEFAULT_SECTION_SLUGS
+
+    result: list[tuple] = []
+    pending_group: tuple | None = None
+    for entry in SECTIONS:
+        anchor, title, module, kind = entry
+        if kind == "group":
+            pending_group = entry
+            continue
+        if anchor in candidate:
+            # Only emit a pending group label when a sub-section follows it.
+            # Top-level sections (kind="top") are not children of any group.
+            if pending_group is not None and kind == "sub":
+                result.append(pending_group)
+            pending_group = None
+            result.append(entry)
+    return result
+
 
 def _read_b64(path: Path) -> str | None:
     try:
@@ -136,23 +195,50 @@ def _find_repo_root(start: Path | None = None) -> Path:
 def run_coverage_report(
     repo_root: Path | None = None,
     hids_filter: list[str] | None = None,
+    db: str = "prod",
 ) -> str:
     """Render the character coverage report and return the complete HTML string.
 
     Loads character data directly from database_seeds/; does not use AnalysisData.
     """
+    import json as _json
+
     from analysis.auto.sections import (
         coverage_human,
         coverage_metadata,
         coverage_nonhuman,
-        coverage_overview,
     )
 
     root = repo_root or _find_repo_root()
 
+    # For prod, restrict to approved characters from the release manifest.
+    _no_approved_chars = False
+    if hids_filter is None and db == "prod":
+        manifest_path = root / "database_seeds" / "prod" / "release_manifest.json"
+        try:
+            manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+            approved = manifest.get("approved_characters") or []
+            if approved:
+                hids_filter = approved
+            else:
+                _no_approved_chars = True
+        except OSError:
+            _no_approved_chars = True
+
+    if _no_approved_chars:
+        placeholder = (
+            '<div class="alert alert-warning mt-3" role="alert">'
+            "<strong>No production characters approved.</strong> "
+            "The release manifest contains no approved characters. "
+            "Coverage cannot be generated until characters are approved for production."
+            "</div>"
+        )
+        rendered = [("coverage", "Coverage", placeholder, "top")]
+        title = f"Character Coverage Report \u2014 {db}"
+        return build_html(rendered, title=title, artifacts={}, download_items=[])
+
     coverage_sections = [
         ("metadata",       "Metadata",       coverage_metadata,  "top"),
-        ("overview",       "Overview",       coverage_overview,  "top"),
         (None,             "Non-human",      None,               "group"),
         ("dim-coverage",   "Dimensions",     coverage_nonhuman,  "sub"),
         (None,             "Human",          None,               "group"),
@@ -165,7 +251,7 @@ def run_coverage_report(
             rendered.append((None, section_title, "", "group"))
             continue
         try:
-            fragment = module.render(root, hids_filter=hids_filter)
+            fragment = module.render(root, hids_filter=hids_filter, db=db)
         except Exception as exc:
             fragment = (
                 f'<div class="alert alert-danger">'
@@ -177,7 +263,7 @@ def run_coverage_report(
 
     dims_path = root / "database_seeds" / "dev" / "character_dimensions.json"
     hsn_path = root / "database_seeds" / "dev" / "hsn_assumptions.json"
-    chars_path = root / "database_seeds" / "prod" / "characters.json"
+    chars_path = root / "database_seeds" / db / "characters.json"
 
     artifacts = {
         "dimensions": {
@@ -203,9 +289,10 @@ def run_coverage_report(
         ("characters.json", "characters"),
     ]
 
+    title = f"Character Coverage Report \u2014 {db}"
     return build_html(
         rendered,
-        title="Character Coverage Report",
+        title=title,
         artifacts=artifacts,
         download_items=download_items,
     )

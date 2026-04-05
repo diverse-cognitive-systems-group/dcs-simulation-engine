@@ -11,10 +11,11 @@ from pathlib import Path
 import pandas as pd
 
 from analysis.auto.rendering.chart_utils import matplotlib_to_base64, plotly_to_html
+from analysis.auto.sections import coverage_shared
 
 
-def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
-    chars_path = repo_root / "database_seeds" / "prod" / "characters.json"
+def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "prod") -> str:
+    chars_path = repo_root / "database_seeds" / db / "characters.json"
     chars_raw: list[dict] = json.loads(chars_path.read_text(encoding="utf-8"))
 
     human = [c for c in chars_raw if c.get("is_human") and c.get("hsn_divergence")]
@@ -26,6 +27,8 @@ def render(repo_root: Path, hids_filter: list[str] | None = None) -> str:
     if not human:
         parts.append('<p class="text-muted">No human characters with HSN divergence data found.</p>')
         return "\n".join(parts)
+
+    parts.append(coverage_shared.human_score_card(human))
 
     # Build HID → display label mapping: "HID (first common label)"
     def _display_label(c: dict) -> str:

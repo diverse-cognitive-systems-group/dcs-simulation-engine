@@ -9,7 +9,7 @@ from typing import List, Optional
 
 import typer
 import typer.rich_utils as ru
-from analysis.auto import _find_repo_root, run_analysis, run_coverage_report, DEFAULT_SECTIONS, SECTIONS
+from analysis.auto import _find_repo_root, run_analysis, run_coverage_report, resolve_sections, VALID_SECTION_SLUGS
 from analysis.common.loader import load_all
 from rich.console import Console
 from rich.theme import Theme
@@ -66,46 +66,37 @@ def _slugify(text: str) -> str:
     return slug.strip("_") or "report"
 
 
-_VALID_INCLUDES = {"quality"}
+_VALID_DB = {"dev", "prod"}
 
 
 @generate_app.command("coverage")
 def _generate_coverage_cmd(
-    report_path: Optional[Path] = typer.Option(
-        None,
-        "--report_path",
-        help="Output path for the HTML file. Defaults to ./results/character_coverage_report.html.",
+    db: str = typer.Option(
+        ...,
+        "--db",
+        help="Character database to use: dev or prod.",
     ),
     title: Optional[str] = typer.Option(
         None,
         "--title",
         help="Override the report title.",
     ),
-    open_browser: bool = typer.Option(
-        False,
-        "--open",
-        help="Open the report in the default browser after generation.",
-    ),
 ) -> None:
     """Generate the character coverage report from the full database."""
+    if db not in _VALID_DB:
+        _console.print(f"ERROR: --db must be 'dev' or 'prod', got {db!r}.", style="error")
+        raise typer.Exit(1)
+
     cwd = Path.cwd()
+    out_dir = (cwd / "results").resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output_path = out_dir / f"character_coverage_{db}.html"
 
-    if report_path is not None:
-        output_path = report_path.resolve()
-    else:
-        out_dir = (cwd / "results").resolve()
-        out_dir.mkdir(parents=True, exist_ok=True)
-        output_path = out_dir / "character_coverage_report.html"
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with _console.status("Generating character coverage report...", spinner="dots"):
-        html = run_coverage_report()
+    with _console.status(f"Generating character coverage report ({db})...", spinner="dots"):
+        html = run_coverage_report(db=db)
     _console.print("[green]✔[/green] Generated character coverage report", style="dim")
     output_path.write_text(html, encoding="utf-8")
     _console.print(f"Report written to: {output_path}", style="dim")
-    if open_browser:
-        webbrowser.open(output_path.as_uri())
 
 
 @generate_app.command("report")
@@ -114,10 +105,29 @@ def _generate_report_cmd(
         ...,
         help="Path to the results directory.",
     ),
+    only: Optional[List[str]] = typer.Option(
+        None,
+        "--only",
+        help=(
+            "Render ONLY these section(s). Repeatable. "
+            f"Valid slugs: {', '.join(sorted(VALID_SECTION_SLUGS))}."
+        ),
+    ),
     include: Optional[List[str]] = typer.Option(
         None,
         "--include",
-        help=f"Additional sections to include. Valid values: {', '.join(sorted(_VALID_INCLUDES))}.",
+        help=(
+            "Add section(s) to the default set. Repeatable. "
+            f"Valid slugs: {', '.join(sorted(VALID_SECTION_SLUGS))}."
+        ),
+    ),
+    exclude: Optional[List[str]] = typer.Option(
+        None,
+        "--exclude",
+        help=(
+            "Remove section(s) from the default set. Repeatable. "
+            f"Valid slugs: {', '.join(sorted(VALID_SECTION_SLUGS))}."
+        ),
     ),
     report_path: Optional[Path] = typer.Option(
         None,
@@ -137,15 +147,11 @@ def _generate_report_cmd(
 ) -> None:
     cwd = Path.cwd()
 
-    if include:
-        unknown = [i for i in include if i not in _VALID_INCLUDES]
-        if unknown:
-            valid = ", ".join(sorted(_VALID_INCLUDES))
-            _console.print(
-                f"ERROR: unknown --include value(s): {', '.join(unknown)}. Valid: {valid}",
-                style="error",
-            )
-            raise typer.Exit(1)
+    try:
+        sections = resolve_sections(only=only, include=include, exclude=exclude)
+    except ValueError as exc:
+        _console.print(f"ERROR: {exc}", style="error")
+        raise typer.Exit(1)
 
     results_dir = results_dir.resolve()
     if not results_dir.is_dir():
@@ -164,15 +170,6 @@ def _generate_report_cmd(
             or "Results Report"
         )
 
-    sections = list(DEFAULT_SECTIONS)
-    if include and "quality" in include:
-        sim_q = next(s for s in SECTIONS if s[0] == "sim-quality")
-        try:
-            insert_after = next(i for i, s in enumerate(sections) if s[0] == "system-errors")
-            sections.insert(insert_after + 1, sim_q)
-        except StopIteration:
-            sections.append(sim_q)
-
     with _console.status(f"Generating report: {title!r}...", spinner="dots"):
         html = run_analysis(data, title=title, sections=sections)
     _console.print(f"[green]✔[/green] Generating report: {title!r}", style="dim")
@@ -188,7 +185,8 @@ def _generate_report_cmd(
     output_path.write_text(html, encoding="utf-8")
     _console.print(f"Report written to: {output_path}", style="dim")
 
-    if include and "quality" in include:
+    section_slugs = {s[0] for s in sections if s[0]}
+    if "sim-quality" in section_slugs:
         from analysis.auto.sections.simulation_quality import build_character_quality_report
 
         npc_hids: list[str] = []
