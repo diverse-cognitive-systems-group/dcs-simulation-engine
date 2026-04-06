@@ -83,7 +83,7 @@ dev = [
 # after this package is pip installed, to invoke the main function in the my_app package.
 [project.scripts]
 dcs = "dcs_simulation_engine.cli.app:app"
-dcs-utils = "analysis.auto.__main__:main"
+dcs-utils = "dcs_utils.cli.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
@@ -118,7 +118,7 @@ profile = "black"
 
 [tool.ruff]
 exclude = [
-  "analysis/*", # analysis folder
+  "dcs_utils/*", # dcs_utils folder
   "**/*.ipynb", # all notebooks
 ]
 line-length = 140

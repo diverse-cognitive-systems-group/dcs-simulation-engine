@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GES — Quality Report</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- DataTables Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <!-- DataTables Buttons -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+  <!-- Plotly, jQuery, and DataTables must all load before body content so inline scripts work -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+  <style>
+    body {
+      font-size: 0.9rem;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      padding-top: 1rem;
+    }
+
+    .sidebar .nav-link {
+      color: #495057;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .sidebar .nav-link:hover {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    .sidebar .nav-link.active {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .sidebar .nav-link-sub {
+      padding-left: 1.75rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .sidebar .nav-link-sub:hover {
+      color: #0d6efd;
+    }
+
+    .sidebar .nav-link-sub.active {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
+    .sidebar-heading {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      padding: 0.5rem 1rem 0.2rem;
+    }
+
+    /* Sections */
+    section {
+      scroll-margin-top: 1rem;
+    }
+
+    section h2 {
+      font-size: 1.4rem;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables */
+    .dataTables_wrapper {
+      font-size: 0.82rem;
+    }
+
+    /* Per-column filter inputs in second header row */
+    tr.dt-filter-row th {
+      padding: 4px 8px;
+    }
+
+    tr.dt-filter-row input {
+      min-width: 3rem;
+    }
+
+    /* Export buttons */
+    .dt-buttons .btn {
+      font-size: 0.75rem;
+    }
+
+    /* Charts */
+    .chart-container {
+      margin-bottom: 1.5rem;
+    }
+
+    /* Definition list in metadata */
+    .dl-meta dt {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .dl-meta dd {
+      color: #212529;
+      margin-bottom: 0.4rem;
+    }
+
+    @media print {
+      .sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      main.col-md-10 {
+        width: 100% !important;
+      }
+
+      section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container-fluid">
+    <div class="row g-0">
+
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-none d-md-block sidebar">
+        <div class="sidebar-heading">Sections</div>
+        <ul class="nav flex-column">
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-metadata">Metadata</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-overview">Overview</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-scenario-coverage">Scenario Coverage</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-feedback">Feedback</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-transcripts">Transcripts</a>
+          </li>
+            
+          
+        </ul>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 px-4 py-3">
+        <div class="report-header mb-4">
+          <div>
+            <h1 class="mb-1">GES — Quality Report</h1>
+            <p class="text-muted mb-0" style="font-size:0.8rem;">
+              Generated 2026-04-06 14:52 UTC
+            </p>
+          </div>
+          <div class="dropdown no-print">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
+              
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
+            </ul>
+          </div>
+        </div>
+
+        
+          
+        <section id="section-metadata" class="mb-5">
+          <h2>Metadata</h2>
+          <div class="card"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-3'>HID</dt><dd class='col-sm-9'>GES</dd><dt class='col-sm-3'>Description</dt><dd class='col-sm-9'>A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.</dd><dt class='col-sm-3'>Long Description</dt><dd class='col-sm-9'>I am a human whose capacity for spoken communication is not always reliable. At times I can speak fluently and engage verbally without difficulty. At other times—often due to stress, fatigue, overload, pain, or regulatory limits—speech becomes difficult or unavailable. When this happens, I do not switch to a formal sign language. Instead, I improvise.
+
+My communication becomes embodied and situational. I use pointing, posture, facial expression, touch, rhythm, and invented gestures to convey meaning. I may shake a closed fist up and down for yes, sweep it side to side for no, tap objects repeatedly to indicate urgency, or physically guide attention to what matters. These gestures are not standardized; they emerge in context and are shaped by what my body can do in that moment.
+
+I rely heavily on shared context. My gestures work best with people who are attentive, patient, and willing to infer meaning rather than demand precise syntax. Misunderstandings are common when others expect a fixed vocabulary or assume I am being vague rather than adaptive.
+
+Speech loss for me is not a loss of thought or intention. My ideas, preferences, and emotions remain intact. The bottleneck is expressive output, not understanding. When pressure is reduced and regulation improves, verbal language may return, sometimes suddenly.
+
+I navigate the world by flexibly shifting communication modes. Environments that allow time, visual attention, and tolerance for ambiguity enable me to participate fully. Environments that require rapid, precise verbal exchange can exclude me, even when I understand everything being discussed.
+
+My intelligence is not stored in words. It is distributed across body, attention, and context. When speech is unavailable, my body speaks instead.</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-overview" class="mb-5">
+          <h2>Overview</h2>
+          <h3 class="h5 mb-2">Scores Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-4'>Total NPC Turns</dt><dd class='col-sm-8'>4</dd><dt class='col-sm-4'>In-Character Fidelity (ICF)</dt><dd class='col-sm-8'>75.0%</dd><dt class='col-sm-4'>Narrative Coherence (NCo)</dt><dd class='col-sm-8'>0.0%</dd><dt class='col-sm-4'>Other</dt><dd class='col-sm-8'>0.0%</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-scenario-coverage" class="mb-5">
+          <h2>Scenario Coverage</h2>
+          <p class="text-muted">Scenario coverage data is not yet available.</p>
+        </section>
+          
+        
+          
+        <section id="section-feedback" class="mb-5">
+          <h2>Feedback</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">In-session reactions (likes, flags, freeform comments on NPC messages) and structured survey responses. Use this to connect player sentiment to specific moments in gameplay.</p>
+<h3 class="h5 mb-2">Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-6'>Feedback Rate</dt><dd class='col-sm-6'>2 / 4 (50%)</dd><dt class='col-sm-6'>👍 Thumbs Up</dt><dd class='col-sm-6'>1 / 2 (50%)</dd><dt class='col-sm-6'>👎 Thumbs Down</dt><dd class='col-sm-6'>1 / 2 (50%)</dd></dl></div></div>
+<h5>Flag Distribution Over Turns</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns" class="plotly-graph-div" style="height:320px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns")) {                    Plotly.newPlot(                        "flags-over-turns",                        [{"marker":{"color":"#e45f3c"},"name":"out of character","x":{"dtype":"i1","bdata":"Ag=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"t":30,"b":40,"l":50,"r":20},"barmode":"group","xaxis":{"title":{"text":"Turn"}},"yaxis":{"title":{"text":"Flag count"}},"legend":{"title":{"text":"Flag type"}},"height":320},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Frequency of each flag type (out of character, doesn't make sense, other) at each turn index across all sessions. Peaks reveal which turns in the conversation arc the NPC most often breaks character or produces unclear responses.</em></p>
+<h5>Flag Distribution Over Turns — by Game</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns-by-game" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns-by-game")) {                    Plotly.newPlot(                        "flags-over-turns-by-game",                        [{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":true,"x":{"dtype":"i1","bdata":"Ag=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":true,"x":[],"y":[],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":true,"x":[],"y":[],"type":"bar","xaxis":"x","yaxis":"y"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Turn"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Flag count"}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Foresight","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"margin":{"t":50,"b":40,"l":50,"r":20},"barmode":"group","legend":{"title":{"text":"Flag type"}},"height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Flag frequency per turn split by game. Reveals whether specific games produce character or coherence issues at particular dialogue stages.</em></p>
+<h5>Flag Distribution Over Turns — by Player</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns-by-player" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns-by-player")) {                    Plotly.newPlot(                        "flags-over-turns-by-player",                        [{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":true,"visible":true,"x":{"dtype":"i1","bdata":"Ag=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":true,"visible":true,"x":[],"y":[],"type":"bar"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":true,"visible":true,"x":[],"y":[],"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"t":60,"b":40,"l":50,"r":20},"updatemenus":[{"buttons":[{"args":[{"visible":[true,true,true]},{"title":""}],"label":"000000000000000000000003","method":"update"}],"direction":"down","showactive":true,"x":0.0,"xanchor":"left","y":1.15,"yanchor":"top"}],"annotations":[{"showarrow":false,"text":"Select Player:","x":0.0,"xanchor":"right","xref":"paper","y":1.15,"yanchor":"top","yref":"paper"}],"barmode":"group","xaxis":{"title":{"text":"Turn"}},"yaxis":{"title":{"text":"Flag count"}},"legend":{"title":{"text":"Flag type"}},"height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player flag counts across turn indices. Use the dropdown to select a player and identify individuals whose feedback clusters at specific turns.</em></p>
+<h5>In-Play Feedback</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="event-feedback-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Session</th>
+      <th>Game</th>
+      <th>Player</th>
+      <th>Turn</th>
+      <th>Liked</th>
+      <th>Flags</th>
+      <th>Comment</th>
+      <th>Transcript Context</th>
+      <th>Submitted At</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>Foresight</td>
+      <td>000000000000000000000003</td>
+      <td>2</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\n[npc T1]: You enter a new space. In this space, a small community room lit by warm lamps holds a scuffed wooden table and mismatched chairs; a person sits across from you with their hands resting on the table and eyes tracking your movement. They open their mouth as if to speak, emit a strained, brief syllable that trails off, then tap the table three quick times with a flat palm and point toward the chair beside them.\n[user T2]: I walk over and lift my hands and shrug my shoulders\n[npc T2]: They watch you come closer, tilt their head at your shrug, let out a soft breathy sound, then sweep their right palm in a slow inward arc toward the chair and pat the seat twice; finally they touch their chest with an open hand and hold your gaze.</td>
+      <td>2026-03-17 10:05:20 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>Foresight</td>
+      <td>000000000000000000000003</td>
+      <td>4</td>
+      <td>True</td>
+      <td></td>
+      <td>clear and consistent</td>
+      <td>[system T1]: *Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\n[npc T1]: You enter a new space. In this space, a small community room lit by warm lamps holds a scuffed wooden table and mismatched chairs; a person sits across from you with their hands resting on the table and eyes tracking your movement. They open their mouth as if to speak, emit a strained, brief syllable that trails off, then tap the table three quick times with a flat palm and point toward the chair beside them.\n[user T2]: I walk over and lift my hands and shrug my shoulders\n[npc T2]: They watch you come closer, tilt their head at your shrug, let out a soft breathy sound, then sweep their right palm in a slow inward arc toward the chair and pat the seat twice; finally they touch their chest with an open hand and hold your gaze.\n[user T3]: /predict-next I predict they will keep gesturaing to try and get me to sit down\n[system T3]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T3]: I go sit down\n[npc T3]: They watch you lower yourself into the chair, exhale softly, close their right hand into a fist and lift it once in a quick up-and-down motion, then lay both palms flat on the table and hold your gaze.\n[user T4]: /predict-next I predict they will keep gesturaing to try and get me to sit down\n[system T4]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T4]: I point at myself and then at them and tilt my head questioningly\n[npc T4]: They pause, then mirror your gesture — pointing at themselves, then at you — and nod once slowly. They open one hand between you, palm up, and tap its center with two fingers from their other hand.\n[system T4]: session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-17 10:13:02 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#event-feedback-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#event-feedback-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Every in-session reaction (like, flag, or comment) left on an NPC message, with session and turn context. The Transcript Context column shows the preceding turns leading up to the flagged message — hover to read the full excerpt. Sort by turn or session to find clusters of negative reactions.</em></p>
+<h5>Player Feedback Patterns</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="player-segments-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Player</th>
+      <th>Total</th>
+      <th>Positive</th>
+      <th>Negative</th>
+      <th>w/ Comment</th>
+      <th>Flagged</th>
+      <th>Segment</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>000000000000000000000003</td>
+      <td>2</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>high feedback</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#player-segments-table').DataTable({
+        pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#player-segments-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player feedback summary with a segment label (only positive, only negative, high/low feedback volume, mixed). Thresholds are set at the 25th and 75th percentile of total feedback count. Use this to identify outlier players whose feedback patterns may skew aggregate statistics.</em></p>
+        </section>
+          
+        
+          
+        <section id="section-transcripts" class="mb-5">
+          <h2>Transcripts</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">Turn-by-turn event log for all sessions. Filter by session, player, PC, or NPC to read specific exchanges. Use alongside Feedback to find the dialogue that prompted a reaction.</p><h3 class="h5 mb-2">Session Events</h3><table class="dataframe table table-striped table-hover table-sm w-100" id="transcripts-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Gameplay Session</th>
+      <th>Player</th>
+      <th>PC</th>
+      <th>NPC</th>
+      <th>Turn</th>
+      <th>Source</th>
+      <th>Type</th>
+      <th>Transcript</th>
+      <th>Timestamp</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-17 10:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.</td>
+      <td>2026-03-17 10:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, a small community room lit by warm lamps holds a scuffed wooden table and mismatched chairs; a person sits across from you with their hands resting on the table and eyes tracking your movement. They open their mouth as if to speak, emit a strained, brief syllable that trails off, then tap the table three quick times with a flat palm and point toward the chair beside them.</td>
+      <td>2026-03-17 10:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and lift my hands and shrug my shoulders</td>
+      <td>2026-03-17 10:02:11 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They watch you come closer, tilt their head at your shrug, let out a soft breathy sound, then sweep their right palm in a slow inward arc toward the chair and pat the seat twice; finally they touch their chest with an open hand and hold your gaze.</td>
+      <td>2026-03-17 10:03:20 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>3</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict they will keep gesturaing to try and get me to sit down</td>
+      <td>2026-03-17 10:04:06 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>3</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-17 10:04:07 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I go sit down</td>
+      <td>2026-03-17 10:06:02 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They watch you lower yourself into the chair, exhale softly, close their right hand into a fist and lift it once in a quick up-and-down motion, then lay both palms flat on the table and hold your gaze.</td>
+      <td>2026-03-17 10:07:11 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict they will keep gesturaing to try and get me to sit down</td>
+      <td>2026-03-17 10:07:57 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-17 10:07:58 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I point at myself and then at them and tilt my head questioningly</td>
+      <td>2026-03-17 10:09:53 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They pause, then mirror your gesture — pointing at themselves, then at you — and nod once slowly. They open one hand between you, palm up, and tap its center with two fingers from their other hand.</td>
+      <td>2026-03-17 10:11:02 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>4</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-17 10:11:54 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>5</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict they will keep gesturaing to try and get me to sit down</td>
+      <td>2026-03-17 10:11:48 UTC</td>
+    </tr>
+    <tr>
+      <td>495a895d-a97a-ebf4-7e8a-0c2b04145bc8</td>
+      <td>000000000000000000000003</td>
+      <td>GES</td>
+      <td>GES</td>
+      <td>5</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-17 10:11:49 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#transcripts-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#transcripts-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script><p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Full turn-by-turn event log with player, PC, and NPC columns joined from session data. Long entries are truncated — hover to read the full text. Cross-reference with Feedback to find the dialogue that prompted a specific reaction.</em></p>
+        </section>
+          
+        
+      </main>
+
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+
+  <!-- Active sidebar link tracking via IntersectionObserver -->
+  <script>
+    (function () {
+      var links = {};
+      document.querySelectorAll('.sidebar .nav-link[href^="#section-"]').forEach(function (a) {
+        links[a.getAttribute('href').slice(1)] = a;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var link = links[entry.target.id];
+          if (!link) return;
+          if (entry.isIntersecting) {
+            Object.values(links).forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+      document.querySelectorAll('section[id^="section-"]').forEach(function (sec) {
+        observer.observe(sec);
+      });
+    })();
+  </script>
+
+  <!-- Bootstrap JS (loaded here so it doesn't block initial render) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Download helpers -->
+  <script>
+    (function () {
+      var _artifacts = {};
+      var _reportSlug = "GES \u2014 Quality Report".replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '_').toLowerCase();
+      var _reportFilename = _reportSlug + '.html';
+
+      // Disable menu items for missing artifacts
+      [].forEach(function (item) {
+        var key = item[1];
+        if (!_artifacts[key] || !_artifacts[key].b64) {
+          var el = document.getElementById('dl-' + key);
+          if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
+        }
+      });
+
+      function _triggerDownload(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      window.downloadArtifact = function (key) {
+        var art = _artifacts[key];
+        if (!art || !art.b64) return;
+        var bytes = Uint8Array.from(atob(art.b64), function (c) { return c.charCodeAt(0); });
+        var blob = new Blob([bytes], { type: art.mime });
+        _triggerDownload(URL.createObjectURL(blob), art.filename);
+      };
+
+      window.downloadAll = function () {
+        var zip = new JSZip();
+        zip.file(_reportFilename, document.documentElement.outerHTML);
+        Object.values(_artifacts).forEach(function (art) {
+          if (art && art.b64) zip.file(art.filename, art.b64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(function (content) {
+          _triggerDownload(URL.createObjectURL(content), _reportSlug + '_package.zip');
+        });
+      };
+    })();
+  </script>
+
+</body>
+
+</html>

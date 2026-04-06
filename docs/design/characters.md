@@ -36,7 +36,7 @@ Examples include:
 
 - And additional forms as needed
 
-> See the [character coverage report](../reports/character_coverage_report.html) for details on coverage and gaps in our current character database.
+> See the character coverage reports for characters in development [Character Coverage - in development](../reports/character_coverage_report_dev.html) and production [Character Coverage - in production](../reports/character_coverage_report_prod.html) for details on coverage and gaps in our current character database.
 
 ### Simulation Quality Control
 
@@ -50,7 +50,7 @@ Character sheets define each character and are refined through iterative testing
 
 - Create or modify a character sheet based on research (e.g., primary source materials, interviews with experts, etc.)
 - Add it to database (`database_seeds/dev/characters.json`)
-- Run simulations and observe behavior
+- Run simulations and observe behavior using live engine or human in the loop testing process (see `dcs-utils admin hitl --help` for details on how to run hitl tests)
 
 **2. Evaluate Fidelity**
 - Flag character behavior that doesn't align with expectations (e.g., "Out of Character" flags)
@@ -61,17 +61,10 @@ Character sheets define each character and are refined through iterative testing
 Generate a character quality report using:
 
 ```sh
-dcs generate report character_quality <path/to/results>
+dcs generate report <path/to/results> --include sim-quality --title "Simulation Quality Report"
 ```
 
-Then complete the manual sections of the report including:
-- authorship
-- data/chart/score interpretations
-- evaluation method details
-- character strengths and weaknesses observed
-- failure modes and drift behavior
-- recommended use cases and guardrails
-- pass/fail justification
+Example quality reports are includes in the `examples/` directory of the main repo.
 
 **4. Publish for Review**
 
