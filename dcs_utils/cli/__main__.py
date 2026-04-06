@@ -50,13 +50,9 @@ ru.STYLE_ABORTED = "white"
 #
 #   dcs-utils
 #   ├── hitl            human-in-the-loop scenario testing
-#   │   ├── scenarios   manage scenario files
-#   │   │   ├── generate    scaffold a new scenarios file
-#   │   │   └── export      convert completed scenarios → results dir
-#   │   ├── responses   simulator response generation
-#   │   │   └── generate
-#   │   └── feedback    evaluator scoring
-#   │       └── generate
+#   │   ├── create      scaffold a new scenarios file for a character
+#   │   ├── update      generate engine responses and/or collect feedback
+#   │   └── export      convert completed scenarios → results dir
 #   ├── report          report generation
 #   │   ├── coverage    character coverage report
 #   │   └── results     HTML report from a results directory
@@ -69,12 +65,6 @@ app = typer.Typer(help="DCS utility commands.")
 
 # -- hitl --
 hitl_app = typer.Typer(help="Human-in-the-loop scenario testing pipeline.")
-hitl_scenarios_app = typer.Typer(help="Manage scenario files.")
-hitl_responses_app = typer.Typer(help="Generate simulator responses for scenario attempts.")
-hitl_feedback_app = typer.Typer(help="Collect evaluator feedback for scenario responses.")
-hitl_app.add_typer(hitl_scenarios_app, name="scenarios")
-hitl_app.add_typer(hitl_responses_app, name="responses")
-hitl_app.add_typer(hitl_feedback_app, name="feedback")
 app.add_typer(hitl_app, name="hitl")
 
 # -- report --
@@ -535,13 +525,12 @@ def _admin_publish_characters_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs-utils hitl scenarios generate
+# dcs-utils hitl create
 # ---------------------------------------------------------------------------
 
-
-@hitl_scenarios_app.command("generate")
-def _hitl_scenarios_generate_cmd(
-    hid: str = typer.Argument(..., help="Character HID (e.g. FW, NA, DIS)."),
+@hitl_app.command("create")
+def _hitl_create_cmd(
+    hid: str = typer.Argument(..., help="Character HID (e.g. FW, NA, AC)."),
     db: str = typer.Option(
         ...,
         "--db",
@@ -553,12 +542,12 @@ def _hitl_scenarios_generate_cmd(
         help="Game name to use for all generated scenarios.",
     ),
 ) -> None:
-    """Generate a scenario scaffold for a character.
+    """Create a scenario scaffold for a character.
 
-    Creates dcs_utils/data/character_scenarios/<hid>-scenarios.json with one
+    Writes dcs_utils/data/character_scenarios/<hid>-scenarios.json with one
     scenario group per pressure category, seeded with example player messages.
-    All conversation_history fields start empty; run
-    `dcs-utils hitl responses generate` to populate them via the simulator.
+    All conversation_history fields start empty — run `dcs-utils hitl update`
+    to populate them via the engine.
     """
     from dcs_utils.hitl.generate import (
         build_scaffold,
@@ -575,7 +564,7 @@ def _hitl_scenarios_generate_cmd(
     if out_path.exists():
         _console.print(
             f"ERROR: Scenarios file already exists:\n  {out_path}\n"
-            "Rename or delete it before regenerating.",
+            "Rename or delete it before recreating.",
             style="error",
         )
         raise typer.Exit(1)
@@ -602,24 +591,145 @@ def _hitl_scenarios_generate_cmd(
     )
     _console.print(
         f"\nNext steps:\n"
-        f"  1. Review and edit player messages in the file.\n"
-        f"  2. dcs-utils hitl responses generate {out_path} --include-empty\n"
-        f"  3. dcs-utils hitl feedback generate {out_path}\n"
-        f"  4. dcs-utils hitl scenarios export {out_path}",
+        f"  1. Review and edit player messages in the scenarios file.\n"
+        f"  2. dcs-utils hitl update {hid} --skip-feedback\n"
+        f"  3. dcs-utils hitl update {hid} --skip-engine-responses\n"
+        f"  4. dcs-utils hitl export {hid}",
         style="dim",
     )
 
 
 # ---------------------------------------------------------------------------
-# dcs-utils hitl scenarios export
+# dcs-utils hitl update
 # ---------------------------------------------------------------------------
 
 
-@hitl_scenarios_app.command("export")
-def _hitl_scenarios_export_cmd(
-    scenarios_path: Path = typer.Argument(
-        ..., help="Path to the completed <hid>-scenarios.json file."
+@hitl_app.command("update")
+def _hitl_update_cmd(
+    hid: str = typer.Argument(..., help="Character HID whose scenarios file to update."),
+    # what to skip
+    skip_engine_responses: bool = typer.Option(
+        False,
+        "--skip-engine-responses",
+        help="Skip generating engine responses.",
     ),
+    skip_feedback: bool = typer.Option(
+        False,
+        "--skip-feedback",
+        help="Skip collecting evaluator feedback.",
+    ),
+    # engine_responses options
+    server_url: str = typer.Option(
+        "http://localhost:8080",
+        "--server-url",
+        envvar="DCS_SERVER_URL",
+        help="(engine_responses) DCS server URL.",
+    ),
+    api_key: str = typer.Option(
+        "",
+        "--api-key",
+        envvar="DCS_API_KEY",
+        help="(engine_responses) DCS API key.",
+    ),
+    include_empty: bool = typer.Option(
+        True,
+        "--include-empty/--no-include-empty",
+        help="(engine_responses) Process scenarios with empty conversation_history.",
+    ),
+    concurrency: int = typer.Option(
+        4,
+        "--concurrency",
+        help="(engine_responses) Maximum number of parallel scenario requests.",
+    ),
+    # feedback options
+    evaluator_id: str = typer.Option(
+        "",
+        "--evaluator-id",
+        help="(feedback) Your evaluator ID — recorded in each feedback entry.",
+    ),
+    # shared scenario-filter options
+    scenario_only: Optional[List[str]] = typer.Option(
+        None,
+        "--scenario",
+        help="Limit to these scenario IDs. Repeatable.",
+    ),
+    scenario_exclude: Optional[List[str]] = typer.Option(
+        None,
+        "--exclude",
+        help="Skip these scenario IDs. Repeatable.",
+    ),
+) -> None:
+    """Update a character's scenarios with engine responses and/or evaluator feedback.
+
+    By default both engine responses and feedback are updated. Skip either with
+    --skip-engine-responses or --skip-feedback.  When both run, engine responses
+    are generated first so feedback can be collected on the new responses.
+
+    \b
+    Examples:
+      dcs-utils hitl update AC                           # both (default)
+      dcs-utils hitl update AC --skip-feedback           # engine responses only
+      dcs-utils hitl update AC --skip-engine-responses   # feedback only
+    """
+    import asyncio
+
+    from dcs_utils.hitl.feedback import collect_feedback
+    from dcs_utils.hitl.generate import scenarios_path_for
+    from dcs_utils.hitl.responses import generate_responses
+
+    if skip_engine_responses and skip_feedback:
+        _console.print(
+            "ERROR: --skip-engine-responses and --skip-feedback cannot both be set — nothing to do.",
+            style="error",
+        )
+        raise typer.Exit(1)
+
+    scenarios_path = scenarios_path_for(hid)
+    if not scenarios_path.is_file():
+        _console.print(
+            f"ERROR: scenarios file not found: {scenarios_path}\n"
+            f"Run `dcs-utils hitl create {hid} --db <dev|prod>` first.",
+            style="error",
+        )
+        raise typer.Exit(1)
+
+    scenario_ids = list(scenario_only) if scenario_only else None
+    exclude_ids = list(scenario_exclude) if scenario_exclude else None
+
+    if not skip_engine_responses:
+        asyncio.run(
+            generate_responses(
+                path=scenarios_path,
+                server_url=server_url,
+                api_key=api_key,
+                include_empty=include_empty,
+                only=scenario_ids,
+                include_ids=None,
+                exclude=exclude_ids,
+                concurrency=concurrency,
+                console=_console,
+            )
+        )
+
+    if not skip_feedback:
+        collect_feedback(
+            scenarios_path,
+            evaluator_id=evaluator_id,
+            only=scenario_ids,
+            include_ids=None,
+            exclude=exclude_ids,
+            console=_console,
+        )
+
+
+# ---------------------------------------------------------------------------
+# dcs-utils hitl export
+# ---------------------------------------------------------------------------
+
+
+@hitl_app.command("export")
+def _hitl_export_cmd(
+    hid: str = typer.Argument(..., help="Character HID whose scenarios file to export."),
     evaluator_id: str = typer.Option(
         "evaluator",
         "--evaluator-id",
@@ -628,166 +738,45 @@ def _hitl_scenarios_export_cmd(
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output-dir",
-        help="Override output directory (default: <hid>-scenario-results/ next to scenarios file).",
+        help="Override output directory (default: results/hitl_<hid>/ in the repo root).",
     ),
 ) -> None:
-    """Convert a completed scenarios file into a results directory.
+    """Export a completed scenarios file to a standard results directory.
 
     The output is compatible with `dcs-utils report results`:
 
     \b
-        dcs-utils hitl scenarios export FW-scenarios.json
-        dcs-utils report results FW-scenario-results/
+        dcs-utils hitl export AC
+        dcs-utils report results results/hitl_AC/ --only sim-quality
     """
     from dcs_utils.hitl.export import export_results
+    from dcs_utils.hitl.generate import scenarios_path_for
 
-    scenarios_path = scenarios_path.resolve()
+    scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
-        _console.print(f"ERROR: file not found: {scenarios_path}", style="error")
+        _console.print(
+            f"ERROR: scenarios file not found: {scenarios_path}\n"
+            f"Run `dcs-utils hitl create {hid} --db <dev|prod>` first.",
+            style="error",
+        )
         raise typer.Exit(1)
 
-    with _console.status("Exporting results directory...", spinner="dots"):
+    if output_dir is None:
+        repo_root = _find_repo_root()
+        output_dir = repo_root / "results" / f"hitl_{hid}"
+
+    with _console.status(f"Exporting {hid} scenarios to results directory...", spinner="dots"):
         out = export_results(
             scenarios_path,
             evaluator_id=evaluator_id,
-            output_dir=output_dir.resolve() if output_dir else None,
+            output_dir=output_dir.resolve(),
         )
 
     _console.print(f"[green]✔[/green] Results written to: {out}", style="dim")
-    _console.print(f"\nGenerate a report:\n  dcs-utils report results {out}", style="dim")
-
-
-# ---------------------------------------------------------------------------
-# dcs-utils hitl responses generate
-# ---------------------------------------------------------------------------
-
-
-@hitl_responses_app.command("generate")
-def _hitl_responses_generate_cmd(
-    scenarios_path: Path = typer.Argument(
-        ..., help="Path to the <hid>-scenarios.json file."
-    ),
-    server_url: str = typer.Option(
-        "http://localhost:8080",
-        "--server-url",
-        envvar="DCS_SERVER_URL",
-        help="DCS server URL.",
-    ),
-    api_key: str = typer.Option(
-        "",
-        "--api-key",
-        envvar="DCS_API_KEY",
-        help="DCS API key.",
-    ),
-    include_empty: bool = typer.Option(
-        False,
-        "--include-empty",
-        help="Also process scenarios with empty conversation_history (engine generates opening scene).",
-    ),
-    only: Optional[List[str]] = typer.Option(
-        None,
-        "--only",
-        help="Process ONLY these scenario IDs. Repeatable.",
-    ),
-    include_ids: Optional[List[str]] = typer.Option(
-        None,
-        "--include",
-        help="Force-include these scenario IDs even when --only is set. Repeatable.",
-    ),
-    exclude: Optional[List[str]] = typer.Option(
-        None,
-        "--exclude",
-        help="Skip these scenario IDs. Repeatable.",
-    ),
-    concurrency: int = typer.Option(
-        4,
-        "--concurrency",
-        help="Maximum number of parallel scenario requests.",
-    ),
-) -> None:
-    """Generate simulator responses for pending scenario attempts.
-
-    Calls the DCS engine for each attempt that lacks a simulator_response and
-    saves after every response so `dcs-utils hitl feedback generate` can start
-    immediately in a parallel terminal.
-
-    Use --include-empty to process scenarios whose conversation_history is
-    empty (the engine will generate an opening scene for these).
-    """
-    import asyncio
-
-    from dcs_utils.hitl.responses import generate_responses
-
-    scenarios_path = scenarios_path.resolve()
-    if not scenarios_path.is_file():
-        _console.print(f"ERROR: file not found: {scenarios_path}", style="error")
-        raise typer.Exit(1)
-
-    asyncio.run(
-        generate_responses(
-            path=scenarios_path,
-            server_url=server_url,
-            api_key=api_key,
-            include_empty=include_empty,
-            only=list(only) if only else None,
-            include_ids=list(include_ids) if include_ids else None,
-            exclude=list(exclude) if exclude else None,
-            concurrency=concurrency,
-            console=_console,
-        )
-    )
-
-
-# ---------------------------------------------------------------------------
-# dcs-utils hitl feedback generate
-# ---------------------------------------------------------------------------
-
-
-@hitl_feedback_app.command("generate")
-def _hitl_feedback_generate_cmd(
-    scenarios_path: Path = typer.Argument(
-        ..., help="Path to the <hid>-scenarios.json file."
-    ),
-    evaluator_id: str = typer.Option(
-        "",
-        "--evaluator-id",
-        help="Your evaluator ID — recorded in each feedback entry.",
-    ),
-    only: Optional[List[str]] = typer.Option(
-        None,
-        "--only",
-        help="Score ONLY these scenario IDs. Repeatable.",
-    ),
-    include_ids: Optional[List[str]] = typer.Option(
-        None,
-        "--include",
-        help="Force-include these scenario IDs even when --only is set. Repeatable.",
-    ),
-    exclude: Optional[List[str]] = typer.Option(
-        None,
-        "--exclude",
-        help="Skip these scenario IDs. Repeatable.",
-    ),
-) -> None:
-    """Interactively score simulator responses for each scenario attempt.
-
-    Walks through attempts that have a simulator_response but no evaluator
-    feedback.  Saves after every entry — re-running resumes where you left off.
-    """
-    from dcs_utils.hitl.feedback import collect_feedback
-
-    scenarios_path = scenarios_path.resolve()
-    if not scenarios_path.is_file():
-        _console.print(f"ERROR: file not found: {scenarios_path}", style="error")
-        raise typer.Exit(1)
-
-    collect_feedback(
-        scenarios_path,
-        evaluator_id=evaluator_id,
-        only=list(only) if only else None,
-        include_ids=list(include_ids) if include_ids else None,
-        exclude=list(exclude) if exclude else None,
-        console=_console,
+    _console.print(
+        f"\nGenerate a report:\n"
+        f"  dcs-utils report results {out} --only sim-quality --title \"Simulation Quality — {hid}\"",
+        style="dim",
     )
 
 
