@@ -17,7 +17,8 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
     "simulation_quality": (
         "Aggregate and per-character simulation quality scores. "
         "ICF (In-Character Fidelity) measures the proportion of NPC turns not flagged as out-of-character; "
-        "NCo (Narrative Coherence) measures the proportion flagged as not making sense."
+        "NCo (Narrative Coherence) measures the proportion flagged as not making sense; "
+        "Scenario Coverage measures the fraction of the 12 pressure categories represented in the character's evaluated sessions."
     ),
     "runs_overview": (
         "Health snapshot of all gameplay sessions: character pairings, daily "
@@ -68,10 +69,11 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
 CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
     "simulation_quality": {
         "per_npc_scores_table": (
-            "ICF, NCo, and Other flag rates per NPC character. "
-            "Values are percentages of total NPC turns for that character. "
+            "ICF, NCo, Other, and Scenario Coverage per NPC character. "
+            "ICF/NCo/Other values are percentages of total NPC turns. "
             "ICF = proportion of turns not flagged as out-of-character; "
-            "NCo = proportion flagged as not making sense."
+            "NCo = proportion flagged as not making sense; "
+            "Scenario Coverage = fraction of the 12 pressure categories covered in evaluated sessions."
         ),
     },
     "runs_overview": {

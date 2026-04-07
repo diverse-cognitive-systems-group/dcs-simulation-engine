@@ -132,6 +132,12 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
     icf_col   = _col("icf")
     nco_col   = _col("nco")
 
+    # Scenario Coverage column is optional (reports generated before this feature lack it)
+    try:
+        scenario_coverage_col: int | None = _col("scenario coverage")
+    except ValueError:
+        scenario_coverage_col = None
+
     def _pct(s: str) -> float:
         """Convert '96.0%' → 0.96, '—' → 0.0."""
         s = s.strip()
@@ -139,9 +145,11 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
             return 0.0
         return round(float(s.rstrip("%")) / 100, 6)
 
+    required_col_count = max(npc_col, turns_col, icf_col, nco_col)
+
     results: list[dict[str, Any]] = []
     for row in parser.rows:
-        if len(row) <= max(npc_col, turns_col, icf_col, nco_col):
+        if len(row) <= required_col_count:
             continue
         npc_hid = row[npc_col].strip()
         if not npc_hid:
@@ -150,11 +158,17 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
             turns = int(row[turns_col].strip())
         except ValueError:
             turns = 0
+        scenario_coverage = (
+            _pct(row[scenario_coverage_col])
+            if scenario_coverage_col is not None and len(row) > scenario_coverage_col
+            else 0.0
+        )
         results.append({
-            "npc_hid": npc_hid,
-            "turns":   turns,
-            "icf":     _pct(row[icf_col]),
-            "dms":     _pct(row[nco_col]),
+            "npc_hid":           npc_hid,
+            "turns":             turns,
+            "icf":               _pct(row[icf_col]),
+            "dms":               _pct(row[nco_col]),
+            "scenario_coverage": scenario_coverage,
         })
 
     return results

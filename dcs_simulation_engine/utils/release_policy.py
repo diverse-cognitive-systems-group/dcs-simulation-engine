@@ -54,6 +54,7 @@ def compute_approved_characters(
 
     criteria = policy.get("criteria", {})
     min_icf: float = criteria.get("min_icf_score", 0.0)
+    min_scenario_coverage: float = criteria.get("min_scenario_coverage_score", 0.0)
     require_fp: bool = criteria.get("require_current_fingerprint", False)
 
     # Pre-index evaluations by character_hid for fast lookup
@@ -80,6 +81,8 @@ def compute_approved_characters(
             scores = ev.get("scores", {})
             icf = scores.get("icf", 0.0)
             if icf < min_icf:
+                continue
+            if min_scenario_coverage > 0 and scores.get("scenario_coverage", 0.0) < min_scenario_coverage:
                 continue
             if require_fp and current_fp is not None:
                 if ev.get("fingerprint", "") != current_fp:

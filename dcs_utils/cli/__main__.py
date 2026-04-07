@@ -425,9 +425,10 @@ def _admin_publish_characters_cmd(
             "character_hid": hid,
             "report_id":     report_id,
             "scores": {
-                "icf": row["icf"],
-                "rf":  0.0,
-                "dms": row["dms"],
+                "icf":               row["icf"],
+                "rf":                0.0,
+                "dms":               row["dms"],
+                "scenario_coverage": row.get("scenario_coverage", 0.0),
             },
         })
 
