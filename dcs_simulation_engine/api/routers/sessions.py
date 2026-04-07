@@ -34,6 +34,8 @@ def _session_status(entry_status: str, exited: bool) -> SessionStatus:
     """Compute user-facing session status from registry + manager state."""
     if entry_status == "closed" or exited:
         return "closed"
+    if entry_status == "paused":
+        return "paused"
     return "active"
 
 
@@ -66,6 +68,20 @@ async def _resolve_session_player_id(*, request: Request, session_id: str) -> st
     if entry is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return entry.player_id
+
+
+@router.get("/{session_id}/status")
+async def get_session_status(session_id: str, request: Request) -> dict:
+    """Return the current status of a session. Works in both standard and free-play modes.
+
+    Used by the frontend to verify a stored session_id is still paused and resumable.
+    """
+    registry = get_registry_from_request(request)
+    entry = registry.get(session_id)
+    if entry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    computed = _session_status(entry.status, entry.manager.exited)
+    return {"status": computed, "game_name": entry.game_name, "turns": entry.manager.turns}
 
 
 @router.get("/list", response_model=SessionsListResponse)

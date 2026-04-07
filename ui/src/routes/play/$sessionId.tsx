@@ -88,6 +88,7 @@ function PlayPage() {
     turns,
     exited,
     waiting,
+    isReplaying,
     pcHid,
     npcHid,
     hasGameFeedback,
@@ -334,15 +335,31 @@ function PlayPage() {
             />
           )}
 
-          {messages.map((msg) => (
-            <ChatMessageBubble
-              key={msg.id}
-              message={msg}
-              feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
-              onSubmitFeedback={handleSubmitFeedback}
-              onClearFeedback={handleClearFeedback}
-            />
-          ))}
+          {messages.map((msg, idx) => {
+            // Insert a "Session resumed" separator between the last historical message
+            // and the first live message, once replay has completed.
+            const isLastHistorical =
+              !isReplaying &&
+              msg.isHistorical &&
+              (idx === messages.length - 1 || !messages[idx + 1].isHistorical)
+            return (
+              <div key={msg.id} className={msg.isHistorical ? 'opacity-60' : undefined}>
+                <ChatMessageBubble
+                  message={msg}
+                  feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
+                  onSubmitFeedback={handleSubmitFeedback}
+                  onClearFeedback={handleClearFeedback}
+                />
+                {isLastHistorical && (
+                  <div className="flex items-center gap-3 py-3 text-xs text-muted-foreground">
+                    <div className="flex-1 border-t border-dashed" />
+                    <span>Session resumed</span>
+                    <div className="flex-1 border-t border-dashed" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
           {/* Animated "thinking" indicator shown while waiting for the AI response */}
           {waiting && (
