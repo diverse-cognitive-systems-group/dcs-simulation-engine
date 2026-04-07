@@ -1,4 +1,4 @@
-"""Goal Horizon game — new-style implementation."""
+"""Goal Horizon game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -12,6 +12,7 @@ from dcs_simulation_engine.games.ai_client import (
 from dcs_simulation_engine.games.const import (
     GoalHorizon as C,
 )
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -23,6 +24,7 @@ class Command(StrEnum):
     """Game-level slash commands recognised by GoalHorizonGame."""
 
     HELP = "help"
+    ABILITIES = "abilities"
     PREDICT_CAPABILITIES = "predict-capabilities"
 
 
@@ -52,7 +54,9 @@ class GoalHorizonGame(Game):
         self._exited = False
         self._exit_reason = ""
         self._awaiting_capability_prediction = False
+        self._awaiting_capability_confidence = False
         self._capability_prediction = ""
+        self._capability_prediction_confidence = ""
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
@@ -96,6 +100,11 @@ class GoalHorizonGame(Game):
         """Player's inferred capability limits, or empty string."""
         return self._capability_prediction
 
+    @property
+    def capability_prediction_confidence(self) -> str:
+        """Player's confidence in their capability prediction, or empty string."""
+        return self._capability_prediction_confidence
+
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
@@ -122,8 +131,15 @@ class GoalHorizonGame(Game):
         if self._awaiting_capability_prediction:
             self._capability_prediction = user_input
             self._awaiting_capability_prediction = False
-            self.exit("game completed")
-            yield GameEvent.now(type="info", content="Thank you. Game complete.")
+            self._awaiting_capability_confidence = True
+            yield GameEvent.now(type="info", content=C.CAPABILITY_PREDICTION_CONFIDENCE)
+            return
+
+        if self._awaiting_capability_confidence:
+            self._capability_prediction_confidence = user_input
+            self._awaiting_capability_confidence = False
+            self.exit("player finished")
+            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
             return
 
         command_event = self._handle_command(user_input)
@@ -164,17 +180,30 @@ class GoalHorizonGame(Game):
             return None
         parts = command_body.split(maxsplit=1)
         cmd = parts[0].lower()
-        remainder = parts[1].strip() if len(parts) > 1 else ""
 
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+
+        if cmd == Command.ABILITIES:
+            return GameEvent.now(
+                type="info",
+                content=C.ABILITIES_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
+                    npc_hid=self._npc.hid,
+                    npc_short_description=self._npc.short_description,
+                    npc_abilities=format_abilities_markdown(self._npc.data.get("abilities", "")),
+                ),
+                command_response=True,
+            )
+
         if cmd == Command.PREDICT_CAPABILITIES:
-            if remainder:
-                self._capability_prediction = remainder
-                self._awaiting_capability_prediction = False
-                self.exit("game completed")
-                return GameEvent.now(type="info", content="Thank you. Game complete.", command_response=True)
             self._awaiting_capability_prediction = True
-            return GameEvent.now(type="info", content=C.CAPABILITY_PREDICTION_QUESTION, command_response=True)
+            return GameEvent.now(
+                type="info",
+                content=C.CAPABILITY_PREDICTION_QUESTION.format(npc_hid=self._npc.hid),
+                command_response=True,
+            )
 
         return None

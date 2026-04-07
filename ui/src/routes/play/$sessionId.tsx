@@ -31,34 +31,40 @@ interface CommandSuggestion {
 }
 
 const SESSION_COMMANDS: CommandSuggestion[] = [
-  { command: '/exit', description: 'Leave the current session.' },
+  { command: '/close', description: 'Close game (return later).' },
 ]
 
 const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
   explore: [
-    { command: '/help', description: 'Show the game instructions again.' },
-    { command: '/abilities', description: 'Show your character and NPC abilities.' },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
+    { command: '/finish', description: 'Finish the game.' },
   ],
   goalhorizon: [
-    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
     {
       command: '/predict-capabilities',
-      description: "Submit your read on the character's limits and end the game.",
+      description: "Submit your prediction about the NPC's capabilities and finish the game.",
     },
   ],
   inferintent: [
-    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
     {
       command: '/predict-intent',
-      description: "Submit your read on the character's intent and end the game.",
+      description: "Submit your prediction about the character's intent and finish the game.",
     },
   ],
   foresight: [
-    { command: '/help', description: 'Show the game instructions again.' },
-    {
-      command: '/predict-next',
-      description: 'Record what you think the system character will do next.',
-    },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
+    { command: '/finish', description: 'Finish the game.' },
+  ],
+  teamwork: [
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
+    { command: '/finish', description: 'Finish the game.' },
   ],
 }
 

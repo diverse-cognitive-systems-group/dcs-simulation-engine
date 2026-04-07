@@ -1,4 +1,4 @@
-"""Explore game — new-style implementation."""
+"""Explore game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -23,7 +23,7 @@ class Command(StrEnum):
 
     HELP = "help"
     ABILITIES = "abilities"
-    EXIT = "exit"
+    FINISH = "finish"
 
 
 class ExploreGame(Game):
@@ -99,7 +99,7 @@ class ExploreGame(Game):
             self._entered = True
             yield GameEvent.now(
                 type="info",
-                content=C.ENTER_CONTENT.format(
+                content=C.HELP_CONTENT.format(
                     pc_hid=self._pc.hid,
                     pc_short_description=self._pc.short_description,
                     npc_hid=self._npc.hid,
@@ -171,11 +171,11 @@ class ExploreGame(Game):
                 command_response=True,
             )
 
-        if cmd == Command.EXIT:
-            self.exit("player exited")
+        if cmd == Command.FINISH:
+            self.exit("player finished")
             return GameEvent.now(
                 type="info",
-                content=C.EXIT_CONTENT.format(exit_reason="player exited"),
+                content=C.FINISH_CONTENT.format(finish_reason="player finished"),
                 command_response=True,
             )
 

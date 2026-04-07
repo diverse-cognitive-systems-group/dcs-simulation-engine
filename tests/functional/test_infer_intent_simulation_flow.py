@@ -169,10 +169,10 @@ async def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state,
     assert not session.exited, "Session should not exit after first answer"
     assert session.game.goal_inference == "The creature is trying to find food."
 
-    feedback_events = await session.step_async("Interesting behavior overall.")
-    assert any(e["type"] == "info" for e in feedback_events), "Expected completion confirmation"
+    confidence_events = await session.step_async("Interesting behavior overall.")
+    assert any(e["type"] == "info" for e in confidence_events), "Expected completion confirmation"
     assert session.exited, "Session should exit after second answer"
-    assert session.game.other_feedback == "Interesting behavior overall."
+    assert session.game.goal_inference_confidence == "Interesting behavior overall."
     assert session.game.evaluation == {}, "Evaluation should not be populated during gameplay"
 
 

@@ -119,7 +119,7 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
         ("Explore", f"/{ExploreCommand.HELP.value}", ExploreCommand.HELP.value),
         ("Explore", f"/{ExploreCommand.ABILITIES.value}", ExploreCommand.ABILITIES.value),
         ("Foresight", f"/{ForesightCommand.HELP.value}", ForesightCommand.HELP.value),
-        ("Foresight", f"/{ForesightCommand.PREDICT_NEXT.value}", ForesightCommand.PREDICT_NEXT.value),
+        ("Foresight", f"/{ForesightCommand.FINISH.value}", ForesightCommand.FINISH.value),
         ("Infer Intent", f"/{InferIntentCommand.HELP.value}", InferIntentCommand.HELP.value),
         ("Infer Intent", f"/{InferIntentCommand.PREDICT_INTENT.value}", InferIntentCommand.PREDICT_INTENT.value),
         ("Goal Horizon", f"/{GoalHorizonCommand.HELP.value}", GoalHorizonCommand.HELP.value),

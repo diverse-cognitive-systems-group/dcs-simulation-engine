@@ -1,9 +1,9 @@
 """Functional tests for foresight game simulation flow with mocked LLMs.
 
 This test suite validates the foresight game's unique mechanics:
-1. Prediction parsing - validator allows predictions in user input
+1. Prediction parsing - validator allows predictions embedded in user input
 2. Prediction ignoring - updater processes only the action, not the prediction
-3. /predict-next records repeatable predictions without ending the game
+3. /finish command ends the game
 4. Multi-turn simulation flow with prediction-containing inputs
 
 Tests use mocked LLMs to avoid external API dependencies.
@@ -120,8 +120,8 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
     assert not session.exited, "Session should stay open until the next input observes the stopping condition"
 
 
-async def test_foresight_predict_next_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /predict-next prompts for a prediction without ending the game."""
+async def test_foresight_finish_command_exits_game(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /finish command ends the game."""
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
@@ -133,38 +133,11 @@ async def test_foresight_predict_next_command(patch_llm_client, _isolate_db_stat
     await session.step_async("")
     await session.step_async("I wave my hand")
 
-    predict_events = await session.step_async("/predict-next")
+    finish_events = await session.step_async("/finish")
 
-    info_events = [e for e in predict_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected an info event asking for a prediction"
-    assert "predict" in info_events[0]["content"].lower()
-    assert not session.exited, "Session should remain active after /predict-next"
-
-
-async def test_foresight_predict_next_answer_is_repeatable(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Predictions collected via /predict-next should be stored and repeatable."""
-    session = await SessionManager.create_async(
-        game="foresight",
-        provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
-    )
-
-    await session.step_async("")
-    await session.step_async("/predict-next")
-    first_events = await session.step_async("The flatworm will retreat into the shade.")
-    assert any(e["type"] == "info" for e in first_events), "Expected prediction confirmation"
-    assert session.game.predictions == ["The flatworm will retreat into the shade."]
-    assert not session.exited
-
-    second_events = await session.step_async("/predict-next It will move toward the food.")
-    assert any(e["type"] == "info" for e in second_events), "Expected inline prediction confirmation"
-    assert session.game.predictions == [
-        "The flatworm will retreat into the shade.",
-        "It will move toward the food.",
-    ]
-    assert not session.exited
+    info_events = [e for e in finish_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected an info event from /finish"
+    assert session.exited, "Session should be exited after /finish"
 
 
 async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mongo_provider):

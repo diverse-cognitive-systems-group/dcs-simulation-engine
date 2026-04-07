@@ -2,8 +2,7 @@ name: Infer Intent
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A game where players engage with a character and then report what goal the NPC was trying to communicate.
-  Useful for measuring how quickly a player can understand the intention of another character.
+  Players are tasked with understanding the intention of another character.
 
 stopping_conditions:
   runtime_seconds: [">=600"]

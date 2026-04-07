@@ -1,0 +1,11 @@
+name: Teamwork
+version: 1.0.0
+authors: ["DCS"]
+description: |
+  Players are tasked with collaborating with another character to achieve a shared goal.
+
+stopping_conditions:
+  runtime_seconds: [">=600"]
+  turns: [">=50"]
+
+game_class: dcs_simulation_engine.games.teamwork.TeamworkGame

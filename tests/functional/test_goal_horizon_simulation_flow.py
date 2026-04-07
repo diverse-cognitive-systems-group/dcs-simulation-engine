@@ -69,7 +69,7 @@ async def test_goal_horizon_enter_step(patch_llm_client, _isolate_db_state, asyn
 
 
 async def test_goal_horizon_predict_capabilities_completion(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /predict-capabilities collects a final answer and exits."""
+    """Test /predict-capabilities collects capability answer then confidence before exiting."""
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
@@ -84,9 +84,14 @@ async def test_goal_horizon_predict_capabilities_completion(patch_llm_client, _i
     assert not session.exited
 
     answer_events = await session.step_async("It seems limited to local sensing and cautious movement.")
-    assert any(e["type"] == "info" for e in answer_events), "Expected completion confirmation"
-    assert session.exited, "Session should exit after the prediction is submitted"
+    assert any(e["type"] == "info" for e in answer_events), "Expected confidence question"
+    assert not session.exited, "Session should not exit until confidence is submitted"
     assert session.game.capability_prediction == "It seems limited to local sensing and cautious movement."
+
+    confidence_events = await session.step_async("Fairly confident based on its repeated avoidance behavior.")
+    assert any(e["type"] == "info" for e in confidence_events), "Expected completion confirmation"
+    assert session.exited, "Session should exit after confidence is submitted"
+    assert session.game.capability_prediction_confidence == "Fairly confident based on its repeated avoidance behavior."
 
 
 async def test_goal_horizon_exit_and_save(patch_llm_client, _isolate_db_state, async_mongo_provider):

@@ -1,4 +1,4 @@
-"""Infer Intent game — new-style implementation."""
+"""Infer Intent game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -23,6 +23,7 @@ class Command(StrEnum):
     """Game-level slash commands recognised by InferIntentGame."""
 
     HELP = "help"
+    ABILITIES = "abilities"
     PREDICT_INTENT = "predict-intent"
 
 
@@ -53,9 +54,9 @@ class InferIntentGame(Game):
         self._exit_reason = ""
 
         self._awaiting_goal_inference = False
-        self._awaiting_other_feedback = False
+        self._awaiting_goal_inference_confidence = False
         self._goal_inference = ""
-        self._other_feedback = ""
+        self._goal_inference_confidence = ""
         self._evaluation: dict[str, Any] = {}
 
     @classmethod
@@ -101,9 +102,9 @@ class InferIntentGame(Game):
         return self._goal_inference
 
     @property
-    def other_feedback(self) -> str:
-        """Player's other feedback, or empty string."""
-        return self._other_feedback
+    def goal_inference_confidence(self) -> str:
+        """Player's confidence in their goal inference, or empty string."""
+        return self._goal_inference_confidence
 
     @property
     def evaluation(self) -> dict[str, Any]:
@@ -119,9 +120,10 @@ class InferIntentGame(Game):
             self._entered = True
             yield GameEvent.now(
                 type="info",
-                content=C.ENTER_CONTENT.format(
+                content=C.HELP_CONTENT.format(
                     pc_hid=self._pc.hid,
                     pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
                 ),
             )
             opening = await self._updater.chat(None)
@@ -134,15 +136,16 @@ class InferIntentGame(Game):
         if self._awaiting_goal_inference:
             self._goal_inference = user_input
             self._awaiting_goal_inference = False
-            self._awaiting_other_feedback = True
-            yield GameEvent.now(type="info", content=C.OTHER_FEEDBACK_QUESTION)
+            self._awaiting_goal_inference_confidence = True
+            yield GameEvent.now(type="info", content=C.GOAL_INFERENCE_CONFIDENCE)
             return
 
-        if self._awaiting_other_feedback:
-            self._other_feedback = user_input
-            self._awaiting_other_feedback = False
-            self.exit("game completed")
-            yield GameEvent.now(type="info", content="Thank you. Game complete.")
+        if self._awaiting_goal_inference_confidence:
+            self._goal_inference_confidence = user_input
+            self._awaiting_goal_inference_confidence = False
+            self.exit("player finished")
+            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+
             return
 
         command_event = self._handle_command(user_input)
@@ -164,7 +167,7 @@ class InferIntentGame(Game):
             if self._retry_budget <= 0:
                 self.exit("retry budget exhausted")
                 yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
-                yield GameEvent.now(type="info", content="You have used all your allowed retries. The game is ending.")
+                yield GameEvent.now(type="info", content="You have used all your allowed retries. The game is closing.")
                 return
             yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
             return

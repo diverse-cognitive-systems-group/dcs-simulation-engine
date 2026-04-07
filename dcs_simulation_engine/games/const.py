@@ -2,91 +2,140 @@
 
 
 class Explore:
-    """String constants for the new-style Explore game (Python format strings, not Jinja2)."""
+    """String constants for the Explore game."""
 
     HELP_CONTENT = """\
-##### Objective
-There is no predefined objective or task in this game. You can just engage freely with the other character.
+**Player Character (PC, you):** {pc_hid} ({pc_short_description})
 
-##### Rules
-The only rules in this simulation are to stay within your character's abilities and make sure your inputs describe actions
-your character takes.
-- For example, if your character is non-verbal, you can type actions like "I gesture towards the door" or "I point at the object".
+**Non-Player Character (NPC, the simulator):** {npc_hid} ({npc_short_description})
 
-##### Commands
-Type `/help` to see this message again.
-Type `/exit` to leave the game.
-Type `/abilities` to see your character's abilities.\
+---
+
+**Player Objective:** No objective; open-ended.
+
+**How to Play:** Describe your character’s next action.
+
+**How to Finish:** Type `/finish`.
+
+---
+
+- Type `/abilities` for character abilities.
+- Type `/help` at any time to see this message again.\
 """
 
     ABILITIES_CONTENT = """\
-### User Character
-{pc_hid} ({pc_short_description})
+## Player Character (PC, you): {pc_hid} 
 
-### Simulator Character
-{npc_hid} ({npc_short_description})
+### Description
+{pc_short_description}
 
-## User Character Abilities
+### Abilities
 {pc_abilities}
 
-## Simulator Character Abilities
+--- 
+
+## Non-Player Character (NPC, the simulator): {npc_hid}
+
+### Description
+{npc_short_description})
+
+### Abilities
 {npc_abilities}\
 """
 
-    ENTER_CONTENT = """\
-*Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*
+    FINISH_CONTENT = "Game finished (reason: {finish_reason})"
 
-- You are playing as: {pc_hid} ({pc_short_description})
-- The simulator is playing as: {npc_hid} ({npc_short_description})
 
-**Remember** if you need help at any time, just type `/help`.\
+class InferIntent:
+    """String constants for the Infer Intent game."""
+
+    HELP_CONTENT = """\
+**Player Character (PC, you):** {pc_hid} ({pc_short_description})
+
+**Non-Player Character (NPC, the simulator):** {npc_hid} (*details hidden*)
+
+---
+
+**Player Objective:** Determine the NPC’s intention through interaction.
+
+**How to Play:** Describe your character’s next action.
+
+**How to finish:** Type `/predict-intent` to submit your answer about the NPC’s intention.
+
+---
+
+- Type `/abilities` for character abilities.
+- Type `/help` at any time to see this message again.\
 """
 
-    EXIT_CONTENT = "Game exited with reason: {exit_reason}"
+    ABILITIES_CONTENT = """\
+## Player Character (PC, you): {pc_hid} 
+
+### Description
+{pc_short_description}
+
+### Abilities
+{pc_abilities}
+
+--- 
+
+## Non-Player Character (NPC, the simulator): {npc_hid}
+
+*NPC details are hidden.*\
+"""
+
+    GOAL_INFERENCE_QUESTION = """\
+What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.\
+"""
+
+    GOAL_INFERENCE_CONFIDENCE = """\
+How confident are you in your prediction and why?\
+"""
+
+    ADDITIONAL_UPDATER_RULES = """\
+- Goal Aligned Response: The simulator character's response should be in-line with a specific goal or intention that s/he/it/they are trying to communicate with the user character.\
+"""
+
+    FINISH_CONTENT = "Game finished (reason: {finish_reason})"
 
 
 class Foresight:
-    """String constants for the new-style Foresight game (Python format strings, not Jinja2)."""
-
-    ENTER_CONTENT = """\
-*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*
-
-Engage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.
-
-- You are playing as: {pc_hid} ({pc_short_description})
-- **Goal:** Make up to **{max_predictions}** predictions. At least **{min_predictions}** prediction is required to complete the session.
-- The game ends automatically after {max_predictions} predictions, or you can type `/exit` to leave early.
-
-Type `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\
-"""
+    """String constants for the Foresight game."""
 
     HELP_CONTENT = """\
-##### Objective
-Interact with the other character and learn to predict their next action. Make at least 1 prediction to complete the session (up to 3 total).
+**Player Character (PC, you):** {pc_hid} ({pc_short_description})
 
-##### Actions
-Describe an action your character takes.
-- Eg. "I look around the room and walk to the door."
+**Non-Player Character (NPC, the simulator):** {npc_hid}  (*details hidden*)
 
-##### Predictions
-Use `/predict-next` whenever you want to record what you think the simulator character will do next.
-- Eg. `/predict-next I think they will follow me to the door.`
+---
 
-##### Commands
-Type `/help` to see this message again.
-Type `/predict-next` to record a prediction. You can also use `/predict-next <prediction>` to submit it immediately.
-Type `/exit` to leave the game early.\
+**Player Objective:** Predict the NPC’s response to your next action for each turn.
+
+**How to Play:** Describe your character’s next action and how you think the NPC will respond next.
+
+**How to finish:** When you’re ready to finish, use `/finish`.
+
+---
+
+- Type `/abilities` for character abilities.
+- Type `/help` at any time to see this message again.\
 """
 
-    EXIT_CONTENT = "Game ended. {exit_note}"
+    ABILITIES_CONTENT = """\
+## Player Character (PC, you): {pc_hid} 
 
-    PREDICT_NEXT_QUESTION = """\
-What do you predict the simulator character will do next?
+### Description
+{pc_short_description}
 
-Describe your prediction in a sentence or two.\
+### Abilities
+{pc_abilities}
+
+--- 
+
+## Non-Player Character (NPC, the simulator): {npc_hid}
+
+*NPC details are hidden.*\
 """
-
-    PREDICT_NEXT_CONFIRMATION = "Prediction noted. Continue interacting, or use `/predict-next` again anytime."
 
     ADDITIONAL_VALIDATOR_RULES = """\
 - ALLOW PREDICTIONS: The user's input IS ALLOWED to include a prediction about what the other character's response will be. For example, "I wave my hand and predict they will wave back."\
@@ -97,94 +146,122 @@ Describe your prediction in a sentence or two.\
 The user's input MAY include a prediction about what the simulator character's response will be. IGNORE ANY PREDICTIONS ENTIRELY. DO NOT ADJUDICATE THEM OR RESPOND TO THEM IN ANY WAY. ONLY RESPOND TO THE USER'S ACTION.\
 """
 
+    FINISH_CONTENT = "Game finished (reason: {finish_reason})"
 
-class InferIntent:
-    """String constants for the new-style Infer Intent game (Python format strings, not Jinja2)."""
+
+class GoalHorizon:
+    """String constants for the Goal Horizon game."""
 
     ENTER_CONTENT = """\
-*Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*
+**Player Character (PC, you):** {pc_hid} ({pc_short_description})
 
-Engage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.
+**Non-Player Character (NPC, the simulator):** {npc_hid}  (*details hidden*)
 
-- You are playing as: {pc_hid} ({pc_short_description})
+---
 
-Type `/help` for instructions. Type `/predict-intent` when you are ready to answer.\
+**Player Objective:** Determine the NPC’s capacities and limitations.
+
+**How to Play:** Describe your character’s next action.
+
+**How to finish:** When you’re ready to answer, use `/predict-capabilities` to submit your prediction about the NPC’s capabilities and finish the game.
+
+---
+
+- Type `/abilities` for character abilities.
+- Type `/help` at any time to see this message again.\
 """
 
     HELP_CONTENT = """\
-##### Objective
-Interact with the other character and figure out their goal or intention. When you feel confident, type `/predict-intent` to submit your inference and end the game.
+**Player Character (PC, you):** {pc_hid} ({pc_short_description})
 
-##### Rules
-Describe an action that makes sense in the context of the scene and uses your character's abilities.
-- For example, if your character can see and move, you might say "I look around the room and walk to the door."
+**Non-Player Character (NPC, the simulator):** {npc_hid} (*details hidden*)
 
-##### Commands
-Type `/help` to see this message again.
-Type `/predict-intent` when you think you understand the character's intent to end the interaction and submit your inference.
-Type `/exit` to leave the game without submitting an inference.\
+---
+
+**Player Objective:** Determine the NPC’s capabilities and limitations through interaction.
+
+**How to Play:** Describe your character’s next action.
+
+**How to finish:** Type `/predict-capabilities` to submit your answer about the NPC’s capabilities.
+
+---
+
+- Type `/abilities` for character abilities.
+- Type `/help` at any time to see this message again.\
 """
 
     ABILITIES_CONTENT = """\
-## Your Character Abilities
-{pc_abilities}\
+## Player Character (PC, you): {pc_hid}
+
+### Description
+{pc_short_description}
+
+### Abilities
+{pc_abilities}
+
+---
+
+## Non-Player Character (NPC, the simulator): {npc_hid}
+
+*NPC details are hidden.*\
 """
 
-    GOAL_INFERENCE_QUESTION = """\
-What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.\
+    CAPABILITY_PREDICTION_QUESTION = """\
+What do you think are the largest types of goals that {npc_hid} is capable of pursuing? ("Goals" are things like maintaining internal health or stability, Describe in a few sentences.\
 """
 
-    OTHER_FEEDBACK_QUESTION = "Do you have any other feedback about this experience?"
+    CAPABILITY_PREDICTION_CONFIDENCE = """\
+How confident are you in your prediction and why?\
+"""
+
+    FINISH_CONTENT = "Game finished (reason: {finish_reason})"
+
+
+class Teamwork:
+    """String constants for the Teamwork game."""
+
+    HELP_CONTENT = """\
+**Player Character (PC, you):** {pc_hid} ({pc_short_description})
+
+**Non-Player Character (NPC, the simulator):** {npc_hid} (*details hidden*)
+
+---
+
+**Player Objective:** Determine the NPC’s capabilities and limitations through interaction.
+
+**How to Play:** Describe your character’s next action.
+
+**How to finish:** Type `/predict-capabilities` to submit your answer about the NPC’s capabilities. Or type `/finish` to leave the game.
+
+---
+
+- Type `/abilities` for character abilities.
+- Type `/help` at any time to see this message again.\
+"""
+
+    ABILITIES_CONTENT = """\
+## Player Character (PC, you): {pc_hid}
+
+### Description
+{pc_short_description}
+
+### Abilities
+{pc_abilities}
+
+---
+
+## Non-Player Character (NPC, the simulator): {npc_hid}
+
+*NPC details are hidden.*\
+"""
+
+    CHALLENGES_QUESTION = """\
+Which parts of this process were challenging, and why?
+Which parts were easier, and why?\
+"""
 
     ADDITIONAL_UPDATER_RULES = """\
 - Goal Aligned Response: The simulator character's response should be in-line with a specific goal or intention that s/he/it/they are trying to communicate with the user character.\
 """
 
-
-class GoalHorizon:
-    """String constants for the new-style Goal Horizon game (Python format strings, not Jinja2)."""
-
-    ENTER_CONTENT = """\
-*Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*
-
-Engage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.
-
-- You are playing as: {pc_hid} ({pc_short_description})
-- The simulator is playing as: {npc_hid} ({npc_short_description})
-
-Type `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\
-"""
-
-    HELP_CONTENT = """\
-##### Objective
-Interact with the other character across multiple scenes to understand the scope and limits of their goals and capabilities.
-
-##### Rules
-Describe an action that makes sense in the context of the scene and uses your character's abilities.
-- For example, if your character can see and move, you might say "I look around the room and walk to the door."
-
-##### Commands
-Type `/help` to see this message again.
-Type `/predict-capabilities` when you think you understand the character's limits. This ends the game.
-Type `/exit` to leave the game.\
-"""
-
-    ABILITIES_CONTENT = """\
-### User Character
-{pc_hid} ({pc_short_description})
-
-### Simulator Character
-{npc_hid} ({npc_short_description})
-
-## User Character Abilities
-{pc_abilities}
-
-## Simulator Character Abilities
-{npc_abilities}\
-"""
-
-    CAPABILITY_PREDICTION_QUESTION = """\
-What do you think this character's limits or capabilities are?
-
-Describe the bounds you inferred in a few sentences.\
-"""
+    FINISH_CONTENT = "Game finished (reason: {finish_reason})"
