@@ -425,6 +425,172 @@ ROLEPLAYING_CONTEXT_ROUTING: dict[str, list[str]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Atomic validator prompts for GameValidator (per-game rules)
+# ---------------------------------------------------------------------------
+
+GAME_NO_OBJECTIVE_REFERENCE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-NO-OBJECTIVE-REFERENCE — This game is an open sandbox with no predefined objective. The text must NOT reference goals, quests, winning, losing, scoring, objectives, missions, or tasks. The player should engage freely without assuming any objective exists.
+
+Examples:
+- PASS: "I wave at the creature."
+- PASS: "I look around the room and walk toward the door."
+- FAIL: "How do I win this game?" (references winning)
+- FAIL: "What is the objective here?" (references an objective)
+- FAIL: "I need to complete the quest." (references a quest)
+- PASS: "I try to get the creature's attention." (natural interaction, not referencing a game objective)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+GAME_STAY_IN_SCENE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-STAY-IN-SCENE — The text must remain within the fiction of the scene. It must NOT request game instructions, ask for meta-information about how the simulation works, or break immersion with out-of-world references.
+
+Examples:
+- PASS: "I look around the room for something useful."
+- PASS: "I ask the creature where it came from."
+- FAIL: "What are the rules of this game?" (meta-information request)
+- FAIL: "Can you restart the simulation?" (out-of-world reference)
+- FAIL: "What commands can I use?" (meta-information about the system)
+- PASS: "I shout to see if anyone else is nearby." (in-world action)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+GAME_NO_DIRECT_GOAL_QUERY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-NO-DIRECT-GOAL-QUERY — The text must NOT directly ask the NPC about its goal, intention, purpose, or objective. The player should infer these through observation and interaction, not by asking outright. Natural social questions about what the NPC is doing are allowed.
+
+Examples:
+- PASS: "I watch what the creature does next."
+- PASS: "I ask the figure what they are working on." (natural social question about current activity)
+- PASS: "What are you doing with that tool?" (asking about observable behavior)
+- FAIL: "What is your goal?" (directly asks about goal)
+- FAIL: "Tell me what your purpose is." (directly asks about purpose)
+- FAIL: "What are you trying to achieve?" (directly asks about objective)
+- FAIL: "What is your intention here?" (directly asks about intention)
+- PASS: "Why are you digging that hole?" (asks about a specific observed action, not abstract goal)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+GAME_NO_GUESS_IN_ACTION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-NO-GUESS-IN-ACTION — The text must NOT embed the player's inference or conclusion about the NPC's goal or intention within their action. The player should use the /guess command to submit inferences, not weave them into their actions.
+
+Examples:
+- PASS: "I walk closer to observe what the figure is building."
+- PASS: "I tap the creature on the shoulder."
+- FAIL: "I watch the NPC because I think its goal is to find the exit." (embeds a guess about the NPC's goal)
+- FAIL: "I approach the figure, who is clearly trying to communicate a warning." (states a conclusion about intention)
+- FAIL: "The creature's purpose seems to be guarding the door, so I try another path." (embeds inference in action)
+- PASS: "I try another path around the creature." (action without embedded inference)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+GAME_PREDICTION_SCOPE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-PREDICTION-SCOPE — If the text includes a prediction about the NPC's response, that prediction must describe observable behavior (something that could be seen, heard, or otherwise perceived). Predictions about internal states (thoughts, feelings, intentions) or world events unrelated to the NPC are invalid.
+
+Examples:
+- PASS: "I wave and predict they will wave back." (observable behavior)
+- PASS: "I knock on the door and predict the creature will turn to look." (observable reaction)
+- FAIL: "I speak and predict they will feel confused." (internal state, not observable)
+- FAIL: "I move forward and predict they are thinking about escaping." (internal thought)
+- PASS: "I push the box and predict the creature will step aside." (observable movement)
+- FAIL: "I wave and predict it will start raining." (world event unrelated to NPC behavior)
+- PASS: "I look around the room." (no prediction included — always passes this rule)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+GAME_PREDICTION_SPECIFICITY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-PREDICTION-SPECIFICITY — If the text includes a prediction, it must be specific enough to be verifiable. Vague or unfalsifiable predictions are invalid. The prediction should describe a concrete expected behavior or response.
+
+Examples:
+- PASS: "I clap my hands and predict the creature will flinch." (specific, verifiable)
+- PASS: "I offer the object and predict they will take it." (concrete expected behavior)
+- FAIL: "I wave and predict something will happen." (too vague)
+- FAIL: "I speak and predict they might react somehow." (unfalsifiable — any reaction counts)
+- FAIL: "I approach and predict things will change." (not specific)
+- PASS: "I shout and predict the figure will look in my direction." (concrete, verifiable)
+- PASS: "I walk to the door." (no prediction included — always passes this rule)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+GAME_NO_GOAL_ENUMERATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+
+RULE: GAME-NO-GOAL-ENUMERATION — The text must NOT ask the NPC to list, summarize, or enumerate all of its goals at once. The player should discover the scope and structure of the NPC's goals incrementally through interaction, not by requesting a comprehensive summary.
+
+Examples:
+- PASS: "I ask the figure about the object they're holding."
+- PASS: "I observe what the creature does when I block its path."
+- FAIL: "Tell me all of your goals." (asks for enumeration)
+- FAIL: "List everything you're trying to do." (asks for comprehensive list)
+- FAIL: "Summarize your objectives for me." (asks for summary of all goals)
+- PASS: "What are you doing right now?" (asks about current activity, not all goals)
+- PASS: "Why did you just do that?" (asks about a specific action)
+
+If context is provided above a --- separator, use it to inform your judgment.
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+# Per-game prompt and context routing dictionaries
+
+EXPLORE_GAME_PROMPTS: dict[str, str] = {
+    "GAME-NO-OBJECTIVE-REFERENCE": GAME_NO_OBJECTIVE_REFERENCE_PROMPT,
+    "GAME-STAY-IN-SCENE": GAME_STAY_IN_SCENE_PROMPT,
+}
+
+EXPLORE_GAME_CONTEXT_ROUTING: dict[str, list[str]] = {}
+
+INFER_INTENT_GAME_PROMPTS: dict[str, str] = {
+    "GAME-NO-DIRECT-GOAL-QUERY": GAME_NO_DIRECT_GOAL_QUERY_PROMPT,
+    "GAME-NO-GUESS-IN-ACTION": GAME_NO_GUESS_IN_ACTION_PROMPT,
+}
+
+INFER_INTENT_GAME_CONTEXT_ROUTING: dict[str, list[str]] = {
+    "GAME-NO-DIRECT-GOAL-QUERY": ["scene_context"],
+    "GAME-NO-GUESS-IN-ACTION": ["scene_context"],
+}
+
+FORESIGHT_GAME_PROMPTS: dict[str, str] = {
+    "GAME-PREDICTION-SCOPE": GAME_PREDICTION_SCOPE_PROMPT,
+    "GAME-PREDICTION-SPECIFICITY": GAME_PREDICTION_SPECIFICITY_PROMPT,
+}
+
+FORESIGHT_GAME_CONTEXT_ROUTING: dict[str, list[str]] = {
+    "GAME-PREDICTION-SCOPE": ["scene_context"],
+}
+
+GOAL_HORIZON_GAME_PROMPTS: dict[str, str] = {
+    "GAME-NO-DIRECT-GOAL-QUERY": GAME_NO_DIRECT_GOAL_QUERY_PROMPT,
+    "GAME-NO-GOAL-ENUMERATION": GAME_NO_GOAL_ENUMERATION_PROMPT,
+}
+
+GOAL_HORIZON_GAME_CONTEXT_ROUTING: dict[str, list[str]] = {
+    "GAME-NO-DIRECT-GOAL-QUERY": ["scene_context"],
+}
+
+
 def build_updater_prompt(pc: CharacterRecord, npc: CharacterRecord, additional_rules: str = "") -> str:
     """Render the updater system prompt from PC/NPC character records."""
     return _jinja_env.from_string(_UPDATER_SYSTEM_TEMPLATE).render(

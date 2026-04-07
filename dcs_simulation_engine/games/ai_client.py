@@ -21,6 +21,14 @@ from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.prompts import (
     ENGINE_CONTEXT_ROUTING,
     ENGINE_VALIDATOR_PROMPTS,
+    EXPLORE_GAME_CONTEXT_ROUTING,
+    EXPLORE_GAME_PROMPTS,
+    FORESIGHT_GAME_CONTEXT_ROUTING,
+    FORESIGHT_GAME_PROMPTS,
+    GOAL_HORIZON_GAME_CONTEXT_ROUTING,
+    GOAL_HORIZON_GAME_PROMPTS,
+    INFER_INTENT_GAME_CONTEXT_ROUTING,
+    INFER_INTENT_GAME_PROMPTS,
     ROLEPLAYING_CONTEXT_ROUTING,
     ROLEPLAYING_VALIDATOR_PROMPTS,
 )
@@ -355,13 +363,74 @@ class EngineValidator(EnsembleValidator):
     RULES: list[str] = list(ENGINE_VALIDATOR_PROMPTS)
 
 
-class GameValidator:
-    """Validator for SPECIFIC game rules."""
+class GameValidator(EnsembleValidator):
+    """Base class for game-specific ensemble validators.
 
-    # Rule set validations applied to both HUMAN and LLM players
-    # TODO: will need to be dynamic based on game configuration inputs
-    def __init__(self) -> None:
-        """Placeholder — not yet implemented."""
+    Use ``GameValidator.for_game(game_name)`` to obtain the correct
+    validator for a given game.  Each subclass sets ``_prompts`` and
+    ``_context_routing`` following the standard EnsembleValidator pattern.
+    """
+
+    _prompts: dict[str, str] = {}
+    _context_routing: dict[str, list[str]] = {}
+
+    @classmethod
+    def create(cls, model: str = DEFAULT_MODEL) -> "GameValidator":
+        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
+        validators = {
+            rule: AtomicValidator(system_prompt=prompt, model=model)
+            for rule, prompt in cls._prompts.items()
+        }
+        return cls(validators)
+
+    @classmethod
+    def for_game(cls, game_name: str, model: str = DEFAULT_MODEL) -> "GameValidator":
+        """Factory: return the GameValidator subclass for *game_name*."""
+        registry: dict[str, type[GameValidator]] = {
+            "explore": ExploreGameValidator,
+            "infer intent": InferIntentGameValidator,
+            "foresight": ForesightGameValidator,
+            "goal horizon": GoalHorizonGameValidator,
+        }
+        key = game_name.strip().lower()
+        klass = registry.get(key)
+        if klass is None:
+            raise ValueError(
+                f"No GameValidator registered for game: {game_name!r}"
+            )
+        return klass.create(model=model)
+
+
+class ExploreGameValidator(GameValidator):
+    """Game-specific rules for the Explore sandbox game."""
+
+    _prompts = EXPLORE_GAME_PROMPTS
+    _context_routing = EXPLORE_GAME_CONTEXT_ROUTING
+    RULES: list[str] = list(EXPLORE_GAME_PROMPTS)
+
+
+class InferIntentGameValidator(GameValidator):
+    """Game-specific rules for the Infer Intent game."""
+
+    _prompts = INFER_INTENT_GAME_PROMPTS
+    _context_routing = INFER_INTENT_GAME_CONTEXT_ROUTING
+    RULES: list[str] = list(INFER_INTENT_GAME_PROMPTS)
+
+
+class ForesightGameValidator(GameValidator):
+    """Game-specific rules for the Foresight game."""
+
+    _prompts = FORESIGHT_GAME_PROMPTS
+    _context_routing = FORESIGHT_GAME_CONTEXT_ROUTING
+    RULES: list[str] = list(FORESIGHT_GAME_PROMPTS)
+
+
+class GoalHorizonGameValidator(GameValidator):
+    """Game-specific rules for the Goal Horizon game."""
+
+    _prompts = GOAL_HORIZON_GAME_PROMPTS
+    _context_routing = GOAL_HORIZON_GAME_CONTEXT_ROUTING
+    RULES: list[str] = list(GOAL_HORIZON_GAME_PROMPTS)
 
 
 class RolePlayingLLMValidator(EnsembleValidator):
