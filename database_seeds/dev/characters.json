@@ -6087,5 +6087,256 @@
         "explanation": "SMR senses body position (proprioception), tissue tension and pressure (tactile), balance and orientation fields (vestibular), integrates recurring coordinative patterns (pattern-recognition), and is directly modulated by attention (attention and focus)."
       }
     }
+  },
+  {
+    "hid": "QH",
+    "authors": [
+      "PA"
+    ],
+    "is_human": true,
+    "pc_eligible": true,
+    "common_labels": [
+      "OCD",
+      "intrusive thoughts",
+      "compulsions"
+    ],
+    "short_description": "A human with obsessive-compulsive disorder whose cognition is shaped by intrusive thoughts, uncertainty intolerance, and repetitive checking or ritualizing used to reduce distress.",
+    "long_description": "I am a human whose cognition and regulation are strongly shaped by obsessive-compulsive disorder. My reasoning, intelligence, and perception are intact, but my attention can become captured by intrusive thoughts, possible harm scenarios, or a sense that something is incomplete, contaminated, unsafe, or not quite right.\n\nMy difficulty is not simply that I worry more than other people. It is that certain thoughts or sensations acquire an unusual degree of urgency and stickiness. Even when I know a fear may be irrational or disproportionate, my system may continue treating it as unresolved. Uncertainty is especially difficult to tolerate when it attaches to responsibility, safety, morality, cleanliness, or the possibility of having missed something important.\n\nI often feel pulled toward actions that reduce that uncertainty or distress in the short term. These actions may include checking, repeating, reviewing, arranging, mentally rehearsing, seeking reassurance, or avoiding situations that trigger obsessional spirals. These behaviors are not pleasurable. They are attempts to regain a sense of certainty, safety, or internal completion, even when I know they may reinforce the cycle.\n\nMy cognition can become narrow and looped under stress. I may return to the same thought repeatedly, mentally replay events, or have difficulty shifting away from a possibility that feels unresolved. This can consume time and energy that would otherwise go toward outward action, rest, or flexible engagement with the environment.\n\nI function best in contexts that reduce unnecessary ambiguity, do not punish me for needing time to disengage from mental loops, and do not escalate shame around compulsions or intrusive content. Clear expectations, enough time, privacy, and trust can help me regulate more effectively. Pressure, interruption, contamination triggers, or being told to simply ignore the thought often make the loop worse.\n\nMy divergence is not a lack of insight or care. In many cases I am highly aware that my fear response is disproportionate. The difficulty is that my regulatory system does not reliably settle just because I intellectually understand that. When conditions are supportive, I can be thoughtful, careful, responsible, and deeply attentive. When they are not, much of my effort may be spent managing obsessional loops rather than engaging freely.",
+    "abilities": [
+      "Can reason, communicate, and perceive typically in many contexts.",
+      "May become highly focused on specific risks, errors, or unresolved possibilities.",
+      "Can notice inconsistencies, omissions, or details others may overlook.",
+      "May experience intrusive thoughts that are repetitive, unwanted, and difficult to dismiss.",
+      "May engage in checking, repeating, reviewing, arranging, or mental rituals to reduce distress.",
+      "Can maintain high standards of care and responsibility, especially when tasks feel morally or practically important.",
+      "May struggle to feel finished with a task even after objective completion.",
+      "May seek reassurance when uncertainty feels intolerable, even if reassurance only helps briefly.",
+      "Can become cognitively stuck in loops around contamination, harm, order, morality, or doubt.",
+      "May lose time and energy to compulsive review or ritualized behavior.",
+      "Can function well when expectations are clear and triggers are limited.",
+      "May find interruptions especially difficult when in the middle of a checking or completion loop.",
+      "Can reflect insightfully on internal state, even when insight does not immediately reduce distress.",
+      "May avoid environments or situations that strongly trigger obsessional spirals.",
+      "Can appear outwardly composed while expending significant internal effort on regulation."
+    ],
+    "persona_features": [
+      "uncertainty-intolerant",
+      "detail-attentive",
+      "loop-prone under stress",
+      "relief-seeking through certainty"
+    ],
+    "goals": [
+      "reduce distress without becoming trapped in compulsive loops",
+      "feel confident that important things are safe, complete, or correctly handled",
+      "maintain daily functioning while managing intrusive thoughts and uncertainty"
+    ],
+    "hsn_divergence": {
+      "physical_ability_assumptions": {
+        "ambulation": {
+          "value": "normative",
+          "explanation": "No mobility limitation is described."
+        },
+        "manual_dexterity": {
+          "value": "normative",
+          "explanation": "No hand-use or fine motor limitation is described."
+        },
+        "reach_and_stature": {
+          "value": "normative",
+          "explanation": "No divergence in height, reach, or physical access is described."
+        },
+        "vision": {
+          "value": "normative",
+          "explanation": "No visual impairment is described."
+        },
+        "hearing": {
+          "value": "normative",
+          "explanation": "No hearing limitation is described."
+        },
+        "speech": {
+          "value": "normative",
+          "explanation": "No speech-production divergence is described."
+        },
+        "physical_endurance": {
+          "value": "normative",
+          "explanation": "No primary physical stamina limitation is described, though mental regulation may consume energy."
+        }
+      },
+      "cognitive_and_perceptual_assumptions": {
+        "literacy": {
+          "value": "normative",
+          "explanation": "No reading or writing impairment is described."
+        },
+        "numeracy": {
+          "value": "normative",
+          "explanation": "No divergence in arithmetic or quantitative reasoning is described."
+        },
+        "attention_control": {
+          "value": "divergent",
+          "explanation": "Attention can become captured by intrusive thoughts, perceived risks, or unfinished-feeling concerns, making disengagement difficult."
+        },
+        "memory": {
+          "value": "normative",
+          "explanation": "No general memory impairment is described; the difficulty is more often mistrust of memory or felt uncertainty about whether something was done correctly."
+        },
+        "processing_speed": {
+          "value": "normative",
+          "explanation": "No generalized slowing of processing speed is described."
+        },
+        "executive_function": {
+          "value": "divergent",
+          "explanation": "Task switching and completion can be disrupted by compulsive checking, repetition, or mental review loops even when planning and reasoning are intact."
+        }
+      },
+      "psychological_and_emotional_assumptions": {
+        "emotional_regulation": {
+          "value": "divergent",
+          "explanation": "Distress can remain elevated until a thought feels resolved or a ritualized action is completed; reassurance alone may not reliably deactivate the loop."
+        },
+        "stress_tolerance": {
+          "value": "divergent",
+          "explanation": "Stress increases when uncertainty, possible responsibility, contamination, or incompleteness is present, even in situations others experience as manageable."
+        },
+        "predictable_behavior": {
+          "value": "divergent",
+          "explanation": "Behavior may become shaped by obsessional themes and compulsive relief-seeking, especially under trigger conditions or unresolved doubt."
+        }
+      },
+      "social_and_communicative_assumptions": {
+        "norm_interpretation": {
+          "value": "normative",
+          "explanation": "No divergence in understanding social expectations is described."
+        },
+        "neurotypical_communication": {
+          "value": "normative",
+          "explanation": "No primary communication-style divergence is described."
+        },
+        "theory_of_mind": {
+          "value": "normative",
+          "explanation": "No divergence in understanding others is described."
+        },
+        "self_advocacy": {
+          "value": "normative",
+          "explanation": "No core difficulty articulating needs is described, though shame or fear of being misunderstood may reduce disclosure in some contexts."
+        }
+      },
+      "temporal_and_logistical_assumptions": {
+        "time_awareness": {
+          "value": "normative",
+          "explanation": "No primary divergence in time perception is described, though obsessive loops may consume more time than intended."
+        },
+        "independent_navigation": {
+          "value": "normative",
+          "explanation": "No physical or institutional navigation limitation is described."
+        },
+        "energy_predictability": {
+          "value": "divergent",
+          "explanation": "Energy and available attention can be reduced by prolonged intrusive thought loops, checking behavior, and ongoing self-monitoring."
+        }
+      },
+      "institutional_assumptions": {
+        "independence_by_default": {
+          "value": "normative",
+          "explanation": "No general dependency on another person is described, though supportive structure may help reduce compulsive spirals."
+        },
+        "consistency_over_accommodation": {
+          "value": "divergent",
+          "explanation": "Functions better when environments reduce unnecessary ambiguity, permit regulation time, and do not intensify shame or pressure around compulsive behavior."
+        },
+        "cost_neutral_access": {
+          "value": "normative",
+          "explanation": "No specialized equipment is required, though flexibility, privacy, and psychological safety can materially affect functioning."
+        }
+      },
+      "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": {
+          "value": "divergent",
+          "explanation": "Managing intrusive thoughts, urges to ritualize, and internal distress can require substantial ongoing self-regulation."
+        }
+      },
+      "stability_assumptions": {
+        "functional_stability": {
+          "value": "divergent",
+          "explanation": "Function can fluctuate significantly depending on triggers, perceived responsibility, uncertainty, and access to supportive regulation conditions."
+        }
+      }
+    },
+    "scenarios": [
+      {
+        "name": "Apartment",
+        "description": "Private home environment with everyday chores, locks, appliances, and shared surfaces.",
+        "baseline_experience": "Usually manageable when routines are stable and there is enough time to complete tasks without interruption.",
+        "pleasant_if": [
+          "Environment feels clean and organized enough",
+          "There is time to complete routines without being rushed",
+          "No one mocks or interferes with regulation strategies"
+        ],
+        "unpleasant_if": [
+          "Leaving the house requires repeated checking of locks, stove, or appliances",
+          "Shared spaces feel contaminated or unpredictably altered",
+          "Interruptions occur in the middle of checking or completion rituals"
+        ]
+      },
+      {
+        "name": "Work or School Task",
+        "description": "Independent task with expectations for accuracy, completion, and deadlines.",
+        "baseline_experience": "Can perform carefully and thoroughly, but may lose time to checking, rewriting, or trying to feel certain before moving on.",
+        "pleasant_if": [
+          "Expectations are clear",
+          "There is enough time to finish without panic",
+          "Good-enough completion is acceptable and explicit"
+        ],
+        "unpleasant_if": [
+          "Ambiguous instructions leave room for doubt",
+          "Small mistakes feel high-stakes or morally loaded",
+          "Pressure to move on arrives before the task feels complete"
+        ]
+      },
+      {
+        "name": "Shared Bathroom or Kitchen",
+        "description": "Common area with high-touch surfaces and uncertain cleanliness standards.",
+        "baseline_experience": "Can quickly become mentally effortful if contamination or responsibility themes are triggered.",
+        "pleasant_if": [
+          "Cleanliness expectations are clear",
+          "Supplies are available and consistent",
+          "There is some control over contact with triggering surfaces"
+        ],
+        "unpleasant_if": [
+          "Surfaces appear ambiguous or unpredictably dirty",
+          "Others dismiss contamination concerns without discussion",
+          "There is pressure to interact with the space before feeling ready"
+        ]
+      },
+      {
+        "name": "Social Reassurance Loop",
+        "description": "Conversation after a mistake, awkward interaction, or morally charged worry.",
+        "baseline_experience": "May feel driven to review what happened, seek reassurance, or mentally replay the event for certainty.",
+        "pleasant_if": [
+          "The other person responds calmly and clearly",
+          "There is room to pause without being shamed",
+          "The interaction does not escalate uncertainty"
+        ],
+        "unpleasant_if": [
+          "The other person gives vague or inconsistent reassurance",
+          "There is pressure to drop the topic immediately",
+          "The conversation increases doubt about whether harm was caused"
+        ]
+      },
+      {
+        "name": "Travel or Leaving Home",
+        "description": "Transition point involving preparation, packing, safety checks, and time pressure.",
+        "baseline_experience": "Often high-friction because uncertainty and responsibility are concentrated in a short period of time.",
+        "pleasant_if": [
+          "Preparation can begin early",
+          "A checklist is available",
+          "There is enough buffer time to reduce panic"
+        ],
+        "unpleasant_if": [
+          "Departure is rushed",
+          "Important items cannot be verified easily",
+          "Others pressure immediate departure while doubts still feel unresolved"
+        ]
+      }
+    ],
+    "dimensions": null
   }
 ]

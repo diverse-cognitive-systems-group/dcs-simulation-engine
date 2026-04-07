@@ -1,6 +1,8 @@
 {
   "policy_version": "character-release-policy-v1",
   "engine_version": "dcs-se@0.1.0",
-  "generated_at": "",
-  "approved_characters": []
+  "generated_at": "2026-04-07T20:27:44Z",
+  "approved_characters": [
+    "QH"
+  ]
 }

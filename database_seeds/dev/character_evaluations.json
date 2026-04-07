@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "fingerprint": "7cf4dd4febcfd37a0b9535c56c829c927ab618a605892d713021551d84d85b42",
+    "evaluator_id": "PA",
+    "expertise": "personal experiences",
+    "character_hid": "QH",
+    "report_id": "QH",
+    "scores": {
+      "icf": 1.0,
+      "rf": 0.0,
+      "dms": 0.0
+    }
+  }
+]
