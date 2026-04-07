@@ -30,10 +30,6 @@ interface CommandSuggestion {
   description: string
 }
 
-const SESSION_COMMANDS: CommandSuggestion[] = [
-  { command: '/close', description: 'Close game (return later).' },
-]
-
 const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
   explore: [
     { command: '/help', description: 'Show instructions.' },
@@ -96,7 +92,6 @@ function PlayPage() {
     npcHid,
     hasGameFeedback,
     sendTurn,
-    closeSession,
     setMessageFeedback,
   } = useSessionWebSocket(sessionId)
 
@@ -130,12 +125,7 @@ function PlayPage() {
   }, [sessionEnded])
 
   const availableCommands = useMemo(() => {
-    const gameCommands = GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
-    const byCommand = new Map<string, CommandSuggestion>()
-    for (const item of [...gameCommands, ...SESSION_COMMANDS]) {
-      byCommand.set(item.command, item)
-    }
-    return [...byCommand.values()]
+    return GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
   }, [gameName])
 
   const commandSuggestions = useMemo(() => {
@@ -209,7 +199,6 @@ function PlayPage() {
   }
 
   async function handleClose() {
-    closeSession()
     if (experimentName) {
       await navigate({
         to: '/experiments/$experimentName',
@@ -325,19 +314,6 @@ function PlayPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          {!isClosed && ['foresight', 'explore'].includes(normalizeGameName(gameName ?? '')) && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isConnecting || waiting}
-              onClick={() => sendTurn('/exit')}
-            >
-              Finish Game
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={handleClose}>
-            {experimentName ? 'Return to Study' : 'Close Session'}
-          </Button>
         </div>
       </header>
 

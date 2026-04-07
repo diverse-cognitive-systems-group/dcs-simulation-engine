@@ -170,12 +170,6 @@ export function useSessionWebSocket(sessionId: string) {
     ws.current.send(JSON.stringify({ type: 'advance', text }))
   }, [])
 
-  const closeSession = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'close' }))
-    }
-  }, [])
-
   const setMessageFeedback = useCallback(
     (eventId: string, feedback: MessageFeedback | undefined) => {
       setMessages((prev) =>
@@ -195,7 +189,6 @@ export function useSessionWebSocket(sessionId: string) {
     npcHid,
     hasGameFeedback,
     sendTurn,
-    closeSession,
     setMessageFeedback,
   }
 }
