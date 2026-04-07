@@ -118,8 +118,8 @@ async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
@@ -130,10 +130,8 @@ async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async
     assert len(info_events) > 0, "Expected info event from /help"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "flatworm" in content, "NPC hid should appear in /help"
-    assert "details hidden" in content.lower(), (
-        "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
-    )
+    assert "FW" in content, "NPC hid should appear in /help"
+    assert "details hidden" in content.lower(), "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
 
 
 async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -141,8 +139,8 @@ async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, 
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
@@ -153,27 +151,23 @@ async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, 
     assert len(info_events) > 0, "Expected info event from /abilities"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "human-normative" in content, "PC hid should appear in /abilities"
-    assert "flatworm" in content, "NPC hid should appear in /abilities"
-    assert "NPC details are hidden" in content, (
-        "Expected '*NPC details are hidden.*' in /abilities NPC section"
-    )
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
+    assert "NPC details are hidden" in content, "Expected '*NPC details are hidden.*' in /abilities NPC section"
 
 
-async def test_capability_prediction_question_contains_npc_hid(
-    patch_llm_client, _isolate_db_state, async_mongo_provider
-):
+async def test_capability_prediction_question_contains_npc_hid(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Test the /predict-capabilities prompt renders the NPC hid correctly.
 
     The GoalHorizon.CAPABILITY_PREDICTION_QUESTION template includes {npc_hid}.
-    This confirms that variable is rendered — 'flatworm' appears in the prompt,
+    This confirms that variable is rendered — 'FW' appears in the prompt,
     not a raw '{npc_hid}' bracket.
     """
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
@@ -184,13 +178,8 @@ async def test_capability_prediction_question_contains_npc_hid(
     assert len(info_events) > 0, "Expected info prompt from /predict-capabilities"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "flatworm" in content, (
-        "NPC hid 'flatworm' should appear in /predict-capabilities question "
-        f"(template rendering check). Got: {content}"
-    )
-    assert "{" not in content, (
-        f"Unrendered template bracket in /predict-capabilities question: {content}"
-    )
+    assert "FW" in content, f"NPC hid 'FW' should appear in /predict-capabilities question (template rendering check). Got: {content}"
+    assert "{" not in content, f"Unrendered template bracket in /predict-capabilities question: {content}"
 
 
 async def test_default_post_play_form_present(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -198,8 +187,8 @@ async def test_default_post_play_form_present(patch_llm_client, _isolate_db_stat
     session = await SessionManager.create_async(
         game="Goal Horizon",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")

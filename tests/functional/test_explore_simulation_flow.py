@@ -64,7 +64,7 @@ async def test_explore_simulation_10_turns(patch_llm_client, _isolate_db_state, 
         "I wave my hand",
         "I look around",
         "I move closer",
-        "I observe the flatworm",
+        "I observe the FW",
         "I stay still",
         "I make a sound",
         "I touch the surface",
@@ -108,8 +108,8 @@ async def test_help_command_includes_pc_and_npc_hid(patch_llm_client, _isolate_d
     session = await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
     await session.step_async("")
 
@@ -119,8 +119,8 @@ async def test_help_command_includes_pc_and_npc_hid(patch_llm_client, _isolate_d
     assert len(info_events) > 0, "Expected info event from /help"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "human-normative" in content, "PC hid 'human-normative' should appear in /help"
-    assert "flatworm" in content, "NPC hid 'flatworm' should appear in /help"
+    assert "NA" in content, "PC hid 'NA' should appear in /help"
+    assert "FW" in content, "NPC hid 'FW' should appear in /help"
 
 
 async def test_abilities_command_shows_pc_and_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -128,8 +128,8 @@ async def test_abilities_command_shows_pc_and_npc_details(patch_llm_client, _iso
     session = await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
     await session.step_async("")
 
@@ -139,8 +139,8 @@ async def test_abilities_command_shows_pc_and_npc_details(patch_llm_client, _iso
     assert len(info_events) > 0, "Expected info event from /abilities"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "human-normative" in content, "PC hid should appear in /abilities"
-    assert "flatworm" in content, "NPC hid should appear in /abilities"
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
     assert "Abilities" in content, "Abilities section header should appear"
 
 
@@ -149,8 +149,8 @@ async def test_finish_command_exits_game(patch_llm_client, _isolate_db_state, as
     session = await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
     await session.step_async("")
     await session.step_async("I look around")
@@ -167,8 +167,8 @@ async def test_only_finish_command_ends_game(patch_llm_client, _isolate_db_state
     session = await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
     await session.step_async("")
 
@@ -184,8 +184,8 @@ async def test_default_characters_available(patch_llm_client, _isolate_db_state,
     session = await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
     assert session is not None, "Session should be created successfully"
     assert not session.exited, "New session should not be exited"
@@ -197,8 +197,8 @@ async def test_api_player_can_play(patch_llm_client, _isolate_db_state, async_mo
         game="explore",
         provider=async_mongo_provider,
         source="api",
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
 
     enter_events = await session.step_async("")
@@ -216,8 +216,8 @@ async def test_gui_player_can_play(patch_llm_client, _isolate_db_state, async_mo
         game="explore",
         provider=async_mongo_provider,
         source="gui",
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
     )
 
     enter_events = await session.step_async("")

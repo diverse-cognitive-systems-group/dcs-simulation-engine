@@ -40,8 +40,8 @@ async def test_teamwork_initialization(patch_llm_client, _isolate_db_state, asyn
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -54,8 +54,8 @@ async def test_teamwork_enter_step(patch_llm_client, _isolate_db_state, async_mo
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -76,8 +76,8 @@ async def test_help_command(patch_llm_client, _isolate_db_state, async_mongo_pro
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -95,8 +95,8 @@ async def test_abilities_command(patch_llm_client, _isolate_db_state, async_mong
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -108,8 +108,8 @@ async def test_abilities_command(patch_llm_client, _isolate_db_state, async_mong
     assert len(info_events) > 0, "Expected info event from /abilities"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "human-normative" in content, "PC hid should appear in /abilities"
-    assert "flatworm" in content, "NPC hid should appear in /abilities"
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
     assert "NPC details are hidden" in content, "NPC description should be hidden in /abilities"
     assert not session.exited, "Session should remain active after /abilities"
 
@@ -119,13 +119,13 @@ async def test_finish_command_triggers_challenges_question(patch_llm_client, _is
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
     await session.step_async("")
-    await session.step_async("I wave at the flatworm")
+    await session.step_async("I wave at the FW")
 
     finish_events = await session.step_async("/finish")
 
@@ -142,13 +142,13 @@ async def test_finish_command_exits_after_challenges_answer(patch_llm_client, _i
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
     await session.step_async("")
-    await session.step_async("I observe the flatworm")
+    await session.step_async("I observe the FW")
     await session.step_async("/finish")
 
     challenges_answer = "Communication was challenging; coordination was easier."
@@ -165,8 +165,8 @@ async def test_simulation_turns(patch_llm_client, _isolate_db_state, async_mongo
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -174,7 +174,7 @@ async def test_simulation_turns(patch_llm_client, _isolate_db_state, async_mongo
     turns_after_enter = session.turns
 
     user_inputs = [
-        "I approach the flatworm",
+        "I approach the FW",
         "I wait and observe",
         "I move in the same direction",
         "I make a gentle sound",
@@ -203,8 +203,8 @@ async def test_exit_and_save(patch_llm_client, _isolate_db_state, async_mongo_pr
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -223,12 +223,12 @@ async def test_default_post_play_form_present(patch_llm_client, _isolate_db_stat
     session = await SessionManager.create_async(
         game="teamwork",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
-    await session.step_async("I observe the flatworm")
+    await session.step_async("I observe the FW")
 
     finish_events = await session.step_async("/finish")
     assert any(e["type"] == "info" for e in finish_events), "Expected challenges question after /finish"

@@ -65,16 +65,14 @@ async def _make_session(game: str, async_mongo_provider):
     return await SessionManager.create_async(
         game=game,
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=player_id,
     )
 
 
 @pytest.mark.parametrize("game", ALL_GAMES)
-async def test_help_command_contains_required_sections(
-    game, patch_llm_client, _isolate_db_state, async_mongo_provider
-):
+async def test_help_command_contains_required_sections(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Help output must include all required sections for every game.
 
     Checks that /help info content contains:
@@ -91,15 +89,11 @@ async def test_help_command_contains_required_sections(
 
     content = " ".join(e["content"] for e in info_events)
     for section in _REQUIRED_HELP_SECTIONS:
-        assert section in content, (
-            f"[{game}] /help missing required section: '{section}'\nFull help content:\n{content}"
-        )
+        assert section in content, f"[{game}] /help missing required section: '{section}'\nFull help content:\n{content}"
 
 
 @pytest.mark.parametrize("game", ALL_GAMES)
-async def test_simulator_takes_first_turn(
-    game, patch_llm_client, _isolate_db_state, async_mongo_provider
-):
+async def test_simulator_takes_first_turn(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """ENTER must yield both a welcome info event and an AI opening turn.
 
     The simulator should take the first turn before any player input.
@@ -117,9 +111,7 @@ async def test_simulator_takes_first_turn(
 
 
 @pytest.mark.parametrize("game", ALL_GAMES)
-async def test_no_bracket_rendering_in_system_responses(
-    game, patch_llm_client, _isolate_db_state, async_mongo_provider
-):
+async def test_no_bracket_rendering_in_system_responses(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """No raw '{' should appear in any system-generated event content.
 
     Catches unrendered format strings such as '{npc_hid}' or
@@ -147,9 +139,7 @@ async def test_no_bracket_rendering_in_system_responses(
 
     for event in all_events:
         content = event.get("content", "")
-        assert "{" not in content, (
-            f"[{game}] Unrendered template bracket '{{' in {event.get('type')} event:\n{content}"
-        )
+        assert "{" not in content, f"[{game}] Unrendered template bracket '{{' in {event.get('type')} event:\n{content}"
 
 
 def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -172,7 +162,7 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
     with TestClient(app) as client:
         resp = client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": "human-normative", "npc_choice": "flatworm", "source": "api"},
+            json={"game": "explore", "pc_choice": "NA", "npc_choice": "FW", "source": "api"},
         )
         assert resp.status_code == 200, f"Game creation failed: {resp.text}"
         session_id = resp.json()["session_id"]
@@ -193,12 +183,8 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
             replay_start = ws.receive_json()
             replay_end = ws.receive_json()
 
-            assert replay_start.get("type") == "replay_start", (
-                f"Expected replay_start frame on reconnect, got: {replay_start}"
-            )
-            assert replay_end.get("type") == "replay_end", (
-                f"Expected replay_end frame after replay, got: {replay_end}"
-            )
+            assert replay_start.get("type") == "replay_start", f"Expected replay_start frame on reconnect, got: {replay_start}"
+            assert replay_end.get("type") == "replay_end", f"Expected replay_end frame after replay, got: {replay_end}"
             assert replay_end.get("turns") == turns_before, (
                 f"Resumed session should report same turn count: expected {turns_before}, got {replay_end.get('turns')}"
             )

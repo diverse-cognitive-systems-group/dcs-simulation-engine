@@ -42,11 +42,11 @@ def seed_consenting_player(_isolate_db_state, async_mongo_provider):
 FORESIGHT_TEST_INPUTS = [
     "I wave my hand and predict they will wave back",
     "I look around",
-    "I move closer. I predict the flatworm will retreat.",
-    "I observe the flatworm",
+    "I move closer. I predict the FW will retreat.",
+    "I observe the FW",
     "I stay still and predict they will move toward me",
     "I make a sound",
-    "I touch the surface. I predict the flatworm will curl up.",
+    "I touch the surface. I predict the FW will curl up.",
     "I step back",
     "I wait and predict they will explore",
     "I examine the environment",
@@ -153,7 +153,7 @@ async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mon
     await session.step_async("")
     await session.step_async("I wave my hand and predict they will respond")
     await session.step_async("I look around")
-    await session.step_async("I observe the flatworm")
+    await session.step_async("I observe the FW")
 
     await session.exit_async("test complete")
     assert session.exited, "Session should be exited after exit()"
@@ -214,7 +214,7 @@ async def test_default_post_play_form_present(patch_llm_client, _isolate_db_stat
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
-    await session.step_async("I observe the flatworm")
+    await session.step_async("I observe the FW")
 
     finish_events = await session.step_async("/finish")
     info_events = [e for e in finish_events if e.get("type") == "info"]
