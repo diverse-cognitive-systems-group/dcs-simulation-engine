@@ -12,6 +12,7 @@ from dcs_simulation_engine.games.ai_client import (
 from dcs_simulation_engine.games.const import (
     Foresight as C,
 )
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -152,6 +153,18 @@ class ForesightGame(Game):
 
         if cmd == Command.HELP:
             return GameEvent.now(type="info", content=self._help_content(), command_response=True)
+
+        if cmd == Command.ABILITIES:
+            return GameEvent.now(
+                type="info",
+                content=C.ABILITIES_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
+                    npc_hid=self._npc.hid,
+                ),
+                command_response=True,
+            )
 
         if cmd == Command.FINISH:
             self.exit("player finished")

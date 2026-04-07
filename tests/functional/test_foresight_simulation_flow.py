@@ -159,3 +159,96 @@ async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mon
     assert session.exited, "Session should be exited after exit()"
 
     session.save()
+
+
+async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /help shows NPC hid but does not reveal NPC description."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    help_events = await session.step_async("/help")
+
+    info_events = [e for e in help_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /help"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "flatworm" in content, "NPC hid should appear in /help"
+    assert "details hidden" in content.lower(), (
+        "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
+    )
+
+
+async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /abilities shows PC abilities but hides all NPC details."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    abilities_events = await session.step_async("/abilities")
+
+    info_events = [e for e in abilities_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /abilities"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "human-normative" in content, "PC hid should appear in /abilities"
+    assert "flatworm" in content, "NPC hid should appear in /abilities"
+    assert "NPC details are hidden" in content, (
+        "Expected '*NPC details are hidden.*' in /abilities NPC section"
+    )
+
+
+async def test_default_post_play_form_present(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Foresight ends with FINISH_CONTENT after /finish — no post-play questions."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="human-normative",
+        npc_choice="flatworm",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+    await session.step_async("I observe the flatworm")
+
+    finish_events = await session.step_async("/finish")
+    info_events = [e for e in finish_events if e.get("type") == "info"]
+    assert any("Game finished" in e["content"] for e in info_events), (
+        f"Expected 'Game finished' in /finish response: {[e['content'] for e in info_events]}"
+    )
+    assert session.exited, "Session should be exited after /finish"
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_per_turn_evaluation(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation should run after each turn and results displayed to player."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_player_triggered_evals_disabled_by_default(
+    patch_llm_client, _isolate_db_state, async_mongo_provider
+):
+    """Player-triggered evaluations should be disabled by default."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_evaluation_shown_at_end(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation results should be shown to the player after game completion."""
+    ...
+
+
+@pytest.mark.skip(reason="pending run config refactoring")
+async def test_overrides_work(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """All documented run config overrides should apply to Foresight."""
+    ...

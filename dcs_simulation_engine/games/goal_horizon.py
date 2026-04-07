@@ -182,7 +182,15 @@ class GoalHorizonGame(Game):
         cmd = parts[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+            return GameEvent.now(
+                type="info",
+                content=C.HELP_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                ),
+                command_response=True,
+            )
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
