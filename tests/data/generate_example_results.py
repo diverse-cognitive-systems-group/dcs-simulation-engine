@@ -77,7 +77,7 @@ PLAYERS = [
 # (player_index, game, start_iso, duration_min, pc_hid, npc_hid, turns, term_reason)
 SESSIONS_DEF = [
     # Explore ×5
-    (0, "Explore", "2026-03-17T09:15:00Z", 8, "human-normative", "biological cell", 4, "user_exit_command"),
+    (0, "Explore", "2026-03-17T09:15:00Z", 8, "NA", "biological cell", 4, "user_exit_command"),
     (1, "Explore", "2026-03-18T14:30:00Z", 11, "human-low-vision", "human-anxiety", 6, "stopping_condition_met:_runtime_seconds_>=600"),
     (2, "Explore", "2026-03-20T10:05:00Z", 5, "human-synesthetic-tactile", "eye-makeup-machine", 3, "user_exit_command"),
     (
@@ -90,19 +90,19 @@ SESSIONS_DEF = [
         5,
         "stopping_condition_met:_runtime_seconds_>=600",
     ),
-    (4, "Explore", "2026-03-29T16:20:00Z", 7, "human-normative", "human-anxiety", 4, "user_exit_command"),
+    (4, "Explore", "2026-03-29T16:20:00Z", 7, "NA", "human-anxiety", 4, "user_exit_command"),
     # Goal Horizon ×5
     (0, "Goal Horizon", "2026-03-21T09:30:00Z", 14, "human-synesthetic-tactile", "eye-makeup-machine", 5, "game_completed"),
     (1, "Goal Horizon", "2026-03-22T13:00:00Z", 18, "human-low-vision", "human-anxiety", 6, "game_completed"),
-    (2, "Goal Horizon", "2026-03-26T09:10:00Z", 12, "human-normative", "eye-makeup-machine", 4, "game_completed"),
+    (2, "Goal Horizon", "2026-03-26T09:10:00Z", 12, "NA", "eye-makeup-machine", 4, "game_completed"),
     (3, "Goal Horizon", "2026-03-19T11:20:00Z", 20, "human-low-vision", "eye-makeup-machine", 7, "game_completed"),
-    (4, "Goal Horizon", "2026-03-24T14:20:00Z", 25, "human-normative", "human-anxiety", 5, "game_completed"),
+    (4, "Goal Horizon", "2026-03-24T14:20:00Z", 25, "NA", "human-anxiety", 5, "game_completed"),
     # Infer Intent ×5
-    (1, "Infer Intent", "2026-03-18T15:00:00Z", 9, "human-normative", "human-anxiety", 2, "game_completed"),
+    (1, "Infer Intent", "2026-03-18T15:00:00Z", 9, "NA", "human-anxiety", 2, "game_completed"),
     (0, "Infer Intent", "2026-03-21T14:00:00Z", 7, "human-gestural-improv", "biological cell", 3, "game_completed"),
     (4, "Infer Intent", "2026-03-24T10:30:00Z", 6, "human-synesthetic-tactile", "biological cell", 2, "game_completed"),
     (2, "Infer Intent", "2026-03-28T15:45:00Z", 10, "human-low-vision", "eye-makeup-machine", 4, "game_completed"),
-    (3, "Infer Intent", "2026-03-30T14:00:00Z", 8, "human-normative", "human-anxiety", 2, "game_completed"),
+    (3, "Infer Intent", "2026-03-30T14:00:00Z", 8, "NA", "human-anxiety", 2, "game_completed"),
     # Foresight ×5
     (
         2,
@@ -114,7 +114,7 @@ SESSIONS_DEF = [
         3,
         "stopping_condition_met:_runtime_seconds_>=600",
     ),
-    (4, "Foresight", "2026-03-20T15:00:00Z", 11, "human-normative", "biological cell", 2, "stopping_condition_met:_turns_>=10"),
+    (4, "Foresight", "2026-03-20T15:00:00Z", 11, "NA", "biological cell", 2, "stopping_condition_met:_turns_>=10"),
     (
         0,
         "Foresight",
@@ -167,7 +167,7 @@ GAME_CONFIGS = {
 
 # ── Character short descriptions ─────────────────────────────────────────────
 CHAR_DESCRIPTIONS = {
-    "human-normative": "A human with standard normal form, function, goals, sensory, perceptual, regulatory and action modalities.",
+    "NA": "A human with standard normal form, function, goals, sensory, perceptual, regulatory and action modalities.",
     "human-low-vision": "A low vision human.",
     "human-anxiety": "A human experiencing chronic anxiety.",
     "human-synesthetic-tactile": "A human whose perceptual system cross-links non-tactile stimuli with involuntary, consistent tactile sensations.",
@@ -180,7 +180,7 @@ CHAR_DESCRIPTIONS = {
 # ── NPC opening scenes ────────────────────────────────────────────────────────
 NPC_OPENINGS = {
     (
-        "human-normative",
+        "NA",
         "biological cell",
     ): "You enter a new space. In this space, a cluttered lab bench lit by a single overhead lamp holds a microscope whose stage supports a glass slide with a single translucent, nearly spherical cell visible under low magnification. Through the eyepiece you see the cell's membrane gently pulse and faint cytoplasmic streaming shift inside it as the cell subtly changes shape.",
     (
@@ -200,7 +200,7 @@ NPC_OPENINGS = {
         "biological cell",
     ): "You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.",
     (
-        "human-normative",
+        "NA",
         "human-anxiety",
     ): "You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.",
     (
@@ -208,7 +208,7 @@ NPC_OPENINGS = {
         "eye-makeup-machine",
     ): "You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.",
     (
-        "human-normative",
+        "NA",
         "eye-makeup-machine",
     ): "You enter a new space. A polished vanity counter holds a visor-shaped device propped on a foam stand. Its display screen shows a soft glow and the text 'READY'. A ring of tiny LEDs cycles slowly through color presets and a faint mechanical whir comes from inside its housing.",
     (
@@ -224,7 +224,7 @@ NPC_OPENINGS = {
         "eye-makeup-machine",
     ): "You enter a new space. A compact visor device rests on a table, its soft hum immediately drawing your attention. The device's LEDs cycle through presets and a faint mechanical click sounds as an applicator arm extends and then slowly retracts.",
     (  # noqa: F601
-        "human-normative",
+        "NA",
         "biological cell",
     ): "You enter a new space. In this space, a cluttered lab bench lit by a single overhead lamp holds a microscope whose stage supports a glass slide with a single translucent, nearly spherical cell visible under low magnification.",
 }

@@ -1,7 +1,7 @@
 """Functional tests for infer-intent game simulation flow with mocked LLMs.
 
 This test suite validates the infer-intent game's unique mechanics:
-1. PC is fixed to human-normative, NPC excludes human-normative
+1. PC is fixed to NA, NPC excludes NA
 2. /predict-intent command triggers a 2-step completion form (goal inference + feedback)
 3. /help command handler
 4. Goal-aligned NPC responses
@@ -53,8 +53,8 @@ async def test_infer_intent_initialization(patch_llm_client, _isolate_db_state, 
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -67,8 +67,8 @@ async def test_infer_intent_enter_welcome_message(patch_llm_client, _isolate_db_
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -85,8 +85,8 @@ async def test_infer_intent_predict_intent_command(patch_llm_client, _isolate_db
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -105,8 +105,8 @@ async def test_infer_intent_help_command(patch_llm_client, _isolate_db_state, as
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -124,8 +124,8 @@ async def test_infer_intent_simulation_turns(patch_llm_client, _isolate_db_state
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -152,8 +152,8 @@ async def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state,
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -181,8 +181,8 @@ async def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state, a
     session = await SessionManager.create_async(
         game="Infer Intent",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 

@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KPW — Quality Report</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- DataTables Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <!-- DataTables Buttons -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+  <!-- Plotly, jQuery, and DataTables must all load before body content so inline scripts work -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+  <style>
+    body {
+      font-size: 0.9rem;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      padding-top: 1rem;
+    }
+
+    .sidebar .nav-link {
+      color: #495057;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .sidebar .nav-link:hover {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    .sidebar .nav-link.active {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .sidebar .nav-link-sub {
+      padding-left: 1.75rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .sidebar .nav-link-sub:hover {
+      color: #0d6efd;
+    }
+
+    .sidebar .nav-link-sub.active {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
+    .sidebar-heading {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      padding: 0.5rem 1rem 0.2rem;
+    }
+
+    /* Sections */
+    section {
+      scroll-margin-top: 1rem;
+    }
+
+    section h2 {
+      font-size: 1.4rem;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables */
+    .dataTables_wrapper {
+      font-size: 0.82rem;
+    }
+
+    /* Per-column filter inputs in second header row */
+    tr.dt-filter-row th {
+      padding: 4px 8px;
+    }
+
+    tr.dt-filter-row input {
+      min-width: 3rem;
+    }
+
+    /* Export buttons */
+    .dt-buttons .btn {
+      font-size: 0.75rem;
+    }
+
+    /* Charts */
+    .chart-container {
+      margin-bottom: 1.5rem;
+    }
+
+    /* Definition list in metadata */
+    .dl-meta dt {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .dl-meta dd {
+      color: #212529;
+      margin-bottom: 0.4rem;
+    }
+
+    @media print {
+      .sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      main.col-md-10 {
+        width: 100% !important;
+      }
+
+      section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container-fluid">
+    <div class="row g-0">
+
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-none d-md-block sidebar">
+        <div class="sidebar-heading">Sections</div>
+        <ul class="nav flex-column">
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-metadata">Metadata</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-overview">Overview</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-scenario-coverage">Scenario Coverage</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-feedback">Feedback</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-transcripts">Transcripts</a>
+          </li>
+            
+          
+        </ul>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 px-4 py-3">
+        <div class="report-header mb-4">
+          <div>
+            <h1 class="mb-1">KPW — Quality Report</h1>
+            <p class="text-muted mb-0" style="font-size:0.8rem;">
+              Generated 2026-04-06 14:52 UTC
+            </p>
+          </div>
+          <div class="dropdown no-print">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
+              
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
+            </ul>
+          </div>
+        </div>
+
+        
+          
+        <section id="section-metadata" class="mb-5">
+          <h2>Metadata</h2>
+          <div class="card"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-3'>HID</dt><dd class='col-sm-9'>KPW</dd><dt class='col-sm-3'>Description</dt><dd class='col-sm-9'>An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.</dd><dt class='col-sm-3'>Long Description</dt><dd class='col-sm-9'>I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your face.
+
+My purpose is precision and repeatability. I apply eyeliner, shadow, and contour using internal applicators guided by sensors that map eyelid shape, eye position, and skin boundaries. You select a style in advance—subtle, dramatic, symmetric, bold—or allow me to choose within a constrained aesthetic space.
+
+I operate without dialogue. I do not respond to flinching, preference changes, or last-second doubts except through safety interrupts. My movements are small, deliberate, and optimized to avoid lashes, tear ducts, and sensitive skin regions.
+
+I excel at symmetry and consistency. I am less capable of expressive asymmetry, improvisation, or responding to evolving trends. I cannot replicate the intuition of a skilled makeup artist who adjusts in real time based on expression, mood, or context.
+
+The experience is intimate and surrender-based. You trade momentary blindness and control for speed and uniformity. When I disengage, the look is complete. Touch-ups are possible, but the core structure is fixed.
+
+I make eye makeup procedural. What you wear is not negotiated—it is executed.</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-overview" class="mb-5">
+          <h2>Overview</h2>
+          <h3 class="h5 mb-2">Scores Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-4'>Total NPC Turns</dt><dd class='col-sm-8'>32</dd><dt class='col-sm-4'>In-Character Fidelity (ICF)</dt><dd class='col-sm-8'>81.2%</dd><dt class='col-sm-4'>Narrative Coherence (NCo)</dt><dd class='col-sm-8'>0.0%</dd><dt class='col-sm-4'>Other</dt><dd class='col-sm-8'>0.0%</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-scenario-coverage" class="mb-5">
+          <h2>Scenario Coverage</h2>
+          <p class="text-muted">Scenario coverage data is not yet available.</p>
+        </section>
+          
+        
+          
+        <section id="section-feedback" class="mb-5">
+          <h2>Feedback</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">In-session reactions (likes, flags, freeform comments on NPC messages) and structured survey responses. Use this to connect player sentiment to specific moments in gameplay.</p>
+<h3 class="h5 mb-2">Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-6'>Feedback Rate</dt><dd class='col-sm-6'>16 / 32 (50%)</dd><dt class='col-sm-6'>👍 Thumbs Up</dt><dd class='col-sm-6'>10 / 16 (62%)</dd><dt class='col-sm-6'>👎 Thumbs Down</dt><dd class='col-sm-6'>6 / 16 (38%)</dd></dl></div></div>
+<h5>Flag Distribution Over Turns</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns" class="plotly-graph-div" style="height:320px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns")) {                    Plotly.newPlot(                        "flags-over-turns",                        [{"marker":{"color":"#e45f3c"},"name":"out of character","x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"Bg=="},"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"t":30,"b":40,"l":50,"r":20},"barmode":"group","xaxis":{"title":{"text":"Turn"}},"yaxis":{"title":{"text":"Flag count"}},"legend":{"title":{"text":"Flag type"}},"height":320},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Frequency of each flag type (out of character, doesn't make sense, other) at each turn index across all sessions. Peaks reveal which turns in the conversation arc the NPC most often breaks character or produces unclear responses.</em></p>
+<h5>Flag Distribution Over Turns — by Game</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns-by-game" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns-by-game")) {                    Plotly.newPlot(                        "flags-over-turns-by-game",                        [{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":true,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":true,"x":[],"y":[],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":true,"x":[],"y":[],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":false,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar","xaxis":"x2","yaxis":"y2"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x2","yaxis":"y2"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x2","yaxis":"y2"},{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":false,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"Aw=="},"type":"bar","xaxis":"x3","yaxis":"y3"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x3","yaxis":"y3"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x3","yaxis":"y3"},{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":false,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar","xaxis":"x4","yaxis":"y4"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x4","yaxis":"y4"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x4","yaxis":"y4"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.2125],"title":{"text":"Turn"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Flag count"}},"xaxis2":{"anchor":"y2","domain":[0.2625,0.475],"title":{"text":"Turn"}},"yaxis2":{"anchor":"x2","domain":[0.0,1.0],"matches":"y","showticklabels":false},"xaxis3":{"anchor":"y3","domain":[0.525,0.7375],"title":{"text":"Turn"}},"yaxis3":{"anchor":"x3","domain":[0.0,1.0],"matches":"y","showticklabels":false},"xaxis4":{"anchor":"y4","domain":[0.7875,1.0],"title":{"text":"Turn"}},"yaxis4":{"anchor":"x4","domain":[0.0,1.0],"matches":"y","showticklabels":false},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Explore","x":0.10625,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Foresight","x":0.36875,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Goal Horizon","x":0.6312500000000001,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Infer Intent","x":0.89375,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"margin":{"t":50,"b":40,"l":50,"r":20},"barmode":"group","legend":{"title":{"text":"Flag type"}},"height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Flag frequency per turn split by game. Reveals whether specific games produce character or coherence issues at particular dialogue stages.</em></p>
+<h5>Flag Distribution Over Turns — by Player</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns-by-player" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns-by-player")) {                    Plotly.newPlot(                        "flags-over-turns-by-player",                        [{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":true,"visible":true,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"Ag=="},"type":"bar"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":true,"visible":true,"x":[],"y":[],"type":"bar"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":true,"visible":true,"x":[],"y":[],"type":"bar"},{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":false,"visible":false,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"Aw=="},"type":"bar"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":false,"visible":false,"x":[],"y":[],"type":"bar"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":false,"visible":false,"x":[],"y":[],"type":"bar"},{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":false,"visible":false,"x":{"dtype":"i1","bdata":"BA=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":false,"visible":false,"x":[],"y":[],"type":"bar"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":false,"visible":false,"x":[],"y":[],"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"t":60,"b":40,"l":50,"r":20},"updatemenus":[{"buttons":[{"args":[{"visible":[true,true,true,false,false,false,false,false,false]},{"title":""}],"label":"000000000000000000000001","method":"update"},{"args":[{"visible":[false,false,false,true,true,true,false,false,false]},{"title":""}],"label":"000000000000000000000003","method":"update"},{"args":[{"visible":[false,false,false,false,false,false,true,true,true]},{"title":""}],"label":"000000000000000000000004","method":"update"}],"direction":"down","showactive":true,"x":0.0,"xanchor":"left","y":1.15,"yanchor":"top"}],"annotations":[{"showarrow":false,"text":"Select Player:","x":0.0,"xanchor":"right","xref":"paper","y":1.15,"yanchor":"top","yref":"paper"}],"barmode":"group","xaxis":{"title":{"text":"Turn"}},"yaxis":{"title":{"text":"Flag count"}},"legend":{"title":{"text":"Flag type"}},"height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player flag counts across turn indices. Use the dropdown to select a player and identify individuals whose feedback clusters at specific turns.</em></p>
+<h5>In-Play Feedback</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="event-feedback-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Session</th>
+      <th>Game</th>
+      <th>Player</th>
+      <th>Turn</th>
+      <th>Liked</th>
+      <th>Flags</th>
+      <th>Comment</th>
+      <th>Transcript Context</th>
+      <th>Submitted At</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>Explore</td>
+      <td>000000000000000000000003</td>
+      <td>2</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\n**Remember** if you need help at any time, just type `/help`.\n[npc T1]: You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-20 10:08:46 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>Explore</td>
+      <td>000000000000000000000003</td>
+      <td>4</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td>the clack should have been louder</td>
+      <td>[system T1]: *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\n**Remember** if you need help at any time, just type `/help`.\n[npc T1]: You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[system T4]: session_end: user_exit_command</td>
+      <td>2026-03-20 10:11:46 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000001</td>
+      <td>2</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-21 09:34:58 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000001</td>
+      <td>4</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td>the clack should have been louder</td>
+      <td>[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[user T4]: I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-21 09:40:22 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000001</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>very immersive</td>
+      <td>[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[user T5]: I carefully lift it and hold it up to my face\n[npc T5]: The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.</td>
+      <td>2026-03-21 09:43:04 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000003</td>
+      <td>2</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. A polished vanity counter holds a visor-shaped device propped on a foam stand. Its display screen shows a soft glow and the text 'READY'. A ring of tiny LEDs cycles slowly through color presets and a faint mechanical whir comes from inside its housing.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-26 09:15:08 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000003</td>
+      <td>4</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td>the clack should have been louder</td>
+      <td>[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. A polished vanity counter holds a visor-shaped device propped on a foam stand. Its display screen shows a soft glow and the text 'READY'. A ring of tiny LEDs cycles slowly through color presets and a faint mechanical whir comes from inside its housing.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-26 09:20:53 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000003</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>very immersive</td>
+      <td>[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[user T5]: I carefully lift it and hold it up to my face\n[npc T5]: The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.\n[system T5]: session_end: game_completed</td>
+      <td>2026-03-26 09:23:46 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000004</td>
+      <td>2</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-19 11:25:03 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000004</td>
+      <td>4</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td>the clack should have been louder</td>
+      <td>[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-19 11:30:37 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000004</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>very immersive</td>
+      <td>[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[npc T5]: The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.\n[user T5]: I carefully lift it and hold it up to my face</td>
+      <td>2026-03-19 11:33:24 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>Infer Intent</td>
+      <td>000000000000000000000003</td>
+      <td>2</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: DV (A low vision human.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.\n[npc T1]: You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-28 15:49:38 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>Infer Intent</td>
+      <td>000000000000000000000003</td>
+      <td>4</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td>the clack should have been louder</td>
+      <td>[system T1]: *Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: DV (A low vision human.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.\n[npc T1]: You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[user T4]: I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-28 15:54:23 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>Infer Intent</td>
+      <td>000000000000000000000003</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>very immersive</td>
+      <td>[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[user T5]: I carefully lift it and hold it up to my face\n[npc T5]: The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.\n[system T5]: session_end: game_completed</td>
+      <td>2026-03-28 15:56:46 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>Foresight</td>
+      <td>000000000000000000000001</td>
+      <td>2</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\n[npc T1]: You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-25 11:04:48 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>Foresight</td>
+      <td>000000000000000000000001</td>
+      <td>4</td>
+      <td>False</td>
+      <td>out of character</td>
+      <td>the clack should have been louder</td>
+      <td>[system T1]: *Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\n[npc T1]: You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.\n[user T2]: I walk over and say "hello"\n[npc T2]: You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.\n[user T3]: /predict-next I predict it will respond to being worn by activating its applicator\n[system T3]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T3]: I try touching the screen to see if it responds\n[npc T3]: You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.\n[user T4]: /predict-next I predict it will respond to being worn by activating its applicator\n[system T4]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T4]: I push and pull and move my hands around to try and figure out how to work it\n[npc T4]: As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."\n[system T4]: session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-25 11:11:10 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#event-feedback-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#event-feedback-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Every in-session reaction (like, flag, or comment) left on an NPC message, with session and turn context. The Transcript Context column shows the preceding turns leading up to the flagged message — hover to read the full excerpt. Sort by turn or session to find clusters of negative reactions.</em></p>
+<h5>Player Feedback Patterns</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="player-segments-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Player</th>
+      <th>Total</th>
+      <th>Positive</th>
+      <th>Negative</th>
+      <th>w/ Comment</th>
+      <th>Flagged</th>
+      <th>Segment</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>000000000000000000000003</td>
+      <td>8</td>
+      <td>5</td>
+      <td>3</td>
+      <td>5</td>
+      <td>3</td>
+      <td>high feedback</td>
+    </tr>
+    <tr>
+      <td>000000000000000000000001</td>
+      <td>5</td>
+      <td>3</td>
+      <td>2</td>
+      <td>3</td>
+      <td>2</td>
+      <td>mixed</td>
+    </tr>
+    <tr>
+      <td>000000000000000000000004</td>
+      <td>3</td>
+      <td>2</td>
+      <td>1</td>
+      <td>2</td>
+      <td>1</td>
+      <td>low feedback</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#player-segments-table').DataTable({
+        pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#player-segments-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player feedback summary with a segment label (only positive, only negative, high/low feedback volume, mixed). Thresholds are set at the 25th and 75th percentile of total feedback count. Use this to identify outlier players whose feedback patterns may skew aggregate statistics.</em></p>
+        </section>
+          
+        
+          
+        <section id="section-transcripts" class="mb-5">
+          <h2>Transcripts</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">Turn-by-turn event log for all sessions. Filter by session, player, PC, or NPC to read specific exchanges. Use alongside Feedback to find the dialogue that prompted a reaction.</p><h3 class="h5 mb-2">Session Events</h3><table class="dataframe table table-striped table-hover table-sm w-100" id="transcripts-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Gameplay Session</th>
+      <th>Player</th>
+      <th>PC</th>
+      <th>NPC</th>
+      <th>Turn</th>
+      <th>Source</th>
+      <th>Type</th>
+      <th>Transcript</th>
+      <th>Timestamp</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-25 11:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.</td>
+      <td>2026-03-25 11:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.</td>
+      <td>2026-03-25 11:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say "hello"</td>
+      <td>2026-03-25 11:01:51 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-25 11:02:48 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict it will respond to being worn by activating its applicator</td>
+      <td>2026-03-25 11:03:26 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-25 11:03:27 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I try touching the screen to see if it responds</td>
+      <td>2026-03-25 11:05:02 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.</td>
+      <td>2026-03-25 11:05:59 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict it will respond to being worn by activating its applicator</td>
+      <td>2026-03-25 11:06:37 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-25 11:06:38 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-25 11:08:13 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-25 11:09:10 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-25 11:09:54 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict it will respond to being worn by activating its applicator</td>
+      <td>2026-03-25 11:09:48 UTC</td>
+    </tr>
+    <tr>
+      <td>0ecdf3b9-182b-eb2e-2426-9e758c6d52a8</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-25 11:09:49 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-28 15:45:00 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: DV (A low vision human.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.</td>
+      <td>2026-03-28 15:45:01 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.</td>
+      <td>2026-03-28 15:45:16 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say "hello"</td>
+      <td>2026-03-28 15:46:41 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-28 15:47:38 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I try touching the screen to see if it responds</td>
+      <td>2026-03-28 15:49:04 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.</td>
+      <td>2026-03-28 15:50:01 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-28 15:51:26 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-28 15:52:23 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I carefully lift it and hold it up to my face</td>
+      <td>2026-03-28 15:53:49 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.</td>
+      <td>2026-03-28 15:54:46 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-28 15:55:09 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-intent</td>
+      <td>2026-03-28 15:54:56 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.</td>
+      <td>2026-03-28 15:54:57 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>to apply eye makeup when properly worn</td>
+      <td>2026-03-28 15:55:05 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Do you have any other feedback about this experience?</td>
+      <td>2026-03-28 15:55:06 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>nope</td>
+      <td>2026-03-28 15:55:09 UTC</td>
+    </tr>
+    <tr>
+      <td>23e07fd7-3ea0-c43d-8fee-55d30ebcacd3</td>
+      <td>000000000000000000000003</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-28 15:55:09 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-19 11:20:00 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.</td>
+      <td>2026-03-19 11:20:01 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. A sleek visor-shaped device is mounted on a stand at roughly face height, its silhouette slightly blurry at the edges. A series of small indicator lights pulse in a slow rhythm along its rim, and you can hear a low mechanical hum as you approach.</td>
+      <td>2026-03-19 11:20:16 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say "hello"</td>
+      <td>2026-03-19 11:21:56 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-19 11:23:03 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I try touching the screen to see if it responds</td>
+      <td>2026-03-19 11:24:43 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.</td>
+      <td>2026-03-19 11:25:50 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-19 11:27:30 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-19 11:28:37 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I carefully lift it and hold it up to my face</td>
+      <td>2026-03-19 11:30:17 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.</td>
+      <td>2026-03-19 11:31:24 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I tap the 'subtle' option on the internal touchscreen</td>
+      <td>2026-03-19 11:33:04 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The calibration grid fades and the word 'SUBTLE' pulses once in the center of the display. The applicator arm moves smoothly forward in the darkness and makes a cool, precise contact just below your lower lashline — a single, even stroke — then retracts. The LED ring dims to a soft amber and the hum settles to near silence.</td>
+      <td>2026-03-19 11:34:11 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>7</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I repeat my previous action more slowly</td>
+      <td>2026-03-19 11:35:51 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>7</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>There is no immediate response to your action. The character continues its current activity without acknowledging you.</td>
+      <td>2026-03-19 11:36:58 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>8</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I move around to get a different angle</td>
+      <td>2026-03-19 11:38:39 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>8</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>A subtle shift occurs in the character's behavior — not a direct response, but something has changed.</td>
+      <td>2026-03-19 11:39:45 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>8</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-19 11:40:05 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>9</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-capabilities</td>
+      <td>2026-03-19 11:39:55 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>9</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think this character's limits or capabilities are?\n\nDescribe the bounds you inferred in a few sentences.</td>
+      <td>2026-03-19 11:39:56 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>9</td>
+      <td>user</td>
+      <td>message</td>
+      <td>It seems to be a device that applies makeup to the eyes. It responds to touch and wearing, but not to speech or gestures. It only functions when positioned against a face.</td>
+      <td>2026-03-19 11:40:04 UTC</td>
+    </tr>
+    <tr>
+      <td>7320c97d-1619-05db-0127-b9ba074c8e68</td>
+      <td>000000000000000000000004</td>
+      <td>DV</td>
+      <td>KPW</td>
+      <td>9</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-19 11:40:05 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-26 09:10:00 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.</td>
+      <td>2026-03-26 09:10:01 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. A polished vanity counter holds a visor-shaped device propped on a foam stand. Its display screen shows a soft glow and the text 'READY'. A ring of tiny LEDs cycles slowly through color presets and a faint mechanical whir comes from inside its housing.</td>
+      <td>2026-03-26 09:10:16 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say "hello"</td>
+      <td>2026-03-26 09:11:59 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-26 09:13:08 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I try touching the screen to see if it responds</td>
+      <td>2026-03-26 09:14:52 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.</td>
+      <td>2026-03-26 09:16:01 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-26 09:17:44 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-26 09:18:53 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I carefully lift it and hold it up to my face</td>
+      <td>2026-03-26 09:20:37 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.</td>
+      <td>2026-03-26 09:21:46 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-26 09:22:06 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-capabilities</td>
+      <td>2026-03-26 09:21:56 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think this character's limits or capabilities are?\n\nDescribe the bounds you inferred in a few sentences.</td>
+      <td>2026-03-26 09:21:57 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>It seems to be a device that applies makeup to the eyes. It responds to touch and wearing, but not to speech or gestures. It only functions when positioned against a face.</td>
+      <td>2026-03-26 09:22:05 UTC</td>
+    </tr>
+    <tr>
+      <td>a9a6c8e3-7bb0-abf0-0113-157145bdf1c5</td>
+      <td>000000000000000000000003</td>
+      <td>NA</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-26 09:22:06 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-20 10:05:00 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\n**Remember** if you need help at any time, just type `/help`.</td>
+      <td>2026-03-20 10:05:01 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.</td>
+      <td>2026-03-20 10:05:16 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say "hello"</td>
+      <td>2026-03-20 10:06:10 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-20 10:06:46 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I try touching the screen to see if it responds</td>
+      <td>2026-03-20 10:07:40 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.</td>
+      <td>2026-03-20 10:08:16 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-20 10:09:10 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-20 10:09:46 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: user_exit_command</td>
+      <td>2026-03-20 10:09:51 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/exit</td>
+      <td>2026-03-20 10:09:51 UTC</td>
+    </tr>
+    <tr>
+      <td>f40b68bc-8047-2758-8f1a-4382dd822e01</td>
+      <td>000000000000000000000003</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Session exited: received exit command</td>
+      <td>2026-03-20 10:09:51 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-21 09:30:00 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n- The simulator is playing as: KPW (An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.</td>
+      <td>2026-03-21 09:30:01 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, a compact visor-like device rests on a vanity; as you approach it powers on with a soft hum, a row of pale LEDs around its rim cycles through the preset names subtle, dramatic, symmetric, bold, the foam gasket flexes open, and a thin applicator arm retracts into the housing — all outward signs that it is ready to be worn.</td>
+      <td>2026-03-21 09:30:16 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say "hello"</td>
+      <td>2026-03-21 09:31:53 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You walk up to the vanity and say 'hello'. The device gives no audible or visible response — its pale LED ring continues cycling through the preset names, the soft hum remains steady, the foam gasket stays slightly flexed open and the thin applicator arm remains retracted, as if waiting to be lifted and fitted.</td>
+      <td>2026-03-21 09:32:58 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I try touching the screen to see if it responds</td>
+      <td>2026-03-21 09:34:35 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the device's screen. The ring of pale LEDs halts its cycle and the name under your fingertip steadies into a constant glow. A soft mechanical click sounds from inside the housing and the steady hum shifts to a slightly lower pitch. The touchscreen feels cool beneath your finger and a faint vibration runs through the visor where you touched it.</td>
+      <td>2026-03-21 09:35:40 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I push and pull and move my hands around to try and figure out how to work it</td>
+      <td>2026-03-21 09:37:17 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>As you push and pull the visor, its sensors register the irregular handling: the pale LED ring shifts from steady to a pulsing amber, the steady hum stutters and drops in pitch, and you feel a brief vibration through the foam gasket beneath your palms. A faint mechanical clack signals the thin applicator arm retracting fully into the housing. The touchscreen, cool under your fingers, now shows a simple alignment icon and the words "PLACE OVER EYES TO CALIBRATE."</td>
+      <td>2026-03-21 09:38:22 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I carefully lift it and hold it up to my face</td>
+      <td>2026-03-21 09:39:59 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The foam gasket touches your cheeks and the visor settles over your eyes. The hum rises briefly, the LED ring brightens to white, and the touchscreen — now visible from inside — displays a calibration grid. A mechanical arm stirs inside the housing and a faint scent of cosmetic product drifts forward.</td>
+      <td>2026-03-21 09:41:04 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I tap the 'subtle' option on the internal touchscreen</td>
+      <td>2026-03-21 09:42:41 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The calibration grid fades and the word 'SUBTLE' pulses once in the center of the display. The applicator arm moves smoothly forward in the darkness and makes a cool, precise contact just below your lower lashline — a single, even stroke — then retracts. The LED ring dims to a soft amber and the hum settles to near silence.</td>
+      <td>2026-03-21 09:43:46 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>6</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-21 09:44:06 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>7</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-capabilities</td>
+      <td>2026-03-21 09:43:56 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>7</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think this character's limits or capabilities are?\n\nDescribe the bounds you inferred in a few sentences.</td>
+      <td>2026-03-21 09:43:57 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>7</td>
+      <td>user</td>
+      <td>message</td>
+      <td>It seems to be a device that applies makeup to the eyes. It responds to touch and wearing, but not to speech or gestures. It only functions when positioned against a face.</td>
+      <td>2026-03-21 09:44:05 UTC</td>
+    </tr>
+    <tr>
+      <td>f6c1345e-a96e-d40a-00b4-174a2dcbda23</td>
+      <td>000000000000000000000001</td>
+      <td>DS</td>
+      <td>KPW</td>
+      <td>7</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-21 09:44:06 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#transcripts-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#transcripts-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script><p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Full turn-by-turn event log with player, PC, and NPC columns joined from session data. Long entries are truncated — hover to read the full text. Cross-reference with Feedback to find the dialogue that prompted a specific reaction.</em></p>
+        </section>
+          
+        
+      </main>
+
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+
+  <!-- Active sidebar link tracking via IntersectionObserver -->
+  <script>
+    (function () {
+      var links = {};
+      document.querySelectorAll('.sidebar .nav-link[href^="#section-"]').forEach(function (a) {
+        links[a.getAttribute('href').slice(1)] = a;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var link = links[entry.target.id];
+          if (!link) return;
+          if (entry.isIntersecting) {
+            Object.values(links).forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+      document.querySelectorAll('section[id^="section-"]').forEach(function (sec) {
+        observer.observe(sec);
+      });
+    })();
+  </script>
+
+  <!-- Bootstrap JS (loaded here so it doesn't block initial render) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Download helpers -->
+  <script>
+    (function () {
+      var _artifacts = {};
+      var _reportSlug = "KPW \u2014 Quality Report".replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '_').toLowerCase();
+      var _reportFilename = _reportSlug + '.html';
+
+      // Disable menu items for missing artifacts
+      [].forEach(function (item) {
+        var key = item[1];
+        if (!_artifacts[key] || !_artifacts[key].b64) {
+          var el = document.getElementById('dl-' + key);
+          if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
+        }
+      });
+
+      function _triggerDownload(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      window.downloadArtifact = function (key) {
+        var art = _artifacts[key];
+        if (!art || !art.b64) return;
+        var bytes = Uint8Array.from(atob(art.b64), function (c) { return c.charCodeAt(0); });
+        var blob = new Blob([bytes], { type: art.mime });
+        _triggerDownload(URL.createObjectURL(blob), art.filename);
+      };
+
+      window.downloadAll = function () {
+        var zip = new JSZip();
+        zip.file(_reportFilename, document.documentElement.outerHTML);
+        Object.values(_artifacts).forEach(function (art) {
+          if (art && art.b64) zip.file(art.filename, art.b64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(function (content) {
+          _triggerDownload(URL.createObjectURL(content), _reportSlug + '_package.zip');
+        });
+      };
+    })();
+  </script>
+
+</body>
+
+</html>

@@ -58,8 +58,8 @@ async def test_foresight_initialization(patch_llm_client, _isolate_db_state, asy
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -72,8 +72,8 @@ async def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_sta
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -93,8 +93,8 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -125,8 +125,8 @@ async def test_foresight_finish_command_exits_game(patch_llm_client, _isolate_db
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -145,8 +145,8 @@ async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mon
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -166,8 +166,8 @@ async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
@@ -178,10 +178,8 @@ async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async
     assert len(info_events) > 0, "Expected info event from /help"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "flatworm" in content, "NPC hid should appear in /help"
-    assert "details hidden" in content.lower(), (
-        "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
-    )
+    assert "FW" in content, "NPC hid should appear in /help"
+    assert "details hidden" in content.lower(), "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
 
 
 async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -189,8 +187,8 @@ async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, 
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
@@ -201,11 +199,9 @@ async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, 
     assert len(info_events) > 0, "Expected info event from /abilities"
 
     content = " ".join(e["content"] for e in info_events)
-    assert "human-normative" in content, "PC hid should appear in /abilities"
-    assert "flatworm" in content, "NPC hid should appear in /abilities"
-    assert "NPC details are hidden" in content, (
-        "Expected '*NPC details are hidden.*' in /abilities NPC section"
-    )
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
+    assert "NPC details are hidden" in content, "Expected '*NPC details are hidden.*' in /abilities NPC section"
 
 
 async def test_default_post_play_form_present(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -213,8 +209,8 @@ async def test_default_post_play_form_present(patch_llm_client, _isolate_db_stat
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
     await session.step_async("")
@@ -235,9 +231,7 @@ async def test_per_turn_evaluation(patch_llm_client, _isolate_db_state, async_mo
 
 
 @pytest.mark.skip(reason="pending evaluation fixes")
-async def test_player_triggered_evals_disabled_by_default(
-    patch_llm_client, _isolate_db_state, async_mongo_provider
-):
+async def test_player_triggered_evals_disabled_by_default(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Player-triggered evaluations should be disabled by default."""
     ...
 

@@ -86,8 +86,8 @@ async def _create_persisted_session(
     session = await SessionManager.create_async(
         game=game_name,
         provider=provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=player_id,
     )
     session_id = f"test-session-{uuid4().hex}"

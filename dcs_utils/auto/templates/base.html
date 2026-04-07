@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- DataTables Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <!-- DataTables Buttons -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+  <!-- Plotly, jQuery, and DataTables must all load before body content so inline scripts work -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+  <style>
+    body {
+      font-size: 0.9rem;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      padding-top: 1rem;
+    }
+
+    .sidebar .nav-link {
+      color: #495057;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .sidebar .nav-link:hover {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    .sidebar .nav-link.active {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .sidebar .nav-link-sub {
+      padding-left: 1.75rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .sidebar .nav-link-sub:hover {
+      color: #0d6efd;
+    }
+
+    .sidebar .nav-link-sub.active {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
+    .sidebar-heading {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      padding: 0.5rem 1rem 0.2rem;
+    }
+
+    /* Sections */
+    section {
+      scroll-margin-top: 1rem;
+    }
+
+    section h2 {
+      font-size: 1.4rem;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables */
+    .dataTables_wrapper {
+      font-size: 0.82rem;
+    }
+
+    /* Per-column filter inputs in second header row */
+    tr.dt-filter-row th {
+      padding: 4px 8px;
+    }
+
+    tr.dt-filter-row input {
+      min-width: 3rem;
+    }
+
+    /* Export buttons */
+    .dt-buttons .btn {
+      font-size: 0.75rem;
+    }
+
+    /* Charts */
+    .chart-container {
+      margin-bottom: 1.5rem;
+    }
+
+    /* Definition list in metadata */
+    .dl-meta dt {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .dl-meta dd {
+      color: #212529;
+      margin-bottom: 0.4rem;
+    }
+
+    @media print {
+      .sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      main.col-md-10 {
+        width: 100% !important;
+      }
+
+      section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container-fluid">
+    <div class="row g-0">
+
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-none d-md-block sidebar">
+        <div class="sidebar-heading">Sections</div>
+        <ul class="nav flex-column">
+          {% for anchor, section_title, _, kind in sections %}
+            {% if kind == "group" %}
+          <li class="nav-item">
+            <div class="sidebar-heading mt-2">{{ section_title }}</div>
+          </li>
+            {% else %}
+          <li class="nav-item">
+            <a class="nav-link{% if kind == "sub" %} nav-link-sub{% endif %}" href="#section-{{ anchor }}">{{ section_title }}</a>
+          </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 px-4 py-3">
+        <div class="report-header mb-4">
+          <div>
+            <h1 class="mb-1">{{ title }}</h1>
+            <p class="text-muted mb-0" style="font-size:0.8rem;">
+              Generated {{ generated_at }}
+            </p>
+          </div>
+          <div class="dropdown no-print">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
+              {% for label, key in download_items %}
+              <li><a class="dropdown-item" href="#" id="dl-{{ key }}" onclick="downloadArtifact('{{ key }}'); return false;">{{ label }}</a></li>
+              {% endfor %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
+            </ul>
+          </div>
+        </div>
+
+        {% for anchor, section_title, html_fragment, kind in sections %}
+          {% if kind != "group" %}
+        <section id="section-{{ anchor }}" class="mb-5">
+          <h2>{{ section_title }}</h2>
+          {{ html_fragment | safe }}
+        </section>
+          {% endif %}
+        {% endfor %}
+      </main>
+
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+
+  <!-- Active sidebar link tracking via IntersectionObserver -->
+  <script>
+    (function () {
+      var links = {};
+      document.querySelectorAll('.sidebar .nav-link[href^="#section-"]').forEach(function (a) {
+        links[a.getAttribute('href').slice(1)] = a;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var link = links[entry.target.id];
+          if (!link) return;
+          if (entry.isIntersecting) {
+            Object.values(links).forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+      document.querySelectorAll('section[id^="section-"]').forEach(function (sec) {
+        observer.observe(sec);
+      });
+    })();
+  </script>
+
+  <!-- Bootstrap JS (loaded here so it doesn't block initial render) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Download helpers -->
+  <script>
+    (function () {
+      var _artifacts = {{ artifacts_json }};
+      var _reportSlug = {{ title | e | tojson }}.replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '_').toLowerCase();
+      var _reportFilename = _reportSlug + '.html';
+
+      // Disable menu items for missing artifacts
+      {{ download_items | tojson }}.forEach(function (item) {
+        var key = item[1];
+        if (!_artifacts[key] || !_artifacts[key].b64) {
+          var el = document.getElementById('dl-' + key);
+          if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
+        }
+      });
+
+      function _triggerDownload(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      window.downloadArtifact = function (key) {
+        var art = _artifacts[key];
+        if (!art || !art.b64) return;
+        var bytes = Uint8Array.from(atob(art.b64), function (c) { return c.charCodeAt(0); });
+        var blob = new Blob([bytes], { type: art.mime });
+        _triggerDownload(URL.createObjectURL(blob), art.filename);
+      };
+
+      window.downloadAll = function () {
+        var zip = new JSZip();
+        zip.file(_reportFilename, document.documentElement.outerHTML);
+        Object.values(_artifacts).forEach(function (art) {
+          if (art && art.b64) zip.file(art.filename, art.b64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(function (content) {
+          _triggerDownload(URL.createObjectURL(content), _reportSlug + '_package.zip');
+        });
+      };
+    })();
+  </script>
+
+</body>
+
+</html>

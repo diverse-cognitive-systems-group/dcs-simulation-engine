@@ -83,9 +83,7 @@ dev = [
 # after this package is pip installed, to invoke the main function in the my_app package.
 [project.scripts]
 dcs = "dcs_simulation_engine.cli.app:app"
-# NOTE: dcs-analyze is an easy way to run analysis for now but should be replaced when e2e 
-# CLI commands for engine management, fleet management, analysis, etc are decided
-dcs-analyze = "analysis.auto.__main__:main"
+dcs-utils = "dcs_utils.cli.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
@@ -120,7 +118,7 @@ profile = "black"
 
 [tool.ruff]
 exclude = [
-  "analysis/*", # analysis folder
+  "dcs_utils/*", # dcs_utils folder
   "**/*.ipynb", # all notebooks
 ]
 line-length = 140
