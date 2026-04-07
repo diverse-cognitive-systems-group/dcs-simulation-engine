@@ -1,16 +1,10 @@
 # Getting Started
 
-## What is DCS?
+The general workflow for using the engine across use cases is to configure it (define that game, characters, etc. you want to run), run it (locally or remotely), share access link with players (human or AI), monitor activity, and export gameplay results for analysis. The full user guide contains specific use case examples.
 
-A flexible gameplay framework for running, studying, and analyzing interactions between diverse cognitive systems — including neurodivergent humans, AI agents, and hybrid systems.
+<img src="assets/workflow.png" alt="Workflow overview" width="600"/>
 
-The engine is used by:
-
-- **Researchers** designing experiments to study cognition across conditions and scenarios
-- **AI practitioners** using games as a sandbox for agent training and evaluation
-- **Educators and team leaders** running training sessions in diverse engagement and decision-making
-
-### Key concepts
+### Key terminology + concepts
 
 | Term | Description |
 |---|---|
@@ -19,21 +13,6 @@ The engine is used by:
 | **Characters** | Cognitive systems that can be assigned as PCs (player characters) or NPCs (non-player characters); vary in goals, sensory/perceptual abilities, etc. |
 | **Games** | Python-defined interaction flows (scenarios, objectives, characters) |
 | **Run configs** | YAML files that configure a specific engine run (what players, games, characters, etc.) |
-
-### Workflow
-
-1. ⚙️ Configure engine run  
-   _(use `examples/run_configs` or your own)_
-
-2. 🚀 Run the engine  
-   _(locally or remotely)_
-
-3. 🔗 Share access  
-   _(player link or AI agent)_
-
-4. 📊 Monitor activity  
-
-5. 📦 Export & analyze results
 
 ## Quickstart
 

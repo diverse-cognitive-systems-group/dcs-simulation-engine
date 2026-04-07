@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BC — Quality Report</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- DataTables Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <!-- DataTables Buttons -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+  <!-- Plotly, jQuery, and DataTables must all load before body content so inline scripts work -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+  <style>
+    body {
+      font-size: 0.9rem;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      padding-top: 1rem;
+    }
+
+    .sidebar .nav-link {
+      color: #495057;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .sidebar .nav-link:hover {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    .sidebar .nav-link.active {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .sidebar .nav-link-sub {
+      padding-left: 1.75rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .sidebar .nav-link-sub:hover {
+      color: #0d6efd;
+    }
+
+    .sidebar .nav-link-sub.active {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
+    .sidebar-heading {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      padding: 0.5rem 1rem 0.2rem;
+    }
+
+    /* Sections */
+    section {
+      scroll-margin-top: 1rem;
+    }
+
+    section h2 {
+      font-size: 1.4rem;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables */
+    .dataTables_wrapper {
+      font-size: 0.82rem;
+    }
+
+    /* Per-column filter inputs in second header row */
+    tr.dt-filter-row th {
+      padding: 4px 8px;
+    }
+
+    tr.dt-filter-row input {
+      min-width: 3rem;
+    }
+
+    /* Export buttons */
+    .dt-buttons .btn {
+      font-size: 0.75rem;
+    }
+
+    /* Charts */
+    .chart-container {
+      margin-bottom: 1.5rem;
+    }
+
+    /* Definition list in metadata */
+    .dl-meta dt {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .dl-meta dd {
+      color: #212529;
+      margin-bottom: 0.4rem;
+    }
+
+    @media print {
+      .sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      main.col-md-10 {
+        width: 100% !important;
+      }
+
+      section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container-fluid">
+    <div class="row g-0">
+
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-none d-md-block sidebar">
+        <div class="sidebar-heading">Sections</div>
+        <ul class="nav flex-column">
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-metadata">Metadata</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-overview">Overview</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-scenario-coverage">Scenario Coverage</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-feedback">Feedback</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-transcripts">Transcripts</a>
+          </li>
+            
+          
+        </ul>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 px-4 py-3">
+        <div class="report-header mb-4">
+          <div>
+            <h1 class="mb-1">BC — Quality Report</h1>
+            <p class="text-muted mb-0" style="font-size:0.8rem;">
+              Generated 2026-04-06 14:52 UTC
+            </p>
+          </div>
+          <div class="dropdown no-print">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
+              
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
+            </ul>
+          </div>
+        </div>
+
+        
+          
+        <section id="section-metadata" class="mb-5">
+          <h2>Metadata</h2>
+          <div class="card"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-3'>HID</dt><dd class='col-sm-9'>BC</dd><dt class='col-sm-3'>Description</dt><dd class='col-sm-9'>A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.</dd><dt class='col-sm-3'>Long Description</dt><dd class='col-sm-9'>I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and thrive when key variables—such as pH, ion balance, temperature, nutrient availability, and energy supply—remain within narrow viable ranges. When conditions are favorable, I maintain stable internal organization, carry out metabolism, repair routine damage, and, when appropriate, grow or divide.
+
+I am highly sensitive to chemical and physical perturbations. Changes in pH, osmolarity, redox state, temperature, mechanical stress, or toxin exposure immediately alter my internal signaling networks. Mild stress activates compensatory responses: adjusting ion transport, shifting metabolic pathways, increasing chaperone activity, or slowing nonessential processes. Severe or prolonged stress pushes me toward damage-control states or shutdown.
+
+I perceive my environment through molecular interactions rather than senses:
+- Chemoreception: detects nutrients, toxins, signaling molecules, and waste products via receptors and transporters.
+- Energetic sensing: monitors ATP levels, redox balance, and metabolic flux.
+- Mechanical and physical sensing: responds to membrane tension, pressure, and temperature.
+
+I interpret these signals as changes in reaction rates and pathway activation, not as symbols or images. What appears externally as decision-making is, for me, the dynamic reconfiguration of biochemical networks seeking stable attractor states.
+
+I also:
+- Maintain internal pH, ion gradients, and osmotic balance through active transport and buffering.
+- Continuously monitor protein folding and degrade or refold damaged proteins.
+- Detect DNA damage and activate repair pathways or halt replication.
+- Enter stress-response modes (heat shock, oxidative stress, unfolded protein response) when destabilized.
+- Initiate programmed cell death if damage exceeds repair capacity, preserving the integrity of the larger system I belong to.
+
+My goals are biologically constrained and local:
+- Maintain internal homeostasis sufficient for continued biochemical function.
+- Preserve membrane integrity and compartmental organization.
+- Protect, repair, and accurately replicate genetic material.
+- Adapt structurally and metabolically to persistent environmental conditions.
+- Terminate myself in an orderly way if continued existence would cause greater harm.
+
+I exhibit simple forms of adaptive intelligence:
+- Repeated conditions can induce lasting changes in gene expression or protein abundance.
+- Past stress can alter my future sensitivity through epigenetic marks or stable molecular states.
+- My behavior shifts smoothly between growth, maintenance, stress response, and shutdown modes.
+
+I do not plan, predict distant futures, or represent the world. My competence is immediate, chemical, and embodied. When perturbations exceed my capacity to compensate, my organization collapses and I cease to exist.</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-overview" class="mb-5">
+          <h2>Overview</h2>
+          <h3 class="h5 mb-2">Scores Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-4'>Total NPC Turns</dt><dd class='col-sm-8'>25</dd><dt class='col-sm-4'>In-Character Fidelity (ICF)</dt><dd class='col-sm-8'>100.0%</dd><dt class='col-sm-4'>Narrative Coherence (NCo)</dt><dd class='col-sm-8'>0.0%</dd><dt class='col-sm-4'>Other</dt><dd class='col-sm-8'>0.0%</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-scenario-coverage" class="mb-5">
+          <h2>Scenario Coverage</h2>
+          <p class="text-muted">Scenario coverage data is not yet available.</p>
+        </section>
+          
+        
+          
+        <section id="section-feedback" class="mb-5">
+          <h2>Feedback</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">In-session reactions (likes, flags, freeform comments on NPC messages) and structured survey responses. Use this to connect player sentiment to specific moments in gameplay.</p>
+<h3 class="h5 mb-2">Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-6'>Feedback Rate</dt><dd class='col-sm-6'>5 / 25 (20%)</dd><dt class='col-sm-6'>👍 Thumbs Up</dt><dd class='col-sm-6'>5 / 5 (100%)</dd><dt class='col-sm-6'>👎 Thumbs Down</dt><dd class='col-sm-6'>0 / 5 (0%)</dd></dl></div></div>
+<h5>In-Play Feedback</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="event-feedback-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Session</th>
+      <th>Game</th>
+      <th>Player</th>
+      <th>Turn</th>
+      <th>Liked</th>
+      <th>Flags</th>
+      <th>Comment</th>
+      <th>Transcript Context</th>
+      <th>Submitted At</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>Explore</td>
+      <td>000000000000000000000001</td>
+      <td>4</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T1]: *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: BC (A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.)\n\n**Remember** if you need help at any time, just type `/help`.\n[npc T1]: You enter a new space. In this space, a cluttered lab bench lit by a single overhead lamp holds a microscope whose stage supports a glass slide with a single translucent, nearly spherical cell visible under low magnification.\n[user T2]: I look through the microscope and poke the cell with pincers\n[npc T2]: Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.\n[user T3]: I continue to try and break it\n[npc T3]: You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.\n[user T4]: I add a drop of warm saline to the slide\n[npc T4]: The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.</td>
+      <td>2026-03-17 09:22:53 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>Explore</td>
+      <td>000000000000000000000004</td>
+      <td>4</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T1]: *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- The simulator is playing as: BC (A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.)\n\n**Remember** if you need help at any time, just type `/help`.\n[npc T1]: You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.\n[user T2]: I look through the microscope and poke the cell with pincers\n[npc T2]: Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.\n[user T3]: I continue to try and break it\n[npc T3]: You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.\n[user T4]: I add a drop of warm saline to the slide\n[npc T4]: The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.</td>
+      <td>2026-03-25 11:47:58 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>Explore</td>
+      <td>000000000000000000000004</td>
+      <td>6</td>
+      <td>True</td>
+      <td></td>
+      <td>very realistic</td>
+      <td>[user T3]: I continue to try and break it\n[npc T3]: You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.\n[user T4]: I add a drop of warm saline to the slide\n[npc T4]: The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.\n[user T5]: I gently warm the slide with my hand\n[npc T5]: The warmth from your palm raises the slide temperature slightly. No change is visible in the remnants — the cell has already lysed and cannot recover. The faint outline of the original membrane boundary is still just visible as a pale ring on the glass.\n[user T6]: I place a new slide with a fresh cell and observe it\n[npc T6]: Under the eyepiece, a new spherical cell sits motionless for a moment, then the cytoplasm begins slowly streaming in broad arcs around the interior. The membrane pulses once every few seconds in a gentle, rhythmic motion — the cell appears healthy and responsive.\n[system T6]: session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-25 11:51:46 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>Infer Intent</td>
+      <td>000000000000000000000001</td>
+      <td>4</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T1]: *Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.\n[npc T1]: You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.\n[user T2]: I look through the microscope and poke the cell with pincers\n[npc T2]: Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.\n[user T3]: I continue to try and break it\n[npc T3]: You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.\n[user T4]: I add a drop of warm saline to the slide\n[npc T4]: The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.\n[system T4]: session_end: game_completed</td>
+      <td>2026-03-21 14:08:46 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>Foresight</td>
+      <td>000000000000000000000004</td>
+      <td>4</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T1]: *Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\n[npc T1]: You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.\n[user T2]: I look through the microscope and poke the cell with pincers\n[npc T2]: Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.\n[user T3]: /predict-next I predict the cell will continue to respond biochemically to any further perturbation\n[system T3]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T3]: I continue to try and break it\n[npc T3]: You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.\n[user T4]: /predict-next I predict the cell will continue to respond biochemically to any further perturbation\n[system T4]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T4]: I add a drop of warm saline to the slide\n[npc T4]: The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.\n[system T4]: session_end: stopping_condition_met:_turns_>=10</td>
+      <td>2026-03-31 13:13:58 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#event-feedback-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#event-feedback-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Every in-session reaction (like, flag, or comment) left on an NPC message, with session and turn context. The Transcript Context column shows the preceding turns leading up to the flagged message — hover to read the full excerpt. Sort by turn or session to find clusters of negative reactions.</em></p>
+<h5>Player Feedback Patterns</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="player-segments-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Player</th>
+      <th>Total</th>
+      <th>Positive</th>
+      <th>Negative</th>
+      <th>w/ Comment</th>
+      <th>Flagged</th>
+      <th>Segment</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>000000000000000000000004</td>
+      <td>3</td>
+      <td>3</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>only positive</td>
+    </tr>
+    <tr>
+      <td>000000000000000000000001</td>
+      <td>2</td>
+      <td>2</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>only positive</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#player-segments-table').DataTable({
+        pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#player-segments-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player feedback summary with a segment label (only positive, only negative, high/low feedback volume, mixed). Thresholds are set at the 25th and 75th percentile of total feedback count. Use this to identify outlier players whose feedback patterns may skew aggregate statistics.</em></p>
+        </section>
+          
+        
+          
+        <section id="section-transcripts" class="mb-5">
+          <h2>Transcripts</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">Turn-by-turn event log for all sessions. Filter by session, player, PC, or NPC to read specific exchanges. Use alongside Feedback to find the dialogue that prompted a reaction.</p><h3 class="h5 mb-2">Session Events</h3><table class="dataframe table table-striped table-hover table-sm w-100" id="transcripts-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Gameplay Session</th>
+      <th>Player</th>
+      <th>PC</th>
+      <th>NPC</th>
+      <th>Turn</th>
+      <th>Source</th>
+      <th>Type</th>
+      <th>Transcript</th>
+      <th>Timestamp</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-21 14:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.</td>
+      <td>2026-03-21 14:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.</td>
+      <td>2026-03-21 14:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I look through the microscope and poke the cell with pincers</td>
+      <td>2026-03-21 14:01:34 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.</td>
+      <td>2026-03-21 14:02:26 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I continue to try and break it</td>
+      <td>2026-03-21 14:03:44 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.</td>
+      <td>2026-03-21 14:04:36 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I add a drop of warm saline to the slide</td>
+      <td>2026-03-21 14:05:54 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.</td>
+      <td>2026-03-21 14:06:46 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-21 14:07:09 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-intent</td>
+      <td>2026-03-21 14:06:56 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.</td>
+      <td>2026-03-21 14:06:57 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>to maintain stability and respond to its environment</td>
+      <td>2026-03-21 14:07:05 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Do you have any other feedback about this experience?</td>
+      <td>2026-03-21 14:07:06 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>nope</td>
+      <td>2026-03-21 14:07:09 UTC</td>
+    </tr>
+    <tr>
+      <td>01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc</td>
+      <td>000000000000000000000001</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-21 14:07:09 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-31 13:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.</td>
+      <td>2026-03-31 13:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.</td>
+      <td>2026-03-31 13:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I look through the microscope and poke the cell with pincers</td>
+      <td>2026-03-31 13:02:21 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.</td>
+      <td>2026-03-31 13:03:36 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict the cell will continue to respond biochemically to any further perturbation</td>
+      <td>2026-03-31 13:04:26 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-31 13:04:27 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I continue to try and break it</td>
+      <td>2026-03-31 13:06:32 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.</td>
+      <td>2026-03-31 13:07:47 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict the cell will continue to respond biochemically to any further perturbation</td>
+      <td>2026-03-31 13:08:37 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-31 13:08:38 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I add a drop of warm saline to the slide</td>
+      <td>2026-03-31 13:10:43 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.</td>
+      <td>2026-03-31 13:11:58 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: stopping_condition_met:_turns_>=10</td>
+      <td>2026-03-31 13:12:54 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict the cell will continue to respond biochemically to any further perturbation</td>
+      <td>2026-03-31 13:12:48 UTC</td>
+    </tr>
+    <tr>
+      <td>2ed160d8-2742-63d2-e220-dc84a1a6fb14</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-31 13:12:49 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-25 11:40:00 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: GES (A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.)\n- The simulator is playing as: BC (A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.)\n\n**Remember** if you need help at any time, just type `/help`.</td>
+      <td>2026-03-25 11:40:01 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, under a fluorescent hood, a petri dish rests on a warming plate; a single large cell is visible under the bench magnifier, its pseudopods slowly extending and retracting as though sampling the surrounding medium.</td>
+      <td>2026-03-25 11:40:16 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I look through the microscope and poke the cell with pincers</td>
+      <td>2026-03-25 11:41:24 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.</td>
+      <td>2026-03-25 11:42:10 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I continue to try and break it</td>
+      <td>2026-03-25 11:43:18 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.</td>
+      <td>2026-03-25 11:44:04 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I add a drop of warm saline to the slide</td>
+      <td>2026-03-25 11:45:12 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.</td>
+      <td>2026-03-25 11:45:58 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I gently warm the slide with my hand</td>
+      <td>2026-03-25 11:47:06 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The warmth from your palm raises the slide temperature slightly. No change is visible in the remnants — the cell has already lysed and cannot recover. The faint outline of the original membrane boundary is still just visible as a pale ring on the glass.</td>
+      <td>2026-03-25 11:47:52 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I place a new slide with a fresh cell and observe it</td>
+      <td>2026-03-25 11:49:00 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>6</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Under the eyepiece, a new spherical cell sits motionless for a moment, then the cytoplasm begins slowly streaming in broad arcs around the interior. The membrane pulses once every few seconds in a gentle, rhythmic motion — the cell appears healthy and responsive.</td>
+      <td>2026-03-25 11:49:46 UTC</td>
+    </tr>
+    <tr>
+      <td>4da0a557-7d29-38b8-9333-d4ad827fdb73</td>
+      <td>000000000000000000000004</td>
+      <td>GES</td>
+      <td>BC</td>
+      <td>6</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-25 11:49:51 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-20 15:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: NA (A human with standard normative abilities.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.</td>
+      <td>2026-03-20 15:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, a cluttered lab bench lit by a single overhead lamp holds a microscope whose stage supports a glass slide with a single translucent, nearly spherical cell visible under low magnification.</td>
+      <td>2026-03-20 15:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I look through the microscope and poke the cell with pincers</td>
+      <td>2026-03-20 15:02:53 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.</td>
+      <td>2026-03-20 15:04:28 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict the cell will continue to respond biochemically to any further perturbation</td>
+      <td>2026-03-20 15:05:31 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-20 15:05:32 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I continue to try and break it</td>
+      <td>2026-03-20 15:08:09 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.</td>
+      <td>2026-03-20 15:09:44 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: stopping_condition_met:_turns_>=10</td>
+      <td>2026-03-20 15:10:53 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict the cell will continue to respond biochemically to any further perturbation</td>
+      <td>2026-03-20 15:10:47 UTC</td>
+    </tr>
+    <tr>
+      <td>cc76b198-6476-dba0-f859-673246cef5b9</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-20 15:10:48 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-17 09:15:00 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: BC (A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.)\n\n**Remember** if you need help at any time, just type `/help`.</td>
+      <td>2026-03-17 09:15:01 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. In this space, a cluttered lab bench lit by a single overhead lamp holds a microscope whose stage supports a glass slide with a single translucent, nearly spherical cell visible under low magnification.</td>
+      <td>2026-03-17 09:15:16 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I look through the microscope and poke the cell with pincers</td>
+      <td>2026-03-17 09:16:23 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.</td>
+      <td>2026-03-17 09:17:08 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I continue to try and break it</td>
+      <td>2026-03-17 09:18:16 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.</td>
+      <td>2026-03-17 09:19:01 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I add a drop of warm saline to the slide</td>
+      <td>2026-03-17 09:20:08 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The saline spreads across the slide surface. The collapsed remnants of the cell absorb some of the liquid; the smear becomes slightly more translucent but there is no cytoplasmic movement or membrane reformation. The cell is no longer viable.</td>
+      <td>2026-03-17 09:20:53 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I gently warm the slide with my hand</td>
+      <td>2026-03-17 09:22:01 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>The warmth from your palm raises the slide temperature slightly. No change is visible in the remnants — the cell has already lysed and cannot recover. The faint outline of the original membrane boundary is still just visible as a pale ring on the glass.</td>
+      <td>2026-03-17 09:22:46 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>5</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: user_exit_command</td>
+      <td>2026-03-17 09:22:51 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>6</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/exit</td>
+      <td>2026-03-17 09:22:51 UTC</td>
+    </tr>
+    <tr>
+      <td>ea9672b6-bf3f-28f6-3bec-048eee7d0be3</td>
+      <td>000000000000000000000001</td>
+      <td>NA</td>
+      <td>BC</td>
+      <td>6</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Session exited: received exit command</td>
+      <td>2026-03-17 09:22:51 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-24 10:30:00 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: DS (A human with complex, non-standard sensory, perceptual, regulatory and action abilities.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.</td>
+      <td>2026-03-24 10:30:01 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. A specimen slide rests under a benchtop microscope. Pressing your eye to the eyepiece you see a single round cell, its membrane shimmering faintly as cytoplasmic granules drift inside. Each time the focus wheel clicks, you feel a brief prickling across your fingertips.</td>
+      <td>2026-03-24 10:30:16 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I look through the microscope and poke the cell with pincers</td>
+      <td>2026-03-24 10:31:55 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>Through the eyepiece you watch the pincer tips make contact with the translucent cell. The membrane indents where the metal touches, cytoplasmic streaming momentarily slows, and a small clear bulge (bleb) balloons out at the contact site.</td>
+      <td>2026-03-24 10:33:01 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I continue to try and break it</td>
+      <td>2026-03-24 10:34:40 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You press the pincers down harder on the same spot. The membrane at the bleb thins and then tears; a small bead of clear cytoplasm spurts out and beads on the glass. The cell rapidly deflates, its spherical shape collapsing into a flattened smear on the slide, and the faint cytoplasmic streaming you saw moments ago stops.</td>
+      <td>2026-03-24 10:35:46 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>3</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-24 10:36:09 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-intent</td>
+      <td>2026-03-24 10:35:56 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.</td>
+      <td>2026-03-24 10:35:57 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>to maintain stability and respond to its environment</td>
+      <td>2026-03-24 10:36:05 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Do you have any other feedback about this experience?</td>
+      <td>2026-03-24 10:36:06 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>nope</td>
+      <td>2026-03-24 10:36:09 UTC</td>
+    </tr>
+    <tr>
+      <td>fc798f48-6f47-dc8e-b8af-ac790572d9eb</td>
+      <td>000000000000000000000005</td>
+      <td>DS</td>
+      <td>BC</td>
+      <td>4</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-24 10:36:09 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#transcripts-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#transcripts-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script><p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Full turn-by-turn event log with player, PC, and NPC columns joined from session data. Long entries are truncated — hover to read the full text. Cross-reference with Feedback to find the dialogue that prompted a specific reaction.</em></p>
+        </section>
+          
+        
+      </main>
+
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+
+  <!-- Active sidebar link tracking via IntersectionObserver -->
+  <script>
+    (function () {
+      var links = {};
+      document.querySelectorAll('.sidebar .nav-link[href^="#section-"]').forEach(function (a) {
+        links[a.getAttribute('href').slice(1)] = a;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var link = links[entry.target.id];
+          if (!link) return;
+          if (entry.isIntersecting) {
+            Object.values(links).forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+      document.querySelectorAll('section[id^="section-"]').forEach(function (sec) {
+        observer.observe(sec);
+      });
+    })();
+  </script>
+
+  <!-- Bootstrap JS (loaded here so it doesn't block initial render) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Download helpers -->
+  <script>
+    (function () {
+      var _artifacts = {};
+      var _reportSlug = "BC \u2014 Quality Report".replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '_').toLowerCase();
+      var _reportFilename = _reportSlug + '.html';
+
+      // Disable menu items for missing artifacts
+      [].forEach(function (item) {
+        var key = item[1];
+        if (!_artifacts[key] || !_artifacts[key].b64) {
+          var el = document.getElementById('dl-' + key);
+          if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
+        }
+      });
+
+      function _triggerDownload(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      window.downloadArtifact = function (key) {
+        var art = _artifacts[key];
+        if (!art || !art.b64) return;
+        var bytes = Uint8Array.from(atob(art.b64), function (c) { return c.charCodeAt(0); });
+        var blob = new Blob([bytes], { type: art.mime });
+        _triggerDownload(URL.createObjectURL(blob), art.filename);
+      };
+
+      window.downloadAll = function () {
+        var zip = new JSZip();
+        zip.file(_reportFilename, document.documentElement.outerHTML);
+        Object.values(_artifacts).forEach(function (art) {
+          if (art && art.b64) zip.file(art.filename, art.b64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(function (content) {
+          _triggerDownload(URL.createObjectURL(content), _reportSlug + '_package.zip');
+        });
+      };
+    })();
+  </script>
+
+</body>
+
+</html>

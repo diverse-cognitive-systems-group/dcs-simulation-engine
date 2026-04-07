@@ -1,0 +1,21 @@
+# Policy for releasing characters to production
+policy_version: "character-release-policy-v1"
+
+description: "Pre-release engine has moderate character quality restrictions for production."
+
+criteria:
+  # Minimum In-Character Fidelity (ICF) score required for approval (0.0–1.0).
+  # ICF = fraction of NPC turns not flagged as out-of-character by study participants.
+  # 0.95 = high bar: at least 19 in 20 NPC turns must be in-character.
+  min_icf_score: 0.95
+
+  # Minimum scenario coverage score required for approval (0.0–1.0).
+  # Scenario coverage = fraction of the 12 pressure categories represented in the
+  # character's evaluated sessions (distinct from character/diversity coverage).
+  # 0.95 = at least 12 of 12 categories must be covered (rounds to 100% for 12 categories).
+  min_scenario_coverage_score: 0.95
+
+  # Evaluation fingerprint must match the current model + updater prompt template.
+  # Prevents stale evaluations (run against an older model or prompt) from granting
+  # approval to characters that have not been re-evaluated under the current setup.
+  require_current_fingerprint: true

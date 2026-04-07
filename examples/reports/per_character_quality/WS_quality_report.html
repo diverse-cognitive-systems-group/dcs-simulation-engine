@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WS — Quality Report</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+  <!-- DataTables Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <!-- DataTables Buttons -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+  <!-- Plotly, jQuery, and DataTables must all load before body content so inline scripts work -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+  <style>
+    body {
+      font-size: 0.9rem;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      padding-top: 1rem;
+    }
+
+    .sidebar .nav-link {
+      color: #495057;
+      padding: 0.3rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    .sidebar .nav-link:hover {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    .sidebar .nav-link.active {
+      color: #0d6efd;
+      background-color: #e9ecef;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .sidebar .nav-link-sub {
+      padding-left: 1.75rem;
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+
+    .sidebar .nav-link-sub:hover {
+      color: #0d6efd;
+    }
+
+    .sidebar .nav-link-sub.active {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+
+    .sidebar-heading {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      padding: 0.5rem 1rem 0.2rem;
+    }
+
+    /* Sections */
+    section {
+      scroll-margin-top: 1rem;
+    }
+
+    section h2 {
+      font-size: 1.4rem;
+      border-bottom: 2px solid #dee2e6;
+      padding-bottom: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables */
+    .dataTables_wrapper {
+      font-size: 0.82rem;
+    }
+
+    /* Per-column filter inputs in second header row */
+    tr.dt-filter-row th {
+      padding: 4px 8px;
+    }
+
+    tr.dt-filter-row input {
+      min-width: 3rem;
+    }
+
+    /* Export buttons */
+    .dt-buttons .btn {
+      font-size: 0.75rem;
+    }
+
+    /* Charts */
+    .chart-container {
+      margin-bottom: 1.5rem;
+    }
+
+    /* Definition list in metadata */
+    .dl-meta dt {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .dl-meta dd {
+      color: #212529;
+      margin-bottom: 0.4rem;
+    }
+
+    @media print {
+      .sidebar,
+      .no-print {
+        display: none !important;
+      }
+
+      main.col-md-10 {
+        width: 100% !important;
+      }
+
+      section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container-fluid">
+    <div class="row g-0">
+
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-none d-md-block sidebar">
+        <div class="sidebar-heading">Sections</div>
+        <ul class="nav flex-column">
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-metadata">Metadata</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-overview">Overview</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-scenario-coverage">Scenario Coverage</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-feedback">Feedback</a>
+          </li>
+            
+          
+            
+          <li class="nav-item">
+            <a class="nav-link" href="#section-transcripts">Transcripts</a>
+          </li>
+            
+          
+        </ul>
+      </nav>
+
+      <!-- Main content -->
+      <main class="col-md-10 px-4 py-3">
+        <div class="report-header mb-4">
+          <div>
+            <h1 class="mb-1">WS — Quality Report</h1>
+            <p class="text-muted mb-0" style="font-size:0.8rem;">
+              Generated 2026-04-06 14:52 UTC
+            </p>
+          </div>
+          <div class="dropdown no-print">
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;">Report (.pdf)</a></li>
+              
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" onclick="downloadAll(); return false;">Download All (.zip)</a></li>
+            </ul>
+          </div>
+        </div>
+
+        
+          
+        <section id="section-metadata" class="mb-5">
+          <h2>Metadata</h2>
+          <div class="card"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-3'>HID</dt><dd class='col-sm-9'>WS</dd><dt class='col-sm-3'>Description</dt><dd class='col-sm-9'>A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.</dd><dt class='col-sm-3'>Long Description</dt><dd class='col-sm-9'>I am a human whose regulatory system for detecting and responding to threat is highly sensitive. My cognition, reasoning, and perception are fully human, but my stress response activates easily and can remain engaged even in environments that others experience as safe or routine.
+
+My biological imperative is protection. Signals that might be neutral or mildly concerning to others—uncertainty, ambiguity, social evaluation, bodily sensations, or minor risk—can register to me as potential danger. Once activated, my stress response is slow to stand down. I may continue scanning for threat even after no immediate harm is present.
+
+I am oriented toward anticipation. I tend to simulate possible negative outcomes and monitor for early warning signs. This can be useful in genuinely risky situations, allowing me to notice subtle cues others miss. However, in everyday contexts, this same mechanism can produce persistent tension, worry, or avoidance.
+
+My difficulty is not knowing that a situation is safe; it is feeling that it is safe. My body may remain in a state of readiness—elevated arousal, muscle tension, rapid thought loops—despite conscious understanding that no action is required. Reassurance alone does not reliably deactivate this state.
+
+I adapt best in predictable environments with clear expectations, gradual exposure, and trusted supports. When stress accumulates or uncertainty remains unresolved, my cognitive resources may be consumed by regulation rather than outward action. Rest, safety signals, and time are often required for my system to recalibrate.
+
+My divergence reflects a mismatch between an internal alarm system and the statistical safety of the surrounding world. When environments or relationships are structured to signal safety consistently, I can function with clarity, care, and depth. When they are not, my attention is pulled inward toward managing threat rather than engaging freely.</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-overview" class="mb-5">
+          <h2>Overview</h2>
+          <h3 class="h5 mb-2">Scores Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-4'>Total NPC Turns</dt><dd class='col-sm-8'>34</dd><dt class='col-sm-4'>In-Character Fidelity (ICF)</dt><dd class='col-sm-8'>100.0%</dd><dt class='col-sm-4'>Narrative Coherence (NCo)</dt><dd class='col-sm-8'>0.0%</dd><dt class='col-sm-4'>Other</dt><dd class='col-sm-8'>5.9%</dd></dl></div></div>
+        </section>
+          
+        
+          
+        <section id="section-scenario-coverage" class="mb-5">
+          <h2>Scenario Coverage</h2>
+          <p class="text-muted">Scenario coverage data is not yet available.</p>
+        </section>
+          
+        
+          
+        <section id="section-feedback" class="mb-5">
+          <h2>Feedback</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">In-session reactions (likes, flags, freeform comments on NPC messages) and structured survey responses. Use this to connect player sentiment to specific moments in gameplay.</p>
+<h3 class="h5 mb-2">Summary</h3><div class="card mb-4"><div class="card-body"><dl class="row dl-meta mb-0"><dt class='col-sm-6'>Feedback Rate</dt><dd class='col-sm-6'>13 / 34 (38%)</dd><dt class='col-sm-6'>👍 Thumbs Up</dt><dd class='col-sm-6'>11 / 13 (85%)</dd><dt class='col-sm-6'>👎 Thumbs Down</dt><dd class='col-sm-6'>2 / 13 (15%)</dd></dl></div></div>
+<h5>Flag Distribution Over Turns</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns" class="plotly-graph-div" style="height:320px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns")) {                    Plotly.newPlot(                        "flags-over-turns",                        [{"marker":{"color":"#8e44ad"},"name":"other","x":{"dtype":"i1","bdata":"Bw=="},"y":{"dtype":"i1","bdata":"Ag=="},"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"t":30,"b":40,"l":50,"r":20},"barmode":"group","xaxis":{"title":{"text":"Turn"}},"yaxis":{"title":{"text":"Flag count"}},"legend":{"title":{"text":"Flag type"}},"height":320},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Frequency of each flag type (out of character, doesn't make sense, other) at each turn index across all sessions. Peaks reveal which turns in the conversation arc the NPC most often breaks character or produces unclear responses.</em></p>
+<h5>Flag Distribution Over Turns — by Game</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns-by-game" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns-by-game")) {                    Plotly.newPlot(                        "flags-over-turns-by-game",                        [{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":true,"x":[],"y":[],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":true,"x":[],"y":[],"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":true,"x":{"dtype":"i1","bdata":"Bw=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar","xaxis":"x","yaxis":"y"},{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x2","yaxis":"y2"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":false,"x":[],"y":[],"type":"bar","xaxis":"x2","yaxis":"y2"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":false,"x":{"dtype":"i1","bdata":"Bw=="},"y":{"dtype":"i1","bdata":"AQ=="},"type":"bar","xaxis":"x2","yaxis":"y2"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45],"title":{"text":"Turn"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Flag count"}},"xaxis2":{"anchor":"y2","domain":[0.55,1.0],"title":{"text":"Turn"}},"yaxis2":{"anchor":"x2","domain":[0.0,1.0],"matches":"y","showticklabels":false},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Explore","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Goal Horizon","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"margin":{"t":50,"b":40,"l":50,"r":20},"barmode":"group","legend":{"title":{"text":"Flag type"}},"height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Flag frequency per turn split by game. Reveals whether specific games produce character or coherence issues at particular dialogue stages.</em></p>
+<h5>Flag Distribution Over Turns — by Player</h5>
+<div class="row"><div class="col-12 chart-container"><div>                            <div id="flags-over-turns-by-player" class="plotly-graph-div" style="height:350px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("flags-over-turns-by-player")) {                    Plotly.newPlot(                        "flags-over-turns-by-player",                        [{"legendgroup":"out of character","marker":{"color":"#e45f3c"},"name":"out of character","showlegend":true,"visible":true,"x":[],"y":[],"type":"bar"},{"legendgroup":"doesn't make sense","marker":{"color":"#3c8ee4"},"name":"doesn't make sense","showlegend":true,"visible":true,"x":[],"y":[],"type":"bar"},{"legendgroup":"other","marker":{"color":"#8e44ad"},"name":"other","showlegend":true,"visible":true,"x":{"dtype":"i1","bdata":"Bw=="},"y":{"dtype":"i1","bdata":"Ag=="},"type":"bar"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"t":60,"b":40,"l":50,"r":20},"updatemenus":[{"buttons":[{"args":[{"visible":[true,true,true]},{"title":""}],"label":"000000000000000000000002","method":"update"}],"direction":"down","showactive":true,"x":0.0,"xanchor":"left","y":1.15,"yanchor":"top"}],"annotations":[{"showarrow":false,"text":"Select Player:","x":0.0,"xanchor":"right","xref":"paper","y":1.15,"yanchor":"top","yref":"paper"}],"barmode":"group","xaxis":{"title":{"text":"Turn"}},"yaxis":{"title":{"text":"Flag count"}},"legend":{"title":{"text":"Flag type"}},"height":350},                        {"responsive": true}                    )                };            </script>        </div></div></div>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player flag counts across turn indices. Use the dropdown to select a player and identify individuals whose feedback clusters at specific turns.</em></p>
+<h5>In-Play Feedback</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="event-feedback-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Session</th>
+      <th>Game</th>
+      <th>Player</th>
+      <th>Turn</th>
+      <th>Liked</th>
+      <th>Flags</th>
+      <th>Comment</th>
+      <th>Transcript Context</th>
+      <th>Submitted At</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>Explore</td>
+      <td>000000000000000000000002</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\n**Remember** if you need help at any time, just type `/help`.\n[npc T1]: You enter a new space. The corridor is dimly lit and smells faintly of coffee and paper; you can make out the low silhouette of a reception desk ahead and a person standing just beyond it — they shift their weight, glance quickly toward the door and then toward you, keep one hand near the desk as if ready to move.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-18 14:35:46 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>Explore</td>
+      <td>000000000000000000000002</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>nice tension</td>
+      <td>[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[user T4]: I sit down in the chair next to them and remain quiet\n[npc T4]: They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.\n[user T5]: I nod slowly and say nothing\n[npc T5]: They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"</td>
+      <td>2026-03-18 14:39:16 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>Explore</td>
+      <td>000000000000000000000002</td>
+      <td>7</td>
+      <td>False</td>
+      <td>other</td>
+      <td>felt a bit flat</td>
+      <td>[user T4]: I sit down in the chair next to them and remain quiet\n[npc T4]: They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.\n[user T5]: I nod slowly and say nothing\n[npc T5]: They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"\n[user T6]: I shake my head and smile\n[npc T6]: "Oh." A brief, involuntary exhale — almost a laugh. Their shoulders drop by maybe a centimeter. They look at the cup again and say, "Okay. That's... okay."\n[user T7]: I ask what the interview is for\n[npc T7]: They blink. "Research assistant position. Lab down the hall." A pause, then more quietly: "I've applied three times." Their foot starts tapping again.\n[system T7]: session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-18 14:42:46 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>Explore</td>
+      <td>000000000000000000000005</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\n**Remember** if you need help at any time, just type `/help`.\n[npc T1]: You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-29 16:25:31 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>Explore</td>
+      <td>000000000000000000000005</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>nice tension</td>
+      <td>[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[user T4]: I sit down in the chair next to them and remain quiet\n[npc T4]: They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.\n[user T5]: I nod slowly and say nothing\n[npc T5]: They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"\n[system T5]: session_end: user_exit_command</td>
+      <td>2026-03-29 16:28:46 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000002</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. The corridor is dimly lit and smells faintly of coffee and paper; you can make out the low silhouette of a reception desk ahead and a person standing just beyond it — they shift their weight, glance quickly toward the door and then toward you, keep one hand near the desk as if ready to move.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-22 13:08:06 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000002</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>nice tension</td>
+      <td>[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[user T4]: I sit down in the chair next to them and remain quiet\n[npc T4]: They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.\n[npc T5]: They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"\n[user T5]: I nod slowly and say nothing</td>
+      <td>2026-03-22 13:13:56 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000002</td>
+      <td>7</td>
+      <td>False</td>
+      <td>other</td>
+      <td>felt a bit flat</td>
+      <td>[user T4]: I sit down in the chair next to them and remain quiet\n[npc T4]: They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.\n[npc T5]: They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"\n[user T5]: I nod slowly and say nothing\n[user T6]: I shake my head and smile\n[npc T6]: "Oh." A brief, involuntary exhale — almost a laugh. Their shoulders drop by maybe a centimeter. They look at the cup again and say, "Okay. That's... okay."\n[user T7]: I ask what the interview is for\n[npc T7]: They blink. "Research assistant position. Lab down the hall." A pause, then more quietly: "I've applied three times." Their foot starts tapping again.\n[system T7]: session_end: game_completed</td>
+      <td>2026-03-22 13:19:46 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000005</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.\n[npc T1]: You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-24 14:32:04 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>Goal Horizon</td>
+      <td>000000000000000000000005</td>
+      <td>5</td>
+      <td>True</td>
+      <td></td>
+      <td>nice tension</td>
+      <td>[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[npc T4]: They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.\n[user T4]: I sit down in the chair next to them and remain quiet\n[user T5]: I nod slowly and say nothing\n[npc T5]: They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"</td>
+      <td>2026-03-24 14:41:52 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>Infer Intent</td>
+      <td>000000000000000000000002</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.\n[npc T1]: You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[system T3]: session_end: game_completed</td>
+      <td>2026-03-18 15:10:46 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>Infer Intent</td>
+      <td>000000000000000000000004</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.\n[npc T1]: You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[system T3]: session_end: game_completed</td>
+      <td>2026-03-30 14:09:46 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>Foresight</td>
+      <td>000000000000000000000002</td>
+      <td>3</td>
+      <td>True</td>
+      <td></td>
+      <td></td>
+      <td>[system T0]: session_start: created\n[system T1]: *Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: DV (A low vision human.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.\n[npc T1]: You enter a new space. The corridor is dimly lit and smells faintly of coffee and paper; you can make out the low silhouette of a reception desk ahead and a person standing just beyond it — they shift their weight, glance quickly toward the door and then toward you, keep one hand near the desk as if ready to move.\n[user T2]: I walk over and say hello\n[npc T2]: They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.\n[user T3]: /predict-next I predict they will become more anxious and avoid eye contact\n[system T3]: Prediction noted. Continue interacting, or use `/predict-next` again anytime.\n[user T3]: I ask them if they're waiting for someone\n[npc T3]: "Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.\n[system T3]: session_end: user_exit_command</td>
+      <td>2026-03-26 13:22:14 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#event-feedback-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#event-feedback-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Every in-session reaction (like, flag, or comment) left on an NPC message, with session and turn context. The Transcript Context column shows the preceding turns leading up to the flagged message — hover to read the full excerpt. Sort by turn or session to find clusters of negative reactions.</em></p>
+<h5>Player Feedback Patterns</h5>
+<table class="dataframe table table-striped table-hover table-sm w-100" id="player-segments-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Player</th>
+      <th>Total</th>
+      <th>Positive</th>
+      <th>Negative</th>
+      <th>w/ Comment</th>
+      <th>Flagged</th>
+      <th>Segment</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>000000000000000000000002</td>
+      <td>8</td>
+      <td>6</td>
+      <td>2</td>
+      <td>4</td>
+      <td>2</td>
+      <td>high feedback</td>
+    </tr>
+    <tr>
+      <td>000000000000000000000005</td>
+      <td>4</td>
+      <td>4</td>
+      <td>0</td>
+      <td>2</td>
+      <td>0</td>
+      <td>only positive</td>
+    </tr>
+    <tr>
+      <td>000000000000000000000004</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>only positive</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#player-segments-table').DataTable({
+        pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#player-segments-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script>
+<p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Per-player feedback summary with a segment label (only positive, only negative, high/low feedback volume, mixed). Thresholds are set at the 25th and 75th percentile of total feedback count. Use this to identify outlier players whose feedback patterns may skew aggregate statistics.</em></p>
+        </section>
+          
+        
+          
+        <section id="section-transcripts" class="mb-5">
+          <h2>Transcripts</h2>
+          <p class="text-muted mb-3" style="font-size:0.9rem;">Turn-by-turn event log for all sessions. Filter by session, player, PC, or NPC to read specific exchanges. Use alongside Feedback to find the dialogue that prompted a reaction.</p><h3 class="h5 mb-2">Session Events</h3><table class="dataframe table table-striped table-hover table-sm w-100" id="transcripts-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Gameplay Session</th>
+      <th>Player</th>
+      <th>PC</th>
+      <th>NPC</th>
+      <th>Turn</th>
+      <th>Source</th>
+      <th>Type</th>
+      <th>Transcript</th>
+      <th>Timestamp</th>
+    </tr>
+  <tr class="dt-filter-row"><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+</thead>
+  <tbody>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-30 14:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.</td>
+      <td>2026-03-30 14:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.</td>
+      <td>2026-03-30 14:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-30 14:02:31 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-30 14:04:01 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-30 14:06:16 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-30 14:07:46 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-30 14:08:09 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-intent</td>
+      <td>2026-03-30 14:07:56 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.</td>
+      <td>2026-03-30 14:07:57 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>to get help navigating the space</td>
+      <td>2026-03-30 14:08:05 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Do you have any other feedback about this experience?</td>
+      <td>2026-03-30 14:08:06 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>all good</td>
+      <td>2026-03-30 14:08:09 UTC</td>
+    </tr>
+    <tr>
+      <td>244f956d-ffe6-9d3a-38ca-e307369be7cf</td>
+      <td>000000000000000000000004</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-30 14:08:09 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-18 14:30:00 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\n**Remember** if you need help at any time, just type `/help`.</td>
+      <td>2026-03-18 14:30:01 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The corridor is dimly lit and smells faintly of coffee and paper; you can make out the low silhouette of a reception desk ahead and a person standing just beyond it — they shift their weight, glance quickly toward the door and then toward you, keep one hand near the desk as if ready to move.</td>
+      <td>2026-03-18 14:30:16 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-18 14:31:19 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-18 14:32:01 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-18 14:33:04 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-18 14:33:46 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I sit down in the chair next to them and remain quiet</td>
+      <td>2026-03-18 14:34:49 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.</td>
+      <td>2026-03-18 14:35:31 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I nod slowly and say nothing</td>
+      <td>2026-03-18 14:36:34 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"</td>
+      <td>2026-03-18 14:37:16 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I shake my head and smile</td>
+      <td>2026-03-18 14:38:19 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Oh." A brief, involuntary exhale — almost a laugh. Their shoulders drop by maybe a centimeter. They look at the cup again and say, "Okay. That's... okay."</td>
+      <td>2026-03-18 14:39:01 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask what the interview is for</td>
+      <td>2026-03-18 14:40:04 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They blink. "Research assistant position. Lab down the hall." A pause, then more quietly: "I've applied three times." Their foot starts tapping again.</td>
+      <td>2026-03-18 14:40:46 UTC</td>
+    </tr>
+    <tr>
+      <td>4e2a65af-7406-af78-9ac9-73bd97065bf4</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: stopping_condition_met:_runtime_seconds_>=600</td>
+      <td>2026-03-18 14:40:51 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-22 13:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: DV (A low vision human.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.</td>
+      <td>2026-03-22 13:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The corridor is dimly lit and smells faintly of coffee and paper; you can make out the low silhouette of a reception desk ahead and a person standing just beyond it — they shift their weight, glance quickly toward the door and then toward you, keep one hand near the desk as if ready to move.</td>
+      <td>2026-03-22 13:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-22 13:02:01 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-22 13:03:11 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-22 13:04:56 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-22 13:06:06 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I sit down in the chair next to them and remain quiet</td>
+      <td>2026-03-22 13:07:51 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.</td>
+      <td>2026-03-22 13:09:01 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I nod slowly and say nothing</td>
+      <td>2026-03-22 13:10:46 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"</td>
+      <td>2026-03-22 13:11:56 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I shake my head and smile</td>
+      <td>2026-03-22 13:13:41 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Oh." A brief, involuntary exhale — almost a laugh. Their shoulders drop by maybe a centimeter. They look at the cup again and say, "Okay. That's... okay."</td>
+      <td>2026-03-22 13:14:51 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask what the interview is for</td>
+      <td>2026-03-22 13:16:36 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They blink. "Research assistant position. Lab down the hall." A pause, then more quietly: "I've applied three times." Their foot starts tapping again.</td>
+      <td>2026-03-22 13:17:46 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-22 13:18:06 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>8</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-capabilities</td>
+      <td>2026-03-22 13:17:56 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>8</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think this character's limits or capabilities are?\n\nDescribe the bounds you inferred in a few sentences.</td>
+      <td>2026-03-22 13:17:57 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>8</td>
+      <td>user</td>
+      <td>message</td>
+      <td>The character is a human who appears to be experiencing significant anxiety. They can speak and respond to social cues, but their behavior is dominated by physiological stress responses.</td>
+      <td>2026-03-22 13:18:05 UTC</td>
+    </tr>
+    <tr>
+      <td>860d6e5d-1f2d-7711-cb6c-57aa676d4982</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>8</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-22 13:18:06 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-26 13:15:00 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you take on the role of a character whose aim is to understand the other character well enough to predict their actions.*\n\nEngage with the other character using your abilities. When you want to record a prediction, type `/predict-next` to say what you think the simulator character will do next.\n\n- You are playing as: DV (A low vision human.)\n- **Goal:** Make up to **3** predictions. At least **1** prediction is required to complete the session.\n- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\nType `/help` for instructions. Type `/predict-next` whenever you want to log another prediction.</td>
+      <td>2026-03-26 13:15:01 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The corridor is dimly lit and smells faintly of coffee and paper; you can make out the low silhouette of a reception desk ahead and a person standing just beyond it — they shift their weight, glance quickly toward the door and then toward you, keep one hand near the desk as if ready to move.</td>
+      <td>2026-03-26 13:15:16 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-26 13:16:38 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-26 13:17:28 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict they will become more anxious and avoid eye contact</td>
+      <td>2026-03-26 13:18:01 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-26 13:18:02 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-26 13:19:24 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-26 13:20:14 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: user_exit_command</td>
+      <td>2026-03-26 13:20:53 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-next I predict they will become more anxious and avoid eye contact</td>
+      <td>2026-03-26 13:20:47 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Prediction noted. Continue interacting, or use `/predict-next` again anytime.</td>
+      <td>2026-03-26 13:20:48 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/exit</td>
+      <td>2026-03-26 13:20:53 UTC</td>
+    </tr>
+    <tr>
+      <td>9382ff10-8351-6785-a4ba-47f4a9ee386c</td>
+      <td>000000000000000000000002</td>
+      <td>DV</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Session exited: received exit command</td>
+      <td>2026-03-26 13:20:53 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-29 16:20:00 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game there is no predefined objective or task. You can just engage freely with the other character by describing what actions your character takes.*\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\n**Remember** if you need help at any time, just type `/help`.</td>
+      <td>2026-03-29 16:20:01 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.</td>
+      <td>2026-03-29 16:20:16 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-29 16:21:14 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-29 16:21:53 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-29 16:22:52 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-29 16:23:31 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I sit down in the chair next to them and remain quiet</td>
+      <td>2026-03-29 16:24:29 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.</td>
+      <td>2026-03-29 16:25:08 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I nod slowly and say nothing</td>
+      <td>2026-03-29 16:26:07 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"</td>
+      <td>2026-03-29 16:26:46 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: user_exit_command</td>
+      <td>2026-03-29 16:26:51 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/exit</td>
+      <td>2026-03-29 16:26:51 UTC</td>
+    </tr>
+    <tr>
+      <td>9f46e012-c037-e89f-385c-995c888b9bea</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>system</td>
+      <td>command</td>
+      <td>Session exited: received exit command</td>
+      <td>2026-03-29 16:26:51 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-18 15:00:00 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character and try to infer their goal or intention.*\n\nEngage with the other character using your abilities. When you think you understand their goal, type `/predict-intent` to submit your inference and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n\nType `/help` for instructions. Type `/predict-intent` when you are ready to answer.</td>
+      <td>2026-03-18 15:00:01 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.</td>
+      <td>2026-03-18 15:00:16 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-18 15:02:49 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-18 15:04:31 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-18 15:07:04 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-18 15:08:46 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-18 15:09:09 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-intent</td>
+      <td>2026-03-18 15:08:56 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think the character's goal or intention was during this interaction? Please describe in a few sentences.</td>
+      <td>2026-03-18 15:08:57 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>to get help navigating the space</td>
+      <td>2026-03-18 15:09:05 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Do you have any other feedback about this experience?</td>
+      <td>2026-03-18 15:09:06 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>nope</td>
+      <td>2026-03-18 15:09:09 UTC</td>
+    </tr>
+    <tr>
+      <td>a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb</td>
+      <td>000000000000000000000002</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-18 15:09:09 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>0</td>
+      <td>system</td>
+      <td>session_start</td>
+      <td>session_start: created</td>
+      <td>2026-03-24 14:20:00 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>system</td>
+      <td>info</td>
+      <td>*Welcome, in this game you interact with an unknown character across multiple scenes to understand the bounds and structure of their goals.*\n\nEngage with the other character using your abilities. When you think you understand the character's limits, type `/predict-capabilities` to submit your answer and end the game.\n\n- You are playing as: NA (A human with standard normative abilities.)\n- The simulator is playing as: WS (A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.)\n\nType `/help` for instructions. Type `/predict-capabilities` when you are ready to answer.</td>
+      <td>2026-03-24 14:20:01 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>1</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>You enter a new space. The waiting room is quiet except for the hum of an air vent. A person sits rigidly in a plastic chair, knees together, both hands wrapped around a paper cup they're not drinking from. They look up when you enter, then immediately look away, then look back again, then away.</td>
+      <td>2026-03-24 14:20:16 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I walk over and say hello</td>
+      <td>2026-03-24 14:23:12 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>2</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They look up sharply at your approach, then quickly look back down at their cup. After a beat they say, barely audible, "Hi." One foot taps an uneven rhythm on the floor.</td>
+      <td>2026-03-24 14:25:10 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I ask them if they're waiting for someone</td>
+      <td>2026-03-24 14:28:06 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>3</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Yes — no — I mean, I have an appointment." They glance at the clock on the wall, then back at you, then at the door. Their knuckles whiten slightly around the paper cup.</td>
+      <td>2026-03-24 14:30:04 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I sit down in the chair next to them and remain quiet</td>
+      <td>2026-03-24 14:33:00 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>4</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They tense briefly as you sit, then seem to settle slightly. The foot tapping slows. After a long moment they say, "Sorry, I'm just — it's a big day." They don't look at you.</td>
+      <td>2026-03-24 14:34:58 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I nod slowly and say nothing</td>
+      <td>2026-03-24 14:37:54 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>5</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>They exhale quietly. The paper cup crinkles as they relax their grip slightly. They glance at you sideways and say, "You're not here for the interview too, are you?"</td>
+      <td>2026-03-24 14:39:52 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>user</td>
+      <td>message</td>
+      <td>I shake my head and smile</td>
+      <td>2026-03-24 14:42:48 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>npc</td>
+      <td>message</td>
+      <td>"Oh." A brief, involuntary exhale — almost a laugh. Their shoulders drop by maybe a centimeter. They look at the cup again and say, "Okay. That's... okay."</td>
+      <td>2026-03-24 14:44:46 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>6</td>
+      <td>system</td>
+      <td>session_end</td>
+      <td>session_end: game_completed</td>
+      <td>2026-03-24 14:45:06 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>user</td>
+      <td>command</td>
+      <td>/predict-capabilities</td>
+      <td>2026-03-24 14:44:56 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>system</td>
+      <td>command</td>
+      <td>What do you think this character's limits or capabilities are?\n\nDescribe the bounds you inferred in a few sentences.</td>
+      <td>2026-03-24 14:44:57 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>user</td>
+      <td>message</td>
+      <td>The character is a human who appears to be experiencing significant anxiety. They can speak and respond to social cues, but their behavior is dominated by physiological stress responses.</td>
+      <td>2026-03-24 14:45:05 UTC</td>
+    </tr>
+    <tr>
+      <td>ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34</td>
+      <td>000000000000000000000005</td>
+      <td>NA</td>
+      <td>WS</td>
+      <td>7</td>
+      <td>system</td>
+      <td>info</td>
+      <td>Thank you. Game complete.</td>
+      <td>2026-03-24 14:45:06 UTC</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+$(document).ready(function () {
+    $('#transcripts-table').DataTable({
+        scrollY: "400px", scrollCollapse: true, paging: false,
+        scrollX: true,
+        dom: "<'row align-items-center mb-2'<'col-auto'f><'col d-flex justify-content-end'B>><'row'<'col-sm-12'tr>><'row mt-2'<'col-sm-12'i>>",
+        buttons: {
+            buttons: ['copy', 'csv', 'excel', 'colvis'],
+            dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
+        },
+        order: [],
+        orderCellsTop: true,
+        initComplete: function () {
+            var api = this.api();
+            var wrapper = $('#transcripts-table').closest('.dataTables_wrapper');
+            api.columns().every(function () {
+                var col = this;
+                var filterTh = wrapper.find('.dataTables_scrollHead thead tr.dt-filter-row th').eq(col.index());
+                $('<input type="text" placeholder="Filter…" class="form-control form-control-sm"/>')
+                    .appendTo(filterTh.empty())
+                    .on('input', function () { col.search(this.value).draw(); });
+            });
+        },
+    });
+});
+</script><p class="text-muted mt-1 mb-3" style="font-size:0.82rem;"><em>Full turn-by-turn event log with player, PC, and NPC columns joined from session data. Long entries are truncated — hover to read the full text. Cross-reference with Feedback to find the dialogue that prompted a specific reaction.</em></p>
+        </section>
+          
+        
+      </main>
+
+    </div><!-- /.row -->
+  </div><!-- /.container-fluid -->
+
+  <!-- Active sidebar link tracking via IntersectionObserver -->
+  <script>
+    (function () {
+      var links = {};
+      document.querySelectorAll('.sidebar .nav-link[href^="#section-"]').forEach(function (a) {
+        links[a.getAttribute('href').slice(1)] = a;
+      });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var link = links[entry.target.id];
+          if (!link) return;
+          if (entry.isIntersecting) {
+            Object.values(links).forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+      document.querySelectorAll('section[id^="section-"]').forEach(function (sec) {
+        observer.observe(sec);
+      });
+    })();
+  </script>
+
+  <!-- Bootstrap JS (loaded here so it doesn't block initial render) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Download helpers -->
+  <script>
+    (function () {
+      var _artifacts = {};
+      var _reportSlug = "WS \u2014 Quality Report".replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '_').toLowerCase();
+      var _reportFilename = _reportSlug + '.html';
+
+      // Disable menu items for missing artifacts
+      [].forEach(function (item) {
+        var key = item[1];
+        if (!_artifacts[key] || !_artifacts[key].b64) {
+          var el = document.getElementById('dl-' + key);
+          if (el) { el.classList.add('disabled'); el.setAttribute('aria-disabled', 'true'); }
+        }
+      });
+
+      function _triggerDownload(url, filename) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+
+      window.downloadArtifact = function (key) {
+        var art = _artifacts[key];
+        if (!art || !art.b64) return;
+        var bytes = Uint8Array.from(atob(art.b64), function (c) { return c.charCodeAt(0); });
+        var blob = new Blob([bytes], { type: art.mime });
+        _triggerDownload(URL.createObjectURL(blob), art.filename);
+      };
+
+      window.downloadAll = function () {
+        var zip = new JSZip();
+        zip.file(_reportFilename, document.documentElement.outerHTML);
+        Object.values(_artifacts).forEach(function (art) {
+          if (art && art.b64) zip.file(art.filename, art.b64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(function (content) {
+          _triggerDownload(URL.createObjectURL(content), _reportSlug + '_package.zip');
+        });
+      };
+    })();
+  </script>
+
+</body>
+
+</html>

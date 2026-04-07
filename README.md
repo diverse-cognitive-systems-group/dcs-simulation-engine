@@ -6,7 +6,7 @@
 
 [![Web Demo](https://img.shields.io/badge/Web%20Demo-blue)](https://dcs-free-play-ui.fly.dev)
 [![API Demo](https://img.shields.io/badge/API%20Demo-blue)](https://dcs-free-play-api.fly.dev/docs)
-[![Docs](https://img.shields.io/badge/Docs-blue)](https://diverse-cognitive-systems-group.github.io/dcs-simulation-engine/)
+[![Documentation](https://img.shields.io/badge/Docs-blue)](https://diverse-cognitive-systems-group.github.io/dcs-simulation-engine/)
 [![Build Status](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/actions/workflows/ci.yml)
 
 ## What is this?

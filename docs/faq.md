@@ -5,14 +5,6 @@ This page addresses some frequently asked questions about the simulation engine 
 ## **What is *Diverse Intelligence* (DI)?**
 The terms diverse cognitive systems, diverse intelligences, and diverse cognitive agents are used interchangeably throughout to refer to the full landscape of intelligent entities—those with capacity to competently navigating a space to achieve a goal. This includes humans with non-normative or shifting sensory, regulatory, perceptual, or action modalities (e.g., individuals with atypical neurophysiology, temporary disabilities, or non-standard communication methods), as well as bioengineered humans, chimeric beings, synthetic intelligences, and other non-human agents that diverge more significantly. The term is meant to be inclusive of all entities that meet the functional criteria of goal pursuit, irrespective of origin or embodiment.
 
-## **What evidence do we have to support the claim that these characters are representative of actual neurodivergents?**
-The core characters were developed through extensive literature review, expert consultation, interviews with neurodivergent individuals, and iterative testing. For neurodivergent characters, we consulted with experts and interviewed neurodivergent individuals. Furthermore, we validated the characters through Turing-style tests with experts familiar with the specific neurodivergent profiles being modeled. Our research depends on these characters behaviorally representing the cognitive systems they are intended to simulate with high fidelity so we put significant effort into ensuring their quality and validity.
-
-See [Core Characters](https://github.com/fuzzy-tribble/dcs-simulation-engine/wiki/Core-Characters) for more details on character development and validation.
-
-### **How do we handle different languages and cultures?**
-TODO
-
 ## **Why don't you include more characters like from Sci-Fi, Fantasy, or other speculative fiction?**
 A lot of fictional characters—especially in TV, film, and popular sci-fi/fantasy—feature dramatic differences in abilities or appearance. But despite that, their goals, motivations, and cognitive structures are often still fundamentally human-like, usually grounded in Western cultural norms. You can modify a character’s physiology or abilities in countless ways without meaningfully changing their goal-inference capacities or cognitive architecture. This type of variation doesn't capture the kinds of cognitive diversity that is most informative for our research.
 
