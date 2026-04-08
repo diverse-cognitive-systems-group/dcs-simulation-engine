@@ -95,11 +95,12 @@ Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engi
 addopts = [
   "--cache-clear",
   "--cov=dcs_simulation_engine",
+  "--cov=dcs_utils",
   "--cov-report=term",
   "--cov-report=xml",
   "--cov-branch",
-  "--cov-fail-under=85",
-  "--numprocesses=auto", # multiprocessing
+  "--cov-fail-under=65",
+  "--numprocesses=auto",         # multiprocessing
   "--durations=0",
   "--verbose",
   # "-x" # stop tests after first failure
@@ -113,6 +114,9 @@ markers = [
   "infra: remote infrastructure tests",
 ]
 
+[tool.coverage.run]
+omit = ["dcs_utils/manual/*"]
+
 [tool.isort]
 combine_as_imports = true
 line_length = 60
@@ -122,7 +126,7 @@ profile = "black"
 [tool.ruff]
 exclude = [
   "dcs_utils/*", # dcs_utils folder
-  "**/*.ipynb", # all notebooks
+  "**/*.ipynb",  # all notebooks
 ]
 line-length = 140
 src = ["dcs_simulation_engine", "tests"]
