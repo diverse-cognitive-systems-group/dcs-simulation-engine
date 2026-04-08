@@ -347,6 +347,37 @@ class AsyncMongoProvider:
             )
         )
 
+    async def pause_session(self, *, session_id: str, paused_at: datetime) -> None:
+        """Update a session record to reflect it is paused and awaiting resume."""
+        await maybe_await(
+            self._db[MongoColumns.SESSIONS].update_one(
+                {"session_id": session_id},
+                {
+                    "$set": {
+                        "status": "paused",
+                        "paused_at": paused_at,
+                        "updated_at": utc_now(),
+                    }
+                },
+            )
+        )
+
+    async def resume_session(self, *, session_id: str, resumed_at: datetime) -> None:
+        """Update a session record to reflect it has been resumed."""
+        await maybe_await(
+            self._db[MongoColumns.SESSIONS].update_one(
+                {"session_id": session_id},
+                {
+                    "$set": {
+                        "status": "active",
+                        "resumed_at": resumed_at,
+                        "updated_at": utc_now(),
+                    },
+                    "$unset": {"paused_at": ""},
+                },
+            )
+        )
+
     async def get_session(self, *, session_id: str, player_id: str | None) -> SessionRecord | None:
         """Return a single persisted session record for the player."""
         doc = await maybe_await(

@@ -11,7 +11,7 @@ from uuid import uuid4
 from dcs_simulation_engine.core.session_manager import SessionManager
 from loguru import logger
 
-SessionStatus = Literal["active", "closed"]
+SessionStatus = Literal["active", "paused", "closed"]
 
 
 @dataclass
@@ -28,6 +28,7 @@ class SessionEntry:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_active: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     opening_sent: bool = False
+    ws_connected: bool = False
 
     def touch(self) -> None:
         """Refresh the last-activity timestamp."""
@@ -99,12 +100,38 @@ class SessionRegistry:
             if entry is not None:
                 entry.opening_sent = True
 
+    def pause(self, session_id: str) -> None:
+        """Mark a session as paused; keep it and its manager alive for resume."""
+        with self._lock:
+            entry = self._store.get(session_id)
+            if entry is not None:
+                entry.status = "paused"
+                entry.ws_connected = False
+                entry.touch()
+
+    def set_active(self, session_id: str) -> None:
+        """Mark a paused session as active again after a successful reconnect."""
+        with self._lock:
+            entry = self._store.get(session_id)
+            if entry is not None:
+                entry.status = "active"
+                entry.ws_connected = True
+                entry.touch()
+
+    def set_ws_connected(self, session_id: str, connected: bool) -> None:
+        """Update the WebSocket connection flag for a session."""
+        with self._lock:
+            entry = self._store.get(session_id)
+            if entry is not None:
+                entry.ws_connected = connected
+
     def close(self, session_id: str) -> None:
         """Mark a session as closed but keep it until explicit removal/TTL expiry."""
         with self._lock:
             entry = self._store.get(session_id)
             if entry is not None:
                 entry.status = "closed"
+                entry.ws_connected = False
                 entry.touch()
 
     def remove(self, session_id: str) -> SessionEntry | None:

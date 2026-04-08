@@ -338,30 +338,6 @@ class SessionManager:
         turn_index = self._turn_count + 1
         parsed_command = _parse_command_input(user_input)
 
-        if parsed_command is not None:
-            cmd, cmd_args = parsed_command
-            if cmd == "exit":
-                payload = {"type": "info", "content": "Session exited: received exit command"}
-                self._events.append(payload)
-                if self._recorder_open and self._recorder is not None:
-                    await self._recorder.record_inbound(
-                        content=user_input,
-                        turn_index=turn_index,
-                        event_type="command",
-                        command_name=cmd,
-                        command_args=cmd_args,
-                    )
-                    await self._recorder.record_outbound(
-                        event_type="command",
-                        event_source="system",
-                        content=payload["content"],
-                        turn_index=turn_index,
-                        command_name=cmd,
-                        command_args=cmd_args,
-                    )
-                await self.exit_async("received exit command")
-                return [payload]
-
         events = await self._collect_events(user_input)
         recognized_game_command = parsed_command is not None and any(event.command_response for event in events)
         if isinstance(user_input, str) and user_input != "" and self._recorder_open and self._recorder is not None:

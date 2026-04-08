@@ -169,10 +169,10 @@ async def test_infer_intent_completion_form(patch_llm_client, _isolate_db_state,
     assert not session.exited, "Session should not exit after first answer"
     assert session.game.goal_inference == "The creature is trying to find food."
 
-    feedback_events = await session.step_async("Interesting behavior overall.")
-    assert any(e["type"] == "info" for e in feedback_events), "Expected completion confirmation"
+    confidence_events = await session.step_async("Interesting behavior overall.")
+    assert any(e["type"] == "info" for e in confidence_events), "Expected completion confirmation"
     assert session.exited, "Session should exit after second answer"
-    assert session.game.other_feedback == "Interesting behavior overall."
+    assert session.game.goal_inference_confidence == "Interesting behavior overall."
     assert session.game.evaluation == {}, "Evaluation should not be populated during gameplay"
 
 
@@ -194,3 +194,108 @@ async def test_infer_intent_exit_and_save(patch_llm_client, _isolate_db_state, a
     assert session.exited, "Session should be exited after exit()"
 
     session.save()
+
+
+async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /help shows NPC hid but does not reveal NPC description."""
+    session = await SessionManager.create_async(
+        game="Infer Intent",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    help_events = await session.step_async("/help")
+
+    info_events = [e for e in help_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /help"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "FW" in content, "NPC hid should appear in /help"
+    assert "details hidden" in content.lower(), "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
+
+
+async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /abilities shows PC abilities but hides all NPC details."""
+    session = await SessionManager.create_async(
+        game="Infer Intent",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    abilities_events = await session.step_async("/abilities")
+
+    info_events = [e for e in abilities_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /abilities"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
+    assert "NPC details are hidden" in content, "Expected '*NPC details are hidden.*' in /abilities NPC section"
+
+
+async def test_additional_updater_rule_present_in_prompt(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test that the 'Goal Aligned Response' updater rule appears in the system prompt."""
+    session = await SessionManager.create_async(
+        game="Infer Intent",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")  # ENTER initialises the updater
+
+    assert "Goal Aligned Response" in session.game._updater._system_prompt, (
+        "Expected 'Goal Aligned Response' rule in InferIntent updater system prompt"
+    )
+
+
+async def test_default_post_play_form_present(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Infer Intent post-play: /predict-intent → goal answer → confidence → FINISH_CONTENT."""
+    session = await SessionManager.create_async(
+        game="Infer Intent",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+    await session.step_async("I observe the creature")
+
+    predict_events = await session.step_async("/predict-intent")
+    assert any(e["type"] == "info" for e in predict_events), "Expected goal inference question"
+    assert not session.exited
+
+    goal_events = await session.step_async("The creature is seeking food.")
+    assert any(e["type"] == "info" for e in goal_events), "Expected confidence question"
+    assert not session.exited
+
+    confidence_events = await session.step_async("Very confident.")
+    info_events = [e for e in confidence_events if e.get("type") == "info"]
+    assert any("Game finished" in e["content"] for e in info_events), (
+        f"Expected 'Game finished' after confidence answer: {[e['content'] for e in info_events]}"
+    )
+    assert session.exited
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_player_triggered_evals_disabled_by_default(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Player-triggered evaluations should be disabled by default."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_evaluation_shown_at_end(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation results should be shown to the player after game completion."""
+    ...
+
+
+@pytest.mark.skip(reason="pending run config refactoring")
+async def test_overrides_work(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """All documented run config overrides should apply to Infer Intent."""
+    ...

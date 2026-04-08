@@ -113,8 +113,8 @@ def main() -> None:
         setup = api.setup_options(game_name="Infer Intent", api_key=api_key)
         if not setup.can_start:
             raise RuntimeError(f"Infer Intent cannot be started: {setup.message or setup.denial_reason}")
-        pc_choice = _choose_hid(setup.pcs, "human-normative")
-        npc_choice = _choose_hid(setup.npcs, "flatworm")
+        pc_choice = _choose_hid(setup.pcs, "NA")
+        npc_choice = _choose_hid(setup.npcs, "FW")
         print(f"   pc_choice={pc_choice}")
         print(f"   npc_choice={npc_choice}")
 

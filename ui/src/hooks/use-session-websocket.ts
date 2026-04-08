@@ -26,6 +26,8 @@ export interface ChatMessage {
   feedback?: MessageFeedback
   // Unix timestamp (ms) set when the message is added to the list.
   timestamp: number
+  // True for messages replayed from a previous session on resume.
+  isHistorical?: boolean
 }
 
 type WsState = 'connecting' | 'auth' | 'ready' | 'closed' | 'error'
@@ -39,6 +41,7 @@ export function useSessionWebSocket(sessionId: string) {
   const [pcHid, setPcHid] = useState<string | null>(null)
   const [npcHid, setNpcHid] = useState<string | null>(null)
   const [hasGameFeedback, setHasGameFeedback] = useState(false)
+  const [isReplaying, setIsReplaying] = useState(false)
   // waiting is true between sendTurn() and the server's turn_end frame.
   const [waiting, setWaiting] = useState(false)
   // useRef holds a mutable value that does NOT trigger re-renders — used for the socket
@@ -108,6 +111,30 @@ export function useSessionWebSocket(sessionId: string) {
           setHasGameFeedback(frame.has_game_feedback)
       }
 
+      if (frame.type === 'replay_start') {
+        setIsReplaying(true)
+      }
+
+      if (frame.type === 'replay_event') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: (frame.role === 'user' ? 'user' : 'ai') as 'user' | 'ai',
+            eventType: frame.event_type as EventType,
+            content: frame.content,
+            eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
+            timestamp: Date.now(),
+            isHistorical: true,
+          },
+        ])
+      }
+
+      if (frame.type === 'replay_end') {
+        setIsReplaying(false)
+        setTurns(frame.turns as number)
+      }
+
       if (frame.type === 'event') {
         setMessages((prev) => [
           ...prev,
@@ -170,12 +197,6 @@ export function useSessionWebSocket(sessionId: string) {
     ws.current.send(JSON.stringify({ type: 'advance', text }))
   }, [])
 
-  const closeSession = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'close' }))
-    }
-  }, [])
-
   const setMessageFeedback = useCallback(
     (eventId: string, feedback: MessageFeedback | undefined) => {
       setMessages((prev) =>
@@ -191,11 +212,11 @@ export function useSessionWebSocket(sessionId: string) {
     turns,
     exited,
     waiting,
+    isReplaying,
     pcHid,
     npcHid,
     hasGameFeedback,
     sendTurn,
-    closeSession,
     setMessageFeedback,
   }
 }

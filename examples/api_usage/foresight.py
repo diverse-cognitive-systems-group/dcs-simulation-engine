@@ -19,8 +19,8 @@ client = DCSClient("http://localhost:8080")
 
 with client.start_game(
     game="Foresight",
-    pc="human-normative",
-    npc="flatworm",
+    pc="NA",
+    npc="FW",
     access_key=access_key,
 ) as run:
     print(f"Run created: {run!r}")

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 ServerMode = Literal["standard", "free_play"]
 RemoteDeploymentMode = Literal["standard", "free_play", "experiment"]
-SessionStatus = Literal["active", "closed"]
+SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
 AssignmentStatus = Literal["assigned", "in_progress", "completed", "interrupted"]
@@ -368,6 +368,32 @@ class WSErrorFrame(BaseModel):
 
     type: Literal["error"] = "error"
     detail: str
+
+
+class WSReplayStartFrame(BaseModel):
+    """WebSocket frame signaling the start of a historical event replay burst."""
+
+    type: Literal["replay_start"] = "replay_start"
+    session_id: str
+
+
+class WSReplayEventFrame(BaseModel):
+    """WebSocket frame carrying one historical event during replay."""
+
+    type: Literal["replay_event"] = "replay_event"
+    session_id: str
+    event_type: EventType
+    content: str
+    event_id: str | None = None
+    role: Literal["user", "ai"] = "ai"
+
+
+class WSReplayEndFrame(BaseModel):
+    """WebSocket frame signaling the end of a historical event replay burst."""
+
+    type: Literal["replay_end"] = "replay_end"
+    session_id: str
+    turns: int
 
 
 class GameSummary(BaseModel):
