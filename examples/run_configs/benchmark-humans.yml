@@ -1,7 +1,7 @@
 # METADATA
-name: Usability
+name: Benchmark Human Performance
 description: |
-  An engine run configuration used for internal usability studies where players interact with the simulator across different games and characters to identify any usability issues. Players provide feedback on their experience, including any difficulties or positive aspects of the interface, to inform iterative design improvements.
+  An engine run configuration used for benchmarking human performance across games and characters. Players play all games with either evaluations displayed or not.
 
 seed: 42
 
@@ -17,16 +17,24 @@ players:
 
 # GAMES INCLUDED
 games:
-  - name: Explore
   - name: Infer Intent
+    overrides:
+      # or false if you don't want the human to learn from game scores
+      display_score: true
   - name: Foresight
+    overrides:
+      display_score: true
   - name: Goal Horizon
+    overrides:
+      display_score: true
   - name: Teamwork
+    overrides:
+      display_score: true
 
 # NEXT GAME STRATEGY
 next_game_strategy:
   strategy:
-    id: player_choice
+    id: next_incomplete
 
 # DATA COLLECTION FORMS
 forms:

@@ -1,7 +1,7 @@
 # METADATA
-name: Usability
+name: Expert Evaluation
 description: |
-  An engine run configuration used for internal usability studies where players interact with the simulator across different games and characters to identify any usability issues. Players provide feedback on their experience, including any difficulties or positive aspects of the interface, to inform iterative design improvements.
+  An engine run configuration used for internal simulation quality studies where players select their expertise and are assigned to play simulated characters that match their expertise. They provide in game and post game feedback of the simulated characters quality.
 
 seed: 42
 
@@ -26,9 +26,15 @@ games:
 # NEXT GAME STRATEGY
 next_game_strategy:
   strategy:
-    id: player_choice
+    # Player may freely select any non-player character that matches their expertise.
+    id: expertise_matched_character_choice
 
-# DATA COLLECTION FORMS
+    # Player is assigned an NPC matching their expertise and must complete all associated games/scenarios for that character before moving to another.
+    # id: expertise_matched_character_batch
+
+    # Each assignment selects an NPC that matches the player’s expertise; characters are not grouped and may vary between games/scenarios.
+    # id: expertise_matched_character_next
+
 forms:
   - name: research_participation_consent
     trigger: before_all
@@ -56,9 +62,12 @@ forms:
         options:
           - I consent to participate in this research study.
         required: false
-
-  - name: intake
+  - name: expertise_intake
     trigger: before_all
+    questions:
+      - ...
+  - name: post_game_feedback
+    trigger: after_each
     questions:
       - ...
   - name: outtake

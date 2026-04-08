@@ -1,0 +1,41 @@
+# METADATA
+name: Demo
+description: |
+  An engine run configuration used for demonstration purposes. Players can bypass registration and select any games with any player and non player characters the game defaults allow. No additional data collection forms.
+
+# USER INTERFACE OPTIONS
+ui:
+  # Engine always launches the API, however for human players use launch_gui: true to also launch the GUI web interface
+  launch_gui: true
+  registration_required: true # or is_demo? Or allow 'demo' signin/bypass??
+
+# PLAYERS ALLOWED
+players:
+  humans:
+    all: true
+
+# GAMES INCLUDED
+games:
+  - name: Explore
+    overrides:
+      max_time_s: 300 # 5min
+  - name: Infer Intent
+    overrides:
+      max_time_s: 300 # 5min
+  - name: Foresight
+    overrides:
+      max_time_s: 300 # 5min
+  - name: Goal Horizon
+    overrides:
+      max_time_s: 300 # 5min
+  - name: Teamwork
+    overrides:
+      max_time_s: 300 # 5min
+
+# NEXT GAME STRATEGY
+next_game_strategy:
+  strategy:
+    id: select_any
+
+# DATA COLLECTION FORMS
+forms: null
