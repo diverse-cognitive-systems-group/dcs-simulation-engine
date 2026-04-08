@@ -30,35 +30,37 @@ interface CommandSuggestion {
   description: string
 }
 
-const SESSION_COMMANDS: CommandSuggestion[] = [
-  { command: '/exit', description: 'Leave the current session.' },
-]
-
 const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
   explore: [
-    { command: '/help', description: 'Show the game instructions again.' },
-    { command: '/abilities', description: 'Show your character and NPC abilities.' },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
+    { command: '/finish', description: 'Finish the game.' },
   ],
   goalhorizon: [
-    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
     {
       command: '/predict-capabilities',
-      description: "Submit your read on the character's limits and end the game.",
+      description: "Submit your prediction about the NPC's capabilities and finish the game.",
     },
   ],
   inferintent: [
-    { command: '/help', description: 'Show the game instructions again.' },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
     {
       command: '/predict-intent',
-      description: "Submit your read on the character's intent and end the game.",
+      description: "Submit your prediction about the character's intent and finish the game.",
     },
   ],
   foresight: [
-    { command: '/help', description: 'Show the game instructions again.' },
-    {
-      command: '/predict-next',
-      description: 'Record what you think the system character will do next.',
-    },
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
+    { command: '/finish', description: 'Finish the game.' },
+  ],
+  teamwork: [
+    { command: '/help', description: 'Show instructions.' },
+    { command: '/abilities', description: 'Show character abilities.' },
+    { command: '/finish', description: 'Finish the game.' },
   ],
 }
 
@@ -86,11 +88,11 @@ function PlayPage() {
     turns,
     exited,
     waiting,
+    isReplaying,
     pcHid,
     npcHid,
     hasGameFeedback,
     sendTurn,
-    closeSession,
     setMessageFeedback,
   } = useSessionWebSocket(sessionId)
 
@@ -124,12 +126,7 @@ function PlayPage() {
   }, [sessionEnded])
 
   const availableCommands = useMemo(() => {
-    const gameCommands = GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
-    const byCommand = new Map<string, CommandSuggestion>()
-    for (const item of [...gameCommands, ...SESSION_COMMANDS]) {
-      byCommand.set(item.command, item)
-    }
-    return [...byCommand.values()]
+    return GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
   }, [gameName])
 
   const commandSuggestions = useMemo(() => {
@@ -203,7 +200,6 @@ function PlayPage() {
   }
 
   async function handleClose() {
-    closeSession()
     if (experimentName) {
       await navigate({
         to: '/experiments/$experimentName',
@@ -319,19 +315,6 @@ function PlayPage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          {!isClosed && ['foresight', 'explore'].includes(normalizeGameName(gameName ?? '')) && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isConnecting || waiting}
-              onClick={() => sendTurn('/exit')}
-            >
-              Finish Game
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={handleClose}>
-            {experimentName ? 'Return to Study' : 'Close Session'}
-          </Button>
         </div>
       </header>
 
@@ -352,15 +335,31 @@ function PlayPage() {
             />
           )}
 
-          {messages.map((msg) => (
-            <ChatMessageBubble
-              key={msg.id}
-              message={msg}
-              feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
-              onSubmitFeedback={handleSubmitFeedback}
-              onClearFeedback={handleClearFeedback}
-            />
-          ))}
+          {messages.map((msg, idx) => {
+            // Insert a "Session resumed" separator between the last historical message
+            // and the first live message, once replay has completed.
+            const isLastHistorical =
+              !isReplaying &&
+              msg.isHistorical &&
+              (idx === messages.length - 1 || !messages[idx + 1].isHistorical)
+            return (
+              <div key={msg.id} className={msg.isHistorical ? 'opacity-60' : undefined}>
+                <ChatMessageBubble
+                  message={msg}
+                  feedbackPending={!!msg.eventId && feedbackPendingEventId === msg.eventId}
+                  onSubmitFeedback={handleSubmitFeedback}
+                  onClearFeedback={handleClearFeedback}
+                />
+                {isLastHistorical && (
+                  <div className="flex items-center gap-3 py-3 text-xs text-muted-foreground">
+                    <div className="flex-1 border-t border-dashed" />
+                    <span>Session resumed</span>
+                    <div className="flex-1 border-t border-dashed" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
           {/* Animated "thinking" indicator shown while waiting for the AI response */}
           {waiting && (

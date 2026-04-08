@@ -2,13 +2,10 @@ name: Goal Horizon
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A game where players engage with a character over multiple interactions and report on their understanding
-  of the character including their goal types/bounds and structure. Useful for studying how well a player
-  can understand the bounds of another character's goals.
+  Players are tasked with understanding the capabilities and limitations of another character.
 
 stopping_conditions:
   runtime_seconds: [">=3600"]
   turns: [">=500"]
-
 
 game_class: dcs_simulation_engine.games.goal_horizon.GoalHorizonGame

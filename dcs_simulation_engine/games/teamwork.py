@@ -1,4 +1,4 @@
-"""Foresight game."""
+"""Teamwork game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -9,9 +9,7 @@ from dcs_simulation_engine.games.ai_client import (
     UpdaterClient,
     ValidatorClient,
 )
-from dcs_simulation_engine.games.const import (
-    Foresight as C,
-)
+from dcs_simulation_engine.games.const import Teamwork as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
@@ -21,15 +19,15 @@ from loguru import logger
 
 
 class Command(StrEnum):
-    """Game-level slash commands recognized by ForesightGame."""
+    """Game-level slash commands recognised by TeamworkGame."""
 
     HELP = "help"
     ABILITIES = "abilities"
     FINISH = "finish"
 
 
-class ForesightGame(Game):
-    """Foresight game: player interacts with NPC and makes predictions embedded in their actions."""
+class TeamworkGame(Game):
+    """Teamwork game: player collaborates with NPC toward a shared goal."""
 
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
@@ -53,9 +51,11 @@ class ForesightGame(Game):
         self._entered = False
         self._exited = False
         self._exit_reason = ""
+        self._awaiting_challenges = False
+        self._challenges = ""
 
     @classmethod
-    def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
+    def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "TeamworkGame":
         """Factory called by SessionManager. Builds clients from character dicts.
 
         Accepted kwargs:
@@ -63,7 +63,7 @@ class ForesightGame(Game):
             max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
         """
         updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
-        validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES))
+        validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
         return cls(
             pc=pc,
             npc=npc,
@@ -79,7 +79,7 @@ class ForesightGame(Game):
             return
         self._exited = True
         self._exit_reason = reason
-        logger.info(f"ForesightGame exited: {reason}")
+        logger.info(f"TeamworkGame exited: {reason}")
 
     @property
     def exited(self) -> bool:
@@ -91,12 +91,10 @@ class ForesightGame(Game):
         """Reason the game ended, or empty string."""
         return self._exit_reason
 
-    def _help_content(self) -> str:
-        return C.HELP_CONTENT.format(
-            pc_hid=self._pc.hid,
-            pc_short_description=self._pc.short_description,
-            npc_hid=self._npc.hid,
-        )
+    @property
+    def challenges(self) -> str:
+        """Player's reflection on challenges, or empty string."""
+        return self._challenges
 
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
@@ -105,12 +103,27 @@ class ForesightGame(Game):
 
         if not self._entered:
             self._entered = True
-            yield GameEvent.now(type="info", content=self._help_content())
+            yield GameEvent.now(
+                type="info",
+                content=C.HELP_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                ),
+            )
             opening = await self._updater.chat(None)
             yield GameEvent.now(type="ai", content=opening)
             return
 
         if not user_input:
+            return
+
+        if self._awaiting_challenges:
+            self._challenges = user_input
+            self._awaiting_challenges = False
+            self.exit("player finished")
+            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+
             return
 
         command_event = self._handle_command(user_input)
@@ -152,7 +165,15 @@ class ForesightGame(Game):
         cmd = command_body.split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=self._help_content(), command_response=True)
+            return GameEvent.now(
+                type="info",
+                content=C.HELP_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                ),
+                command_response=True,
+            )
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
@@ -167,11 +188,7 @@ class ForesightGame(Game):
             )
 
         if cmd == Command.FINISH:
-            self.exit("player finished")
-            return GameEvent.now(
-                type="info",
-                content=C.FINISH_CONTENT.format(finish_reason="player finished"),
-                command_response=True,
-            )
+            self._awaiting_challenges = True
+            return GameEvent.now(type="info", content=C.CHALLENGES_QUESTION, command_response=True)
 
         return None

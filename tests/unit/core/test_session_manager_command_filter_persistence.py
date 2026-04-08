@@ -119,7 +119,7 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
         ("Explore", f"/{ExploreCommand.HELP.value}", ExploreCommand.HELP.value),
         ("Explore", f"/{ExploreCommand.ABILITIES.value}", ExploreCommand.ABILITIES.value),
         ("Foresight", f"/{ForesightCommand.HELP.value}", ForesightCommand.HELP.value),
-        ("Foresight", f"/{ForesightCommand.PREDICT_NEXT.value}", ForesightCommand.PREDICT_NEXT.value),
+        ("Foresight", f"/{ForesightCommand.FINISH.value}", ForesightCommand.FINISH.value),
         ("Infer Intent", f"/{InferIntentCommand.HELP.value}", InferIntentCommand.HELP.value),
         ("Infer Intent", f"/{InferIntentCommand.PREDICT_INTENT.value}", InferIntentCommand.PREDICT_INTENT.value),
         ("Goal Horizon", f"/{GoalHorizonCommand.HELP.value}", GoalHorizonCommand.HELP.value),
@@ -173,63 +173,3 @@ async def test_game_level_command_filters_persist_command_events(
     assert command_output[MongoColumns.CONTENT] == emitted[0]["content"]
 
 
-@pytest.mark.parametrize(
-    ("command_text", "expected_command_name", "expected_command_args", "expect_exit"),
-    [
-        ("/exit", "exit", "", True),
-    ],
-)
-async def test_session_level_exit_command_persists_and_normalizes_reason(
-    patch_llm_client: Any,
-    async_mongo_provider: Any,
-    consenting_player_id: str,
-    command_text: str,
-    expected_command_name: str,
-    expected_command_args: str,
-    expect_exit: bool,
-) -> None:
-    """Session-level exit command should persist command events and normalize exit reasons."""
-    _ = patch_llm_client
-    db = async_mongo_provider.get_db()
-    _enable_async_mongo_writes(db)
-
-    session, session_id = await _create_persisted_session(
-        provider=async_mongo_provider,
-        game_name="Explore",
-        player_id=consenting_player_id,
-    )
-
-    turn_index = session.turns + 1
-    emitted = await session.step_async(command_text)
-    assert emitted
-    assert emitted[0]["type"] == "info"
-
-    if expect_exit:
-        assert session.exited
-    else:
-        assert not session.exited
-        await session.exit_async("test complete")
-
-    turn_events = _events_for_turn(db, session_id=session_id, turn_index=turn_index)
-    command_input = _event_by_classification(
-        turn_events,
-        direction="inbound",
-        event_type="command",
-        event_source="user",
-    )
-    command_output = _event_by_classification(
-        turn_events,
-        direction="outbound",
-        event_type="command",
-        event_source="system",
-    )
-
-    assert command_input[MongoColumns.CONTENT] == command_text
-    assert command_input[MongoColumns.COMMAND_NAME] == expected_command_name
-    assert command_input[MongoColumns.COMMAND_ARGS] == expected_command_args
-    assert command_output[MongoColumns.CONTENT] == emitted[0]["content"]
-
-    if expect_exit:
-        session_doc = db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: session_id})
-        assert session_doc is not None
-        assert session_doc[MongoColumns.TERMINATION_REASON] == "user_exit_command"

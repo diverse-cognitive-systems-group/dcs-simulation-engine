@@ -1,9 +1,9 @@
 """Functional tests for foresight game simulation flow with mocked LLMs.
 
 This test suite validates the foresight game's unique mechanics:
-1. Prediction parsing - validator allows predictions in user input
+1. Prediction parsing - validator allows predictions embedded in user input
 2. Prediction ignoring - updater processes only the action, not the prediction
-3. /predict-next records repeatable predictions without ending the game
+3. /finish command ends the game
 4. Multi-turn simulation flow with prediction-containing inputs
 
 Tests use mocked LLMs to avoid external API dependencies.
@@ -42,11 +42,11 @@ def seed_consenting_player(_isolate_db_state, async_mongo_provider):
 FORESIGHT_TEST_INPUTS = [
     "I wave my hand and predict they will wave back",
     "I look around",
-    "I move closer. I predict the flatworm will retreat.",
-    "I observe the flatworm",
+    "I move closer. I predict the FW will retreat.",
+    "I observe the FW",
     "I stay still and predict they will move toward me",
     "I make a sound",
-    "I touch the surface. I predict the flatworm will curl up.",
+    "I touch the surface. I predict the FW will curl up.",
     "I step back",
     "I wait and predict they will explore",
     "I examine the environment",
@@ -120,8 +120,8 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
     assert not session.exited, "Session should stay open until the next input observes the stopping condition"
 
 
-async def test_foresight_predict_next_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /predict-next prompts for a prediction without ending the game."""
+async def test_foresight_finish_command_exits_game(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /finish command ends the game."""
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
@@ -133,38 +133,11 @@ async def test_foresight_predict_next_command(patch_llm_client, _isolate_db_stat
     await session.step_async("")
     await session.step_async("I wave my hand")
 
-    predict_events = await session.step_async("/predict-next")
+    finish_events = await session.step_async("/finish")
 
-    info_events = [e for e in predict_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected an info event asking for a prediction"
-    assert "predict" in info_events[0]["content"].lower()
-    assert not session.exited, "Session should remain active after /predict-next"
-
-
-async def test_foresight_predict_next_answer_is_repeatable(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Predictions collected via /predict-next should be stored and repeatable."""
-    session = await SessionManager.create_async(
-        game="foresight",
-        provider=async_mongo_provider,
-        pc_choice="NA",
-        npc_choice="FW",
-        player_id=str(TEST_PLAYER_ID),
-    )
-
-    await session.step_async("")
-    await session.step_async("/predict-next")
-    first_events = await session.step_async("The flatworm will retreat into the shade.")
-    assert any(e["type"] == "info" for e in first_events), "Expected prediction confirmation"
-    assert session.game.predictions == ["The flatworm will retreat into the shade."]
-    assert not session.exited
-
-    second_events = await session.step_async("/predict-next It will move toward the food.")
-    assert any(e["type"] == "info" for e in second_events), "Expected inline prediction confirmation"
-    assert session.game.predictions == [
-        "The flatworm will retreat into the shade.",
-        "It will move toward the food.",
-    ]
-    assert not session.exited
+    info_events = [e for e in finish_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected an info event from /finish"
+    assert session.exited, "Session should be exited after /finish"
 
 
 async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -180,9 +153,96 @@ async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mon
     await session.step_async("")
     await session.step_async("I wave my hand and predict they will respond")
     await session.step_async("I look around")
-    await session.step_async("I observe the flatworm")
+    await session.step_async("I observe the FW")
 
     await session.exit_async("test complete")
     assert session.exited, "Session should be exited after exit()"
 
     session.save()
+
+
+async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /help shows NPC hid but does not reveal NPC description."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    help_events = await session.step_async("/help")
+
+    info_events = [e for e in help_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /help"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "FW" in content, "NPC hid should appear in /help"
+    assert "details hidden" in content.lower(), "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
+
+
+async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /abilities shows PC abilities but hides all NPC details."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    abilities_events = await session.step_async("/abilities")
+
+    info_events = [e for e in abilities_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /abilities"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
+    assert "NPC details are hidden" in content, "Expected '*NPC details are hidden.*' in /abilities NPC section"
+
+
+async def test_default_post_play_form_present(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Foresight ends with FINISH_CONTENT after /finish — no post-play questions."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+    await session.step_async("I observe the FW")
+
+    finish_events = await session.step_async("/finish")
+    info_events = [e for e in finish_events if e.get("type") == "info"]
+    assert any("Game finished" in e["content"] for e in info_events), (
+        f"Expected 'Game finished' in /finish response: {[e['content'] for e in info_events]}"
+    )
+    assert session.exited, "Session should be exited after /finish"
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_per_turn_evaluation(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation should run after each turn and results displayed to player."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_player_triggered_evals_disabled_by_default(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Player-triggered evaluations should be disabled by default."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_evaluation_shown_at_end(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation results should be shown to the player after game completion."""
+    ...
+
+
+@pytest.mark.skip(reason="pending run config refactoring")
+async def test_overrides_work(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """All documented run config overrides should apply to Foresight."""
+    ...

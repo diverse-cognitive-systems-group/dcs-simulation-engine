@@ -2,6 +2,7 @@
 
 import asyncio
 from contextlib import suppress
+from datetime import datetime, timezone
 from typing import Any
 
 from dcs_simulation_engine.api.auth import (
@@ -27,6 +28,9 @@ from dcs_simulation_engine.api.models import (
     WSCloseRequest,
     WSErrorFrame,
     WSEventFrame,
+    WSReplayEndFrame,
+    WSReplayEventFrame,
+    WSReplayStartFrame,
     WSSessionMetaFrame,
     WSStatusFrame,
     WSStatusRequest,
@@ -46,6 +50,8 @@ def _session_status(entry_status: str, exited: bool) -> str:
     """Compute user-facing status for session responses."""
     if entry_status == "closed" or exited:
         return "closed"
+    if entry_status == "paused":
+        return "paused"
     return "active"
 
 
@@ -123,6 +129,45 @@ async def _send_status(websocket: WebSocket, session_id: str, *, status_value: s
         exited=exited,
     )
     await websocket.send_json(frame.model_dump(mode="json"))
+
+
+async def _send_replay(websocket: WebSocket, session_id: str, provider: Any, turns: int) -> None:
+    """Send a burst of historical events to repopulate the client chat on resume."""
+    await websocket.send_json(WSReplayStartFrame(session_id=session_id).model_dump(mode="json"))
+    events = await maybe_await(provider.list_session_events(session_id=session_id))
+    for event in events:
+        event_type = str(getattr(event, "event_type", None) or "info").lower()
+        direction = str(getattr(event, "direction", None) or "outbound").lower()
+        content = str(getattr(event, "content", None) or "")
+        event_id = getattr(event, "event_id", None)
+
+        # Skip internal lifecycle events (session_start, session_end).
+        if event_type in {"session_start", "session_end"}:
+            continue
+        if event_type not in {"message", "command", "info", "error", "warning"}:
+            continue
+
+        is_inbound = direction == "inbound"
+        role = "user" if is_inbound else "ai"
+
+        # Map persisted event_type to the wire EventType used by the client.
+        if event_type == "message":
+            wire_type = "info" if is_inbound else "ai"
+        elif event_type == "command":
+            wire_type = "info"
+        else:
+            wire_type = event_type  # info / error / warning pass through unchanged
+
+        frame = WSReplayEventFrame(
+            session_id=session_id,
+            event_type=wire_type,  # type: ignore[arg-type]
+            content=content,
+            event_id=str(event_id) if event_id else None,
+            role=role,  # type: ignore[arg-type]
+        )
+        await websocket.send_json(frame.model_dump(mode="json"))
+
+    await websocket.send_json(WSReplayEndFrame(session_id=session_id, turns=turns).model_dump(mode="json"))
 
 
 async def _finalize_exit_with_retry(*, manager: Any, reason: str, session_id: str, max_attempts: int = 3) -> None:
@@ -276,6 +321,12 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             await websocket.close()
             return
 
+        # Reject a second WebSocket if the session already has an active connection.
+        if entry.ws_connected:
+            await _send_error(websocket, "Session already connected")
+            await websocket.close()
+            return
+
         if server_mode == "standard":
             # Try header-based auth first (Python client), then first-message auth (browser).
             api_key = api_key_from_websocket(websocket)
@@ -291,6 +342,11 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                 await websocket.close()
                 return
 
+        is_resume = entry.status == "paused"
+        if is_resume:
+            registry.set_active(session_id)
+            await maybe_await(provider.resume_session(session_id=session_id, resumed_at=datetime.now(timezone.utc)))
+
         # Send session metadata (pc/npc) immediately after auth, before any events.
         game = entry.manager.game
         pc = getattr(game, "_pc", None)
@@ -304,6 +360,11 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             has_game_feedback=has_game_feedback,
         )
         await websocket.send_json(meta_frame.model_dump(mode="json"))
+        registry.set_ws_connected(session_id, True)
+
+        if is_resume:
+            # Replay persisted history so the client can restore the chat view.
+            await _send_replay(websocket, session_id, provider, turns=entry.manager.turns)
 
         if not entry.opening_sent and entry.status != "closed":
             opening_events = await entry.manager.step_async(None)
@@ -376,6 +437,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                             reason="received close request",
                             session_id=session_id,
                         )
+                registry.set_ws_connected(session_id, False)
                 registry.close(session_id)
                 await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
                 await websocket.send_json({"type": "closed", "session_id": session_id})
@@ -384,17 +446,18 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
     except WebSocketDisconnect as exc:
         entry = registry.get(session_id)
-        if entry is not None and not entry.manager.exited:
-            try:
-                await _finalize_exit_with_retry(
-                    manager=entry.manager,
-                    reason="websocket_disconnect",
-                    session_id=session_id,
-                )
-                registry.close(session_id)
-                await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
-            except Exception:
-                logger.exception("Failed to finalize session after websocket disconnect: {}", session_id)
+        if entry is not None:
+            registry.set_ws_connected(session_id, False)
+            if entry.manager.exited:
+                # Game finished naturally before the disconnect — finalize as usual.
+                pass
+            else:
+                # Game still in progress — pause so the player can resume later.
+                try:
+                    registry.pause(session_id)
+                    await maybe_await(provider.pause_session(session_id=session_id, paused_at=datetime.now(timezone.utc)))
+                except Exception:
+                    logger.exception("Failed to pause session after websocket disconnect: {}", session_id)
         logger.info(
             "WebSocket disconnected for session {} (code={}, reason={})",
             session_id,
@@ -404,17 +467,19 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
     except Exception:
         entry = registry.get(session_id)
-        if entry is not None and not entry.manager.exited:
-            try:
-                await _finalize_exit_with_retry(
-                    manager=entry.manager,
-                    reason="server_error",
-                    session_id=session_id,
-                )
-                registry.close(session_id)
-                await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
-            except Exception:
-                logger.exception("Failed to finalize session after internal websocket error: {}", session_id)
+        if entry is not None:
+            registry.set_ws_connected(session_id, False)
+            if not entry.manager.exited:
+                try:
+                    await _finalize_exit_with_retry(
+                        manager=entry.manager,
+                        reason="server_error",
+                        session_id=session_id,
+                    )
+                    registry.close(session_id)
+                    await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                except Exception:
+                    logger.exception("Failed to finalize session after internal websocket error: {}", session_id)
         logger.exception("Unhandled websocket error for session {}", session_id)
         try:
             await _send_error(websocket, "Internal server error")

@@ -2,8 +2,7 @@ name: Explore
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.
-  There are no goals and no extra mechanics. Useful for demos and open-ended play.
+  Players are given no tasks -- an open-ended playground.
 
 stopping_conditions:
   runtime_seconds: [">=600"]

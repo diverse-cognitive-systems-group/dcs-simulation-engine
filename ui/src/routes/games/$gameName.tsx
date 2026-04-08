@@ -3,7 +3,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCreateGameApiPlayGamePost } from '@/api/generated'
 import { HttpError, httpClient } from '@/api/http'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
@@ -23,6 +23,22 @@ import { getActiveExperimentName, getApiKey } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
 import { getServerConfig } from '@/lib/server-config'
 import { requireAuth, rootRoute } from '../__root'
+
+function resumeStorageKey(gameName: string) {
+  return `dcs_resume_${gameName}`
+}
+
+function getSavedSessionId(gameName: string): string | null {
+  return localStorage.getItem(resumeStorageKey(gameName))
+}
+
+function saveSessionId(gameName: string, sessionId: string) {
+  localStorage.setItem(resumeStorageKey(gameName), sessionId)
+}
+
+function clearSavedSessionId(gameName: string) {
+  localStorage.removeItem(resumeStorageKey(gameName))
+}
 
 interface CharacterChoice {
   hid: string
@@ -56,6 +72,25 @@ function GameSetupPage() {
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [fatalError, setFatalError] = useState<string | null>(null)
+  const [resumableSessionId, setResumableSessionId] = useState<string | null>(null)
+
+  // On mount, check if a paused session exists for this game.
+  useEffect(() => {
+    const savedId = getSavedSessionId(gameName)
+    if (!savedId) return
+    httpClient<{ status: string }>(`/api/sessions/${savedId}/status`)
+      .then((data) => {
+        if (data.status === 'paused') {
+          setResumableSessionId(savedId)
+        } else {
+          clearSavedSessionId(gameName)
+        }
+      })
+      .catch(() => {
+        // Session gone or server unreachable — clear stale entry.
+        clearSavedSessionId(gameName)
+      })
+  }, [gameName])
 
   const {
     data: setupData,
@@ -118,6 +153,7 @@ function GameSetupPage() {
           setError('Failed to start game')
           return
         }
+        saveSessionId(gameName, result.session_id)
         await navigate({
           to: '/play/$sessionId',
           params: { sessionId: result.session_id },
@@ -136,6 +172,21 @@ function GameSetupPage() {
 
   async function handleReturnToGames() {
     await navigate({ to: '/games' })
+  }
+
+  async function handleResume() {
+    if (!resumableSessionId) return
+    await navigate({
+      to: '/play/$sessionId',
+      params: { sessionId: resumableSessionId },
+      search: { gameName, experimentName: '' },
+    })
+  }
+
+  function handleNewGame() {
+    clearSavedSessionId(gameName)
+    setResumableSessionId(null)
+    startGame()
   }
 
   function startGame() {
@@ -285,13 +336,29 @@ function GameSetupPage() {
             </Alert>
           )}
 
-          <Button
-            className="w-full"
-            onClick={startGame}
-            disabled={isPending || !setupData.can_start}
-          >
-            {isPending ? 'Starting…' : 'Play'}
-          </Button>
+          {resumableSessionId ? (
+            <>
+              <Button className="w-full" onClick={handleResume}>
+                Resume Game
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleNewGame}
+                disabled={isPending || !setupData.can_start}
+              >
+                {isPending ? 'Starting…' : 'New Game'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              className="w-full"
+              onClick={startGame}
+              disabled={isPending || !setupData.can_start}
+            >
+              {isPending ? 'Starting…' : 'Play'}
+            </Button>
+          )}
 
           <Button variant="outline" className="w-full" onClick={() => navigate({ to: '/games' })}>
             Back to Games
