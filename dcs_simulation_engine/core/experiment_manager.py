@@ -233,6 +233,7 @@ class ExperimentManager:
         experiment_name: str,
         player: PlayerRecord,
         source: str = "experiment",
+        is_llm_player: bool = False,
     ) -> tuple["SessionEntry", AssignmentRecord]:
         """Start a gameplay session for the current assignment."""
         assignment = await maybe_await(
@@ -250,6 +251,7 @@ class ExperimentManager:
             pc_choice=assignment.character_hid,
             npc_choice=None,
             player_id=player.id,
+            is_llm_player=is_llm_player,
         )
         entry = registry.add(
             player_id=player.id,

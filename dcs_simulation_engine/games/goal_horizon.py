@@ -7,7 +7,9 @@ from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import (
     UpdaterClient,
+    ValidationOrchestrator,
     ValidatorClient,
+    format_ensemble_failures,
 )
 from dcs_simulation_engine.games.const import (
     GoalHorizon as C,
@@ -39,6 +41,7 @@ class GoalHorizonGame(Game):
         npc: CharacterRecord,
         updater: UpdaterClient,
         validator: ValidatorClient,
+        ensemble_orchestrator: ValidationOrchestrator | None = None,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
     ) -> None:
@@ -47,6 +50,7 @@ class GoalHorizonGame(Game):
         self._npc = npc
         self._updater = updater
         self._validator = validator
+        self._ensemble = ensemble_orchestrator
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
         self._entered = False
@@ -60,14 +64,21 @@ class GoalHorizonGame(Game):
         Accepted kwargs:
             retry_budget (int): overrides DEFAULT_RETRY_BUDGET
             max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+            game_name (str): game name for GameValidator lookup
+            is_llm_player (bool): whether the PC is LLM-controlled
         """
         updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
+        ensemble = ValidationOrchestrator.create(
+            game_name=kwargs.get("game_name", "goal horizon"),
+            is_llm_player=kwargs.get("is_llm_player", False),
+        )
         return cls(
             pc=pc,
             npc=npc,
             updater=updater,
             validator=validator,
+            ensemble_orchestrator=ensemble,
             retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
             max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
         )
@@ -107,7 +118,16 @@ class GoalHorizonGame(Game):
                     npc_short_description=self._npc.short_description,
                 ),
             )
-            opening = await self._updater.chat(None)
+            if self._ensemble is not None:
+                opening = await self._ensemble.generate_validated_npc_response(
+                    None, pc=self._pc, npc=self._npc, updater=self._updater,
+                )
+                if opening is None:
+                    yield GameEvent.now(type="error", content="The simulation could not initialize the scene.")
+                    self.exit("npc_validation_failed")
+                    return
+            else:
+                opening = await self._updater.chat(None)
             yield GameEvent.now(type="ai", content=opening)
             return
 
@@ -141,7 +161,36 @@ class GoalHorizonGame(Game):
             yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
             return
 
-        reply = await self._updater.chat(user_input)
+        # Ensemble validation (Engine + Game + conditional RolePlayingLLM).
+        if self._ensemble is not None:
+            ensemble_result = await self._ensemble.validate_pc_input(
+                user_input, pc=self._pc, npc=self._npc, updater=self._updater,
+            )
+            if ensemble_result is not None:
+                msg = format_ensemble_failures(ensemble_result)
+                logger.warning("Ensemble PC validation failed: {}", msg)
+                if self._ensemble.is_llm_player:
+                    self._retry_budget -= 1
+                    if self._retry_budget <= 0:
+                        self.exit("retry budget exhausted")
+                        yield GameEvent.now(type="error", content=msg)
+                        msg_end = "You have used all your allowed retries. The game is ending."
+                        yield GameEvent.now(type="info", content=msg_end)
+                        return
+                yield GameEvent.now(type="error", content=msg)
+                return
+
+        # Generate and validate NPC response.
+        if self._ensemble is not None:
+            reply = await self._ensemble.generate_validated_npc_response(
+                user_input, pc=self._pc, npc=self._npc, updater=self._updater,
+            )
+            if reply is None:
+                npc_err = "The simulation could not produce a valid response. Please try a different action."
+                yield GameEvent.now(type="error", content=npc_err)
+                return
+        else:
+            reply = await self._updater.chat(user_input)
         yield GameEvent.now(type="ai", content=reply)
 
     def _handle_command(self, user_input: str) -> GameEvent | None:

@@ -240,6 +240,7 @@ async def create_game(body: CreateGameRequest, request: Request) -> CreateGameRe
             pc_choice=body.pc_choice,
             npc_choice=body.npc_choice,
             player_id=player_id,
+            is_llm_player=body.is_llm_player,
         )
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc

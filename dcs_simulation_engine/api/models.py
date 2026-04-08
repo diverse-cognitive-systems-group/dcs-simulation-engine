@@ -93,6 +93,7 @@ class CreateGameRequest(BaseModel):
     pc_choice: str | None = None
     npc_choice: str | None = None
     source: str = Field(default="api", min_length=1)
+    is_llm_player: bool = False
 
 
 class CreateGameResponse(BaseModel):

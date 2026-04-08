@@ -102,6 +102,7 @@ class SessionManager:
         pc_choice: Optional[str] = None,
         npc_choice: Optional[str] = None,
         player_id: Optional[str] = None,
+        is_llm_player: bool = False,
     ) -> "SessionManager":
         """Create a session for async runtime paths."""
         if isinstance(game, str):
@@ -129,7 +130,9 @@ class SessionManager:
 
         pc: CharacterRecord = await maybe_await(provider.get_character(hid=pc_hid))
         npc: CharacterRecord = await maybe_await(provider.get_character(hid=npc_hid))
-        game_instance = cls._build_game_instance(game_config=game_config, pc=pc, npc=npc)
+        game_instance = cls._build_game_instance(
+            game_config=game_config, pc=pc, npc=npc, is_llm_player=is_llm_player,
+        )
         session = cls._build_session(
             game_config=game_config,
             game_instance=game_instance,
@@ -171,11 +174,20 @@ class SessionManager:
         return loaded
 
     @classmethod
-    def _build_game_instance(cls, *, game_config: GameConfig, pc: CharacterRecord, npc: CharacterRecord) -> Game:
+    def _build_game_instance(
+        cls,
+        *,
+        game_config: GameConfig,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        is_llm_player: bool = False,
+    ) -> Game:
         module_path, class_name = game_config.game_class.rsplit(".", 1)
         module = importlib.import_module(module_path)
         game_cls = getattr(module, class_name)
-        return game_cls.create_from_context(pc=pc, npc=npc)
+        return game_cls.create_from_context(
+            pc=pc, npc=npc, game_name=game_config.name, is_llm_player=is_llm_player,
+        )
 
     @classmethod
     def _build_session(

@@ -36,6 +36,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from loguru import logger
 
 DEFAULT_MODEL = "openai/gpt-5-mini"
+DEFAULT_VALIDATOR_MODEL = "openai/gpt-4.1-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
 
@@ -203,6 +204,12 @@ class UpdaterClient:
         logger.debug(f"UpdaterClient reply ({len(reply)} chars)")
         return reply
 
+    def pop_last_response(self) -> str | None:
+        """Remove and return the last assistant message from history, or ``None``."""
+        if self._history and self._history[-1].get("role") == "assistant":
+            return self._history.pop().get("content")
+        return None
+
 
 class ValidatorClient:
     """Stateless async client for the input-validation LLM.
@@ -257,6 +264,14 @@ class ScorerClient:
 
 
 
+def format_ensemble_failures(result: EnsembleValidationResult) -> str:
+    """Convert ensemble validation failures into a user-facing error string."""
+    if not result.failed:
+        return "Validation failed."
+    lines = [f"[{f.rule}] {f.reason}" for f in result.failed if f.reason]
+    return "\n".join(lines) if lines else "Validation failed."
+
+
 class AtomicValidator:
     """A validator that checks for a SINGLE condition.
 
@@ -264,7 +279,7 @@ class AtomicValidator:
     Each call sends the rule + text to the LLM and returns True (pass) or False (fail).
     """
 
-    def __init__(self, system_prompt: str, model: str = DEFAULT_MODEL) -> None:
+    def __init__(self, system_prompt: str, model: str = DEFAULT_VALIDATOR_MODEL) -> None:
         """Initialise with a system prompt describing the condition and an optional model."""
         self._system_prompt = system_prompt
         self._model = model
@@ -313,7 +328,7 @@ class EnsembleValidator:
         self._validators = validators
 
     @classmethod
-    def create(cls, model: str = DEFAULT_MODEL) -> "EnsembleValidator":
+    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "EnsembleValidator":
         """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
         validators = {
             rule: AtomicValidator(system_prompt=prompt, model=model)
@@ -362,6 +377,15 @@ class EngineValidator(EnsembleValidator):
     _context_routing = ENGINE_CONTEXT_ROUTING
     RULES: list[str] = list(ENGINE_VALIDATOR_PROMPTS)
 
+    @classmethod
+    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "EngineValidator":
+        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
+        validators = {
+            rule: AtomicValidator(system_prompt=prompt, model=model)
+            for rule, prompt in cls._prompts.items()
+        }
+        return cls(validators)
+
 
 class GameValidator(EnsembleValidator):
     """Base class for game-specific ensemble validators.
@@ -375,7 +399,7 @@ class GameValidator(EnsembleValidator):
     _context_routing: dict[str, list[str]] = {}
 
     @classmethod
-    def create(cls, model: str = DEFAULT_MODEL) -> "GameValidator":
+    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "GameValidator":
         """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
         validators = {
             rule: AtomicValidator(system_prompt=prompt, model=model)
@@ -384,7 +408,7 @@ class GameValidator(EnsembleValidator):
         return cls(validators)
 
     @classmethod
-    def for_game(cls, game_name: str, model: str = DEFAULT_MODEL) -> "GameValidator":
+    def for_game(cls, game_name: str, model: str = DEFAULT_VALIDATOR_MODEL) -> "GameValidator":
         """Factory: return the GameValidator subclass for *game_name*."""
         registry: dict[str, type[GameValidator]] = {
             "explore": ExploreGameValidator,
@@ -444,6 +468,15 @@ class RolePlayingLLMValidator(EnsembleValidator):
     _context_routing = ROLEPLAYING_CONTEXT_ROUTING
     RULES: list[str] = ["VALID-SCHEMA"] + list(ROLEPLAYING_VALIDATOR_PROMPTS)
 
+    @classmethod
+    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "RolePlayingLLMValidator":
+        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
+        validators = {
+            rule: AtomicValidator(system_prompt=prompt, model=model)
+            for rule, prompt in cls._prompts.items()
+        }
+        return cls(validators)
+
     def _pre_checks(self, text: str) -> list[ValidationResult]:
         """Programmatic VALID-SCHEMA check before LLM validation."""
         return [self._check_schema(text)]
@@ -464,3 +497,173 @@ class RolePlayingLLMValidator(EnsembleValidator):
         if extra:
             return ValidationResult("VALID-SCHEMA", False, f"Extra keys: {extra}")
         return ValidationResult("VALID-SCHEMA", True, "")
+
+
+class ValidationOrchestrator:
+    """Composes EngineValidator, GameValidator, and RolePlayingLLMValidator.
+
+    Provides ``validate_pc_input`` and ``generate_validated_npc_response`` as
+    the two public entry points used by game ``step()`` methods.
+    """
+
+    NPC_OUTPUT_RETRY_BUDGET: int = 2
+
+    def __init__(
+        self,
+        engine_validator: EngineValidator,
+        game_validator: GameValidator,
+        roleplaying_validator: RolePlayingLLMValidator,
+        is_llm_player: bool = False,
+    ) -> None:
+        """Initialise with pre-built sub-validators."""
+        self._engine = engine_validator
+        self._game = game_validator
+        self._roleplaying = roleplaying_validator
+        self._is_llm_player = is_llm_player
+
+    @classmethod
+    def create(
+        cls,
+        game_name: str,
+        is_llm_player: bool = False,
+        model: str = DEFAULT_VALIDATOR_MODEL,
+    ) -> "ValidationOrchestrator":
+        """Build all sub-validators for the given game."""
+        return cls(
+            engine_validator=EngineValidator.create(model=model),
+            game_validator=GameValidator.for_game(game_name, model=model),
+            roleplaying_validator=RolePlayingLLMValidator.create(model=model),
+            is_llm_player=is_llm_player,
+        )
+
+    @property
+    def is_llm_player(self) -> bool:
+        """Whether the player character is LLM-controlled."""
+        return self._is_llm_player
+
+    # ------------------------------------------------------------------
+    # Context helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_context(
+        *,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        updater: UpdaterClient,
+        player_action: str = "",
+    ) -> dict[str, str]:
+        """Build the context dict consumed by ensemble validator routing."""
+        history = updater.history
+        scene_lines: list[str] = []
+        for msg in history[-6:]:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if role in ("user", "assistant"):
+                scene_lines.append(f"{role}: {content}")
+        pc_abilities = str(pc.data.get("abilities", ""))
+        npc_abilities = str(npc.data.get("abilities", ""))
+        return {
+            "character_abilities": f"Player: {pc_abilities}\nNPC: {npc_abilities}",
+            "scene_context": "\n".join(scene_lines),
+            "player_action": player_action,
+        }
+
+    @staticmethod
+    def _merge_results(
+        results: list[EnsembleValidationResult],
+    ) -> EnsembleValidationResult | None:
+        """Merge multiple ensemble results. Returns ``None`` when all pass."""
+        all_results: list[ValidationResult] = []
+        all_failed: list[ValidationResult] = []
+        for r in results:
+            all_results.extend(r.results)
+            all_failed.extend(r.failed)
+        if all_failed:
+            return EnsembleValidationResult(passed=False, results=all_results, failed=all_failed)
+        return None
+
+    # ------------------------------------------------------------------
+    # PC input validation
+    # ------------------------------------------------------------------
+
+    async def validate_pc_input(
+        self,
+        text: str,
+        *,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        updater: UpdaterClient,
+    ) -> EnsembleValidationResult | None:
+        """Run ensemble validators on PC input. Returns ``None`` if all pass."""
+        ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=text)
+        coros = [
+            self._engine.validate(text, ctx),
+            self._game.validate(text, ctx),
+        ]
+        if self._is_llm_player:
+            coros.append(self._roleplaying.validate(text, ctx))
+        results = list(await asyncio.gather(*coros))
+        return self._merge_results(results)
+
+    # ------------------------------------------------------------------
+    # NPC output validation
+    # ------------------------------------------------------------------
+
+    async def validate_npc_output(
+        self,
+        text: str,
+        *,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        updater: UpdaterClient,
+        player_action: str,
+    ) -> EnsembleValidationResult | None:
+        """Run all ensemble validators on NPC output. Returns ``None`` if all pass."""
+        ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=player_action)
+        results = list(
+            await asyncio.gather(
+                self._engine.validate(text, ctx),
+                self._game.validate(text, ctx),
+                self._roleplaying.validate(text, ctx),
+            )
+        )
+        return self._merge_results(results)
+
+    async def generate_validated_npc_response(
+        self,
+        user_input: str | None,
+        *,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        updater: UpdaterClient,
+    ) -> str | None:
+        """Generate and validate NPC output, retrying on failure.
+
+        Returns the validated reply text, or ``None`` if the retry budget
+        is exhausted. All failures are logged.
+        """
+        action = user_input or ""
+        for attempt in range(1, self.NPC_OUTPUT_RETRY_BUDGET + 1):
+            reply = await updater.chat(user_input)
+            # Re-wrap in JSON for RolePlayingLLMValidator's VALID-SCHEMA check;
+            # updater.chat() already parsed and extracted the content field.
+            raw_wrapped = json.dumps({"type": "ai", "content": reply})
+            result = await self.validate_npc_output(
+                raw_wrapped, pc=pc, npc=npc, updater=updater, player_action=action,
+            )
+            if result is None:
+                return reply  # passed
+            msg = format_ensemble_failures(result)
+            logger.warning(
+                "NPC output validation failed (attempt {}/{}): {}",
+                attempt,
+                self.NPC_OUTPUT_RETRY_BUDGET,
+                msg,
+            )
+            updater.pop_last_response()
+        logger.error(
+            "NPC output validation exhausted retry budget ({} attempts)",
+            self.NPC_OUTPUT_RETRY_BUDGET,
+        )
+        return None

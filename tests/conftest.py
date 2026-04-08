@@ -275,8 +275,18 @@ def patch_llm_client(monkeypatch):
         # Validator sends only a system message (no conversation history)
         if len(messages) == 1 and messages[0].get("role") == "system":
             return _MOCK_VALIDATOR_RESPONSE
+        # AtomicValidator: system + user, system prompt contains JSON format instruction
+        if (
+            len(messages) == 2
+            and messages[0].get("role") == "system"
+            and messages[1].get("role") == "user"
+            and '"pass":' in messages[0].get("content", "")
+        ):
+            return '{"pass": true}'
+        
         # Updater sends system + conversation history (2+ messages)
         return _MOCK_AI_RESPONSE
+
 
     monkeypatch.setattr(ai_client, "_call_openrouter", mock_call_openrouter)
     yield
