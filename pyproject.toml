@@ -94,9 +94,12 @@ Issues = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engi
 [tool.pytest.ini_options]
 addopts = [
   "--cache-clear",
+  "--cov=dcs_simulation_engine",
   "--cov-report=term",
-  "--numprocesses=auto", # multiprocessing
   "--cov-report=xml",
+  "--cov-branch",
+  "--cov-fail-under=85",
+  "--numprocesses=auto", # multiprocessing
   "--durations=0",
   "--verbose",
   # "-x" # stop tests after first failure

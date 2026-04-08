@@ -89,3 +89,8 @@ ui/openapi.snapshot.json
 runs/
 deployments/
 results/
+
+# coverage reports
+htmlcov/
+.coverage
+coverage.xml
