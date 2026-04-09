@@ -30,6 +30,10 @@ Anybody can run the full stack locally with Docker and their own API keys.
 Install [Docker](https://docs.docker.com/engine/install/) following the instructions for your operating system.
 
 Configure your API keys in the `.env` file. You can copy the `.env.example` file and fill in your keys there.
+```sh
+# from project root
+cp .env.example .env
+```
 
 Run the full stack with the commands below. 
 
