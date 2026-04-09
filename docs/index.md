@@ -1,27 +1,58 @@
-# Home
-
-TODO - insert an iframe of player performance benchmark dashboard here
+TODO: insert an iframe of player performance benchmark dashboard here
 
 ## What is DCS Simulation Engine?
 
-The Diverse Cognitive Systems Simulation Engine (DCS-SE) is a flexible gameplay framework for running, studying, and analyzing interactions between diverse cognitive systems — including neurodivergent humans, AI agents, and hybrid systems.
+The **Diverse Cognitive Systems Simulation Engine (DCS-SE) is a gameplay framework that works like a tabletop role-playing game** for studying and analyzing interactions between diverse cognitive systems — including neurodivergent humans, AI agents, hybrid systems, and [other forms of intelligence](faq.md#what-is-diverse-intelligence-di).
+
+It was developed by the Diverse Cognitive Systems (DCS) group at [Georgia Tech](https://www.gatech.edu/), within the [Sonification Lab](http://sonify.psych.gatech.edu/) to support the study and engineering of [diverse cognitive systems](faq.md#what-is-diverse-intelligence-di).
 
 The engine is used by:
 
-- **Researchers** designing experiments to study cognition across various scenarios
-- **AI practitioners** using games as a sandbox for agent training and evaluation of open-ended and static models
-- **Educators and team leaders** running training sessions in diverse engagement and decision-making in divergent human teams
+- **Researchers** to design experiments and study cognition across varied scenarios including human and AI
+- **AI practitioners** to train and evaluate agents in both open-ended and structured environments
+- **Educators and team leaders** to run training sessions focused on engagement and decision-making in diverse teams
 
-## Conceptual Foundations
-The simulation engine (DCS-SE) is a tool designed and developed by the Diverse Cognitive Systems (DCS) group at Georgia Tech under the [Sonification Lab](http://sonify.psych.gatech.edu/) to facilitate training and evaluation of interactions between [diverse cognitive systems](faq.md#what-is-diverse-intelligence-di).
+## Why it exists
 
-Specifically, the DCS group aims to ***recognize, understand and engineer diverse cognitive systems, including but not limited to neurodivergent humans, artificial intelligences, hybrid systems, basal and somatic intelligence and other forms that diverge much more from anthropocentric norms.***
+Interfacing between different cognitive systems—even within the same species or culture—is inherently difficult. We lack reliable ways to evaluate how well one system (human, AI, or otherwise) understands the goals, perspectives, and behaviors of fundamentally different minds.
 
-Addressing these research questions requires an environment capable of simulating interactions among diverse cognitive systems with high behavioral fidelity. Such an environment is essential for both training new agents and evaluating or benchmarking existing ones across varied conditions.
+At the same time, new cognitive systems—especially AI—are advancing rapidly without robust methods to assess their ability to engage beyond human-centered assumptions.
 
-### Gaps in Existing Systems
-DCS-SE addresses a significant gap in the current landscape of simulation and evaluation frameworks. There is no framework that allows users to study and learn about engagement between cognitive systems that vary widely in their goal spaces, sensory-perceptual modalities, regulatory and other capabilities. Meanwhile, new cognitive systems—particularly AI—are being developed rapidly, without robust methods for measuring how effectively they understand or engage beyond anthropocentric norms.
+DCS-SE addresses this gap by providing a configurable simulation environment where diverse cognitive systems can interact under controlled conditions. These interactions allow us to:
 
-The simulation engine addresses this gap by providing a configurable environment populated with core [characters](design/characters.md) that are representative of diverse cognitive systems.
+- Evaluate how systems interpret unfamiliar goals and behaviors
+- Study coordination, conflict, and alignment across different cognitive styles
+- Train systems to engage meaningfully with minds unlike their own
 
-Within the simulation engine, scenarios are structured as [games](design/games.md), which define the flow and constraints of interaction (e.g., a game definitions can be open-ended with no tasks or objectives). These games can be adapted or reconfigured to suit specific research questions. A set of core games￼ is provided to support DCS use cases (research and training humans and AI systems to engage meaningfully with systems that diverge from themselves).
+There is also a social motivation: many forms of human neurodivergence are underrepresented in everyday interaction. By modeling characters inspired by real cognitive diversity, the system enables users to engage with a wider range of minds than they would typically encounter.
+
+## What it enables
+
+The engine supports a broader research goal: developing the ability to meaningfully engage with any cognitive system—human, artificial, hybrid, or otherwise.
+
+That includes identifying:
+
+- What a system can perceive and do
+- What it cares about
+- How it communicates
+- What goals may be shared or incompatible with other cognitive systems
+
+Ultimately, the aim is to understand how radically different minds can meet, interpret one another, and discover the foundations of interaction.
+
+## How it works
+
+DCS-SE operates as a turn-based, text-based simulation similar to a tabletop RPG:
+
+- The player controls a character (PC)
+- The system simulates another cognitive system (non-player character, NPC)
+- Each turn, the player takes an action
+- The engine updates the world and generates the NPCs response
+
+Each simulated character is driven by a model that produces bounded, in-character behavior based on its sensory constraints, goals, and internal logic.
+
+A configurable game layer defines the structure of interaction:
+- Scenarios are implemented as games with varying constraints
+- Environments can be open-ended or tightly structured
+- Information (e.g., character type) may be hidden, requiring inference through behavior
+
+*In short: you (player) act, the simulation advances the world, and the interaction unfolds—always grounded in the modeled cognition of each system.*

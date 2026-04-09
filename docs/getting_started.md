@@ -1,19 +1,13 @@
 # Getting Started
 
-The general workflow for using the engine across use cases is to configure it (define that game, characters, etc. you want to run), run it (locally or remotely), share access link with players (human or AI), monitor activity, and export gameplay results for analysis. The full user guide contains specific use case examples.
+***The quickstart guide lives in the main repo's [README](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine?tab=readme-ov-file#how-can-i-use-it) or check out the [user guide](user_guide/configure.md) here in the docs.***
 
-<img src="assets/workflow.png" alt="Workflow overview" width="600"/>
-
-### Key terminology + concepts
+### Key Terminology & Concepts
 
 | Term | Description |
 |---|---|
-| **Users** | Run the engine via CLI; configure games, characters, and experiments |
-| **Players** | Human or AI participants who play via the web UI or API |
-| **Characters** | Cognitive systems that can be assigned as PCs (player characters) or NPCs (non-player characters); vary in goals, sensory/perceptual abilities, etc. |
-| **Games** | Python-defined interaction flows (scenarios, objectives, characters) |
-| **Run configs** | YAML files that configure a specific engine run (what players, games, characters, etc.) |
-
-## Quickstart
-
-See the [README](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine?tab=readme-ov-file#how-can-i-use-it) quickstart guide or continue to the full user guide here in the docs.
+| **Run or (Engine Run)** | A configured engine run defines the parameters for running a the engine with specific games, scenarios, characters, data collection configurations, etc. The run specifies the set of environments or environment generators that a player can encounter.|
+| **Players** | Players (human or AI) use the web UI or API to play games |
+| **Characters** | Characters are the cognitive systems that are assigned as player characters (PCs) or non-player characters (NPC). They vary in goals, sensory/perceptual abilities, etc. |
+| **Games** | Games define the interaction flows (scenarios, objectives, characters) |
+| **Users** | Users run the engine with specific games, characters, data collection configurations, etc. |
