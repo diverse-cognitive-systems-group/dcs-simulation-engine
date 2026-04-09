@@ -653,16 +653,17 @@ class ValidationOrchestrator:
         updater: UpdaterClient,
         player_action: str,
     ) -> EnsembleValidationResult | None:
-        """Run all ensemble validators on NPC output. Returns ``None`` if all pass."""
+        """Run RolePlayingLLMValidator on NPC output. Returns ``None`` if all pass.
+
+        Only ``RolePlayingLLMValidator`` runs here — ``EngineValidator`` and
+        ``GameValidator`` prompts are written for PC input and would produce
+        false failures on valid NPC narration.
+        """
         ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=player_action)
-        results = list(
-            await asyncio.gather(
-                self._engine.validate(text, ctx),
-                self._game.validate(text, ctx),
-                self._roleplaying.validate(text, ctx),
-            )
-        )
-        return self._merge_results(results)
+        result = await self._roleplaying.validate(text, ctx)
+        if result.failed:
+            return result
+        return None
 
     async def generate_validated_npc_response(
         self,
