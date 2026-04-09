@@ -61,10 +61,8 @@ nav:
       - 3. Play/Monitor: user_guide/play.md
       - 4. Analyze Results: user_guide/analyze_results.md
       - Advanced: user_guide/advanced.md
-      - Examples by Use Case:
-          - Psych Research: use_cases/psych-research.md
-          - AI Research: use_cases/ai-research.md
-          - Education & Training: use_cases/education.md
+
+  - Examples: examples.md
 
   - Codebase Reference: codebase_reference.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"

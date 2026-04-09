@@ -1,3 +1,0 @@
-# Psych Research
-
-TODO

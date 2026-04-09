@@ -1,3 +1,0 @@
-# Education & Training
-
-TODO
