@@ -1,0 +1,145 @@
+# Example run config — includes all available options.
+
+# ── Top-level ────────────────────────────────────────────────────────────────
+
+# Unique identifier (used in API routes)
+name: example
+
+# Human-readable description
+description: |
+  Example experiment run demonstrating all configuration options.
+
+# Optional label for grouping or behavior toggles
+# Allowed: "learning" | "static"
+condition: learning
+
+# ── Assignment strategy ──────────────────────────────────────────────────────
+
+assignment_strategy:
+  # Assignment method (currently only one supported)
+  strategy: random_unique
+
+  # Games included in this run (names are normalized automatically)
+  games:
+    - Explore
+    - Infer Intent
+    - Foresight
+    - Goal Horizon
+
+  # Number of players required per game
+  quota_per_game: 10
+
+  # Max games per player (omit to allow all)
+  max_assignments_per_player: 1
+
+  # Seed for deterministic assignment (change to reshuffle)
+  seed: 42
+
+  # If true, only PC-eligible players are considered
+  pc_eligible_only: true
+
+  # Assignment behavior:
+  #   auto          → system assigns
+  #   player_choice → player selects
+  assignment_mode: auto
+
+# ── Forms (optional) ─────────────────────────────────────────────────────────
+
+# Omit entirely to disable forms
+forms:
+  # ── Pre-session form ──────────────────────────────────────────────────────
+  - name: pre_session
+    before_or_after: before # "before" | "after"
+
+    questions:
+      # No answer_type → display-only text
+      - prompt: |
+          Welcome! Please complete this short form before you begin.
+
+      # Free text
+      - key: participant_background
+        prompt: Briefly describe any relevant background.
+        answer_type: string
+
+      # Numeric input
+      - key: age
+        prompt: What is your age?
+        answer_type: number
+        required: true
+
+      # Contact fields
+      - key: contact_email
+        prompt: Email (optional)
+        answer_type: email
+
+      - key: contact_phone
+        prompt: Phone (optional)
+        answer_type: phone
+
+      # Boolean (true/false)
+      - key: prior_experience
+        prompt: Have you done something like this before?
+        answer_type: bool
+        required: true
+
+      # Single choice (one option required)
+      - key: familiarity_level
+        prompt: How familiar are you with this type of activity?
+        answer_type: single_choice
+        required: true
+        options:
+          - Not at all
+          - Somewhat
+          - Very
+
+      # Multi choice (select any)
+      - key: background_categories
+        prompt: Which best describe you? (select all that apply)
+        answer_type: multi_choice
+        options:
+          - Student
+          - Researcher
+          - Engineer
+          - Designer
+          - Product / operations
+          - Hobbyist
+          - Other
+
+  # ── Post-session form ─────────────────────────────────────────────────────
+  - name: post_session
+    before_or_after: after
+
+    questions:
+      - prompt: |
+          Thanks for participating. Please share your feedback.
+
+      - key: overall_rating
+        prompt: Overall experience?
+        answer_type: single_choice
+        required: true
+        options:
+          - Very poor
+          - Poor
+          - Neutral
+          - Good
+          - Excellent
+
+      - key: what_worked_well
+        prompt: What worked well?
+        answer_type: string
+
+      - key: what_was_challenging
+        prompt: What was challenging or unclear?
+        answer_type: string
+
+      - key: would_participate_again
+        prompt: Would you participate again?
+        answer_type: bool
+
+      - key: issues_encountered
+        prompt: Any bugs or technical issues?
+        answer_type: string
+
+      - key: additional_feedback
+        prompt: Anything else?
+        answer_type: string

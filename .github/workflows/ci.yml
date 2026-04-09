@@ -29,6 +29,10 @@ jobs:
         run: uv python install 3.13
       - name: Install deps (incl. dev)
         run: uv sync --extra dev
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install UI deps
+        run: cd ui && bun install
       - run: make lint
 
   test:
@@ -41,7 +45,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.13
       - name: Install deps (incl. dev)
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra analysis
       - run: make test
 
   build-docs:
@@ -74,7 +78,6 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@v4
 
-  # TODO: uncomment when demo launch is ready to make live
   # deploy-demo:
   #   # only deploy on push to main (not PRs)
   #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -82,85 +85,69 @@ jobs:
   #   runs-on: ubuntu-latest
   #   env:
   #     FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  #     PRIMARY_REGION: dfw
-  #     GAME: ${{ github.event.inputs.game_name }}
-  #     BANNER: ${{ github.event.inputs.banner }}
-  #     PORT: ${{ github.event.inputs.port }}
   #   steps:
-  #     - uses: actions/checkout@v3
+  #     - uses: actions/checkout@v4
   #     - uses: superfly/flyctl-actions/setup-flyctl@master
-
-  #     - name: Build fly config from inputs
+  #     - name: Create fly config
   #       run: |
-  #         cat > fly.generated.toml <<'TOML'
-  #         app = 'simulation-widget-${{ github.event.inputs.experiment_id }}'
-  #         primary_region = '${{ env.PRIMARY_REGION }}'
-
-  #         [build]
-
-  #         [processes]
-  #           web = 'poetry run python -m scripts.run_widget --source "simulation-widget-${{ github.event.inputs.experiment_id }}" --game ${{ env.GAME }} --port ${{ env.PORT }} --host 0.0.0.0 --banner "$${{ env.BANNER }}"'
+  #         cat > fly.toml <<'TOML'
+  #         app = 'dcs-simulation-demo'
+  #         primary_region = 'dfw'
 
   #         [http_service]
-  #           internal_port = ${{ env.PORT }}
+  #           internal_port = 8080
   #           force_https = true
   #           auto_stop_machines = 'stop'
   #           auto_start_machines = true
   #           min_machines_running = 0
   #           processes = ['web']
 
-  #         [[vm]]
+  #         [[vm]]gs
   #           memory = '1gb'
   #           cpu_kind = 'shared'
   #           cpus = 1
   #         TOML
-  #     - name: Launch or attach to Fly app
+  #     - name: Create Procfile
   #       run: |
-  #         if flyctl apps list | grep -q "simulation-widget-${{ github.event.inputs.experiment_id }}"; then
-  #           echo "App exists, skipping creation."
-  #         else
-  #           flyctl apps create simulation-widget-${{ github.event.inputs.experiment_id }} --org personal --yes
-  #         fi
+  #         echo "web: uv run dcs server --free-play --host 0.0.0.0 --port 8080" > Procfile
   #     - name: Deploy
   #       run: |
   #         flyctl deploy \
   #           --remote-only \
-  #           --config fly.generated.toml \
   #           --ha=false \
-  #           --app "${FLY_APP}" \
   #           --env MONGO_URI="${{ secrets.MONGO_URI }}" \
-  #           --env OPENROUTER_API_KEY="${{ secrets.OPENROUTER_API_KEY }}" \
+  #           --env OPENROUTER_API_KEY="${{ secrets.OPENROUTER_API_KEY }}"
 
   # TODO: uncomment when release tags are ready
-    # build-and-publish-package:
-    # runs-on: ubuntu-latest
+  # build-and-publish-package:
+  # runs-on: ubuntu-latest
 
-    # steps:
-    #   - name: Check out code
-    #     uses: actions/checkout@v4
+  # steps:
+  #   - name: Check out code
+  #     uses: actions/checkout@v4
 
-    #   - name: Set up Python
-    #     uses: actions/setup-python@v5
-    #     with:
-    #       python-version: "3.11"
+  #   - name: Set up Python
+  #     uses: actions/setup-python@v5
+  #     with:
+  #       python-version: "3.11"
 
-    #   - name: Install Poetry
-    #     run: |
-    #       pip install --upgrade pip
-    #       pip install poetry
+  #   - name: Install Poetry
+  #     run: |
+  #       pip install --upgrade pip
+  #       pip install poetry
 
-    #   - name: Install dependencies
-    #     run: poetry install --no-root
+  #   - name: Install dependencies
+  #     run: poetry install --no-root
 
-    #   - name: Run tests
-    #     run: poetry run pytest
+  #   - name: Run tests
+  #     run: poetry run pytest
 
-    #   - name: Build package
-    #     run: poetry build
+  #   - name: Build package
+  #     run: poetry build
 
-    #   - name: Publish to PyPI
-    #     env:
-    #       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-    #     run: |
-    #       poetry config pypi-token.pypi "$PYPI_API_TOKEN"
-    #       poetry publish
+  #   - name: Publish to PyPI
+  #     env:
+  #       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+  #     run: |
+  #       poetry config pypi-token.pypi "$PYPI_API_TOKEN"
+  #       poetry publish

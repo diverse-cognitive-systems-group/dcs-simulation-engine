@@ -63,6 +63,11 @@ interface ExperimentProgressResponse {
   is_complete: boolean
 }
 
+interface EligibleAssignmentOption {
+  game_name: string
+  character_hid: string
+}
+
 interface ExperimentSetupResponse {
   experiment_name: string
   description: string
@@ -72,6 +77,8 @@ interface ExperimentSetupResponse {
   current_assignment: ExperimentAssignmentSummary | null
   pending_post_play: boolean
   assignment_completed: boolean
+  assignment_mode: string
+  assignments: ExperimentAssignmentSummary[]
 }
 
 interface ExperimentPlayerResponse {
@@ -389,7 +396,9 @@ function ExperimentPage() {
   const [postResponses, setPostResponses] = useState<FormResponseMap>({})
   const [postErrors, setPostErrors] = useState<Record<string, Record<string, string>>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | null>(null)
+  const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | 'select' | null>(null)
+  const [selectedGame, setSelectedGame] = useState<string | null>(null)
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
 
   useEffect(() => {
     setActiveExperimentName(experimentName)
@@ -398,9 +407,27 @@ function ExperimentPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['experiment-setup', experimentName, authenticated],
     enabled: authenticated,
+    refetchOnMount: 'always',
     queryFn: () =>
       httpClient<ExperimentSetupResponse>(
         `/api/experiments/${encodeURIComponent(experimentName)}/setup`,
+      ),
+  })
+
+  const isPlayerChoice = data?.assignment_mode === 'player_choice'
+  const needsSelection =
+    isPlayerChoice &&
+    !data?.current_assignment &&
+    !data?.pending_post_play &&
+    !data?.assignment_completed &&
+    !!data?.is_open
+
+  const { data: eligibleOptions } = useQuery({
+    queryKey: ['eligible-options', experimentName],
+    enabled: authenticated && needsSelection,
+    queryFn: () =>
+      httpClient<{ options: EligibleAssignmentOption[] }>(
+        `/api/experiments/${encodeURIComponent(experimentName)}/eligible-options`,
       ),
   })
 
@@ -522,6 +549,27 @@ function ExperimentPage() {
     }
   }
 
+  async function handleSelectAssignment(gameName: string, characterHid: string) {
+    setSubmitError(null)
+    setSubmitting('select')
+    try {
+      await httpClient(
+        `/api/experiments/${encodeURIComponent(experimentName)}/assignments/select`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ game_name: gameName, character_hid: characterHid }),
+        },
+      )
+      await refetch()
+    } catch (selectErr) {
+      setSubmitError(
+        selectErr instanceof Error ? selectErr.message : 'Unable to select assignment.',
+      )
+    } finally {
+      setSubmitting(null)
+    }
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -605,29 +653,34 @@ function ExperimentPage() {
           </div>
         </div>
 
-        <div>
+        {(data.assignments ?? []).length > 0 && (
           <Card className="border-border/70 shadow-sm">
             <CardHeader>
-              <CardTitle>Study Progress</CardTitle>
+              <CardTitle>Your Progress</CardTitle>
               <CardDescription>
-                {data.progress.completed} of {data.progress.total} target sessions completed
+                {(data.assignments ?? []).filter((a) => a.status === 'completed').length} of{' '}
+                {(data.assignments ?? []).length} assignments completed
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="h-3 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (data.progress.completed / Math.max(data.progress.total, 1)) * 100,
-                    )}%`,
-                  }}
-                />
-              </div>
+            <CardContent>
+              {(() => {
+                const total = (data.assignments ?? []).length
+                const completed = (data.assignments ?? []).filter(
+                  (a) => a.status === 'completed',
+                ).length
+                const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+                return (
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
-        </div>
+        )}
 
         <Card className="border-border/70 shadow-sm">
           <CardHeader>
@@ -635,10 +688,12 @@ function ExperimentPage() {
               {data.pending_post_play
                 ? 'Post-Play Feedback'
                 : data.current_assignment
-                  ? 'Your Assignment'
+                  ? 'Current Assignment'
                   : data.assignment_completed
                     ? 'Study Status'
-                    : 'Before-Play Questions'}
+                    : needsSelection
+                      ? 'Choose Your Assignment'
+                      : 'Before-Play Questions'}
             </CardTitle>
             <CardDescription>
               {data.pending_post_play
@@ -647,7 +702,9 @@ function ExperimentPage() {
                   ? 'This study only allows play through the assigned session below.'
                   : data.assignment_completed
                     ? 'You have completed all assignments currently available to you.'
-                    : 'Complete the experiment-specific questions to receive your assignment.'}
+                    : needsSelection
+                      ? 'Select the game and character you would like to play.'
+                      : 'Complete the experiment-specific questions to receive your assignment.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -672,7 +729,8 @@ function ExperimentPage() {
             {!data.pending_post_play &&
               !data.current_assignment &&
               !data.assignment_completed &&
-              data.is_open && (
+              data.is_open &&
+              !isPlayerChoice && (
                 <form onSubmit={handleEntrySubmit} className="space-y-6">
                   {beforeForms.map((form) => (
                     <FormSection
@@ -690,6 +748,91 @@ function ExperimentPage() {
                   </Button>
                 </form>
               )}
+
+            {needsSelection && (
+              <div className="space-y-4">
+                {eligibleOptions?.options.length === 0 && (
+                  <Alert>
+                    <AlertDescription>
+                      No assignments are currently available. All slots may be filled.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {(eligibleOptions?.options ?? []).length > 0 &&
+                  (() => {
+                    const gameOptions = [
+                      ...new Set((eligibleOptions?.options ?? []).map((o) => o.game_name)),
+                    ]
+                    const characterOptions = (eligibleOptions?.options ?? [])
+                      .filter((o) => o.game_name === selectedGame)
+                      .map((o) => o.character_hid)
+                    return (
+                      <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Game
+                          </Label>
+                          <Select
+                            value={selectedGame ?? ''}
+                            onValueChange={(val) => {
+                              setSelectedGame(val)
+                              setSelectedCharacter(null)
+                            }}
+                            disabled={submitting === 'select'}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a game…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {gameOptions.map((game) => (
+                                <SelectItem key={game} value={game}>
+                                  {game}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                            Character
+                          </Label>
+                          <Select
+                            value={selectedCharacter ?? ''}
+                            onValueChange={setSelectedCharacter}
+                            disabled={!selectedGame || submitting === 'select'}
+                          >
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  selectedGame ? 'Select a character…' : 'Select a game first'
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {characterOptions.map((char) => (
+                                <SelectItem key={char} value={char}>
+                                  {char}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          type="button"
+                          disabled={!selectedGame || !selectedCharacter || submitting === 'select'}
+                          onClick={() =>
+                            selectedGame &&
+                            selectedCharacter &&
+                            handleSelectAssignment(selectedGame, selectedCharacter)
+                          }
+                        >
+                          {submitting === 'select' ? 'Selecting…' : 'Select Assignment'}
+                        </Button>
+                      </div>
+                    )
+                  })()}
+              </div>
+            )}
 
             {data.pending_post_play && (
               <form onSubmit={handlePostPlaySubmit} className="space-y-6">

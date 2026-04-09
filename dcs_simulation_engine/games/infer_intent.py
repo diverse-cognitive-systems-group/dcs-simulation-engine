@@ -1,4 +1,4 @@
-"""Infer Intent game — new-style implementation."""
+"""Infer Intent game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -6,7 +6,6 @@ from typing import Any, AsyncIterator
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import (
-    ScorerClient,
     UpdaterClient,
     ValidationOrchestrator,
     ValidatorClient,
@@ -28,7 +27,7 @@ class Command(StrEnum):
 
     HELP = "help"
     ABILITIES = "abilities"
-    GUESS = "guess"
+    PREDICT_INTENT = "predict-intent"
 
 
 class InferIntentGame(Game):
@@ -43,7 +42,6 @@ class InferIntentGame(Game):
         npc: CharacterRecord,
         updater: UpdaterClient,
         validator: ValidatorClient,
-        scorer: ScorerClient,
         ensemble_orchestrator: ValidationOrchestrator | None = None,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
@@ -53,7 +51,6 @@ class InferIntentGame(Game):
         self._npc = npc
         self._updater = updater
         self._validator = validator
-        self._scorer = scorer
         self._ensemble = ensemble_orchestrator
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
@@ -61,11 +58,10 @@ class InferIntentGame(Game):
         self._exited = False
         self._exit_reason = ""
 
-        # Completion flow state
         self._awaiting_goal_inference = False
-        self._awaiting_other_feedback = False
+        self._awaiting_goal_inference_confidence = False
         self._goal_inference = ""
-        self._other_feedback = ""
+        self._goal_inference_confidence = ""
         self._evaluation: dict[str, Any] = {}
 
     @classmethod
@@ -78,11 +74,8 @@ class InferIntentGame(Game):
             game_name (str): game name for GameValidator lookup
             is_llm_player (bool): whether the PC is LLM-controlled
         """
-        updater = UpdaterClient(
-            system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)
-        )
+        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
-        scorer = ScorerClient(npc=npc)
         ensemble = ValidationOrchestrator.create(
             game_name=kwargs.get("game_name", "infer intent"),
             is_llm_player=kwargs.get("is_llm_player", False),
@@ -92,7 +85,6 @@ class InferIntentGame(Game):
             npc=npc,
             updater=updater,
             validator=validator,
-            scorer=scorer,
             ensemble_orchestrator=ensemble,
             retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
             max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
@@ -122,9 +114,9 @@ class InferIntentGame(Game):
         return self._goal_inference
 
     @property
-    def other_feedback(self) -> str:
-        """Player's other feedback, or empty string."""
-        return self._other_feedback
+    def goal_inference_confidence(self) -> str:
+        """Player's confidence in their goal inference, or empty string."""
+        return self._goal_inference_confidence
 
     @property
     def evaluation(self) -> dict[str, Any]:
@@ -136,14 +128,14 @@ class InferIntentGame(Game):
         if self._exited:
             return
 
-        # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
             yield GameEvent.now(
                 type="info",
-                content=C.ENTER_CONTENT.format(
+                content=C.HELP_CONTENT.format(
                     pc_hid=self._pc.hid,
                     pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
                 ),
             )
             if self._ensemble is not None:
@@ -162,27 +154,21 @@ class InferIntentGame(Game):
         if not user_input:
             return
 
-        # GOAL INFERENCE: first answer after /guess.
         if self._awaiting_goal_inference:
             self._goal_inference = user_input
             self._awaiting_goal_inference = False
-            self._awaiting_other_feedback = True
-            yield GameEvent.now(type="info", content=C.OTHER_FEEDBACK_QUESTION)
+            self._awaiting_goal_inference_confidence = True
+            yield GameEvent.now(type="info", content=C.GOAL_INFERENCE_CONFIDENCE)
             return
 
-        # OTHER FEEDBACK: second answer — then score and exit.
-        if self._awaiting_other_feedback:
-            self._other_feedback = user_input
-            self._awaiting_other_feedback = False
-            transcript = _build_transcript(self._updater.history)
-            self._evaluation = await self._scorer.score(transcript, self._goal_inference)
-            logger.debug(f"Evaluation: {self._evaluation}")
-            self.exit("game completed")
-            yield GameEvent.now(type="info", content="Thank you. Game complete.")
+        if self._awaiting_goal_inference_confidence:
+            self._goal_inference_confidence = user_input
+            self._awaiting_goal_inference_confidence = False
+            self.exit("player finished")
+            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+
             return
 
-        # Game-level commands (/help, /abilities, /guess). Session-level exit
-        # commands are already handled by SessionManager.
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -195,7 +181,6 @@ class InferIntentGame(Game):
             )
             return
 
-        # Validate before advancing the scene.
         validation = await self._validator.validate(user_input)
         if validation.get("type") == "error":
             self._retry_budget -= 1
@@ -203,7 +188,7 @@ class InferIntentGame(Game):
             if self._retry_budget <= 0:
                 self.exit("retry budget exhausted")
                 yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
-                yield GameEvent.now(type="info", content="You have used all your allowed retries. The game is ending.")
+                yield GameEvent.now(type="info", content="You have used all your allowed retries. The game is closing.")
                 return
             yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
             return
@@ -252,33 +237,30 @@ class InferIntentGame(Game):
         cmd = command_body.split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+            return GameEvent.now(
+                type="info",
+                content=C.HELP_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                ),
+                command_response=True,
+            )
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
                 type="info",
                 content=C.ABILITIES_CONTENT.format(
-                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", ""))
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
+                    npc_hid=self._npc.hid,
                 ),
                 command_response=True,
             )
 
-        if cmd == Command.GUESS:
+        if cmd == Command.PREDICT_INTENT:
             self._awaiting_goal_inference = True
             return GameEvent.now(type="info", content=C.GOAL_INFERENCE_QUESTION, command_response=True)
 
-        # Unrecognised — return None so SessionManager can handle it.
         return None
-
-
-def _build_transcript(history: list[dict[str, str]]) -> str:
-    """Format UpdaterClient history into a readable transcript string."""
-    lines: list[str] = []
-    for msg in history:
-        role = msg.get("role", "")
-        content = msg.get("content", "")
-        if role == "user":
-            lines.append(f"Player: {content}")
-        elif role == "assistant":
-            lines.append(f"NPC: {content}")
-    return "\n".join(lines)

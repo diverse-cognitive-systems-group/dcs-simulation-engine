@@ -49,18 +49,14 @@ def ensure_default_indexes(db: Database[Any]) -> None:
     db[MongoColumns.PLAYERS].create_index("access_key", unique=True, sparse=True)
     db[MongoColumns.PII].create_index(MongoColumns.PLAYER_ID, unique=True)
     db[MongoColumns.SESSIONS].create_index(MongoColumns.SESSION_ID, unique=True)
-    db[MongoColumns.SESSIONS].create_index(
-        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)]
-    )
+    db[MongoColumns.SESSIONS].create_index([(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)])
     db[MongoColumns.SESSIONS].create_index([(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)])
     db[MongoColumns.SESSION_EVENTS].create_index(
         [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.SEQ, ASCENDING)],
         unique=True,
     )
     db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
-    db[MongoColumns.SESSION_EVENTS].create_index(
-        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)]
-    )
+    db[MongoColumns.SESSION_EVENTS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)])
     db[MongoColumns.EXPERIMENTS].create_index(MongoColumns.NAME, unique=True)
     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ASSIGNMENT_ID, unique=True)
     db[MongoColumns.ASSIGNMENTS].create_index(
@@ -85,6 +81,10 @@ def ensure_default_indexes(db: Database[Any]) -> None:
         ]
     )
     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
+    db[MongoColumns.FORMS].create_index(
+        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
+        unique=True,
+    )
 
     for collection_name, defs in INDEX_DEFS.items():
         coll = db[collection_name]
@@ -97,20 +97,14 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
     await db[MongoColumns.PLAYERS].create_index("access_key", unique=True, sparse=True)
     await db[MongoColumns.PII].create_index(MongoColumns.PLAYER_ID, unique=True)
     await db[MongoColumns.SESSIONS].create_index(MongoColumns.SESSION_ID, unique=True)
-    await db[MongoColumns.SESSIONS].create_index(
-        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)]
-    )
-    await db[MongoColumns.SESSIONS].create_index(
-        [(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)]
-    )
+    await db[MongoColumns.SESSIONS].create_index([(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)])
+    await db[MongoColumns.SESSIONS].create_index([(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)])
     await db[MongoColumns.SESSION_EVENTS].create_index(
         [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.SEQ, ASCENDING)],
         unique=True,
     )
     await db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
-    await db[MongoColumns.SESSION_EVENTS].create_index(
-        [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)]
-    )
+    await db[MongoColumns.SESSION_EVENTS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)])
     await db[MongoColumns.EXPERIMENTS].create_index(MongoColumns.NAME, unique=True)
     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ASSIGNMENT_ID, unique=True)
     await db[MongoColumns.ASSIGNMENTS].create_index(
@@ -135,6 +129,10 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
         ]
     )
     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
+    await db[MongoColumns.FORMS].create_index(
+        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
+        unique=True,
+    )
 
     for collection_name, defs in INDEX_DEFS.items():
         coll = db[collection_name]
@@ -226,9 +224,7 @@ def dump_all_collections_to_json(db: Database[Any], path: str | Path) -> Path:
             finally:
                 cursor.close()
             f.write("\n]\n")
-        _write_collection_indexes(
-            root, collection_name=collection_name, index_info=db[collection_name].index_information()
-        )
+        _write_collection_indexes(root, collection_name=collection_name, index_info=db[collection_name].index_information())
 
     _write_dump_manifest(root, db_name=db.name, collections=collection_names)
 

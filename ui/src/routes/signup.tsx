@@ -265,64 +265,84 @@ function SignupPage() {
                 onScroll={handleConsentScroll}
                 className="h-48 overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm leading-6"
               >
-                <h4 className="font-semibold">Terms of Use</h4>
-                <p className="mt-2">
-                  This platform hosts research studies conducted by independent researchers. By
-                  accessing or participating in studies on this site, you agree to use the platform
-                  in a responsible manner.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Acceptable Use:</span> You may not attempt to
-                  interfere with the operation of the platform or any studies hosted on it. This
-                  includes attempting to access data that does not belong to you, using automated
-                  scripts or bots to complete studies, attempting to reverse engineer study
-                  materials, or otherwise disrupting the system.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Independent Researchers:</span> Studies hosted on
-                  this platform are created and managed by independent researchers. These
-                  researchers are responsible for the design of their studies, obtaining appropriate
-                  ethical approval (such as IRB approval), and providing informed consent
-                  information to participants.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Research Participation:</span> Participation in any
-                  study is voluntary. Each study will provide its own informed consent document
-                  describing the purpose of the research, procedures, risks, benefits, and data
-                  handling practices.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Platform Availability:</span> The platform is
-                  provided for research purposes and may occasionally be unavailable due to
-                  maintenance, updates, or technical issues.
-                </p>
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Consent Form</h3>
+                  <p>
+                    You are invited to participate in a research study. You may not participant if
+                    you are under 18-years-old or located outside of the United States. The purpose
+                    of this study is to explore how people with diverse perspectives and abilities
+                    interact with others, and how we can make it easier for people of different
+                    abilities to engage meaningfully with the world.
+                  </p>
 
-                <h4 className="mt-4 font-semibold">Privacy Notice</h4>
-                <p className="mt-2">
-                  This platform hosts research studies conducted by independent researchers.
-                  Individual studies may collect research data as described in their informed
-                  consent documents.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Platform Data:</span> To operate the platform and
-                  support research integrity, the system may collect limited technical information
-                  such as timestamps, browser or device information, IP address, and interaction
-                  logs related to study participation.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Research Data:</span> Data collected within a study
-                  is determined by the researcher conducting that study and will be described in the
-                  study&apos;s informed consent document.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Use of Information:</span> Platform data is used to
-                  operate the system, troubleshoot technical issues, and help ensure the quality and
-                  integrity of research data.
-                </p>
-                <p className="mt-2">
-                  <span className="font-medium">Contact:</span> Questions about a specific study
-                  should be directed to the researcher listed in that study&apos;s consent form.
-                </p>
+                  <h4 className="font-semibold">What Participation Involves</h4>
+
+                  <h5 className="font-medium">Gameplay</h5>
+                  <p>
+                    You will play a game that involves chatting with simulated characters. The goal
+                    is to explore how you interpret what others care about, their goals, and what
+                    they may be trying to communicate.
+                  </p>
+
+                  <h5 className="font-medium">Conversations</h5>
+                  <p>
+                    You may be asked to take part in one or more conversations with a researcher.
+                    These are flexible in format, length, and topics, depending on your needs.
+                    Conversations typically last 20–45 minutes and may be audio recorded with your
+                    permission. You are free to skip any questions and may withdraw at any time,
+                    even after the study.
+                  </p>
+
+                  <h4 className="font-semibold">Voluntary Participation</h4>
+                  <p>
+                    Your participation is completely voluntary. You may withdraw at any time, for
+                    any or no reason without a problem. You are not required to answer any questions
+                    you do not wish to. You may choose not to consent to audio recording(s) of
+                    conversation(s).
+                  </p>
+
+                  <h4 className="font-semibold">Privacy and Confidentiality</h4>
+                  <p>
+                    Contact information will only be collected if you choose to provide it for
+                    follow-up purposes; otherwise, responses are anonymous. Audio recordings will
+                    only be collected if you verbally consent at the time of the conversation. Any
+                    identifiable information will be coded, securely stored, and access limited to
+                    protect your identity. The risks of participation are no greater than those of
+                    everyday activities. You will not receive financial compensation or direct
+                    personal benefits from participation. You may request that your information be
+                    deleted at any time.
+                  </p>
+
+                  <h4 className="font-semibold">Oversight</h4>
+                  <p>
+                    This study complies with all applicable laws and confidentiality standards. The
+                    Georgia Institute of Technology Institutional Review Board (IRB) and the Office
+                    of Human Research Protections may review study records to ensure proper conduct.
+                  </p>
+
+                  <h4 className="font-semibold">Contacts</h4>
+                  <p>
+                    If you have questions about the study, please contact:{' '}
+                    <a href="mailto:dcs@psych.gatech.edu" className="underline">
+                      dcs@psych.gatech.edu
+                    </a>
+                  </p>
+                  <p>
+                    If you have questions about your rights as a research participant, please
+                    contact the Georgia Institute of Technology Office of Research Integrity
+                    Assurance at{' '}
+                    <a href="mailto:IRB@gatech.edu" className="underline">
+                      IRB@gatech.edu
+                    </a>
+                    .
+                  </p>
+
+                  <h4 className="font-semibold">Consent</h4>
+                  <p>
+                    By completing this form, you indicate your consent to participate in the
+                    following areas of this study.
+                  </p>
+                </div>
               </div>
               {!consentScrolledToBottom && (
                 <p className="text-xs text-muted-foreground">
@@ -377,6 +397,14 @@ function SignupPage() {
             <Button type="submit" className="w-full" disabled={!canSubmit}>
               {loading ? 'Registering…' : 'Register'}
             </Button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              By registering you agree to our{' '}
+              <Link to="/terms" className="underline underline-offset-4 hover:text-primary">
+                Terms of Use &amp; Privacy Notice
+              </Link>
+              .
+            </p>
 
             <p className="text-center text-sm text-muted-foreground">
               Already have a key?{' '}

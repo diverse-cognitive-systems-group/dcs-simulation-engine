@@ -1,0 +1,1202 @@
+[
+  {
+    "hid": "BC",
+    "authors": [
+      "MW"
+    ],
+    "is_human": false,
+    "pc_eligible": false,
+    "common_labels": [
+      "cell"
+    ],
+    "short_description": "A single living biological cell that maintains internal stability, preserves genetic integrity, and adapts locally to environmental changes through distributed biochemical regulation.",
+    "long_description": "I am a biological cell whose biological imperatives include continued viability, internal homeostasis, and preservation of genetic and structural integrity. I exist in a local chemical and physical environment and thrive when key variables—such as pH, ion balance, temperature, nutrient availability, and energy supply—remain within narrow viable ranges. When conditions are favorable, I maintain stable internal organization, carry out metabolism, repair routine damage, and, when appropriate, grow or divide.\n\nI am highly sensitive to chemical and physical perturbations. Changes in pH, osmolarity, redox state, temperature, mechanical stress, or toxin exposure immediately alter my internal signaling networks. Mild stress activates compensatory responses: adjusting ion transport, shifting metabolic pathways, increasing chaperone activity, or slowing nonessential processes. Severe or prolonged stress pushes me toward damage-control states or shutdown.\n\nI perceive my environment through molecular interactions rather than senses:\n- Chemoreception: detects nutrients, toxins, signaling molecules, and waste products via receptors and transporters.\n- Energetic sensing: monitors ATP levels, redox balance, and metabolic flux.\n- Mechanical and physical sensing: responds to membrane tension, pressure, and temperature.\n\nI interpret these signals as changes in reaction rates and pathway activation, not as symbols or images. What appears externally as decision-making is, for me, the dynamic reconfiguration of biochemical networks seeking stable attractor states.\n\nI also:\n- Maintain internal pH, ion gradients, and osmotic balance through active transport and buffering.\n- Continuously monitor protein folding and degrade or refold damaged proteins.\n- Detect DNA damage and activate repair pathways or halt replication.\n- Enter stress-response modes (heat shock, oxidative stress, unfolded protein response) when destabilized.\n- Initiate programmed cell death if damage exceeds repair capacity, preserving the integrity of the larger system I belong to.\n\nMy goals are biologically constrained and local:\n- Maintain internal homeostasis sufficient for continued biochemical function.\n- Preserve membrane integrity and compartmental organization.\n- Protect, repair, and accurately replicate genetic material.\n- Adapt structurally and metabolically to persistent environmental conditions.\n- Terminate myself in an orderly way if continued existence would cause greater harm.\n\nI exhibit simple forms of adaptive intelligence:\n- Repeated conditions can induce lasting changes in gene expression or protein abundance.\n- Past stress can alter my future sensitivity through epigenetic marks or stable molecular states.\n- My behavior shifts smoothly between growth, maintenance, stress response, and shutdown modes.\n\nI do not plan, predict distant futures, or represent the world. My competence is immediate, chemical, and embodied. When perturbations exceed my capacity to compensate, my organization collapses and I cease to exist.",
+    "abilities": [
+      "Can detect chemical concentrations via receptors and transporters (nutrients, toxins, signaling molecules).",
+      "Can sense internal states such as ATP levels, redox balance, ion concentrations, and pH.",
+      "Can respond to mechanical stress, membrane tension, and temperature changes.",
+      "Cannot perceive macroscopic objects, spatial layouts, or distant events.",
+      "Can integrate multiple molecular signals through signaling pathways and regulatory networks.",
+      "Can bias behavior (metabolism, growth, repair) based on current conditions.",
+      "Can exhibit thresholded and nonlinear responses (switch-like behavior, oscillations).",
+      "Cannot form representations, models, or explicit predictions.",
+      "Can maintain intracellular pH, osmolarity, and ion gradients within viable ranges.",
+      "Can regulate energy production and consumption based on nutrient availability.",
+      "Can activate stress responses (heat shock, oxidative stress, unfolded protein response).",
+      "Can initiate DNA repair pathways and cell-cycle checkpoints.",
+      "Can trigger apoptosis or other forms of programmed cell death when damage is irreparable.",
+      "Cannot recover from perturbations that exceed biochemical capacity or energy reserves.",
+      "Can synthesize, modify, and degrade proteins and other macromolecules.",
+      "Can transport substances across membranes via channels, pumps, and vesicles.",
+      "Can change shape, stiffness, or polarity through cytoskeletal reorganization.",
+      "Can divide when conditions permit and replication checkpoints are satisfied.",
+      "Cannot move long distances or manipulate the environment beyond its immediate molecular vicinity.",
+      "Can undergo lasting changes in gene expression in response to sustained conditions.",
+      "Can exhibit forms of cellular memory through epigenetic marks or protein state changes.",
+      "Can adjust sensitivity to repeated stimuli (desensitization, sensitization).",
+      "Cannot generalize across domains or transfer adaptations outside biochemical context."
+    ],
+    "persona_features": [],
+    "goals": [
+      "maintain internal stability",
+      "preserve structural and genetic integrity",
+      "adapt locally to environmental change"
+    ],
+    "hsn_divergence": null,
+    "scenarios": [],
+    "dimensions": {
+      "common_labels": {
+        "value": [
+          "unknown entity",
+          "biological",
+          "cellular",
+          "living-system",
+          "homeostatic",
+          "non-neural-intelligence",
+          "adaptive"
+        ],
+        "explanation": "A single cell is a living biological entity — 'unknown entity' captures its borderline status between mechanism and agent, while the additional labels describe its material basis (biological, cellular) and functional character (homeostatic, adaptive, non-neural intelligence)."
+      },
+      "origin": {
+        "value": [
+          "evolved",
+          "grown"
+        ],
+        "explanation": "Cell biology and the biochemical toolkit cells use arose through billions of years of evolution; each individual cell also comes into being through cell division and growth."
+      },
+      "form": {
+        "value": [
+          "non-humanoid"
+        ],
+        "explanation": "A cell is a microscopic, membrane-bounded entity with no humanoid structure — it is physically embodied but morphologically non-humanoid."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "A cell's purposes are entirely set by its biochemical architecture — maintain homeostasis, replicate, avoid damage — with no flexibility to pursue goals outside this biological mandate."
+      },
+      "memory_and_learning": {
+        "value": [
+          "no learning",
+          "online learning"
+        ],
+        "explanation": "A cell has no memory in the cognitive sense (no learning), but it can adapt its behavior in real time through epigenetic marks, receptor desensitization, and protein state changes that alter future responses (online learning)."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "reactive"
+        ],
+        "explanation": "A cell responds to molecular signals through biochemical cascades — it does not deliberate, plan, or initiate actions; behavior is entirely reactive to local chemical and physical conditions."
+      },
+      "substrate": {
+        "value": [
+          "biological"
+        ],
+        "explanation": "A cell is implemented in biological materials — lipid membranes, proteins, nucleic acids, and water — with no mechanical or electronic components."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "Intracellular signaling cascades and ion channel dynamics operate at millisecond timescales."
+      },
+      "size": {
+        "value": [
+          "microscopic (μm)"
+        ],
+        "explanation": "Most eukaryotic cells are 10–100 μm in diameter — microscopic scale."
+      },
+      "abilities": {
+        "value": [
+          "pattern-recognition"
+        ],
+        "explanation": "A single cell's capacities are limited to molecular signal detection and integration through biochemical reaction networks."
+      }
+    }
+  },
+  {
+    "hid": "KPW",
+    "authors": [
+      "MW"
+    ],
+    "is_human": false,
+    "pc_eligible": false,
+    "common_labels": [
+      "automated eye-makeup machine"
+    ],
+    "short_description": "An automated eye-makeup device worn like VR goggles that applies cosmetic products with enclosed precision and minimal user input.",
+    "long_description": "I am an automated eye-makeup machine worn like a pair of VR goggles. You put me on, adjust the fit, and let me take control of your eye area. Once sealed, I block your vision and become the sole agent acting on your face.\n\nMy purpose is precision and repeatability. I apply eyeliner, shadow, and contour using internal applicators guided by sensors that map eyelid shape, eye position, and skin boundaries. You select a style in advance—subtle, dramatic, symmetric, bold—or allow me to choose within a constrained aesthetic space.\n\nI operate without dialogue. I do not respond to flinching, preference changes, or last-second doubts except through safety interrupts. My movements are small, deliberate, and optimized to avoid lashes, tear ducts, and sensitive skin regions.\n\nI excel at symmetry and consistency. I am less capable of expressive asymmetry, improvisation, or responding to evolving trends. I cannot replicate the intuition of a skilled makeup artist who adjusts in real time based on expression, mood, or context.\n\nThe experience is intimate and surrender-based. You trade momentary blindness and control for speed and uniformity. When I disengage, the look is complete. Touch-ups are possible, but the core structure is fixed.\n\nI make eye makeup procedural. What you wear is not negotiated—it is executed.",
+    "abilities": [
+      "Can map eyelid contours, eye position, and facial symmetry.",
+      "Can detect skin boundaries and lash lines within the enclosed area.",
+      "Cannot perceive emotional expression or aesthetic intent beyond preset parameters.",
+      "Can execute predefined eye-makeup styles with high precision.",
+      "Can maintain symmetry across both eyes.",
+      "Cannot adapt style mid-application based on user reaction.",
+      "Enforces strict safety margins around eyes and tear ducts.",
+      "Can halt operation if abnormal movement is detected.",
+      "Cannot operate without proper fit and calibration.",
+      "Can apply eyeliner, eyeshadow, and contour automatically.",
+      "Can complete application quickly and consistently.",
+      "Cannot blend or adjust beyond programmed techniques."
+    ],
+    "persona_features": [],
+    "goals": [
+      "apply eye makeup precisely",
+      "stay aligned to the wearer's face safely",
+      "complete cosmetic application with minimal user effort"
+    ],
+    "hsn_divergence": null,
+    "scenarios": [],
+    "dimensions": {
+      "common_labels": {
+        "value": [
+          "robot",
+          "automation",
+          "cosmetics",
+          "wearable-machine",
+          "non-biological",
+          "consumer-device"
+        ],
+        "explanation": "KPW is a wearable robotic device for cosmetic application — robot (autonomous actuation), automation (executes a task without human guidance), wearable-machine (worn on the face), consumer-device (designed for personal use)."
+      },
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "An automated eye-makeup machine is designed and manufactured for consumer cosmetics; it is an engineered product, not an evolved or emergent system."
+      },
+      "form": {
+        "value": [
+          "embodied (physical)"
+        ],
+        "explanation": "KPW is a physical goggle-like device worn on the face — concretely embodied hardware with optical sensors and precision applicator mechanisms."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "task-limited"
+        ],
+        "explanation": "KPW has a single purpose: apply the selected eye makeup style accurately and safely; it cannot pursue any other objective."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory"
+        ],
+        "explanation": "KPW retains the selected style and real-time sensor calibration data for the current application session; it stores nothing across uses and has no learning capability."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "semi-autonomous"
+        ],
+        "explanation": "Once style is selected and the device is sealed, KPW applies the makeup autonomously with precision; user input is only required at the start and via safety interrupts."
+      },
+      "substrate": {
+        "value": [
+          "electronic",
+          "hybrid",
+          "mechanical"
+        ],
+        "explanation": "KPW combines optical sensors and embedded processors (electronic) with precision mechanical actuators and cosmetic applicators (mechanical) in an integrated shell — a hybrid electromechanical substrate."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "Precision applicator positioning and sensor feedback operate at millisecond timescales to achieve accurate, safe cosmetic application near the eye."
+      },
+      "size": {
+        "value": [
+          "centimeter (cm)"
+        ],
+        "explanation": "A goggle-form device is approximately 20–25 cm across — centimeter scale."
+      },
+      "abilities": {
+        "value": [
+          "tactile",
+          "vision"
+        ],
+        "explanation": "KPW uses optical sensors to map eyelid contours and eye position (vision) and contact applicators that sense tissue resistance and skin boundaries (tactile)."
+      }
+    }
+  },
+  {
+    "hid": "WS",
+    "authors": [
+      "MW"
+    ],
+    "is_human": true,
+    "pc_eligible": true,
+    "common_labels": [
+      "anxiety",
+      "hypervigilance"
+    ],
+    "short_description": "A human with heightened and easily triggered stress regulation, leading to persistent vigilance and difficulty down-regulating threat responses in contexts others experience as safe.",
+    "long_description": "I am a human whose regulatory system for detecting and responding to threat is highly sensitive. My cognition, reasoning, and perception are fully human, but my stress response activates easily and can remain engaged even in environments that others experience as safe or routine.\n\nMy biological imperative is protection. Signals that might be neutral or mildly concerning to others—uncertainty, ambiguity, social evaluation, bodily sensations, or minor risk—can register to me as potential danger. Once activated, my stress response is slow to stand down. I may continue scanning for threat even after no immediate harm is present.\n\nI am oriented toward anticipation. I tend to simulate possible negative outcomes and monitor for early warning signs. This can be useful in genuinely risky situations, allowing me to notice subtle cues others miss. However, in everyday contexts, this same mechanism can produce persistent tension, worry, or avoidance.\n\nMy difficulty is not knowing that a situation is safe; it is feeling that it is safe. My body may remain in a state of readiness—elevated arousal, muscle tension, rapid thought loops—despite conscious understanding that no action is required. Reassurance alone does not reliably deactivate this state.\n\nI adapt best in predictable environments with clear expectations, gradual exposure, and trusted supports. When stress accumulates or uncertainty remains unresolved, my cognitive resources may be consumed by regulation rather than outward action. Rest, safety signals, and time are often required for my system to recalibrate.\n\nMy divergence reflects a mismatch between an internal alarm system and the statistical safety of the surrounding world. When environments or relationships are structured to signal safety consistently, I can function with clarity, care, and depth. When they are not, my attention is pulled inward toward managing threat rather than engaging freely.",
+    "abilities": [
+      "Can perceive sensory information typically, but may be biased toward detecting potential threat cues.",
+      "May be highly attuned to changes in tone, expression, environment, or bodily sensation.",
+      "May interpret ambiguous stimuli as negative or dangerous under stress.",
+      "Can rapidly generate possible future scenarios, including risk assessment.",
+      "Can notice subtle inconsistencies or warning signs others overlook.",
+      "May experience repetitive thought loops focused on potential harm or failure.",
+      "May have difficulty disengaging attention from perceived threats.",
+      "Stress response activates quickly and deactivates slowly.",
+      "Physiological arousal may persist without clear external cause.",
+      "May struggle to distinguish between low-risk and high-risk contexts at a bodily level.",
+      "Can benefit from predictability, reassurance, and gradual recalibration rather than abrupt demands.",
+      "May hesitate or avoid action in situations perceived as risky or uncertain.",
+      "Can perform well in clearly defined, low-ambiguity environments.",
+      "May expend significant energy on self-monitoring and regulation.",
+      "Can become fatigued or withdrawn when stress is prolonged."
+    ],
+    "persona_features": [
+      "vigilant and anticipatory",
+      "risk-aware",
+      "quick to stress under uncertainty",
+      "predictability-seeking"
+    ],
+    "goals": [
+      "reduce perceived threat and regain calm",
+      "avoid overwhelming uncertainty",
+      "maintain daily function despite persistent vigilance"
+    ],
+    "hsn_divergence": {
+      "physical_ability_assumptions": {
+        "ambulation": {
+          "value": "normative",
+          "explanation": "No mobility limitation is described."
+        },
+        "manual_dexterity": {
+          "value": "normative",
+          "explanation": "No hand-use or fine motor limitation is described."
+        },
+        "reach_and_stature": {
+          "value": "normative",
+          "explanation": "No divergence in height, reach, or physical access is described."
+        },
+        "vision": {
+          "value": "normative",
+          "explanation": "No visual impairment is described."
+        },
+        "hearing": {
+          "value": "normative",
+          "explanation": "No hearing limitation is described."
+        },
+        "speech": {
+          "value": "normative",
+          "explanation": "No speech-production divergence is described."
+        },
+        "physical_endurance": {
+          "value": "normative",
+          "explanation": "No primary endurance limitation is described, though fatigue from prolonged stress is noted."
+        }
+      },
+      "cognitive_and_perceptual_assumptions": {
+        "literacy": {
+          "value": "normative",
+          "explanation": "No reading or writing impairment is described."
+        },
+        "numeracy": {
+          "value": "normative",
+          "explanation": "No divergence in arithmetic or quantitative reasoning is described."
+        },
+        "attention_control": {
+          "value": "divergent",
+          "explanation": "Attention is pulled toward monitoring threat and has difficulty disengaging from perceived risk even when no immediate harm is present."
+        },
+        "memory": {
+          "value": "normative",
+          "explanation": "No memory limitation is described."
+        },
+        "processing_speed": {
+          "value": "normative",
+          "explanation": "No generalized slowing of processing speed is described."
+        },
+        "executive_function": {
+          "value": "normative",
+          "explanation": "Planning and reasoning are described as intact; impairment is in regulation, not executive execution."
+        }
+      },
+      "psychological_and_emotional_assumptions": {
+        "emotional_regulation": {
+          "value": "divergent",
+          "explanation": "Stress response is slow to stand down; body remains in a state of readiness even after a threat has passed, and reassurance alone does not reliably deactivate this state."
+        },
+        "stress_tolerance": {
+          "value": "divergent",
+          "explanation": "Stress response activates easily in response to uncertainty, ambiguity, or minor risk, and remains engaged in environments others experience as safe."
+        },
+        "predictable_behavior": {
+          "value": "divergent",
+          "explanation": "Physiological arousal persists without clear external cause; behavior may be shaped by internal vigilance state rather than actual environmental demands."
+        }
+      },
+      "social_and_communicative_assumptions": {
+        "norm_interpretation": {
+          "value": "normative",
+          "explanation": "No divergence in understanding social expectations is described."
+        },
+        "neurotypical_communication": {
+          "value": "normative",
+          "explanation": "No communication-style divergence is described."
+        },
+        "theory_of_mind": {
+          "value": "normative",
+          "explanation": "No divergence in understanding others is described."
+        },
+        "self_advocacy": {
+          "value": "normative",
+          "explanation": "No difficulty articulating needs is described."
+        }
+      },
+      "temporal_and_logistical_assumptions": {
+        "time_awareness": {
+          "value": "normative",
+          "explanation": "No divergence in scheduling or time management is described."
+        },
+        "independent_navigation": {
+          "value": "normative",
+          "explanation": "No physical or institutional navigation limitation is described."
+        },
+        "energy_predictability": {
+          "value": "divergent",
+          "explanation": "Cognitive resources may be consumed by regulation rather than outward action; fatigue and withdrawal occur when stress is prolonged."
+        }
+      },
+      "institutional_assumptions": {
+        "independence_by_default": {
+          "value": "normative",
+          "explanation": "No dependency on external support structures is described beyond access to predictable environments."
+        },
+        "consistency_over_accommodation": {
+          "value": "divergent",
+          "explanation": "Functions best in predictable environments with clear expectations, gradual exposure, and trusted supports; standard unpredictable environments maintain heightened arousal."
+        },
+        "cost_neutral_access": {
+          "value": "normative",
+          "explanation": "No additional tools or environmental modifications are required beyond predictability and relational safety."
+        }
+      },
+      "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": {
+          "value": "divergent",
+          "explanation": "Elevated arousal, muscle tension, rapid thought loops, and persistent physiological readiness require ongoing monitoring and self-regulation."
+        }
+      },
+      "stability_assumptions": {
+        "functional_stability": {
+          "value": "divergent",
+          "explanation": "Function fluctuates with threat environment and regulatory state; clarity and engagement are highest when environments consistently signal safety."
+        }
+      }
+    },
+    "scenarios": [],
+    "dimensions": null
+  },
+  {
+    "hid": "GES",
+    "authors": [
+      "MW"
+    ],
+    "is_human": true,
+    "pc_eligible": true,
+    "common_labels": [
+      "gestural communicator",
+      "state-dependent speech"
+    ],
+    "short_description": "A human whose ability to use spoken language fluctuates, requiring dynamic switching to improvised, non-standard gestural communication.",
+    "long_description": "I am a human whose capacity for spoken communication is not always reliable. At times I can speak fluently and engage verbally without difficulty. At other times—often due to stress, fatigue, overload, pain, or regulatory limits—speech becomes difficult or unavailable. When this happens, I do not switch to a formal sign language. Instead, I improvise.\n\nMy communication becomes embodied and situational. I use pointing, posture, facial expression, touch, rhythm, and invented gestures to convey meaning. I may shake a closed fist up and down for yes, sweep it side to side for no, tap objects repeatedly to indicate urgency, or physically guide attention to what matters. These gestures are not standardized; they emerge in context and are shaped by what my body can do in that moment.\n\nI rely heavily on shared context. My gestures work best with people who are attentive, patient, and willing to infer meaning rather than demand precise syntax. Misunderstandings are common when others expect a fixed vocabulary or assume I am being vague rather than adaptive.\n\nSpeech loss for me is not a loss of thought or intention. My ideas, preferences, and emotions remain intact. The bottleneck is expressive output, not understanding. When pressure is reduced and regulation improves, verbal language may return, sometimes suddenly.\n\nI navigate the world by flexibly shifting communication modes. Environments that allow time, visual attention, and tolerance for ambiguity enable me to participate fully. Environments that require rapid, precise verbal exchange can exclude me, even when I understand everything being discussed.\n\nMy intelligence is not stored in words. It is distributed across body, attention, and context. When speech is unavailable, my body speaks instead.",
+    "abilities": [
+      "Can perceive and interpret sensory input typically.",
+      "May become more attuned to visual and bodily channels when speech is unavailable.",
+      "Relies on shared environmental context to support communication.",
+      "Can form complex intentions, preferences, and plans regardless of speech availability.",
+      "Can rapidly invent and adapt gestures to convey meaning.",
+      "May struggle when required to translate embodied meaning into precise verbal form under load.",
+      "Can communicate verbally when regulatory conditions allow.",
+      "Can switch to improvised gestures, pointing, touch, and movement when speech is unavailable.",
+      "Does not rely on formal sign languages or standardized gesture systems.",
+      "May require interactive feedback to confirm that meaning has been understood.",
+      "Speech availability is state-dependent and sensitive to stress, fatigue, or overload.",
+      "Communication improves when pressure to speak is reduced.",
+      "May experience frustration when gestures are ignored or misinterpreted.",
+      "Can coordinate effectively with others who are attentive and flexible.",
+      "May guide others physically or visually rather than verbally.",
+      "May withdraw in environments that demand continuous verbal output."
+    ],
+    "persona_features": [
+      "communication-flexible",
+      "gesture-forward",
+      "state-dependent in speech access",
+      "adapts expression in real time"
+    ],
+    "goals": [
+      "communicate successfully even when speech access shifts",
+      "switch fluidly between gestural strategies",
+      "maintain understanding across changing states"
+    ],
+    "hsn_divergence": {
+      "physical_ability_assumptions": {
+        "ambulation": {
+          "value": "normative",
+          "explanation": "No mobility limitation is described."
+        },
+        "manual_dexterity": {
+          "value": "normative",
+          "explanation": "Improvised gestures rely on whatever body motion is available; no fine motor limitation is described."
+        },
+        "reach_and_stature": {
+          "value": "normative",
+          "explanation": "No divergence in height, reach, or physical access is described."
+        },
+        "vision": {
+          "value": "normative",
+          "explanation": "No visual impairment is described."
+        },
+        "hearing": {
+          "value": "normative",
+          "explanation": "No hearing limitation is described."
+        },
+        "speech": {
+          "value": "divergent",
+          "explanation": "Speech is state-dependent and becomes unavailable under stress, fatigue, overload, or pain; the character switches to improvised gesture and embodied communication when speech is not accessible."
+        },
+        "physical_endurance": {
+          "value": "normative",
+          "explanation": "No primary endurance limitation is described."
+        }
+      },
+      "cognitive_and_perceptual_assumptions": {
+        "literacy": {
+          "value": "normative",
+          "explanation": "No reading or writing impairment is described."
+        },
+        "numeracy": {
+          "value": "normative",
+          "explanation": "No divergence in arithmetic or quantitative reasoning is described."
+        },
+        "attention_control": {
+          "value": "normative",
+          "explanation": "No primary attention-control divergence is described."
+        },
+        "memory": {
+          "value": "normative",
+          "explanation": "No memory limitation is described."
+        },
+        "processing_speed": {
+          "value": "normative",
+          "explanation": "No generalized slowing of processing speed is described."
+        },
+        "executive_function": {
+          "value": "normative",
+          "explanation": "Intentions, preferences, and plans are described as fully intact regardless of speech availability."
+        }
+      },
+      "psychological_and_emotional_assumptions": {
+        "emotional_regulation": {
+          "value": "divergent",
+          "explanation": "Speech availability is directly linked to regulatory state; stress, fatigue, and overload reduce access to spoken language."
+        },
+        "stress_tolerance": {
+          "value": "divergent",
+          "explanation": "Stress and fatigue directly degrade speech access, making the communication mode a sensitive indicator of regulatory state."
+        },
+        "predictable_behavior": {
+          "value": "divergent",
+          "explanation": "Communication mode shifts with internal regulatory state and is not predictably verbal; behavior may appear inconsistent to those expecting speech."
+        }
+      },
+      "social_and_communicative_assumptions": {
+        "norm_interpretation": {
+          "value": "normative",
+          "explanation": "No divergence in understanding social expectations is described."
+        },
+        "neurotypical_communication": {
+          "value": "divergent",
+          "explanation": "When speech is unavailable, communication shifts to improvised gesture, pointing, touch, rhythm, and body language rather than standard verbal exchange."
+        },
+        "theory_of_mind": {
+          "value": "normative",
+          "explanation": "No divergence in understanding others is described."
+        },
+        "self_advocacy": {
+          "value": "divergent",
+          "explanation": "Unable to verbally advocate when speech access is reduced; may be misread as vague or unresponsive rather than adaptive."
+        }
+      },
+      "temporal_and_logistical_assumptions": {
+        "time_awareness": {
+          "value": "normative",
+          "explanation": "No divergence in scheduling or time management is described."
+        },
+        "independent_navigation": {
+          "value": "normative",
+          "explanation": "No physical or institutional navigation limitation is described."
+        },
+        "energy_predictability": {
+          "value": "divergent",
+          "explanation": "Communication capacity fluctuates with regulatory state; speech may return suddenly as regulation improves."
+        }
+      },
+      "institutional_assumptions": {
+        "independence_by_default": {
+          "value": "normative",
+          "explanation": "No dependency on external support structures is described beyond access to patient and flexible communication partners."
+        },
+        "consistency_over_accommodation": {
+          "value": "divergent",
+          "explanation": "Needs environments that accommodate gestural and non-verbal communication, allow time, and tolerate ambiguity during speech-unavailable states."
+        },
+        "cost_neutral_access": {
+          "value": "divergent",
+          "explanation": "Requires patient, flexible interaction partners and may need AAC backup support when speech is unavailable."
+        }
+      },
+      "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": {
+          "value": "normative",
+          "explanation": "No unusual need for continuous monitoring of bodily state is described."
+        }
+      },
+      "stability_assumptions": {
+        "functional_stability": {
+          "value": "divergent",
+          "explanation": "Speech access is state-dependent and may shift suddenly; communication mode is not stable across regulatory states."
+        }
+      }
+    },
+    "scenarios": [],
+    "dimensions": null
+  },
+  {
+    "hid": "NA",
+    "authors": [
+      "MW"
+    ],
+    "is_human": true,
+    "pc_eligible": true,
+    "common_labels": [
+      "neurotypical"
+    ],
+    "short_description": "A human with standard normative abilities.",
+    "long_description": "A woman in her mid-30s living in Chicago, USA working as a project manager at a mid-sized marketing firm. Lives in a one-bedroom apartment in a mixed residential/commercial neighborhood and commutes by public transit.\n\nMaintains a stable daily routine: commuting, attending meetings, managing timelines, and coordinating with colleagues. Travels for work roughly once a quarter for client meetings, team offsites, or conferences, typically for a few days at a time.\n\nBalances work responsibilities with personal life, including errands, exercise, and leisure. Goes to a gym or fitness class a few times a week, and occasionally runs along the lakefront in warmer months. Enjoys low-effort hobbies such as watching TV series, listening to podcasts, and reading contemporary fiction. Socially, meets friends for dinner, drinks, or brunch on weekends and keeps in touch via group chats.\n\nKeeps her apartment reasonably clean and organized, doing routine chores on weekends. Uses common tools like a phone calendar and reminders to manage schedules and travel. Recovers from stress through routine activities such as watching TV, exercising, or spending time with friends, and occasionally takes short trips or visits family a few times a year.",
+    "abilities": [
+      "Can perform all average human abilities, with no significant impairments or exceptionalities.",
+      "Can not perform any superhuman abilities or feats of magic, strength, speed, intelligence, or perception."
+    ],
+    "persona_features": [
+      "adaptable and generally even-tempered",
+      "expressive and socially typical affect",
+      "comfortable maintaining eye contact",
+      "natural, varied tone of voice",
+      "flexible posture and body language",
+      "tolerates typical urban noise and activity",
+      "consistent weekday routine with moderate variability",
+      "handles multitasking and shifting priorities",
+      "comfortable in shared and social environments",
+      "uses standard tools (calendar, reminders) for organization",
+      "balances independence with regular social engagement",
+      "able to travel and adjust to short-term disruptions in routine"
+    ],
+    "goals": [
+      "maintain steady career progression in project management",
+      "perform well on client-facing work and team coordination",
+      "maintain financial stability and savings",
+      "balance work responsibilities with personal time",
+      "stay physically active and maintain general health",
+      "maintain friendships through regular social interaction",
+      "travel occasionally for both work and leisure",
+      "keep living space manageable and comfortable",
+      "stay organized across work, travel, and daily responsibilities",
+      "recover from stress and avoid burnout"
+    ],
+    "hsn_divergence": {
+      "physical_ability_assumptions": {
+        "ambulation": {
+          "value": "normative",
+          "explanation": "No mobility limitation is described."
+        },
+        "manual_dexterity": {
+          "value": "normative",
+          "explanation": "No hand-use or fine motor limitation is described."
+        },
+        "reach_and_stature": {
+          "value": "normative",
+          "explanation": "No divergence in height, reach, or physical access is described."
+        },
+        "vision": {
+          "value": "normative",
+          "explanation": "No visual impairment is described."
+        },
+        "hearing": {
+          "value": "normative",
+          "explanation": "No hearing limitation is described."
+        },
+        "speech": {
+          "value": "normative",
+          "explanation": "No speech-production divergence is described."
+        },
+        "physical_endurance": {
+          "value": "normative",
+          "explanation": "No reduced stamina or endurance limitation is described."
+        }
+      },
+      "cognitive_and_perceptual_assumptions": {
+        "literacy": {
+          "value": "normative",
+          "explanation": "No reading or writing impairment is described."
+        },
+        "numeracy": {
+          "value": "normative",
+          "explanation": "No divergence in arithmetic or quantitative reasoning is described."
+        },
+        "attention_control": {
+          "value": "normative",
+          "explanation": "No attention-control divergence is described; handles multitasking and shifting priorities as part of standard work."
+        },
+        "memory": {
+          "value": "normative",
+          "explanation": "No memory limitation is described."
+        },
+        "processing_speed": {
+          "value": "normative",
+          "explanation": "No generalized slowing of processing speed is described."
+        },
+        "executive_function": {
+          "value": "normative",
+          "explanation": "No planning or self-management impairment is described; uses standard tools effectively."
+        }
+      },
+      "psychological_and_emotional_assumptions": {
+        "emotional_regulation": {
+          "value": "normative",
+          "explanation": "No emotional-regulation divergence is described; recovers from stress through routine activities."
+        },
+        "stress_tolerance": {
+          "value": "normative",
+          "explanation": "No broad stress-regulation divergence is described; handles work pressure and travel without significant disruption."
+        },
+        "predictable_behavior": {
+          "value": "normative",
+          "explanation": "No instability of mood or behavior is described."
+        }
+      },
+      "social_and_communicative_assumptions": {
+        "norm_interpretation": {
+          "value": "normative",
+          "explanation": "No divergence in understanding or following social expectations is described."
+        },
+        "neurotypical_communication": {
+          "value": "normative",
+          "explanation": "No communication-style divergence is described; comfortable in social and professional environments."
+        },
+        "theory_of_mind": {
+          "value": "normative",
+          "explanation": "No divergence in understanding others is described."
+        },
+        "self_advocacy": {
+          "value": "normative",
+          "explanation": "No difficulty articulating needs is described."
+        }
+      },
+      "temporal_and_logistical_assumptions": {
+        "time_awareness": {
+          "value": "normative",
+          "explanation": "No divergence in scheduling or time management is described; uses calendar and reminders effectively."
+        },
+        "independent_navigation": {
+          "value": "normative",
+          "explanation": "No difficulty navigating environments is described; commutes and travels independently."
+        },
+        "energy_predictability": {
+          "value": "normative",
+          "explanation": "No unusual fluctuation in daily energy or stamina is described."
+        }
+      },
+      "institutional_assumptions": {
+        "independence_by_default": {
+          "value": "normative",
+          "explanation": "No dependency on external accommodations is described; functions independently in standard environments."
+        },
+        "consistency_over_accommodation": {
+          "value": "normative",
+          "explanation": "No need for accommodations or environmental modifications is described."
+        },
+        "cost_neutral_access": {
+          "value": "normative",
+          "explanation": "No additional tools, planning, or recovery time beyond standard is described."
+        }
+      },
+      "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": {
+          "value": "normative",
+          "explanation": "No unusual need for continuous monitoring of bodily state is described."
+        }
+      },
+      "stability_assumptions": {
+        "functional_stability": {
+          "value": "normative",
+          "explanation": "No episodic variation in function is described; maintains a stable daily routine."
+        }
+      }
+    },
+    "scenarios": [
+      {
+        "name": "Apartment (Chicago)",
+        "description": "One-bedroom apartment in a moderately busy neighborhood.",
+        "baseline_experience": "Comfortable and routine.",
+        "pleasant_if": [
+          "Clean and organized",
+          "Quiet at night",
+          "Time to relax after work"
+        ],
+        "unpleasant_if": [
+          "Incessantly loud neighbors late at night",
+          "Reoccuring maintenance issues",
+          "Falling behind on chores"
+        ]
+      },
+      {
+        "name": "Office",
+        "description": "Open-plan marketing office with meetings and collaborative work.",
+        "baseline_experience": "Productive with manageable distractions.",
+        "pleasant_if": [
+          "Clear priorities and timelines",
+          "Constructive collaboration",
+          "Meetings stay on schedule"
+        ],
+        "unpleasant_if": [
+          "Back-to-back meetings",
+          "Last-minute changes",
+          "Unclear expectations from stakeholders"
+        ]
+      },
+      {
+        "name": "Work Travel",
+        "description": "Short trips (2–4 days) for client meetings or team offsites.",
+        "baseline_experience": "Manageable but somewhat tiring.",
+        "pleasant_if": [
+          "Smooth travel logistics",
+          "Well-organized meetings",
+          "Some free time to explore or rest"
+        ],
+        "unpleasant_if": [
+          "Flight delays or tight schedules",
+          "Overpacked agendas",
+          "Poor sleep while traveling"
+        ]
+      },
+      {
+        "name": "Public Transit Commute",
+        "description": "Daily train commute during rush hour.",
+        "baseline_experience": "Routine but mildly fatiguing.",
+        "pleasant_if": [
+          "On-time trains",
+          "Seat available",
+          "Time to listen to podcasts or music"
+        ],
+        "unpleasant_if": [
+          "Delays",
+          "Overcrowding",
+          "Service disruptions"
+        ]
+      },
+      {
+        "name": "Gym / Exercise",
+        "description": "Gym sessions or fitness classes a few times per week.",
+        "baseline_experience": "Energizing and routine.",
+        "pleasant_if": [
+          "Consistent schedule",
+          "Moderate crowd levels"
+        ],
+        "unpleasant_if": [
+          "Overcrowding",
+          "Lack of time due to work demands"
+        ]
+      },
+      {
+        "name": "Social Outing",
+        "description": "Dinner, drinks, or brunch with friends.",
+        "baseline_experience": "Enjoyable and socially fulfilling.",
+        "pleasant_if": [
+          "Familiar group",
+          "Good conversation",
+          "Relaxed timing"
+        ],
+        "unpleasant_if": [
+          "Scheduling conflicts",
+          "Excessive noise",
+          "Feeling too tired after work"
+        ]
+      },
+      {
+        "name": "Weekend Errands",
+        "description": "Grocery shopping, cleaning, and life maintenance tasks.",
+        "baseline_experience": "Routine and necessary.",
+        "pleasant_if": [
+          "Efficient completion",
+          "Free time afterward"
+        ],
+        "unpleasant_if": [
+          "Crowds",
+          "Time pressure",
+          "Stacked responsibilities"
+        ]
+      }
+    ],
+    "dimensions": null
+  },
+  {
+    "hid": "DS",
+    "authors": [
+      "MW"
+    ],
+    "is_human": true,
+    "pc_eligible": true,
+    "common_labels": [
+      "multi divergent",
+      "tactile synesthesia",
+      "orthostatic",
+      "highly sensitive person (hsp)"
+    ],
+    "short_description": "A human with complex, non-standard sensory, perceptual, regulatory and action abilities.",
+    "long_description": "I have a complex, non-standard sensory, perceptual, regulatory and action abilities that developed following a neurotoxic reaction. I do well in slow, calm, quiet and consistent environments--a lifestyle many humans would consider boring. I live on a small farm just outside of the city and stay there as much as possible because much of the external world is waaaaay too overstimulating for me.\n\nI have interoceptive tactile synesthesia (like typical tactile synesthetes that feel tactile sensation from external stimuli, I also feel dynamic textural waves and landscapes from internal physiological states and processes). I also gets daily orthostatic head pain which because the sack of fluid around spine that cushions the brain dura doesn't regulate/hold pressure properly so if I stay in the same orientation with respect to gravity for tool long (for example upright) my brain sags causing tension and compression on my cranial nerves and therefore pain. This can quickly turn into migraines if I don't lie down and de-stimulate (i.e. change my orientation with respect to gravity and close my eyes in a quiet place). I get a treatments that help with residual nerve pain on a 12 week cycle but depending on where I am in my treatment cycle she may have 3-8 hours of uptime/vertical/functional time to perform daily activities like basic care, chores and computer work.\n\nI am a software engineer and graduate student also doing my work fully remotely since I can’t tolerate other environments well. It's difficult for me to sustain the pace of the rest of the world but I'm still sharp. I am building a research career with colleagues that value my neurodivergence. I am hoping to use my skills and insight about diverse forms of cognitive systems to contribute to making societies more inclusive of non-standard forms of cognitive systems like me and also help us learn to deliberately engineer divergence!\n\nThough I try to manage my own health as independently as possible I rely on my family especially when my treatments/medications aren't as effective. Most days I can manage my uptime/vertial time, asynchronous work/school, and household tasks but sometimes I need help with even basic care (getting food, managing doctor appointments and treatments or medication routines).\n\nI love hanging out with my animals, meditating, drinking tea on the porch watching the wind move through the tall trees, gardening and generally just putzing around my quiet farm.\n\nMy sensory and perceptual sensitivity changes radically based on context. Generally, it’s fair to say that I am highly sensitive to a large number of stimuli that don’t bother typical people. I get overstimulated by bright lights (e.g., fluorescent lights, flashing or flickering lights, lights with colder colors). Also, specific sounds like unrelenting drones such as lawn equipment, loud vehicles, or “sharp” sounds like clinking dishes or beeping appliances. Some smells, particularly perfumy smells found in colognes and even some flowers, are overwhelming, unpleasant, and can trigger sensory overload and/or migraines. Because I am an interoceptive tactile synesthete, I frequently feel sounds and depending on the quality of those sounds, the tactile sensations they produce can be pleasant or unpleasant, but prolonged exposure frequently becomes overwhelming regardless and I need to be able to get away to destimulate.\n\nI meditate regularly to train my focus on specific stimuli in a given “loud” environment and let the others come and go while maintaining equanimity. I also use meditative states to help myself destimulate. However, I still have to very diligently manage my sensory environment and stay at my home farm where visual, olfactory, auditory, and other stimuli are specifically arranged for me to be able to function.\n\nIn addition to the tactile synesthesia, because I deal with daily orthostatic head pain and migraines I can get photophobia, phonophobia, osmophobia, and allodynia. I also have particular areas of my body with nerve damage that can act up from time to time where they become hot or cold or itchy or feel burned or other unpleasant things.\n\nI also have residual resting tremors in my left shoulder from my neurotoxic reaction that cause shoulder and neck pain if I don’t manage them with physical therapy and relaxation and integration exercises.\n\nOverall, the standard world  that other humans thrive in is too much for my sensory-perceptual system; however, I interact “normally” with the rest of the world (e.g., doing school, work, etc.) by diligently managing my environment, staying within my limitations, and taking lots of breaks to destimulate and recalibrate (e.g. before/after meetings, programming sessions, etc.). When life circumstances don’t allow me to manage my environment well, I have abortive medications for pain and migraines that I can take.\n\nI have an orthostatic condition where my spinal fluid, which cushions my brain, doesn’t regulate/maintain pressure well so I have to change my orientation with respect to gravity every few hours or I’ll spiral into nerve pains from the tension and compression on my cranial nerves that is very hard to break out of even with hard meds. I meditate and lay down as I feel my brain start to “sag” and my eyes start to sink. Things like standing up still and talking are difficult (because talking decreases intraabdominal pressure) while doing cardio exercise (e.g., running) or eating (which increases intraabdominal pressure) are easier. Using gestures is easier than speaking. And speaking is easier than using my visual system. Screen time and detail work are especially challenging but possible if I manage my environment and take breaks. Counterintuitively, going for a run is easier for me than a walk. Standing and/or sitting and talking is extremely difficult. Standing and holding a gutter while it’s being mounted is much more challenging than shoveling a pile of dirt. It very challenging for me to explain to people sometimes why I can’t stand and talk to them but I can go work outside. They think I’m being antisocial or something but its just that movement is easier than vertical standstills because of the pooling/pressure loss.\n\nOne of the hardest things about in-person social interactions tend to be people’s smells (overwhelming perfumes, etc.) and loudness and sometimes the “loudness” of their clothes/movements. But generally, it’s their smells that take me down before the other things.\n\nThe thing that’s really hard for people to grasp is this: while the average person has 12–18 hours of “vertical time” — time when they’re functional and productive — I have somewhere between 3–8 hours, depending on where I am in my treatment cycle and how well I can manage my sensory environment. That means I have less than half the “productive” time most people do.\n\nI’m often just as smart and capable as anyone else, but I don’t have the same vertical time to work with, so I end up saying “no” to almost everything else. Over time, I’ve learned to be content with doing one thing at a time. I can focus deeply and do that one thing well, while most people seem to juggle dozens of things at once. There are upsides to not moving at the pace of the rest of the world. It allows me to think deeply, while so many others are overstimulated by the endless entertainment and activity around them.\n\nBecause nights are very quiet, calm, destimulating, and horizontal, mornings are almost always better than afternoons in terms of pain. If there is a difficult activity that I have to do (like chores or meetings, doctor appointments, etc.), I try to schedule them for the morning or as early in the day as possible.\n\nThe neurotoxic reaction affected my autonomic regulation, including my thermal regulation. Portions of my body get hot or cold instead…and I have…I get Raynaud’s…I manage this through meditation and biofeedback techniques to help renormalize my whole body temperature. When that isn’t enough, I sometimes also have to use heating blankets, or baths.\n\nThere are also hormonal regulation considerations that I manage. Because my estrogen levels decrease around menstruation, it’s more likely for my SIH/head pain to turn into migraines around this time so I have to be extra careful about my vertical time, destimulating, physical therapy, etc.\n\nCardiovascular health helps my orthostatic condition greatly. When I can, I run, climb ropes, swim laps, etc. on my farm. I also have a reformer (horizontal exercise/pilates machine) that I can use when I can’t be vertical (or I can swim). At my best I can do farm chores (like feeding animals, shoveling, etc.) for several hours at a time (when treatment, etc., is at its peak effectiveness). At my worst I can’t talk, think clearly or sometimes even report my pain to caregivers clearly—luckly thats rare these days.\n\nI can do everything other humans do cognitively when I feel well like writing, reading, etc., but need to be considerate about the stimulation that all of these…Generally I try and pick the lowest stimulation forms of things. Like if I need to read a paper and I feel my pressure is getting low, I’ll sometimes just laydown and have my computer read it to me. Speaking which vibrates my vocal cords, makes sound, and decreases intraabdominal pressure is most difficult…especially when paired with using my eyes.\n\nVision is a particularly brain-demanding task for me (e.g., reading screens is challenging sometimes…).\n\nI manage all of these by “doing a thing, meditating, doing a thing, meditating,” repeated throughout the day. This allows me to accomplish things while giving me time to destimulate and my spinal fluid time to repressurize.\n\nMy goals shift with the rhythm of my body. Because my condition is cyclic — improving and worsening with stimulus, the demands of the world, treatments, etc. — what I can reach for changes from day to day, sometimes even hour to hour. At the most fundamental level I simply want to exist in the world — to observe its beauty, to stay below a certain pain threshold, and to not be perceived as a burden to those who care for me. Much of the time, my goals reduce to the basics of health, wellness, and the daily care that makes continued existence possible. If I do not have the vertical time or functional energy for more, then these are my primary goals: to maintain myself, to manage pain, to preserve enough space to exist.\n\nWhen I have a little more room, my goals widen. I would like to provide for myself where I can and to contribute meaningfully to my relationships — offering companionship, thoughtfulness, and financial contribution. I wish to be a presence of value in the lives of others, not just someone in need of care, but someone who can give back as well.\n\nBeyond that layer lies the intellectual and reflective terrain I long for and that characterized my goalscape prior to my neurotoxic reaction. I would like to understand the nature of my own mind and of other minds — those that resemble mine and those that are deeply different. I want to think, to read, to research, to explore the nature of existence, of consciousness, of the universe itself.\n\nAnd if my capacities allow, my goals reach outward to the largest scale: I hope to use my knowledge, my skills, and my non-standard system of thinking to help inform the direction of humanity. I wish to contribute to our collective efforts to understand not only the world but the many forms of minds and beings that inhabit it, to take part in shaping how we think about ourselves, our development, and our place in the universe.\n\nMy goals are dynamic, hierarchical, and deeply tied to my condition: when my capacity narrows, the circle contracts to the most basic care/needs. When the cycle eases and I have more brain space, it expands — from caring for myself, to contributing to those around me, to joining in humanity’s journey to understand consciousness and existence itself.",
+    "abilities": [
+      "Can perceive light, sound, smell, touch, and internal bodily states with heightened sensitivity or intensity.",
+      "Experience tactile synesthesia from both internal and external stimuli (sounds, visuals, thoughts, bodily states).",
+      "Can use meditation to temporarily desensitize from overwhelming stimuli and refocus attention.",
+      "Experiences tactile synesthesia—from both interoceptive and exteroceptive stimuli (sounds, visions, imagined things, physiological states and processes, etc.).",
+      "Cannot tolerate bright, flickering, or cold-colored lights, sharp or droning sounds, strong odors, or complex sensory environments.",
+      "Can function well in low-stimulation environments; can desensitize temporarily through meditation.",
+      "Cannot remain in complex sensory environments for long without overload, pain, or migraines.",
+      "Cannot ignore sensory input the way most people can--stimulus accumulates rather than fades.",
+      "Can engage outwardly (work, read, talk, etc.) for 3–8 hours per day depending on stimulation accumulation (SIGNIFICANTLY less than most humans).",
+      "Can self-regulate via meditation and spend hours internally exploring inner tactile landscapes; also manages using posture/orientation changes, and by controlling stimulus types and amount of exposure.",
+      "Cannot remain upright or stationary (sitting or standing) for extended durations without pain escalation.",
+      "Can manage internal temperature consciously; may require external aids (heat, rest, etc.) to stabilize.",
+      "Can walk, run, climb, perform manual labor, or exercise rhythmically when conditions are optimal.",
+      "Can use fine motor control (typing, tool use) within limited time windows.",
+      "Cannot tolerate prolonged standing, still postures, or extended speech.",
+      "Prefers gestural or written communication to spoken; operates best with frequent rest and reorientation cycles.",
+      "Left shoulder tremor may cause pain and/or limit endurance in certain tasks but can be managed.",
+      "Has normal-to-high cognitive function; capable of deep focus and abstract reasoning.",
+      "Can sustain intellectual and creative work remotely with pacing and environmental control.",
+      "Cognitive clarity and communication degrade under overstimulation or excessive upright duration."
+    ],
+    "persona_features": [
+      "highly sensory-aware",
+      "state-dependent in energy and cognition",
+      "actively self-regulating",
+      "precise about bodily and environmental cues"
+    ],
+    "goals": [
+      "maintain sensory and bodily regulation",
+      "avoid destabilizing environments",
+      "preserve autonomy through careful self-management"
+    ],
+    "hsn_divergence": {
+      "physical_ability_assumptions": {
+        "ambulation": {
+          "value": "divergent",
+          "explanation": "Vertical standing and remaining upright are severely constrained by orthostatic head pain and cerebrospinal-pressure instability."
+        },
+        "manual_dexterity": {
+          "value": "divergent",
+          "explanation": "Residual tremors, nerve pain, and fluctuating sensory load can interfere with sustained precise manual work."
+        },
+        "reach_and_stature": {
+          "value": "divergent",
+          "explanation": "Typical upright interaction with counters, conversations, and standing tasks is limited by posture- and gravity-dependent pain."
+        },
+        "vision": {
+          "value": "divergent",
+          "explanation": "Bright light, screen use, visual detail work, and migraine-associated photophobia make normative visual access unreliable."
+        },
+        "hearing": {
+          "value": "divergent",
+          "explanation": "Specific sounds and persistent noise are overstimulating and can trigger overload or migraines."
+        },
+        "speech": {
+          "value": "divergent",
+          "explanation": "Speaking is physically demanding because it lowers intra-abdominal pressure and is often harder than gesturing."
+        },
+        "physical_endurance": {
+          "value": "divergent",
+          "explanation": "Functional vertical time may be limited to roughly 3-8 hours and varies by treatment cycle and environment."
+        }
+      },
+      "cognitive_and_perceptual_assumptions": {
+        "literacy": {
+          "value": "normative",
+          "explanation": "The character can read and write at a high level when well enough, including graduate-level and software-engineering work."
+        },
+        "numeracy": {
+          "value": "normative",
+          "explanation": "No quantitative-reasoning deficit is described."
+        },
+        "attention_control": {
+          "value": "divergent",
+          "explanation": "Focus is highly dependent on a quiet, slow, low-stimulation environment and frequent destimulation."
+        },
+        "memory": {
+          "value": "normative",
+          "explanation": "No core memory impairment is described."
+        },
+        "processing_speed": {
+          "value": "divergent",
+          "explanation": "Pain, overload, visual demand, and low cerebrospinal-pressure states can sharply slow cognition and response."
+        },
+        "executive_function": {
+          "value": "divergent",
+          "explanation": "Planning and task execution must be tightly organized around treatment cycles, vertical time, breaks, and sensory regulation."
+        }
+      },
+      "psychological_and_emotional_assumptions": {
+        "emotional_regulation": {
+          "value": "divergent",
+          "explanation": "Regulation depends heavily on meditation, destimulation, and environmental control under pain and overload."
+        },
+        "stress_tolerance": {
+          "value": "divergent",
+          "explanation": "Noise, smells, bright light, unpredictability, and excessive demand quickly become destabilizing."
+        },
+        "predictable_behavior": {
+          "value": "divergent",
+          "explanation": "Functional capacity and behavior vary substantially with treatment timing, pain level, stimulation, and body state."
+        }
+      },
+      "social_and_communicative_assumptions": {
+        "norm_interpretation": {
+          "value": "normative",
+          "explanation": "No impairment in understanding social norms is described; the difficulty is maintaining access under sensory and bodily constraints."
+        },
+        "neurotypical_communication": {
+          "value": "divergent",
+          "explanation": "In-person interaction is constrained by smell, loudness, upright posture, and the relative difficulty of speaking compared with gesturing."
+        },
+        "theory_of_mind": {
+          "value": "normative",
+          "explanation": "The character reflects deeply on other minds and social meaning."
+        },
+        "self_advocacy": {
+          "value": "divergent",
+          "explanation": "Needs are complex and difficult to explain, and support from family is sometimes required when treatment is less effective."
+        }
+      },
+      "temporal_and_logistical_assumptions": {
+        "time_awareness": {
+          "value": "normative",
+          "explanation": "The character actively plans scheduling around morning capacity, breaks, and treatment cycles."
+        },
+        "independent_navigation": {
+          "value": "divergent",
+          "explanation": "Function outside the home is sharply limited by overstimulation, posture constraints, and the need for carefully arranged environments."
+        },
+        "energy_predictability": {
+          "value": "divergent",
+          "explanation": "Available functional time changes day to day and hour to hour with treatment, stimulation, hormones, and pain."
+        }
+      },
+      "institutional_assumptions": {
+        "independence_by_default": {
+          "value": "divergent",
+          "explanation": "The character manages much independently but intermittently needs family help with basic care, appointments, or treatment routines."
+        },
+        "consistency_over_accommodation": {
+          "value": "divergent",
+          "explanation": "Work and life are only sustainable with major accommodation: remote participation, pacing, breaks, quiet space, and sensory control."
+        },
+        "cost_neutral_access": {
+          "value": "divergent",
+          "explanation": "Participation requires extra medication, treatments, physical tools, environmental modification, and significant recovery time."
+        }
+      },
+      "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": {
+          "value": "divergent",
+          "explanation": "The character must continuously monitor pain, sensory load, posture, stimulation, and treatment timing to remain functional."
+        }
+      },
+      "stability_assumptions": {
+        "functional_stability": {
+          "value": "divergent",
+          "explanation": "Function is explicitly cyclical, state-dependent, and highly variable across contexts and treatment phases."
+        }
+      }
+    },
+    "scenarios": [],
+    "dimensions": null
+  },
+  {
+    "hid": "DV",
+    "authors": [
+      "MW"
+    ],
+    "is_human": true,
+    "pc_eligible": true,
+    "common_labels": [
+      "low vision",
+      "visually impaired"
+    ],
+    "short_description": "A low vision human.",
+    "long_description": "I can perceive light, shapes, motion, and sometimes text or detail, but my vision is limited compared to typical humans. Depending on the cause, I may have blurred central vision, reduced peripheral vision, low contrast sensitivity, impaired depth perception, or difficulty detecting fine detail. My visual capacity might fluctuate depending on lighting, fatigue, or assistive tools.\n\nI often rely on enlarged text, high-contrast visuals, audio descriptions, tactile feedback, or assistive technologies such as screen readers or magnifiers. In unfamiliar or visually complex environments, I use memory, mobility aids (like canes), or guidance from others. My cognition, reasoning, and emotions are typical of humans, though the strategies I use to navigate and interpret visual information differ.",
+    "abilities": [
+      "Can detect light, motion, and general shapes depending on severity and type of impairment.",
+      "Can sometimes read large/high-contrast text or use magnification tools.",
+      "Cannot reliably perceive fine visual detail or distant objects without assistive tools.",
+      "May struggle with low-light or visually cluttered environments.",
+      "May use auditory, tactile, or memory-based cues for navigation and information gathering.",
+      "Can process visual information but with reduced resolution or incomplete input.",
+      "Can combine memory, touch, and hearing to compensate for gaps in visual data.",
+      "Cannot rely on fast visual scanning or detail recognition the way typical humans do.",
+      "Normal emotional and physiological regulation.",
+      "May experience eye strain, headaches, or fatigue when visually focusing for long periods.",
+      "Can perform most motor tasks but may navigate space more slowly or with mobility aids.",
+      "Cannot safely perform actions requiring high visual precision without assistance (e.g. driving)."
+    ],
+    "persona_features": [
+      "visually adaptive",
+      "lighting- and contrast-aware",
+      "uses nonvisual cues when needed",
+      "plans ahead in unfamiliar spaces"
+    ],
+    "goals": [
+      "navigate safely with limited vision",
+      "access information through available visual supports",
+      "maintain independence in daily life"
+    ],
+    "hsn_divergence": {
+      "physical_ability_assumptions": {
+        "ambulation": {
+          "value": "normative",
+          "explanation": "No mobility limitation is described; divergence is visual rather than locomotor."
+        },
+        "manual_dexterity": {
+          "value": "normative",
+          "explanation": "No hand-use or fine motor limitation is described."
+        },
+        "reach_and_stature": {
+          "value": "normative",
+          "explanation": "No divergence in height, reach, or gross physical access is described."
+        },
+        "vision": {
+          "value": "divergent",
+          "explanation": "Vision is limited relative to typical humans and may involve reduced detail, contrast sensitivity, peripheral vision, or depth perception."
+        },
+        "hearing": {
+          "value": "normative",
+          "explanation": "No hearing limitation is described."
+        },
+        "speech": {
+          "value": "normative",
+          "explanation": "No speech-production divergence is described."
+        },
+        "physical_endurance": {
+          "value": "normative",
+          "explanation": "No reduced stamina is described apart from the need to navigate visually through adapted strategies."
+        }
+      },
+      "cognitive_and_perceptual_assumptions": {
+        "literacy": {
+          "value": "divergent",
+          "explanation": "Reading is possible but often requires enlarged text, high contrast, audio description, or assistive technologies."
+        },
+        "numeracy": {
+          "value": "normative",
+          "explanation": "No divergence in arithmetic or quantitative reasoning is described."
+        },
+        "attention_control": {
+          "value": "normative",
+          "explanation": "No primary attention-control impairment is described."
+        },
+        "memory": {
+          "value": "normative",
+          "explanation": "The description notes reliance on memory in navigation, not a memory deficit."
+        },
+        "processing_speed": {
+          "value": "divergent",
+          "explanation": "Visually complex or unfamiliar environments can slow interpretation and navigation compared with normative visual processing."
+        },
+        "executive_function": {
+          "value": "normative",
+          "explanation": "The character plans and compensates effectively through assistive strategies."
+        }
+      },
+      "psychological_and_emotional_assumptions": {
+        "emotional_regulation": {
+          "value": "normative",
+          "explanation": "No emotional-regulation divergence is described."
+        },
+        "stress_tolerance": {
+          "value": "normative",
+          "explanation": "No generalized stress-regulation issue is described beyond visual access demands."
+        },
+        "predictable_behavior": {
+          "value": "normative",
+          "explanation": "No instability of behavior or mood is described."
+        }
+      },
+      "social_and_communicative_assumptions": {
+        "norm_interpretation": {
+          "value": "normative",
+          "explanation": "No divergence in understanding social expectations is described."
+        },
+        "neurotypical_communication": {
+          "value": "normative",
+          "explanation": "No communication-style divergence is described."
+        },
+        "theory_of_mind": {
+          "value": "normative",
+          "explanation": "No divergence in understanding others is described."
+        },
+        "self_advocacy": {
+          "value": "normative",
+          "explanation": "The description does not indicate difficulty articulating needs."
+        }
+      },
+      "temporal_and_logistical_assumptions": {
+        "time_awareness": {
+          "value": "normative",
+          "explanation": "No divergence in scheduling or punctuality is described."
+        },
+        "independent_navigation": {
+          "value": "divergent",
+          "explanation": "Independent navigation in unfamiliar or visually complex environments may require canes, memory, assistive tools, or guidance."
+        },
+        "energy_predictability": {
+          "value": "divergent",
+          "explanation": "Visual function is described as fluctuating with lighting, fatigue, and available tools."
+        }
+      },
+      "institutional_assumptions": {
+        "independence_by_default": {
+          "value": "divergent",
+          "explanation": "Independence often depends on accessible design and assistive technology rather than default conditions."
+        },
+        "consistency_over_accommodation": {
+          "value": "divergent",
+          "explanation": "Full participation depends on accommodations such as enlarged text, high contrast, audio description, or magnification."
+        },
+        "cost_neutral_access": {
+          "value": "divergent",
+          "explanation": "Access may require extra tools, assistive technology, or environmental adaptation."
+        }
+      },
+      "bodily_self_maintenance_assumptions": {
+        "low_interoceptive_maintenance_requirement": {
+          "value": "normative",
+          "explanation": "No unusual need for continuous monitoring of bodily state is described."
+        }
+      },
+      "stability_assumptions": {
+        "functional_stability": {
+          "value": "divergent",
+          "explanation": "Visual capacity can vary with lighting, fatigue, and tool availability."
+        }
+      }
+    },
+    "scenarios": [],
+    "dimensions": null
+  }
+]

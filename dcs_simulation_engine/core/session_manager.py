@@ -114,9 +114,7 @@ class SessionManager:
 
         get_valid = getattr(game_config, "get_valid_characters_async", None)
         if get_valid is None:
-            valid_pcs, valid_npcs = await maybe_await(
-                game_config.get_valid_characters(player_id=player_id, provider=provider)
-            )
+            valid_pcs, valid_npcs = await maybe_await(game_config.get_valid_characters(player_id=player_id, provider=provider))
         else:
             valid_pcs, valid_npcs = await maybe_await(get_valid(player_id=player_id, provider=provider))
         valid_pc_hids = [hid for _, hid in valid_pcs]
@@ -352,30 +350,6 @@ class SessionManager:
         turn_index = self._turn_count + 1
         parsed_command = _parse_command_input(user_input)
 
-        if parsed_command is not None:
-            cmd, cmd_args = parsed_command
-            if cmd == "exit":
-                payload = {"type": "info", "content": "Session exited: received exit command"}
-                self._events.append(payload)
-                if self._recorder_open and self._recorder is not None:
-                    await self._recorder.record_inbound(
-                        content=user_input,
-                        turn_index=turn_index,
-                        event_type="command",
-                        command_name=cmd,
-                        command_args=cmd_args,
-                    )
-                    await self._recorder.record_outbound(
-                        event_type="command",
-                        event_source="system",
-                        content=payload["content"],
-                        turn_index=turn_index,
-                        command_name=cmd,
-                        command_args=cmd_args,
-                    )
-                await self.exit_async("received exit command")
-                return [payload]
-
         events = await self._collect_events(user_input)
         recognized_game_command = parsed_command is not None and any(event.command_response for event in events)
         if isinstance(user_input, str) and user_input != "" and self._recorder_open and self._recorder is not None:
@@ -399,12 +373,8 @@ class SessionManager:
             self._events.append(payload)
             if self._recorder_open and self._recorder is not None:
                 persisted_event_type, persisted_event_source = self._classify_persisted_outbound_event(event)
-                outbound_command_name = (
-                    parsed_command[0] if event.command_response and parsed_command is not None else None
-                )
-                outbound_command_args = (
-                    parsed_command[1] if event.command_response and parsed_command is not None else None
-                )
+                outbound_command_name = parsed_command[0] if event.command_response and parsed_command is not None else None
+                outbound_command_args = parsed_command[1] if event.command_response and parsed_command is not None else None
                 recorded = await self._recorder.record_outbound(
                     event_type=persisted_event_type,
                     event_source=persisted_event_source,

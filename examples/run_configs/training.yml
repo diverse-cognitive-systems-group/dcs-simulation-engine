@@ -1,0 +1,8 @@
+# ================================================================
+#  Run Configuration — Training
+# ================================================================
+#
+#
+# ================================================================
+
+# NOTE: this config was ommited from foundational requirements because it uses the same configuration as "evaluate specific" but with only human characters used and all PCs normative but for use case clarity I'm keeping it here.

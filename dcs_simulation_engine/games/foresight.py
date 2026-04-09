@@ -1,4 +1,4 @@
-"""Foresight game — new-style implementation."""
+"""Foresight game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -14,6 +14,7 @@ from dcs_simulation_engine.games.ai_client import (
 from dcs_simulation_engine.games.const import (
     Foresight as C,
 )
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
 from dcs_simulation_engine.games.prompts import (
     build_updater_prompt,
     build_validator_prompt,
@@ -25,11 +26,12 @@ class Command(StrEnum):
     """Game-level slash commands recognized by ForesightGame."""
 
     HELP = "help"
-    COMPLETE = "complete"
+    ABILITIES = "abilities"
+    FINISH = "finish"
 
 
 class ForesightGame(Game):
-    """Foresight game: player interacts with NPC and makes predictions about their responses."""
+    """Foresight game: player interacts with NPC and makes predictions embedded in their actions."""
 
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
@@ -55,10 +57,6 @@ class ForesightGame(Game):
         self._entered = False
         self._exited = False
         self._exit_reason = ""
-
-        # Completion flow state: set True after /complete, cleared after answer collected.
-        self._awaiting_completion_notes = False
-        self._completion_notes = ""
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
@@ -108,26 +106,21 @@ class ForesightGame(Game):
         """Reason the game ended, or empty string."""
         return self._exit_reason
 
-    @property
-    def completion_notes(self) -> str:
-        """Notes collected from the player at game completion, or empty string."""
-        return self._completion_notes
+    def _help_content(self) -> str:
+        return C.HELP_CONTENT.format(
+            pc_hid=self._pc.hid,
+            pc_short_description=self._pc.short_description,
+            npc_hid=self._npc.hid,
+        )
 
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
             return
 
-        # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
-            yield GameEvent.now(
-                type="info",
-                content=C.ENTER_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                ),
-            )
+            yield GameEvent.now(type="info", content=self._help_content())
             if self._ensemble is not None:
                 opening = await self._ensemble.generate_validated_npc_response(
                     None, pc=self._pc, npc=self._npc, updater=self._updater,
@@ -144,16 +137,6 @@ class ForesightGame(Game):
         if not user_input:
             return
 
-        # COMPLETION NOTES: collect the player's answer after /complete was typed.
-        if self._awaiting_completion_notes:
-            self._completion_notes = user_input
-            self._awaiting_completion_notes = False
-            self.exit("game completed")
-            yield GameEvent.now(type="info", content="Thank you. Game complete.")
-            return
-
-        # Game-level commands (/help, /complete). Session-level exit commands
-        # are already handled by SessionManager.
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -166,7 +149,6 @@ class ForesightGame(Game):
             )
             return
 
-        # Validate before advancing the scene.
         validation = await self._validator.validate(user_input)
         if validation.get("type") == "error":
             self._retry_budget -= 1
@@ -220,22 +202,29 @@ class ForesightGame(Game):
         command_body = stripped[1:].strip()
         if not command_body:
             return None
-        parts = command_body.split(maxsplit=1)
-        cmd = parts[0].lower()
-        remainder = parts[1].strip() if len(parts) > 1 else ""
+        cmd = command_body.split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+            return GameEvent.now(type="info", content=self._help_content(), command_response=True)
 
-        if cmd == Command.COMPLETE:
-            if remainder:
-                self._completion_notes = remainder
-                self._awaiting_completion_notes = False
-                self.exit("game completed")
-                return GameEvent.now(type="info", content="Thank you. Game complete.", command_response=True)
-            # Transition to completion-notes collection on the next turn.
-            self._awaiting_completion_notes = True
-            return GameEvent.now(type="info", content=C.COMPLETE_QUESTION, command_response=True)
+        if cmd == Command.ABILITIES:
+            return GameEvent.now(
+                type="info",
+                content=C.ABILITIES_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
+                    npc_hid=self._npc.hid,
+                ),
+                command_response=True,
+            )
 
-        # Unrecognised — return None so SessionManager can handle it.
+        if cmd == Command.FINISH:
+            self.exit("player finished")
+            return GameEvent.now(
+                type="info",
+                content=C.FINISH_CONTENT.format(finish_reason="player finished"),
+                command_response=True,
+            )
+
         return None

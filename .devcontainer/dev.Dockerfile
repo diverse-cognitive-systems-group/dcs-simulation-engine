@@ -1,9 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM astral/uv:python3.13-bookworm-slim
 
-# Kept for compatibility with the existing devcontainer.json build args.
-ARG INSTALL_DEV=true
-
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -14,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     NVM_DIR=/usr/local/nvm \
     NVM_SYMLINK_CURRENT=true \
     BUN_INSTALL=/opt/bun \
-    PATH="/opt/venv/bin:/opt/bun/bin:/usr/local/nvm/current/bin:/root/.fly/bin:/app/ui/node_modules/.bin:${PATH}"
+    PATH="/opt/venv/bin:/opt/bun/bin:/usr/local/nvm/current/bin:/root/.fly/bin:/app/ui/node_modules/.bin:${PATH}" 
 
 # Install the base toolchain needed for both the Python API and Bun/Vite UI.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,13 +19,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     curl \
+    gh \
     git \
     gnupg \
     gpg \
+    locales \
     openssh-client \
     unzip \
     zsh \
     && rm -rf /var/lib/apt/lists/*
+
+# make zsh the default shell
+RUN chsh -s $(which zsh)
+
+RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
 
 # install eza
 RUN mkdir -p /etc/apt/keyrings \
@@ -37,6 +44,11 @@ RUN mkdir -p /etc/apt/keyrings \
     && chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list \
     && apt update \
     && apt install -y eza \
+    && rm -rf /var/lib/apt/lists/*
+
+# upgrade all packages to ensure we have the latest security updates
+RUN  apt update \
+    && apt upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js via nvm so the version can be managed consistently inside
@@ -71,7 +83,6 @@ RUN mkdir -p /root/.codex \
     'sandbox_mode = "danger-full-access"' \
     > /root/.codex/config.toml
 
-
 WORKDIR /app
 
 # The source tree is bind-mounted onto /app at runtime, so this image acts as a
@@ -80,19 +91,17 @@ RUN printf '%s\n' \
     'export NVM_DIR="/usr/local/nvm"' \
     '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' \
     'alias dcs="uv run dcs"' \
-    'alias api-dev="cd /app && uv run dcs server --host 0.0.0.0"' \
-    'alias ui-dev="cd /app/ui && bun run dev --host 0.0.0.0"' \
     >> /root/.bashrc \
     && printf '%s\n' \
     'export NVM_DIR="/usr/local/nvm"' \
     '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' \
     'alias dcs="uv run dcs"' \
-    'alias api-dev="cd /app && uv run dcs server --host 0.0.0.0"' \
-    'alias ui-dev="cd /app/ui && bun run dev --host 0.0.0.0"' \
     >> /root/.zshrc
 
-# append zshrc file to the end of the default zshrc
-COPY .devcontainer/zshrc /tmp/zshrc
-RUN cat /tmp/zshrc >> /root/.zshrc
+# set the ~/.zshrc file 
+COPY .devcontainer/zshrc /root/.zshrc 
 
-# make sure to use --network=host when running the container so the API server is reachable at localhost:8000
+# source the .zshrc file to ensure the aliases are available in the dev container
+RUN zsh -c "source /root/.zshrc"
+
+# ! NOTE: Make sure to use --network=host when running the container so the API server is reachable at localhost:8000

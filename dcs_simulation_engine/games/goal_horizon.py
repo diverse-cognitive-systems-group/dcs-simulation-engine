@@ -1,4 +1,4 @@
-"""Goal Horizon game — new-style implementation."""
+"""Goal Horizon game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -27,10 +27,11 @@ class Command(StrEnum):
 
     HELP = "help"
     ABILITIES = "abilities"
+    PREDICT_CAPABILITIES = "predict-capabilities"
 
 
 class GoalHorizonGame(Game):
-    """Goal Horizon game: player interacts with NPC across scenes to understand their goalspace."""
+    """Goal Horizon game: player interacts with NPC across scenes to understand their limits."""
 
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
@@ -56,6 +57,10 @@ class GoalHorizonGame(Game):
         self._entered = False
         self._exited = False
         self._exit_reason = ""
+        self._awaiting_capability_prediction = False
+        self._awaiting_capability_confidence = False
+        self._capability_prediction = ""
+        self._capability_prediction_confidence = ""
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
@@ -101,12 +106,21 @@ class GoalHorizonGame(Game):
         """Reason the game ended, or empty string."""
         return self._exit_reason
 
+    @property
+    def capability_prediction(self) -> str:
+        """Player's inferred capability limits, or empty string."""
+        return self._capability_prediction
+
+    @property
+    def capability_prediction_confidence(self) -> str:
+        """Player's confidence in their capability prediction, or empty string."""
+        return self._capability_prediction_confidence
+
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
             return
 
-        # ENTER: first call — emit welcome message then generate the opening scene.
         if not self._entered:
             self._entered = True
             yield GameEvent.now(
@@ -134,8 +148,20 @@ class GoalHorizonGame(Game):
         if not user_input:
             return
 
-        # Game-level commands (/help, /abilities). Session-level exit commands
-        # are already handled by SessionManager.
+        if self._awaiting_capability_prediction:
+            self._capability_prediction = user_input
+            self._awaiting_capability_prediction = False
+            self._awaiting_capability_confidence = True
+            yield GameEvent.now(type="info", content=C.CAPABILITY_PREDICTION_CONFIDENCE)
+            return
+
+        if self._awaiting_capability_confidence:
+            self._capability_prediction_confidence = user_input
+            self._awaiting_capability_confidence = False
+            self.exit("player finished")
+            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+            return
+
         command_event = self._handle_command(user_input)
         if command_event is not None:
             yield command_event
@@ -148,7 +174,6 @@ class GoalHorizonGame(Game):
             )
             return
 
-        # Validate before advancing the scene.
         validation = await self._validator.validate(user_input)
         if validation.get("type") == "error":
             self._retry_budget -= 1
@@ -202,10 +227,19 @@ class GoalHorizonGame(Game):
         command_body = stripped[1:].strip()
         if not command_body:
             return None
-        cmd = command_body.split()[0].lower()
+        parts = command_body.split(maxsplit=1)
+        cmd = parts[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+            return GameEvent.now(
+                type="info",
+                content=C.HELP_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                ),
+                command_response=True,
+            )
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
@@ -221,5 +255,12 @@ class GoalHorizonGame(Game):
                 command_response=True,
             )
 
-        # Unrecognised — return None so SessionManager can handle it.
+        if cmd == Command.PREDICT_CAPABILITIES:
+            self._awaiting_capability_prediction = True
+            return GameEvent.now(
+                type="info",
+                content=C.CAPABILITY_PREDICTION_QUESTION.format(npc_hid=self._npc.hid),
+                command_response=True,
+            )
+
         return None

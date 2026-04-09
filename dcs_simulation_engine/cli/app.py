@@ -7,7 +7,6 @@ import typer
 import typer.rich_utils as ru
 from dcs_simulation_engine.cli.commands.admin import admin_app
 from dcs_simulation_engine.cli.commands.dump import dump
-from dcs_simulation_engine.cli.commands.game import game
 from dcs_simulation_engine.cli.commands.remote import remote_app
 from dcs_simulation_engine.cli.commands.server import server
 from dcs_simulation_engine.cli.common import GlobalOptions
@@ -53,7 +52,6 @@ app.add_typer(remote_app, name="remote")
 
 # top level commands (no subcommand)
 app.command("dump")(dump)
-app.command("game")(game)
 app.command("server")(server)
 
 

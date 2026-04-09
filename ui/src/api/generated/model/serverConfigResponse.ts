@@ -14,5 +14,5 @@ export interface ServerConfigResponse {
   authentication_required: boolean;
   registration_enabled: boolean;
   experiments_enabled: boolean;
-  default_experiment_name: string | null;
+  default_experiment_name?: string | null;
 }

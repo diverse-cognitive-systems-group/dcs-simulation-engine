@@ -5,21 +5,26 @@
 # Run all linting checks (on the dcs_simulation_engine/ package here).
 lint:
 	uv run ruff check
+	cd ui && bun lint
 
 lint-fix:
 	uv run ruff check --fix
+	cd ui && bun lint --fix
 
 # format code in place (on the dcs_simulation_engine/ package here).
 fmt:
 	uv run ruff format && uv run ruff check --select I --fix
+	cd ui && bun format
 
-# Run test suite quietly (currently only functional tests work)
+# Run test suite quietly
 test:
 	uv run pytest
 
 # Build documentation (MkDocs in this example).
 docs:
 	uv run mkdocs build --strict -q
+
+pr: fmt lint test
 
 # Meta target — runs everything you want in CI or pre-push.
 ci: lint test docs

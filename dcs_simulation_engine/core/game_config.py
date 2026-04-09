@@ -3,7 +3,8 @@
 import importlib
 from typing import Annotated, Any, Dict, List, Optional, Tuple
 
-from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.core.forms import ExperimentForm
+from dcs_simulation_engine.dal.base import CharacterRecord, DataProvider
 from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.serde import SerdeMixin
 from pydantic import BaseModel, ConfigDict, Field, constr
@@ -32,6 +33,7 @@ class GameConfig(SerdeMixin, BaseModel):
     version: VersionStr
     authors: Optional[List[str]] = Field(default_factory=lambda: ["DCS"])
     stopping_conditions: Dict[str, Any] = Field(default_factory=dict)
+    forms: List[ExperimentForm] = Field(default_factory=list)
 
     # Dotted import path to the game engine class, e.g.
     # "dcs_simulation_engine.games.explore.ExploreGame"
@@ -54,23 +56,34 @@ class GameConfig(SerdeMixin, BaseModel):
         *,
         player_id: str | None = None,
         provider: DataProvider,
+        pc_eligible_only: bool = False,
     ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
         """Return (valid_pcs, valid_npcs) as (display_string, hid) tuples."""
-        # Character filtering and display formatting are disabled globally.
         _ = player_id
-        all_chars = list(provider.get_characters())  # type: ignore[arg-type]
-        choices = [(record.hid, record.hid) for record in all_chars]
-        return list(choices), list(choices)
+        all_chars: List[CharacterRecord] = list(provider.get_characters())  # type: ignore[arg-type]
+        if pc_eligible_only:
+            pc_chars = [r for r in all_chars if r.data.get("pc_eligible", True)]
+        else:
+            pc_chars = all_chars
+        pc_choices = [(record.hid, record.hid) for record in pc_chars]
+        npc_choices = [(record.hid, record.hid) for record in all_chars]
+        return pc_choices, npc_choices
 
     async def get_valid_characters_async(
         self,
         *,
         player_id: str | None = None,
         provider: Any,
+        pc_eligible_only: bool = False,
     ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
         """Async-safe variant of get_valid_characters for async providers."""
         _ = player_id
         chars = await maybe_await(provider.get_characters())
-        all_chars = list(chars)
-        choices = [(record.hid, record.hid) for record in all_chars]
-        return list(choices), list(choices)
+        all_chars: List[CharacterRecord] = list(chars)  # type: ignore[arg-type]
+        if pc_eligible_only:
+            pc_chars = [r for r in all_chars if r.data.get("pc_eligible", True)]
+        else:
+            pc_chars = all_chars
+        pc_choices = [(record.hid, record.hid) for record in pc_chars]
+        npc_choices = [(record.hid, record.hid) for record in all_chars]
+        return pc_choices, npc_choices

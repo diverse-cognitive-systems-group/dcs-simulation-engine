@@ -127,19 +127,14 @@ class ExperimentManager:
     ) -> dict[str, Any]:
         """Return the assignment state visible to one authenticated player."""
         config = cls.get_experiment_config_cached(experiment_name)
-        active_assignment = await maybe_await(
-            provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
-        )
-        player_assignments = await maybe_await(
-            provider.list_assignments(experiment_name=experiment_name, player_id=player_id)
-        )
+        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id))
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
         completed_assignments = [item for item in player_assignments if item.status == "completed"]
         before_form_names = {form.name for form in config.forms_for_phase(before_or_after="before")}
         after_form_names = {form.name for form in config.forms_for_phase(before_or_after="after")}
-        has_submitted_before_forms = not before_form_names or any(
-            before_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys()))
-            for item in player_assignments
-        )
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, experiment_name=experiment_name))
+        submitted_before_keys = set((player_forms.data if player_forms else {}).keys())
+        has_submitted_before_forms = not before_form_names or before_form_names.issubset(submitted_before_keys)
         pending_post_play = next(
             (
                 item
@@ -151,11 +146,13 @@ class ExperimentManager:
         strategy = cls._strategy_for(config=config)
         has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
 
+        is_player_choice = config.assignment_strategy.assignment_mode == "player_choice"
         if (
             active_assignment is None
             and pending_post_play is None
             and has_submitted_before_forms
             and not has_finished_experiment
+            and not is_player_choice
         ):
             player_record = await maybe_await(provider.get_player(player_id=player_id))
             if player_record is not None:
@@ -201,12 +198,20 @@ class ExperimentManager:
             experiment_name=config.name,
             player=player_record,
         )
-        if assignment is not None:
-            assignment = await cls.store_form_payloads_async(
-                provider=provider,
-                assignment_id=assignment.assignment_id,
-                forms_payload=normalized_before_forms,
-            )
+        if assignment is not None and config.assignment_strategy.assignment_mode == "auto":
+            strategy = cls._strategy_for(config=config)
+            if hasattr(strategy, "generate_remaining_assignments_async"):
+                await strategy.generate_remaining_assignments_async(
+                    provider=provider,
+                    config=config,
+                    player=player_record,
+                )
+        await cls.store_player_form_payloads_async(
+            provider=provider,
+            player_id=player_id,
+            experiment_name=config.name,
+            forms_payload=normalized_before_forms,
+        )
         return assignment
 
     @classmethod
@@ -220,9 +225,7 @@ class ExperimentManager:
         """Return the active assignment for a player or create one on demand."""
         config = cls.get_experiment_config_cached(experiment_name)
         strategy = cls._strategy_for(config=config)
-        return await maybe_await(
-            strategy.get_or_create_assignment_async(provider=provider, config=config, player=player)
-        )
+        return await maybe_await(strategy.get_or_create_assignment_async(provider=provider, config=config, player=player))
 
     @classmethod
     async def start_assignment_session_async(
@@ -236,9 +239,7 @@ class ExperimentManager:
         is_llm_player: bool = False,
     ) -> tuple["SessionEntry", AssignmentRecord]:
         """Start a gameplay session for the current assignment."""
-        assignment = await maybe_await(
-            provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id)
-        )
+        assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id))
         if assignment is None:
             raise ValueError("No active assignment is available for this player.")
         if assignment.status == "in_progress":
@@ -337,6 +338,26 @@ class ExperimentManager:
                 )
             )
         return updated
+
+    @classmethod
+    async def store_player_form_payloads_async(
+        cls,
+        *,
+        provider: Any,
+        player_id: str,
+        experiment_name: str,
+        forms_payload: dict[str, dict[str, Any]],
+    ) -> None:
+        """Store one or more named before-play form payloads on the player forms record."""
+        for form_key, payload in forms_payload.items():
+            await maybe_await(
+                provider.set_player_form_response(
+                    player_id=player_id,
+                    experiment_name=experiment_name,
+                    form_key=form_key,
+                    response=payload,
+                )
+            )
 
     @classmethod
     async def get_latest_assignment_for_player_async(cls, *, provider: Any, player_id: str) -> AssignmentRecord | None:
@@ -453,6 +474,58 @@ class ExperimentManager:
         raise ValueError(f"Unsupported form field type: {answer_type}")
 
     @classmethod
+    async def get_eligible_options_async(
+        cls,
+        *,
+        provider: Any,
+        experiment_name: str,
+        player: PlayerRecord,
+    ) -> list[dict[str, str]]:
+        """Return eligible {game_name, character_hid} options for a player in player_choice mode."""
+        config = cls.get_experiment_config_cached(experiment_name)
+        strategy = cls._strategy_for(config=config)
+        get_eligible = getattr(strategy, "get_eligible_options_async", None)
+        if get_eligible is None:
+            return []
+        return await maybe_await(get_eligible(provider=provider, config=config, player=player))
+
+    @classmethod
+    async def create_player_choice_assignment_async(
+        cls,
+        *,
+        provider: Any,
+        experiment_name: str,
+        player: PlayerRecord,
+        game_name: str,
+        character_hid: str,
+    ) -> AssignmentRecord:
+        """Create a specific assignment for a player who selected game+character manually."""
+        config = cls.get_experiment_config_cached(experiment_name)
+        eligible = await cls.get_eligible_options_async(
+            provider=provider,
+            experiment_name=experiment_name,
+            player=player,
+        )
+        eligible_set = {(opt["game_name"], opt["character_hid"]) for opt in eligible}
+        if (game_name, character_hid) not in eligible_set:
+            raise ValueError("The selected game and character are not available for assignment.")
+        assignment = await maybe_await(
+            provider.create_assignment(
+                assignment_doc={
+                    MongoColumns.EXPERIMENT_NAME: config.name,
+                    MongoColumns.PLAYER_ID: player.id,
+                    MongoColumns.GAME_NAME: game_name,
+                    MongoColumns.CHARACTER_HID: character_hid,
+                    MongoColumns.STATUS: "assigned",
+                    MongoColumns.FORM_RESPONSES: {},
+                }
+            )
+        )
+        if assignment is None:
+            raise ValueError("Failed to create the assignment.")
+        return assignment
+
+    @classmethod
     def _strategy_for(cls, *, config: ExperimentConfig):
         """Resolve the configured assignment strategy for one experiment."""
         return get_assignment_strategy(config.assignment_strategy.strategy)
@@ -460,4 +533,10 @@ class ExperimentManager:
     @classmethod
     def _is_completion_reason(cls, reason: str) -> bool:
         normalized = reason.strip().lower().replace(" ", "_")
-        return normalized in {"game_completed", "game_complete"} or normalized.startswith("stopping_condition_met:")
+        completion_reasons = {
+            "game_completed",
+            "game_complete",
+            "max_predictions_reached",
+            "player_exited",
+        }
+        return normalized in completion_reasons or normalized.startswith("stopping_condition_met:")

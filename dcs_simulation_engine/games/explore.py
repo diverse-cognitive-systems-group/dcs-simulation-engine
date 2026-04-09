@@ -1,4 +1,4 @@
-"""Explore game — new-style implementation."""
+"""Explore game."""
 
 from enum import StrEnum
 from typing import Any, AsyncIterator
@@ -25,6 +25,7 @@ class Command(StrEnum):
 
     HELP = "help"
     ABILITIES = "abilities"
+    FINISH = "finish"
 
 
 class ExploreGame(Game):
@@ -109,7 +110,7 @@ class ExploreGame(Game):
             self._entered = True
             yield GameEvent.now(
                 type="info",
-                content=C.ENTER_CONTENT.format(
+                content=C.HELP_CONTENT.format(
                     pc_hid=self._pc.hid,
                     pc_short_description=self._pc.short_description,
                     npc_hid=self._npc.hid,
@@ -203,7 +204,16 @@ class ExploreGame(Game):
         cmd = command_body.split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=C.HELP_CONTENT, command_response=True)
+            return GameEvent.now(
+                type="info",
+                content=C.HELP_CONTENT.format(
+                    pc_hid=self._pc.hid,
+                    pc_short_description=self._pc.short_description,
+                    npc_hid=self._npc.hid,
+                    npc_short_description=self._npc.short_description,
+                ),
+                command_response=True,
+            )
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
@@ -216,6 +226,14 @@ class ExploreGame(Game):
                     npc_short_description=self._npc.short_description,
                     npc_abilities=format_abilities_markdown(self._npc.data.get("abilities", "")),
                 ),
+                command_response=True,
+            )
+
+        if cmd == Command.FINISH:
+            self.exit("player finished")
+            return GameEvent.now(
+                type="info",
+                content=C.FINISH_CONTENT.format(finish_reason="player finished"),
                 command_response=True,
             )
 

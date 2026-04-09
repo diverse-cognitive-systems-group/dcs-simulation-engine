@@ -13,6 +13,7 @@ export interface MessageFeedback {
   comment: string
   doesntMakeSense: boolean
   outOfCharacter: boolean
+  other: boolean
   submittedAt: string
 }
 
@@ -25,6 +26,8 @@ export interface ChatMessage {
   feedback?: MessageFeedback
   // Unix timestamp (ms) set when the message is added to the list.
   timestamp: number
+  // True for messages replayed from a previous session on resume.
+  isHistorical?: boolean
 }
 
 type WsState = 'connecting' | 'auth' | 'ready' | 'closed' | 'error'
@@ -35,6 +38,10 @@ export function useSessionWebSocket(sessionId: string) {
   const [wsState, setWsState] = useState<WsState>('connecting')
   const [turns, setTurns] = useState(0)
   const [exited, setExited] = useState(false)
+  const [pcHid, setPcHid] = useState<string | null>(null)
+  const [npcHid, setNpcHid] = useState<string | null>(null)
+  const [hasGameFeedback, setHasGameFeedback] = useState(false)
+  const [isReplaying, setIsReplaying] = useState(false)
   // waiting is true between sendTurn() and the server's turn_end frame.
   const [waiting, setWaiting] = useState(false)
   // useRef holds a mutable value that does NOT trigger re-renders — used for the socket
@@ -96,6 +103,37 @@ export function useSessionWebSocket(sessionId: string) {
 
       // Any non-error frame after auth means authentication succeeded.
       setWsState('ready')
+
+      if (frame.type === 'session_meta') {
+        if (typeof frame.pc_hid === 'string') setPcHid(frame.pc_hid)
+        if (typeof frame.npc_hid === 'string') setNpcHid(frame.npc_hid)
+        if (typeof frame.has_game_feedback === 'boolean')
+          setHasGameFeedback(frame.has_game_feedback)
+      }
+
+      if (frame.type === 'replay_start') {
+        setIsReplaying(true)
+      }
+
+      if (frame.type === 'replay_event') {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: (frame.role === 'user' ? 'user' : 'ai') as 'user' | 'ai',
+            eventType: frame.event_type as EventType,
+            content: frame.content,
+            eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
+            timestamp: Date.now(),
+            isHistorical: true,
+          },
+        ])
+      }
+
+      if (frame.type === 'replay_end') {
+        setIsReplaying(false)
+        setTurns(frame.turns as number)
+      }
 
       if (frame.type === 'event') {
         setMessages((prev) => [
@@ -159,12 +197,6 @@ export function useSessionWebSocket(sessionId: string) {
     ws.current.send(JSON.stringify({ type: 'advance', text }))
   }, [])
 
-  const closeSession = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'close' }))
-    }
-  }, [])
-
   const setMessageFeedback = useCallback(
     (eventId: string, feedback: MessageFeedback | undefined) => {
       setMessages((prev) =>
@@ -174,5 +206,17 @@ export function useSessionWebSocket(sessionId: string) {
     [],
   )
 
-  return { messages, wsState, turns, exited, waiting, sendTurn, closeSession, setMessageFeedback }
+  return {
+    messages,
+    wsState,
+    turns,
+    exited,
+    waiting,
+    isReplaying,
+    pcHid,
+    npcHid,
+    hasGameFeedback,
+    sendTurn,
+    setMessageFeedback,
+  }
 }

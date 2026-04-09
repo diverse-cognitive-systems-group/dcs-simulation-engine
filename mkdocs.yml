@@ -1,22 +1,70 @@
-site_name: DCS Simulation Engine Docs
+site_name: DCS Documentation
+use_directory_urls: false
+repo_name: dcs-simulation-engine
+repo_url: https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine
 theme:
   name: material
+  palette:
+    # Follow the user's OS preference on first visit.
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Light palette.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Dark palette.
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
 plugins:
   - search
+  # - tags
   - mkdocstrings:
       handlers:
         python:
           paths: ["."]
           options:
             docstring_style: google
-            show_source: true           # Adds "view source" links pointing to the file & line number in your repo
-            show_submodules: true       # Recursively documents submodules under the main package/module
+            show_source: true # Adds "view source" links pointing to the file & line number in your repo
+            show_submodules: true # Recursively documents submodules under the main package/module
             # show_if_no_docstring: true  # Renders members even if they have no docstring (shows at least the name/signature)
-            show_root_heading: true   # Adds a top-level heading for the root object/module on the page
+            show_root_heading: true # Adds a top-level heading for the root object/module on the page
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
 nav:
   - Home: index.md
-  - Codebase: core_reference.md
-  # TODO: pre-release - update links to point to fly api docs/demo)
-  - API (ReDoc): "https://127.0.0.1:8000/redoc"
-  - API (Swagger UI): "http://127.0.0.1:8000/docs"
+
+  - Getting Started: getting_started.md
+
+  - User Guide:
+      - 1. Configure: user_guide/configure.md
+      - 2. Run: user_guide/run.md
+      - 3. Play: user_guide/play.md
+      - 4. Analyze Results: user_guide/analyze_results.md
+
+  - Use Cases:
+      - Psych Research: use_cases/psych-research.md
+      - AI Research: use_cases/ai-research.md
+      - Education & Training: use_cases/education.md
+
+  - Design:
+      - Overview: design/overview.md
+      - Games: design/games.md
+      - Characters: design/characters.md
+      - Usability: design/usability.md
+      - Simulation Quality: design/simulation_quality.md
+
+  - Codebase Reference: codebase_reference.md
+  - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
+  - FAQ: faq.md

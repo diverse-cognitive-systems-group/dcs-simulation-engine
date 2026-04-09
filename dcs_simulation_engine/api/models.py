@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 ServerMode = Literal["standard", "free_play"]
 RemoteDeploymentMode = Literal["standard", "free_play", "experiment"]
-SessionStatus = Literal["active", "closed"]
+SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
 AssignmentStatus = Literal["assigned", "in_progress", "completed", "interrupted"]
@@ -169,6 +169,28 @@ class ExperimentSetupResponse(BaseModel):
     pending_post_play: bool = False
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
+    assignment_mode: str = "auto"
+    assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
+
+
+class EligibleAssignmentOption(BaseModel):
+    """One eligible game+character option returned in player_choice mode."""
+
+    game_name: str
+    character_hid: str
+
+
+class EligibleAssignmentOptionsResponse(BaseModel):
+    """List of eligible assignment options for a player in player_choice mode."""
+
+    options: list[EligibleAssignmentOption]
+
+
+class SelectAssignmentRequest(BaseModel):
+    """Payload for player-directed assignment selection."""
+
+    game_name: str
+    character_hid: str
 
 
 class ExperimentPlayerRequest(BaseModel):
@@ -213,13 +235,31 @@ class SessionsListResponse(BaseModel):
     sessions: list[SessionSummary]
 
 
+class InferIntentEvaluation(BaseModel):
+    """Parsed Infer Intent evaluation payload returned by the scorer."""
+
+    tier: int = Field(ge=0, le=3)
+    score: int = Field(ge=0, le=100)
+    reasoning: str = Field(min_length=1)
+
+
+class InferIntentEvaluationResponse(BaseModel):
+    """Response payload for the cached-or-generated Infer Intent evaluation."""
+
+    session_id: str
+    event_id: str
+    cached: bool
+    evaluation: InferIntentEvaluation
+
+
 class SessionEventFeedback(BaseModel):
     """Stored reaction, comment, and issue flags attached to one assistant message."""
 
     liked: bool
-    comment: str = Field(min_length=1)
+    comment: str = ""
     doesnt_make_sense: bool
     out_of_character: bool
+    other: bool = False
     submitted_at: datetime
 
 
@@ -227,9 +267,10 @@ class SubmitSessionEventFeedbackRequest(BaseModel):
     """Payload for storing feedback on a single assistant session event."""
 
     liked: bool
-    comment: str = Field(min_length=1)
+    comment: str = ""
     doesnt_make_sense: bool
     out_of_character: bool
+    other: bool = False
 
 
 class SubmitSessionEventFeedbackResponse(BaseModel):
@@ -277,6 +318,16 @@ class WSCloseRequest(BaseModel):
 WSRequest = WSAdvanceRequest | WSStatusRequest | WSCloseRequest
 
 
+class WSSessionMetaFrame(BaseModel):
+    """WebSocket frame sent once after auth, carrying session metadata."""
+
+    type: Literal["session_meta"] = "session_meta"
+    session_id: str
+    pc_hid: str | None = None
+    npc_hid: str | None = None
+    has_game_feedback: bool = False
+
+
 class WSEventFrame(BaseModel):
     """WebSocket frame representing a single game event."""
 
@@ -318,6 +369,32 @@ class WSErrorFrame(BaseModel):
 
     type: Literal["error"] = "error"
     detail: str
+
+
+class WSReplayStartFrame(BaseModel):
+    """WebSocket frame signaling the start of a historical event replay burst."""
+
+    type: Literal["replay_start"] = "replay_start"
+    session_id: str
+
+
+class WSReplayEventFrame(BaseModel):
+    """WebSocket frame carrying one historical event during replay."""
+
+    type: Literal["replay_event"] = "replay_event"
+    session_id: str
+    event_type: EventType
+    content: str
+    event_id: str | None = None
+    role: Literal["user", "ai"] = "ai"
+
+
+class WSReplayEndFrame(BaseModel):
+    """WebSocket frame signaling the end of a historical event replay burst."""
+
+    type: Literal["replay_end"] = "replay_end"
+    session_id: str
+    turns: int
 
 
 class GameSummary(BaseModel):

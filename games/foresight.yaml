@@ -2,12 +2,14 @@ name: Foresight
 version: 1.0.0
 authors: ["DCS"]
 description: |
-  A game where players interact with another character and learn to predict their responses.
-  Players may optionally include predictions alongside their actions. Useful for measuring
-  how quickly and accurately players learn to model other cognitive systems.
+  Players are tasked with predicting the next action of a character.
 
 stopping_conditions:
   runtime_seconds: [">=600"]
   turns: [">=10"]
+
+# Game-specific defaults (overridable via kwargs in session creation)
+# max_predictions: 3   # Game auto-ends after this many predictions
+# min_predictions: 1   # Minimum predictions required for a completed session
 
 game_class: dcs_simulation_engine.games.foresight.ForesightGame

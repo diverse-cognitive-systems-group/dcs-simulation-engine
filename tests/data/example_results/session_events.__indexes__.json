@@ -1,0 +1,48 @@
+{
+  "_id_": {
+    "key": [
+      [
+        "_id",
+        1
+      ]
+    ],
+    "v": 2
+  },
+  "event_id_1": {
+    "key": [
+      [
+        "event_id",
+        1
+      ]
+    ],
+    "unique": true,
+    "v": 2
+  },
+  "session_id_1_event_ts_1": {
+    "key": [
+      [
+        "session_id",
+        1
+      ],
+      [
+        "event_ts",
+        1
+      ]
+    ],
+    "v": 2
+  },
+  "session_id_1_seq_1": {
+    "key": [
+      [
+        "session_id",
+        1
+      ],
+      [
+        "seq",
+        1
+      ]
+    ],
+    "unique": true,
+    "v": 2
+  }
+}

@@ -1,8 +1,8 @@
 // Thin wrapper around fetch that injects the Bearer token and throws on non-2xx responses.
 // Used by TanStack Query hooks throughout the app instead of calling fetch directly.
 
-import { getApiKey } from '../lib/auth'
 import { resolveApiUrl } from '../lib/api-url'
+import { getApiKey } from '../lib/auth'
 
 export class HttpError extends Error {
   status: number

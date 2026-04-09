@@ -55,6 +55,16 @@ class ExperimentRecord(NamedTuple):
     data: dict[str, Any]
 
 
+class PlayerFormsRecord(NamedTuple):
+    """Before-play form responses for a player in a specific experiment."""
+
+    player_id: str
+    experiment_name: str
+    data: dict[str, Any]
+    created_at: Any
+    updated_at: Any
+
+
 class AssignmentRecord(NamedTuple):
     """A persisted experiment assignment row."""
 
@@ -134,6 +144,22 @@ class DataProvider:
         """Return ordered persisted events for a session."""
         raise NotImplementedError
 
+    def append_session_event(
+        self,
+        *,
+        session_id: str,
+        player_id: str | None,
+        direction: str,
+        event_type: str,
+        event_source: str,
+        content: str,
+        content_format: str,
+        turn_index: int,
+        visible_to_user: bool,
+    ) -> SessionEventRecord | None:
+        """Append one owned session event to an existing persisted session."""
+        raise NotImplementedError
+
     def set_session_event_feedback(
         self,
         *,
@@ -179,7 +205,7 @@ class DataProvider:
         """Persist the latest experiment progress snapshot."""
         raise NotImplementedError
 
-    def create_assignment(self, *, assignment_doc: dict[str, Any]) -> AssignmentRecord:
+    def create_assignment(self, *, assignment_doc: dict[str, Any], allow_concurrent: bool = False) -> AssignmentRecord:
         """Persist a new experiment assignment row."""
         raise NotImplementedError
 
@@ -224,4 +250,24 @@ class DataProvider:
         response: dict[str, Any],
     ) -> AssignmentRecord | None:
         """Store one experiment form response payload on an assignment row."""
+        raise NotImplementedError
+
+    def set_player_form_response(
+        self,
+        *,
+        player_id: str,
+        experiment_name: str,
+        form_key: str,
+        response: dict[str, Any],
+    ) -> PlayerFormsRecord | None:
+        """Store one before-play form response in the forms collection."""
+        raise NotImplementedError
+
+    def get_player_forms(
+        self,
+        *,
+        player_id: str,
+        experiment_name: str,
+    ) -> PlayerFormsRecord | None:
+        """Return the before-play form responses for a player in an experiment."""
         raise NotImplementedError

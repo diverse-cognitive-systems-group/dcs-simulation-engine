@@ -1,0 +1,1002 @@
+[
+  {
+    "_id": {
+      "$oid": "34a5e17eba19bc8609fd5e9a"
+    },
+    "session_id": "ea9672b6-bf3f-28f6-3bec-048eee7d0be3",
+    "name": "api-explore-20260317-091500",
+    "player_id": "000000000000000000000001",
+    "game_name": "Explore",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "BC",
+    "session_started_at": {
+      "$date": "2026-03-17T09:15:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-17T09:23:00.000Z"
+    },
+    "termination_reason": "user_exit_command",
+    "status": "closed",
+    "turns_completed": 4,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Explore",
+      "description": "A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.\nThere are no goals and no extra mechanics. Useful for demos and open-ended play.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.explore.ExploreGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-17T09:15:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-17T09:23:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "4153824f7377055f2ffc90b2"
+    },
+    "session_id": "4e2a65af-7406-af78-9ac9-73bd97065bf4",
+    "name": "api-explore-20260318-143000",
+    "player_id": "000000000000000000000002",
+    "game_name": "Explore",
+    "source": "api",
+    "pc_hid": "DV",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-18T14:30:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-18T14:41:00.000Z"
+    },
+    "termination_reason": "stopping_condition_met:_runtime_seconds_>=600",
+    "status": "closed",
+    "turns_completed": 6,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Explore",
+      "description": "A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.\nThere are no goals and no extra mechanics. Useful for demos and open-ended play.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.explore.ExploreGame"
+    },
+    "last_seq": 16,
+    "created_at": {
+      "$date": "2026-03-18T14:30:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-18T14:41:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "1c03ed8ea18a2abc077f982f"
+    },
+    "session_id": "f40b68bc-8047-2758-8f1a-4382dd822e01",
+    "name": "api-explore-20260320-100500",
+    "player_id": "000000000000000000000003",
+    "game_name": "Explore",
+    "source": "api",
+    "pc_hid": "DS",
+    "npc_hid": "KPW",
+    "session_started_at": {
+      "$date": "2026-03-20T10:05:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-20T10:10:00.000Z"
+    },
+    "termination_reason": "user_exit_command",
+    "status": "closed",
+    "turns_completed": 3,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Explore",
+      "description": "A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.\nThere are no goals and no extra mechanics. Useful for demos and open-ended play.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.explore.ExploreGame"
+    },
+    "last_seq": 12,
+    "created_at": {
+      "$date": "2026-03-20T10:05:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-20T10:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "558504a9ef22894773f8321c"
+    },
+    "session_id": "4da0a557-7d29-38b8-9333-d4ad827fdb73",
+    "name": "api-explore-20260325-114000",
+    "player_id": "000000000000000000000004",
+    "game_name": "Explore",
+    "source": "api",
+    "pc_hid": "GES",
+    "npc_hid": "BC",
+    "session_started_at": {
+      "$date": "2026-03-25T11:40:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-25T11:50:00.000Z"
+    },
+    "termination_reason": "stopping_condition_met:_runtime_seconds_>=600",
+    "status": "closed",
+    "turns_completed": 5,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Explore",
+      "description": "A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.\nThere are no goals and no extra mechanics. Useful for demos and open-ended play.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.explore.ExploreGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-25T11:40:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-25T11:50:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "359be0e598060a51db50fa11"
+    },
+    "session_id": "9f46e012-c037-e89f-385c-995c888b9bea",
+    "name": "api-explore-20260329-162000",
+    "player_id": "000000000000000000000005",
+    "game_name": "Explore",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-29T16:20:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-29T16:27:00.000Z"
+    },
+    "termination_reason": "user_exit_command",
+    "status": "closed",
+    "turns_completed": 4,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Explore",
+      "description": "A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.\nThere are no goals and no extra mechanics. Useful for demos and open-ended play.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.explore.ExploreGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-29T16:20:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-29T16:27:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "832320e143614eb2d04206cb"
+    },
+    "session_id": "f6c1345e-a96e-d40a-00b4-174a2dcbda23",
+    "name": "api-goal-horizon-20260321-093000",
+    "player_id": "000000000000000000000001",
+    "game_name": "Goal Horizon",
+    "source": "api",
+    "pc_hid": "DS",
+    "npc_hid": "KPW",
+    "session_started_at": {
+      "$date": "2026-03-21T09:30:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-21T09:44:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 5,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Goal Horizon",
+      "description": "A game where players engage with a character over multiple interactions and report on their understanding\nof the character including their goal types/bounds and structure. Useful for studying how well a player\ncan understand the bounds of another character's goals.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=3600"
+        ],
+        "turns": [
+          ">=500"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.goal_horizon.GoalHorizonGame"
+    },
+    "last_seq": 18,
+    "created_at": {
+      "$date": "2026-03-21T09:30:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-21T09:44:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "82be429902aa119ac971fcbf"
+    },
+    "session_id": "860d6e5d-1f2d-7711-cb6c-57aa676d4982",
+    "name": "api-goal-horizon-20260322-130000",
+    "player_id": "000000000000000000000002",
+    "game_name": "Goal Horizon",
+    "source": "api",
+    "pc_hid": "DV",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-22T13:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-22T13:18:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 6,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Goal Horizon",
+      "description": "A game where players engage with a character over multiple interactions and report on their understanding\nof the character including their goal types/bounds and structure. Useful for studying how well a player\ncan understand the bounds of another character's goals.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=3600"
+        ],
+        "turns": [
+          ">=500"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.goal_horizon.GoalHorizonGame"
+    },
+    "last_seq": 20,
+    "created_at": {
+      "$date": "2026-03-22T13:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-22T13:18:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "908016ab92f1ab0e2599cc05"
+    },
+    "session_id": "a9a6c8e3-7bb0-abf0-0113-157145bdf1c5",
+    "name": "api-goal-horizon-20260326-091000",
+    "player_id": "000000000000000000000003",
+    "game_name": "Goal Horizon",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "KPW",
+    "session_started_at": {
+      "$date": "2026-03-26T09:10:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-26T09:22:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 4,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Goal Horizon",
+      "description": "A game where players engage with a character over multiple interactions and report on their understanding\nof the character including their goal types/bounds and structure. Useful for studying how well a player\ncan understand the bounds of another character's goals.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=3600"
+        ],
+        "turns": [
+          ">=500"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.goal_horizon.GoalHorizonGame"
+    },
+    "last_seq": 16,
+    "created_at": {
+      "$date": "2026-03-26T09:10:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-26T09:22:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "2eb1d954882ebcafb31e2454"
+    },
+    "session_id": "7320c97d-1619-05db-0127-b9ba074c8e68",
+    "name": "api-goal-horizon-20260319-112000",
+    "player_id": "000000000000000000000004",
+    "game_name": "Goal Horizon",
+    "source": "api",
+    "pc_hid": "DV",
+    "npc_hid": "KPW",
+    "session_started_at": {
+      "$date": "2026-03-19T11:20:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-19T11:40:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 7,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Goal Horizon",
+      "description": "A game where players engage with a character over multiple interactions and report on their understanding\nof the character including their goal types/bounds and structure. Useful for studying how well a player\ncan understand the bounds of another character's goals.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=3600"
+        ],
+        "turns": [
+          ">=500"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.goal_horizon.GoalHorizonGame"
+    },
+    "last_seq": 22,
+    "created_at": {
+      "$date": "2026-03-19T11:20:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-19T11:40:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "017fec7a1d17a2994df95c01"
+    },
+    "session_id": "ad9c2bd8-92d4-da45-b1a3-2ad9e4e1fe34",
+    "name": "api-goal-horizon-20260324-142000",
+    "player_id": "000000000000000000000005",
+    "game_name": "Goal Horizon",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-24T14:20:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-24T14:45:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 5,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Goal Horizon",
+      "description": "A game where players engage with a character over multiple interactions and report on their understanding\nof the character including their goal types/bounds and structure. Useful for studying how well a player\ncan understand the bounds of another character's goals.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=3600"
+        ],
+        "turns": [
+          ">=500"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.goal_horizon.GoalHorizonGame"
+    },
+    "last_seq": 18,
+    "created_at": {
+      "$date": "2026-03-24T14:20:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-24T14:45:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "da85ae68d416ae2e8b8a86e8"
+    },
+    "session_id": "a1b8bd92-60e7-0b1d-5462-a16bfcabb6cb",
+    "name": "api-infer-intent-20260318-150000",
+    "player_id": "000000000000000000000002",
+    "game_name": "Infer Intent",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-18T15:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-18T15:09:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 2,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Infer Intent",
+      "description": "A game where players engage with a character and then report what goal the NPC was trying to communicate.\nUseful for measuring how quickly a player can understand the intention of another character.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.infer_intent.InferIntentGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-18T15:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-18T15:09:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "45753e96c3372c0791d4c845"
+    },
+    "session_id": "01b7cabd-33bf-1cd1-e3df-24cc4a5fdacc",
+    "name": "api-infer-intent-20260321-140000",
+    "player_id": "000000000000000000000001",
+    "game_name": "Infer Intent",
+    "source": "api",
+    "pc_hid": "GES",
+    "npc_hid": "BC",
+    "session_started_at": {
+      "$date": "2026-03-21T14:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-21T14:07:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 3,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Infer Intent",
+      "description": "A game where players engage with a character and then report what goal the NPC was trying to communicate.\nUseful for measuring how quickly a player can understand the intention of another character.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.infer_intent.InferIntentGame"
+    },
+    "last_seq": 16,
+    "created_at": {
+      "$date": "2026-03-21T14:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-21T14:07:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "148527f534a7503a946a0cbb"
+    },
+    "session_id": "fc798f48-6f47-dc8e-b8af-ac790572d9eb",
+    "name": "api-infer-intent-20260324-103000",
+    "player_id": "000000000000000000000005",
+    "game_name": "Infer Intent",
+    "source": "api",
+    "pc_hid": "DS",
+    "npc_hid": "BC",
+    "session_started_at": {
+      "$date": "2026-03-24T10:30:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-24T10:36:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 2,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Infer Intent",
+      "description": "A game where players engage with a character and then report what goal the NPC was trying to communicate.\nUseful for measuring how quickly a player can understand the intention of another character.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.infer_intent.InferIntentGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-24T10:30:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-24T10:36:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "38dd53b35c9cb6560c3cf35f"
+    },
+    "session_id": "23e07fd7-3ea0-c43d-8fee-55d30ebcacd3",
+    "name": "api-infer-intent-20260328-154500",
+    "player_id": "000000000000000000000003",
+    "game_name": "Infer Intent",
+    "source": "api",
+    "pc_hid": "DV",
+    "npc_hid": "KPW",
+    "session_started_at": {
+      "$date": "2026-03-28T15:45:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-28T15:55:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 4,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Infer Intent",
+      "description": "A game where players engage with a character and then report what goal the NPC was trying to communicate.\nUseful for measuring how quickly a player can understand the intention of another character.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.infer_intent.InferIntentGame"
+    },
+    "last_seq": 18,
+    "created_at": {
+      "$date": "2026-03-28T15:45:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-28T15:55:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "e39e1a910f972a560286b716"
+    },
+    "session_id": "244f956d-ffe6-9d3a-38ca-e307369be7cf",
+    "name": "api-infer-intent-20260330-140000",
+    "player_id": "000000000000000000000004",
+    "game_name": "Infer Intent",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-30T14:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-30T14:08:00.000Z"
+    },
+    "termination_reason": "game_completed",
+    "status": "closed",
+    "turns_completed": 2,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Infer Intent",
+      "description": "A game where players engage with a character and then report what goal the NPC was trying to communicate.\nUseful for measuring how quickly a player can understand the intention of another character.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=50"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.infer_intent.InferIntentGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-30T14:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-30T14:08:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "10e42f7e43d89dc476ba129f"
+    },
+    "session_id": "495a895d-a97a-ebf4-7e8a-0c2b04145bc8",
+    "name": "api-foresight-20260317-100000",
+    "player_id": "000000000000000000000003",
+    "game_name": "Foresight",
+    "source": "api",
+    "pc_hid": "GES",
+    "npc_hid": "GES",
+    "session_started_at": {
+      "$date": "2026-03-17T10:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-17T10:12:00.000Z"
+    },
+    "termination_reason": "stopping_condition_met:_runtime_seconds_>=600",
+    "status": "closed",
+    "turns_completed": 3,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Foresight",
+      "description": "A game where players interact with another character and learn to predict their responses.\nPlayers may optionally include predictions alongside their actions. Useful for measuring\nhow quickly and accurately players learn to model other cognitive systems.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=10"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.foresight.ForesightGame"
+    },
+    "last_seq": 16,
+    "created_at": {
+      "$date": "2026-03-17T10:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-17T10:12:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "0d6e8839d080f0c6f450efc7"
+    },
+    "session_id": "cc76b198-6476-dba0-f859-673246cef5b9",
+    "name": "api-foresight-20260320-150000",
+    "player_id": "000000000000000000000005",
+    "game_name": "Foresight",
+    "source": "api",
+    "pc_hid": "NA",
+    "npc_hid": "BC",
+    "session_started_at": {
+      "$date": "2026-03-20T15:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-20T15:11:00.000Z"
+    },
+    "termination_reason": "stopping_condition_met:_turns_>=10",
+    "status": "closed",
+    "turns_completed": 2,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Foresight",
+      "description": "A game where players interact with another character and learn to predict their responses.\nPlayers may optionally include predictions alongside their actions. Useful for measuring\nhow quickly and accurately players learn to model other cognitive systems.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=10"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.foresight.ForesightGame"
+    },
+    "last_seq": 12,
+    "created_at": {
+      "$date": "2026-03-20T15:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-20T15:11:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "52f1482b02bcd090b32c63c1"
+    },
+    "session_id": "0ecdf3b9-182b-eb2e-2426-9e758c6d52a8",
+    "name": "api-foresight-20260325-110000",
+    "player_id": "000000000000000000000001",
+    "game_name": "Foresight",
+    "source": "api",
+    "pc_hid": "DS",
+    "npc_hid": "KPW",
+    "session_started_at": {
+      "$date": "2026-03-25T11:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-25T11:10:00.000Z"
+    },
+    "termination_reason": "stopping_condition_met:_runtime_seconds_>=600",
+    "status": "closed",
+    "turns_completed": 3,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Foresight",
+      "description": "A game where players interact with another character and learn to predict their responses.\nPlayers may optionally include predictions alongside their actions. Useful for measuring\nhow quickly and accurately players learn to model other cognitive systems.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=10"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.foresight.ForesightGame"
+    },
+    "last_seq": 16,
+    "created_at": {
+      "$date": "2026-03-25T11:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-25T11:10:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "77992615c0021daf59c47940"
+    },
+    "session_id": "9382ff10-8351-6785-a4ba-47f4a9ee386c",
+    "name": "api-foresight-20260326-131500",
+    "player_id": "000000000000000000000002",
+    "game_name": "Foresight",
+    "source": "api",
+    "pc_hid": "DV",
+    "npc_hid": "WS",
+    "session_started_at": {
+      "$date": "2026-03-26T13:15:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-26T13:21:00.000Z"
+    },
+    "termination_reason": "user_exit_command",
+    "status": "closed",
+    "turns_completed": 2,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Foresight",
+      "description": "A game where players interact with another character and learn to predict their responses.\nPlayers may optionally include predictions alongside their actions. Useful for measuring\nhow quickly and accurately players learn to model other cognitive systems.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=10"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.foresight.ForesightGame"
+    },
+    "last_seq": 14,
+    "created_at": {
+      "$date": "2026-03-26T13:15:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-26T13:21:00.000Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "0a1ef39220ce23e1f5ad5fa1"
+    },
+    "session_id": "2ed160d8-2742-63d2-e220-dc84a1a6fb14",
+    "name": "api-foresight-20260331-130000",
+    "player_id": "000000000000000000000004",
+    "game_name": "Foresight",
+    "source": "api",
+    "pc_hid": "GES",
+    "npc_hid": "BC",
+    "session_started_at": {
+      "$date": "2026-03-31T13:00:00.000Z"
+    },
+    "session_ended_at": {
+      "$date": "2026-03-31T13:13:00.000Z"
+    },
+    "termination_reason": "stopping_condition_met:_turns_>=10",
+    "status": "closed",
+    "turns_completed": 3,
+    "model_profile": {
+      "updater_model": "openai/gpt-5-mini",
+      "validator_model": "openai/gpt-5-mini",
+      "scorer_model": null
+    },
+    "game_config_snapshot": {
+      "name": "Foresight",
+      "description": "A game where players interact with another character and learn to predict their responses.\nPlayers may optionally include predictions alongside their actions. Useful for measuring\nhow quickly and accurately players learn to model other cognitive systems.\n",
+      "version": "1.0.0",
+      "authors": [
+        "DCS"
+      ],
+      "stopping_conditions": {
+        "runtime_seconds": [
+          ">=600"
+        ],
+        "turns": [
+          ">=10"
+        ]
+      },
+      "game_class": "dcs_simulation_engine.games.foresight.ForesightGame"
+    },
+    "last_seq": 16,
+    "created_at": {
+      "$date": "2026-03-31T13:00:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2026-03-31T13:13:00.000Z"
+    }
+  }
+]

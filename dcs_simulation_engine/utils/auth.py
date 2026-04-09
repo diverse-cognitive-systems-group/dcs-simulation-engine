@@ -23,7 +23,5 @@ def validate_access_key(raw_key: str) -> str:
     if not key.startswith(DEFAULT_KEY_PREFIX):
         raise ValueError(f"Admin key must start with '{DEFAULT_KEY_PREFIX}'.")
     if not ACCESS_KEY_PATTERN.fullmatch(key):
-        raise ValueError(
-            "Admin key must use only URL-safe alphanumeric characters after the prefix (A-Z, a-z, 0-9, '_' or '-')."
-        )
+        raise ValueError("Admin key must use only URL-safe alphanumeric characters after the prefix (A-Z, a-z, 0-9, '_' or '-').")
     return key

@@ -13,4 +13,5 @@ export interface SubmitSessionEventFeedbackRequest {
   comment: string;
   doesnt_make_sense: boolean;
   out_of_character: boolean;
+  other: boolean;
 }

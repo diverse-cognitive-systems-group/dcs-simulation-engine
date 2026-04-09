@@ -1,0 +1,23 @@
+# ================================================================
+#  Run Configuration — Evaluate Specific Games + Characters
+# ================================================================
+#
+# This configuration specifies:
+#
+#   • No expertise requirement
+#   • No pre-play form or onboarding flow
+#
+#   • Assignment protocol:
+#       - Single fixed character ID
+#       - Player may select any valid game
+#       - No character reassignment
+#
+#   • No automatic stop condition
+#
+# ================================================================
+
+name: evaluate-specific
+
+# one NPC character across all games, repeats selectable
+assignment:
+  character: "human-asd1"

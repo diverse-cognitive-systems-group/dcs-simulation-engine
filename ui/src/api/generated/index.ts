@@ -39,15 +39,20 @@ import type {
   ExperimentSessionRequest,
   ExperimentSetupResponse,
   ExperimentStatusResponse,
+  ExportRemoteDatabaseApiRemoteDbExportGetParams,
   GameSetupOptionsResponse,
   GamesListResponse,
   GetSessionReconstructionApiSessionsSessionIdReconstructionGet200,
   HTTPValidationError,
   HealthHealthzGet200,
+  InferIntentEvaluationResponse,
   RegistrationRequest,
   RegistrationResponse,
+  RemoteBootstrapResponse,
+  RemoteStatusResponse,
   ServerConfigResponse,
   SessionsListResponse,
+  StatusResponse,
   SubmitSessionEventFeedbackRequest,
   SubmitSessionEventFeedbackResponse,
   UpsertCharacterRequest,
@@ -472,6 +477,96 @@ export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet
 
 
 
+/**
+ * Return a cached Infer Intent evaluation or generate and persist it on first request.
+ * @summary Request Infer Intent Evaluation
+ */
+export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse200 = {
+  data: InferIntentEvaluationResponse
+  status: 200
+}
+
+export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseSuccess = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse200) & {
+  headers: Headers;
+};
+export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseError = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse422) & {
+  headers: Headers;
+};
+
+export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseSuccess | requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseError)
+
+export const getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/infer-intent/evaluation`
+}
+
+export const requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost = async (sessionId: string, options?: RequestInit): Promise<requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse> => {
+  
+  return httpClient<requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse>(getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostUrl(sessionId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost(sessionId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationResult = NonNullable<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>>
+    
+    export type RequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Request Infer Intent Evaluation
+ */
+export const useRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationOptions(options), queryClient);
+    }
+    
 /**
  * Store or overwrite feedback on one persisted NPC-message event.
  * @summary Submit Session Event Feedback
@@ -1999,6 +2094,327 @@ export const useDeleteCharacterApiCharactersCharacterIdDelete = <TError = HTTPVa
     }
     
 /**
+ * Seed the uploaded database snapshot and provision the remote admin access key.
+ * @summary Bootstrap Remote Deployment
+ */
+export type bootstrapRemoteDeploymentApiRemoteBootstrapPostResponse200 = {
+  data: RemoteBootstrapResponse
+  status: 200
+}
+
+export type bootstrapRemoteDeploymentApiRemoteBootstrapPostResponseSuccess = (bootstrapRemoteDeploymentApiRemoteBootstrapPostResponse200) & {
+  headers: Headers;
+};
+;
+
+export type bootstrapRemoteDeploymentApiRemoteBootstrapPostResponse = (bootstrapRemoteDeploymentApiRemoteBootstrapPostResponseSuccess)
+
+export const getBootstrapRemoteDeploymentApiRemoteBootstrapPostUrl = () => {
+
+
+  
+
+  return `/api/remote/bootstrap`
+}
+
+export const bootstrapRemoteDeploymentApiRemoteBootstrapPost = async ( options?: RequestInit): Promise<bootstrapRemoteDeploymentApiRemoteBootstrapPostResponse> => {
+  
+  return httpClient<bootstrapRemoteDeploymentApiRemoteBootstrapPostResponse>(getBootstrapRemoteDeploymentApiRemoteBootstrapPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getBootstrapRemoteDeploymentApiRemoteBootstrapPostMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bootstrapRemoteDeploymentApiRemoteBootstrapPost>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof bootstrapRemoteDeploymentApiRemoteBootstrapPost>>, TError,void, TContext> => {
+
+const mutationKey = ['bootstrapRemoteDeploymentApiRemoteBootstrapPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bootstrapRemoteDeploymentApiRemoteBootstrapPost>>, void> = () => {
+          
+
+          return  bootstrapRemoteDeploymentApiRemoteBootstrapPost(requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BootstrapRemoteDeploymentApiRemoteBootstrapPostMutationResult = NonNullable<Awaited<ReturnType<typeof bootstrapRemoteDeploymentApiRemoteBootstrapPost>>>
+    
+    export type BootstrapRemoteDeploymentApiRemoteBootstrapPostMutationError = unknown
+
+    /**
+ * @summary Bootstrap Remote Deployment
+ */
+export const useBootstrapRemoteDeploymentApiRemoteBootstrapPost = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bootstrapRemoteDeploymentApiRemoteBootstrapPost>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof bootstrapRemoteDeploymentApiRemoteBootstrapPost>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getBootstrapRemoteDeploymentApiRemoteBootstrapPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Return a public status summary for remote-managed experiment deployments.
+ * @summary Remote Status
+ */
+export type remoteStatusApiRemoteStatusGetResponse200 = {
+  data: RemoteStatusResponse
+  status: 200
+}
+
+export type remoteStatusApiRemoteStatusGetResponseSuccess = (remoteStatusApiRemoteStatusGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type remoteStatusApiRemoteStatusGetResponse = (remoteStatusApiRemoteStatusGetResponseSuccess)
+
+export const getRemoteStatusApiRemoteStatusGetUrl = () => {
+
+
+  
+
+  return `/api/remote/status`
+}
+
+export const remoteStatusApiRemoteStatusGet = async ( options?: RequestInit): Promise<remoteStatusApiRemoteStatusGetResponse> => {
+  
+  return httpClient<remoteStatusApiRemoteStatusGetResponse>(getRemoteStatusApiRemoteStatusGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRemoteStatusApiRemoteStatusGetQueryKey = () => {
+    return [
+    `/api/remote/status`
+    ] as const;
+    }
+
+    
+export const getRemoteStatusApiRemoteStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRemoteStatusApiRemoteStatusGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>> = ({ signal }) => remoteStatusApiRemoteStatusGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RemoteStatusApiRemoteStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>>
+export type RemoteStatusApiRemoteStatusGetQueryError = unknown
+
+
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Remote Status
+ */
+
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRemoteStatusApiRemoteStatusGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Stream an archive of the current database state to the remote admin.
+ * @summary Export Remote Database
+ */
+export type exportRemoteDatabaseApiRemoteDbExportGetResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type exportRemoteDatabaseApiRemoteDbExportGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type exportRemoteDatabaseApiRemoteDbExportGetResponseSuccess = (exportRemoteDatabaseApiRemoteDbExportGetResponse200) & {
+  headers: Headers;
+};
+export type exportRemoteDatabaseApiRemoteDbExportGetResponseError = (exportRemoteDatabaseApiRemoteDbExportGetResponse422) & {
+  headers: Headers;
+};
+
+export type exportRemoteDatabaseApiRemoteDbExportGetResponse = (exportRemoteDatabaseApiRemoteDbExportGetResponseSuccess | exportRemoteDatabaseApiRemoteDbExportGetResponseError)
+
+export const getExportRemoteDatabaseApiRemoteDbExportGetUrl = (params?: ExportRemoteDatabaseApiRemoteDbExportGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/remote/db-export?${stringifiedParams}` : `/api/remote/db-export`
+}
+
+export const exportRemoteDatabaseApiRemoteDbExportGet = async (params?: ExportRemoteDatabaseApiRemoteDbExportGetParams, options?: RequestInit): Promise<exportRemoteDatabaseApiRemoteDbExportGetResponse> => {
+  
+  return httpClient<exportRemoteDatabaseApiRemoteDbExportGetResponse>(getExportRemoteDatabaseApiRemoteDbExportGetUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getExportRemoteDatabaseApiRemoteDbExportGetQueryKey = (params?: ExportRemoteDatabaseApiRemoteDbExportGetParams,) => {
+    return [
+    `/api/remote/db-export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getExportRemoteDatabaseApiRemoteDbExportGetQueryOptions = <TData = Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError = HTTPValidationError>(params?: ExportRemoteDatabaseApiRemoteDbExportGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportRemoteDatabaseApiRemoteDbExportGetQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>> = ({ signal }) => exportRemoteDatabaseApiRemoteDbExportGet(params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ExportRemoteDatabaseApiRemoteDbExportGetQueryResult = NonNullable<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>>
+export type ExportRemoteDatabaseApiRemoteDbExportGetQueryError = HTTPValidationError
+
+
+export function useExportRemoteDatabaseApiRemoteDbExportGet<TData = Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError = HTTPValidationError>(
+ params: undefined |  ExportRemoteDatabaseApiRemoteDbExportGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>,
+          TError,
+          Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportRemoteDatabaseApiRemoteDbExportGet<TData = Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError = HTTPValidationError>(
+ params?: ExportRemoteDatabaseApiRemoteDbExportGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>,
+          TError,
+          Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportRemoteDatabaseApiRemoteDbExportGet<TData = Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError = HTTPValidationError>(
+ params?: ExportRemoteDatabaseApiRemoteDbExportGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Export Remote Database
+ */
+
+export function useExportRemoteDatabaseApiRemoteDbExportGet<TData = Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError = HTTPValidationError>(
+ params?: ExportRemoteDatabaseApiRemoteDbExportGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportRemoteDatabaseApiRemoteDbExportGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getExportRemoteDatabaseApiRemoteDbExportGetQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
  * Expose server capabilities so clients can adapt to the active mode.
  * @summary Server Config
  */
@@ -2105,6 +2521,121 @@ export function useServerConfigApiServerConfigGet<TData = Awaited<ReturnType<typ
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+
+
+
+
+/**
+ * Expose basic process liveness metadata for monitoring.
+ * @summary Status
+ */
+export type statusApiStatusGetResponse200 = {
+  data: StatusResponse
+  status: 200
+}
+
+export type statusApiStatusGetResponseSuccess = (statusApiStatusGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type statusApiStatusGetResponse = (statusApiStatusGetResponseSuccess)
+
+export const getStatusApiStatusGetUrl = () => {
+
+
+  
+
+  return `/api/status`
+}
+
+export const statusApiStatusGet = async ( options?: RequestInit): Promise<statusApiStatusGetResponse> => {
+  
+  return httpClient<statusApiStatusGetResponse>(getStatusApiStatusGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getStatusApiStatusGetQueryKey = () => {
+    return [
+    `/api/status`
+    ] as const;
+    }
+
+    
+export const getStatusApiStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof statusApiStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof statusApiStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStatusApiStatusGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof statusApiStatusGet>>> = ({ signal }) => statusApiStatusGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof statusApiStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StatusApiStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof statusApiStatusGet>>>
+export type StatusApiStatusGetQueryError = unknown
+
+
+export function useStatusApiStatusGet<TData = Awaited<ReturnType<typeof statusApiStatusGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof statusApiStatusGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof statusApiStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof statusApiStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStatusApiStatusGet<TData = Awaited<ReturnType<typeof statusApiStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof statusApiStatusGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof statusApiStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof statusApiStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStatusApiStatusGet<TData = Awaited<ReturnType<typeof statusApiStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof statusApiStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Status
+ */
+
+export function useStatusApiStatusGet<TData = Awaited<ReturnType<typeof statusApiStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof statusApiStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStatusApiStatusGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
 
 
 /**

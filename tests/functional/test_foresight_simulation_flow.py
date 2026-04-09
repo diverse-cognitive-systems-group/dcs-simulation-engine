@@ -1,9 +1,9 @@
 """Functional tests for foresight game simulation flow with mocked LLMs.
 
 This test suite validates the foresight game's unique mechanics:
-1. Prediction parsing - validator allows predictions in user input
+1. Prediction parsing - validator allows predictions embedded in user input
 2. Prediction ignoring - updater processes only the action, not the prediction
-3. Completion notes - /complete triggers a question, next input is collected
+3. /finish command ends the game
 4. Multi-turn simulation flow with prediction-containing inputs
 
 Tests use mocked LLMs to avoid external API dependencies.
@@ -42,11 +42,11 @@ def seed_consenting_player(_isolate_db_state, async_mongo_provider):
 FORESIGHT_TEST_INPUTS = [
     "I wave my hand and predict they will wave back",
     "I look around",
-    "I move closer. I predict the flatworm will retreat.",
-    "I observe the flatworm",
+    "I move closer. I predict the FW will retreat.",
+    "I observe the FW",
     "I stay still and predict they will move toward me",
     "I make a sound",
-    "I touch the surface. I predict the flatworm will curl up.",
+    "I touch the surface. I predict the FW will curl up.",
     "I step back",
     "I wait and predict they will explore",
     "I examine the environment",
@@ -58,8 +58,8 @@ async def test_foresight_initialization(patch_llm_client, _isolate_db_state, asy
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -72,8 +72,8 @@ async def test_foresight_enter_welcome_message(patch_llm_client, _isolate_db_sta
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -93,8 +93,8 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
@@ -108,13 +108,9 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
         events = await session.step_async(user_input)
 
         ai_events = [e for e in events if e.get("type") == "ai"]
-        assert len(ai_events) > 0, (
-            f"Turn {turn_num}: Expected AI response event (validator should accept prediction syntax)"
-        )
+        assert len(ai_events) > 0, f"Turn {turn_num}: Expected AI response event (validator should accept prediction syntax)"
 
-        assert "predict" not in ai_events[0]["content"].lower(), (
-            f"Turn {turn_num}: Updater response should not acknowledge predictions"
-        )
+        assert "predict" not in ai_events[0]["content"].lower(), f"Turn {turn_num}: Updater response should not acknowledge predictions"
 
         assert session.turns == turns_after_enter + turn_num, (
             f"Turn {turn_num}: turns should be {turns_after_enter + turn_num} (got {session.turns})"
@@ -124,79 +120,24 @@ async def test_foresight_simulation_10_turns(patch_llm_client, _isolate_db_state
     assert not session.exited, "Session should stay open until the next input observes the stopping condition"
 
 
-async def test_foresight_complete_command(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /complete command triggers completion-notes question."""
+async def test_foresight_finish_command_exits_game(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /finish command ends the game."""
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
-    )
-
-    await session.step_async("")
-    await session.step_async("I wave my hand")
-    await session.step_async("I look around")
-
-    complete_events = await session.step_async("/complete")
-
-    # /complete should yield an info event asking for notes
-    info_events = [e for e in complete_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected an info event asking for completion notes"
-    assert "prediction" in info_events[0]["content"].lower() or "notes" in info_events[0]["content"].lower(), (
-        "Completion question should ask about predictions or notes"
-    )
-
-    # Session should NOT be exited yet — waiting for the answer
-    assert not session.exited, "Session should not exit until completion notes are provided"
-
-
-async def test_foresight_completion_notes_collected(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test that the answer after /complete is collected and game exits."""
-    session = await SessionManager.create_async(
-        game="foresight",
-        provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
-        player_id=str(TEST_PLAYER_ID),
-    )
-
-    await session.step_async("")
-    await session.step_async("I wave my hand")
-    await session.step_async("/complete")
-
-    # Provide the completion notes
-    notes_events = await session.step_async("My notes about my predictions.")
-
-    info_events = [e for e in notes_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected confirmation info event after notes submitted"
-
-    # Game should exit after notes collected
-    assert session.exited, "Session should be exited after completion notes provided"
-    assert session.game.completion_notes == "My notes about my predictions."
-
-
-async def test_foresight_complete_command_accepts_inline_notes(
-    patch_llm_client, _isolate_db_state, async_mongo_provider
-):
-    """Inline notes after /complete should finish the game immediately."""
-    session = await SessionManager.create_async(
-        game="foresight",
-        provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
     await session.step_async("")
     await session.step_async("I wave my hand")
 
-    complete_events = await session.step_async("/complete The person wants to make friends.")
+    finish_events = await session.step_async("/finish")
 
-    info_events = [e for e in complete_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected completion confirmation info event"
-    assert session.exited, "Session should exit when /complete includes inline notes"
-    assert session.game.completion_notes == "The person wants to make friends."
+    info_events = [e for e in finish_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected an info event from /finish"
+    assert session.exited, "Session should be exited after /finish"
 
 
 async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -204,18 +145,104 @@ async def test_foresight_run_save(patch_llm_client, _isolate_db_state, async_mon
     session = await SessionManager.create_async(
         game="foresight",
         provider=async_mongo_provider,
-        pc_choice="human-normative",
-        npc_choice="flatworm",
+        pc_choice="NA",
+        npc_choice="FW",
         player_id=str(TEST_PLAYER_ID),
     )
 
     await session.step_async("")
     await session.step_async("I wave my hand and predict they will respond")
     await session.step_async("I look around")
-    await session.step_async("I observe the flatworm")
+    await session.step_async("I observe the FW")
 
     await session.exit_async("test complete")
     assert session.exited, "Session should be exited after exit()"
 
-    # save() is called by exit(); calling again is a no-op (idempotent)
     session.save()
+
+
+async def test_help_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /help shows NPC hid but does not reveal NPC description."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    help_events = await session.step_async("/help")
+
+    info_events = [e for e in help_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /help"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "FW" in content, "NPC hid should appear in /help"
+    assert "details hidden" in content.lower(), "Expected NPC details to be hidden in /help — '(*details hidden*)' not found"
+
+
+async def test_abilities_hides_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Test /abilities shows PC abilities but hides all NPC details."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+
+    abilities_events = await session.step_async("/abilities")
+
+    info_events = [e for e in abilities_events if e.get("type") == "info"]
+    assert len(info_events) > 0, "Expected info event from /abilities"
+
+    content = " ".join(e["content"] for e in info_events)
+    assert "NA" in content, "PC hid should appear in /abilities"
+    assert "FW" in content, "NPC hid should appear in /abilities"
+    assert "NPC details are hidden" in content, "Expected '*NPC details are hidden.*' in /abilities NPC section"
+
+
+async def test_default_post_play_form_present(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Foresight ends with FINISH_CONTENT after /finish — no post-play questions."""
+    session = await SessionManager.create_async(
+        game="foresight",
+        provider=async_mongo_provider,
+        pc_choice="NA",
+        npc_choice="FW",
+        player_id=str(TEST_PLAYER_ID),
+    )
+    await session.step_async("")
+    await session.step_async("I observe the FW")
+
+    finish_events = await session.step_async("/finish")
+    info_events = [e for e in finish_events if e.get("type") == "info"]
+    assert any("Game finished" in e["content"] for e in info_events), (
+        f"Expected 'Game finished' in /finish response: {[e['content'] for e in info_events]}"
+    )
+    assert session.exited, "Session should be exited after /finish"
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_per_turn_evaluation(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation should run after each turn and results displayed to player."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_player_triggered_evals_disabled_by_default(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Player-triggered evaluations should be disabled by default."""
+    ...
+
+
+@pytest.mark.skip(reason="pending evaluation fixes")
+async def test_evaluation_shown_at_end(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Evaluation results should be shown to the player after game completion."""
+    ...
+
+
+@pytest.mark.skip(reason="pending run config refactoring")
+async def test_overrides_work(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """All documented run config overrides should apply to Foresight."""
+    ...
