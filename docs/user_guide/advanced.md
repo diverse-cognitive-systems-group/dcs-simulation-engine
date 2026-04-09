@@ -1,55 +1,102 @@
 # Advanced Usage
 
-TODO: add using the engine with other frontends
-TOOD: add deploying to other providers (not Fly.io)
-TODO: adding/extending characters and games
-TODO: benchmarking custom models
-TODO: use the API directly (non-run harness)
-
+> Note: All advanced usage requires checking out the codebase. If you’re not sure how to do this, see the Contributing Guide in the main repository.
 
 ## Custom Characters
 
-**1. Develop and Test**
+To add custom characters to the simulation, first check out the codebase, then follow this workflow:
 
-- Create or modify a character sheet based on research (e.g., primary source materials, interviews with experts, etc.)
-- Add it to database (`database_seeds/dev/characters.json`)
-- Run simulations and observe behavior using live engine or human in the loop testing process (see `dcs-utils admin hitl --help` for details on how to run hitl tests)
+### 1. Create character sheet(s)
 
-**2. Evaluate Fidelity**
-- Flag character behavior that doesn't align with expectations (e.g., "Out of Character" flags)
-- Iterate until the character meets an in-character fidelity (ICF) threshold across scenarios
+Create or modify a character sheet based on research (e.g., primary sources, expert interviews) and add it to the character to the database: `database_seeds/dev/characters.json`
 
-**3. Generate Report**
+### 2. Iteratively update characters sheet(s) to meet quality thresholds
 
-Generate a character quality report using:
+Use the human-in-the-loop CLI to generate scenarios and evaluate character behavior:
 
-```sh
-dcs generate report <path/to/results> --include sim-quality --title "Simulation Quality Report"
-```
+`dcs admin hitl --help`
 
-Example quality reports are includes in the `examples/` directory of the main repo.
+> Optionally running external evaluations using `expert-evaluation.yml` and/or `select-characters.yml` run configs can be useful where you have access to domain experts that can provide feedback on character behavior. 
 
-**4. Publish for Review**
+### 3. Generate a Simulation Quality Report
 
-Publish the character quality report using:
+Generate a simulation quality report (`dcs report <path/to/results> sim-quality --title "Character Quality Report"`) and determine if the coverage and in-character fidelity (ICF) scores are sufficient for publication 
 
-```sh
-dcs publish report character_quality <path/to/results>
-```
+If results are insufficient go back to step 2 to improve the character sheets or adjust the thresholds in `character-release-policy.yml`. If results are sufficient, move to step 4 to publish for review.
 
-Or manually update the following:
-- Add results to `character_evaluations.json`
-- Add report to `docs/design/simulation_quality`
-- Add character to `database_seeds/prod/characters.json`    
+### 4. Publish for Review
 
-Then open a PR for peer review of the character.
+Publish the character (`dcs admin publish --help`)
+
+> To propose the DCS-SE adds this character to core characters database open a PR that includes reasoning and design decisions, code changes and the quality report with scores.
+
+⸻
 
 ## Custom Games
 
-To build custom games, checkout the code (see the contributing guide in the main repo for instructions).
+To build a custom game:
 
-1. **Implement the game interface** by creating a new game file (e.g. `dcs_simulation_engine/games/new-game.py`) and implementing the required methods.
+### 1. Implement the Game Interface
 
-2. **Add the game to your run config** (see `examples/run_configs` for examples)
+Create a new game file:
 
-3. **Run it** locally to test it manually and/or add tests in `tests/` to validate the game flow logic. Then run it remotely to share with others (see the user guide for run and deployment instructions).
+`dcs_simulation_engine/games/new_game.py`
+
+Implement all required interface methods.
+
+### 2. Add to a Run Config
+
+Reference your game in a run config. See: `examples/run_configs/`
+
+### 3. Test and Run
+
+Test the game manually and/or add automated tests in `tests/` to validate game logic and integration with the engine.
+
+### 4. Publish
+
+Run the engine remotely with your new game.
+
+⸻
+
+## Custom Deployments (Non-Fly.io)
+
+The engine is containerized and supports any platform that can run multi-container Docker applications.
+
+To deploy to a new provider:
+
+⚠️ TODO: Deployment example (e.g. AWS, GCP, Azure)
+
+⸻
+
+## Custom Clients (Unity, VR/AR, etc.)
+
+The engine exposes a FastAPI + WebSocket interface. Any client can integrate as long as it can:
+
+1.	Send player actions
+
+2.	Receive and render simulation updates
+
+This is useful for non-run-harnessed gameplay, where the client directly interacts with the engine API without using the run harness. This enables custom orchestration, AI-driven control loops, and integration into external systems or apps.
+
+### Example Non-Run-Harnessed Gameplay with OpenEvolve
+
+TODO: alex
+
+### Example Unity Integration
+
+```plaintext
+[Client Application (Unity / VR / AR)]
+   - Player input
+   - 3D rendering
+   - Voice / UI / controllers
+          │
+          │ WebSocket / HTTP
+          ▼
+[Simulation Engine API]
+   - Simulation state
+   - Character decisions
+   - World logic
+   - Game rules
+```
+
+⸻
