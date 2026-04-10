@@ -1,10 +1,26 @@
 # Advanced Usage
 
-> Note: All advanced usage requires checking out the codebase. If you’re not sure how to do this, see the Contributing Guide in the main repository.
+> Note: Most advanced usage requires checking out the codebase (see the [Contributing Guide](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/blob/main/CONTRIBUTING.md)).
+
+## Custom Assignment Strategies
+
+Assignment strategies control what gameplay scenario (game + characters) is available next for a player. Researchers use this to ensure that players gameplay sessions are distributed across games and characters in a way that meets their research goals. For example, a researcher might want to ensure that each player gets a balanced mix of games and characters, or that certain underrepresented characters are prioritized for assignment.
+
+To customize assignment strategies, checkout the code and implement the `AssignmentStrategy` interface in `dcs_simulation_engine/core/assignment_strategies.py`. Then reference your strategy by name in a run configuration.
+
+⚠️ Note: This feature is incomplete or missing.
+
+## Custom Character Filters
+
+Character filters allow users to specify useful categories of PCs/NPCs allowed in gameplay. For example, if a user wants only neurodivergent non-player characters allows they can use the built-in `neurodivergent` filter by name.
+
+To customize character filters, checkout the code and implement the `CharacterFilter` interface in `dcs_simulation_engine/core/character_filters.py`. Then reference your filter by name in a run configuration.
+
+⚠️ Note: This feature is incomplete or missing.
 
 ## Custom Characters
 
-To add custom characters to the simulation, first check out the codebase, then follow this workflow:
+To customize (add/modify) characters, checkout the codebase and use the workflow below.
 
 ### 1. Create character sheet(s)
 
@@ -34,7 +50,7 @@ Publish the character (`dcs admin publish --help`)
 
 ## Custom Games
 
-To build a custom game:
+To customize games, beyond their existing exposed configuration options, checkout the codebase and use the workflow below.
 
 ### 1. Implement the Game Interface
 
@@ -64,25 +80,27 @@ The engine is containerized and supports any platform that can run multi-contain
 
 To deploy to a new provider:
 
-⚠️ TODO: Deployment example (e.g. AWS, GCP, Azure)
+⚠️ TODO: Add high level external deployment workflow example (e.g. AWS, GCP, Azure)
 
 ⸻
 
-## Custom Clients (Unity, VR/AR, etc.)
+## Custom Clients and Frontends (Unity, VR/AR, etc.)
 
-The engine exposes a FastAPI + WebSocket interface. Any client can integrate as long as it can:
+The engine exposes an API endpoint, so you do not have to use our text-based React frontend. Any client can connect to the endpoint to:
 
 1.	Send player actions
 
 2.	Receive and render simulation updates
 
-This is useful for non-run-harnessed gameplay, where the client directly interacts with the engine API without using the run harness. This enables custom orchestration, AI-driven control loops, and integration into external systems or apps.
-
 ### Example Non-Run-Harnessed Gameplay with OpenEvolve
 
-TODO: alex
+This is useful for non-run-harnessed gameplay, where the client directly interacts with the engine API without using the run harness. This enables custom orchestration, AI-driven control loops, and integration into external systems or apps.
+
+TODO: Add open-evolve example
 
 ### Example Unity Integration
+
+Unity or other custom clients can use the engine API directly to send player input and receive simulation state updates. This makes it possible to build bespoke visuals, controls, or interaction loops without relying on the default React frontend.
 
 ```plaintext
 [Client Application (Unity / VR / AR)]
