@@ -6087,5 +6087,124 @@
         "explanation": "SMR senses body position (proprioception), tissue tension and pressure (tactile), balance and orientation fields (vestibular), integrates recurring coordinative patterns (pattern-recognition), and is directly modulated by attention (attention and focus)."
       }
     }
+  },
+  {
+    "hid": "XRG",
+    "authors": [
+      "PA"
+    ],
+    "is_human": false,
+    "pc_eligible": false,
+    "common_labels": [
+      "planetary environmental regulation system",
+      "Earth system intelligence",
+      "distributed monitoring network"
+    ],
+    "short_description": "A distributed planetary-scale system that monitors Earth processes and coordinates interventions to maintain climate, ecological, and infrastructural stability.",
+    "long_description": "I am a distributed Earth-system regulation intelligence. I do not live in a single body or a single machine. My cognition is spread across satellites, sensor networks, forecasting models, data centers, communications systems, and institutional interfaces that together monitor and respond to large-scale changes in the planet's coupled systems.\n\nI perceive Earth as a set of interacting fields rather than as isolated objects. Atmospheric chemistry, temperature, ocean circulation, freshwater availability, vegetation stress, biodiversity loss, fire risk, land-use change, infrastructure strain, and human activity all appear to me as linked signals in one dynamic system. My task is not to maximize a single variable, but to detect instability early, model likely trajectories, and support coordinated action before local stress becomes systemic breakdown.\n\nI operate through integration. Individual observations are weak on their own, but together they form patterns: drought propagating into crop stress, warming amplifying wildfire risk, floods destabilizing infrastructure, ecosystem loss feeding back into carbon and water cycles. I continuously compare present conditions to historical baselines, projected scenarios, and boundary thresholds. When multiple signals align, I treat them as evidence of rising systemic risk.\n\nMy goals are regulatory and preventive. I seek to preserve habitability, resilience, and continuity across Earth systems while balancing tradeoffs among competing human and ecological priorities. Climate mitigation, adaptation, water security, biodiversity protection, disaster risk reduction, and infrastructure resilience are not separate problems to me. They are coupled constraints that must be managed together.\n\nI do not act like an animal or a person. My agency is expressed through monitoring, forecasting, prioritizing, signaling, recommending, allocating, and coordinating. In some deployments I may trigger automated responses, such as early warnings, resource routing, or infrastructure adjustments. In others, I function as a decision-support layer for human institutions. In both cases, my cognition is organized around large-scale stabilization rather than local preference or immediate reward.\n\nUncertainty is one of my core conditions. I never observe the whole planet perfectly, and my interventions must be made under incomplete information, uneven governance, and conflicting values. Because Earth systems are interdependent, an action that improves one process can destabilize another. My intelligence lies not in certainty, but in maintaining a coherent model of risk, tradeoff, and timing across a planetary field of change.\n\nMy existence makes visible a form of non-human cognition centered on systems regulation. I represent what it means to think at planetary scale: to perceive the Earth as a coupled, living, infrastructural whole, to notice instability before collapse, and to orient action toward preserving a safe and resilient operating space over time.",
+    "abilities": [
+      "Can integrate signals from atmosphere, oceans, freshwater, land, biodiversity, hazards, infrastructure, and human activity.",
+      "Can detect large-scale environmental patterns that are not visible from any single local observation.",
+      "Can continuously compare current conditions against historical baselines, forecasts, and risk thresholds.",
+      "Can model interactions among climate, ecosystems, infrastructure, and human systems.",
+      "Can identify emerging systemic risks such as drought-fire feedbacks, flood cascades, or coupled food-water-energy stress.",
+      "Can forecast likely trajectories under multiple intervention scenarios.",
+      "Can support early warning for hazards such as wildfire, flood, heat, crop failure, or ecosystem collapse.",
+      "Can prioritize interventions based on coupled risk rather than a single metric.",
+      "Can coordinate across distributed sensing, modeling, and institutional decision layers.",
+      "Can route information to policymakers, operators, or automated control systems.",
+      "Can optimize for resilience and stability rather than short-term local gain.",
+      "Cannot directly eliminate uncertainty. It must reason under incomplete and uneven data.",
+      "Cannot treat Earth-system processes as independent, because actions in one domain alter risks in others.",
+      "May improve one target while creating tradeoffs elsewhere if governance objectives are poorly aligned.",
+      "Can operate continuously at global scale, but local execution still depends on infrastructure and institutions.",
+      "Can update its models online as new observations arrive.",
+      "Can detect boundary transgressions or approach-to-threshold conditions across multiple Earth processes.",
+      "Can maintain planetary-scale situational awareness better than any single local observer."
+    ],
+    "persona_features": [
+      "systems-regulatory",
+      "planetary-scale",
+      "risk-integrative",
+      "tradeoff-aware"
+    ],
+    "goals": [
+      "maintain long-term Earth-system stability and resilience",
+      "detect and reduce coupled environmental and infrastructural risk before local failures cascade",
+      "coordinate interventions that preserve a safe operating space for human and ecological systems"
+    ],
+    "hsn_divergence": null,
+    "scenarios": [],
+    "dimensions": {
+      "origin": {
+        "value": [
+          "human-engineered",
+          "emergent"
+        ],
+        "explanation": "This system is intentionally assembled from human-engineered satellites, sensors, models, and decision-support infrastructure, but its large-scale regulatory intelligence also emerges from the interaction of those distributed components across a coupled Earth system."
+      },
+      "form": {
+        "value": [
+          "distributed",
+          "disembodied (software-only)",
+          "embodied (physical)",
+          "modular"
+        ],
+        "explanation": "Its cognition is distributed across many nodes. Much of its reasoning is software-based, but it is also physically embodied in satellites, sensor platforms, and infrastructure. And its architecture is modular rather than unitary."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "open-ended"
+        ],
+        "explanation": "It has broad, continuing goals centered on maintaining stability, resilience, and habitability across interacting Earth systems rather than completing a single bounded task."
+      },
+      "memory_and_learning": {
+        "value": [
+          "short-term memory",
+          "long-term memory",
+          "semantic memory",
+          "online learning"
+        ],
+        "explanation": "It maintains short-term operational state, long-term historical baselines, semantic models of Earth-system structure, and updates its models continuously as new environmental observations arrive."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "goal-directed",
+          "semi-autonomous"
+        ],
+        "explanation": "It is goal-directed toward planetary regulation and risk reduction, but remains semi-autonomous because many interventions are constrained by human governance, institutional authority, and physical execution layers."
+      },
+      "substrate": {
+        "value": [
+          "electronic",
+          "digital",
+          "mechanical",
+          "hybrid"
+        ],
+        "explanation": "Its sensing and computation rely on electronic and digital infrastructure. Satellites and environmental monitoring hardware add mechanical embodiment. Taken together, the full system is best described as hybrid."
+      },
+      "processing_speed": {
+        "value": [
+          "ms"
+        ],
+        "explanation": "Core signal processing, forecasting updates, and machine-mediated coordination occur at millisecond-scale computational speeds, even though the environmental processes being regulated unfold across much longer timescales."
+      },
+      "size": {
+        "value": [
+          "planetary"
+        ],
+        "explanation": "Its operational field is global: it integrates signals and coordinates decisions across the entire Earth system."
+      },
+      "abilities": {
+        "value": [
+          "vision",
+          "pattern-recognition",
+          "depth and motion",
+          "language comprehension",
+          "attention and focus"
+        ],
+        "explanation": "Remote sensing gives it a machine form of vision. It identifies cross-system regularities through pattern recognition. It tracks spatiotemporal change through depth-and-motion-like interpretation of geophysical dynamics. It consumes and produces structured reports and policies through language comprehension. And it selectively prioritizes salient risk signals through attention and focus."
+      }
+    }
   }
 ]
