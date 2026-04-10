@@ -201,7 +201,7 @@ def test_roleplaying_validator_all_pass() -> None:
         result = asyncio.run(v.validate('{"type": "ai", "content": "The door creaks open."}'))
         assert result.passed is True
         assert len(result.failed) == 0
-        assert len(result.results) == 12  # 1 schema + 11 LLM
+        assert len(result.results) == 10  # 1 schema + 9 LLM
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -231,7 +231,7 @@ def test_roleplaying_validator_llm_fail_propagates() -> None:
         # Schema passes but all 11 LLM rules fail
         schema_results = [r for r in result.results if r.rule == "VALID-SCHEMA"]
         assert schema_results[0].passed is True
-        assert len(result.failed) == 11
+        assert len(result.failed) == 9
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -416,7 +416,7 @@ def test_orchestrator_pc_rp_included_for_llm() -> None:
         assert result is not None
         # Engine (6) + Game (2) + RolePlayingLLM (11 LLM + 1 schema) = 20
         # But schema is a pre-check on the raw text "x", which will fail too
-        assert len(result.failed) == 20
+        assert len(result.failed) == 18
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -468,6 +468,145 @@ def test_format_ensemble_failures() -> None:
     assert "[RULE-A] reason a" in msg
     assert "[RULE-C] reason c" in msg
     assert "RULE-B" not in msg
+
+
+# ── Opening scene skip-rules tests ────────────────────────────────
+
+
+@pytest.mark.unit
+def test_opening_scene_skip_rules_constant() -> None:
+    """OPENING_SCENE_SKIP_RULES contains exactly the expected rules."""
+    assert ai_client.OPENING_SCENE_SKIP_RULES == frozenset({
+        "VALID-FORM",
+        "VALID-TEMPORAL-STRUCTURE",
+        "INVENTED-PC-ACTION",
+        "ADJUDICATED-UNOBSERVABLE",
+    })
+
+
+@pytest.mark.unit
+def test_ensemble_validate_skips_rules_in_skip_set() -> None:
+    """EnsembleValidator.validate() auto-passes rules listed in skip_rules."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "would fail"}')
+    try:
+        v = ai_client.EngineValidator.create()
+        skip = frozenset({"VALID-FORM", "VALID-TEMPORAL-STRUCTURE"})
+        result = asyncio.run(v.validate("some text", skip_rules=skip))
+        # 6 total engine rules; 2 skipped (auto-pass), 4 run (all fail)
+        assert len(result.results) == 6
+        skipped = [r for r in result.results if r.rule in skip]
+        assert all(r.passed for r in skipped)
+        non_skipped = [r for r in result.results if r.rule not in skip]
+        assert all(not r.passed for r in non_skipped)
+        assert len(result.failed) == 4
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_ensemble_validate_skip_rules_empty_runs_all() -> None:
+    """EnsembleValidator.validate() runs all rules when skip_rules is empty."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "fail"}')
+    try:
+        v = ai_client.EngineValidator.create()
+        result = asyncio.run(v.validate("some text"))
+        assert len(result.failed) == 6  # all 6 engine rules fail
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_orchestrator_npc_output_opening_scene_skips_rules() -> None:
+    """validate_npc_output with is_opening_scene=True auto-passes skipped rules."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "fail"}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore")
+        from dcs_simulation_engine.dal.base import CharacterRecord
+
+        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
+        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
+        updater = ai_client.UpdaterClient(system_prompt="test")
+        result = asyncio.run(
+            orch.validate_npc_output(
+                '{"type": "ai", "content": "You enter a dimly lit room."}',
+                pc=pc, npc=npc, updater=updater, player_action="",
+                is_opening_scene=True,
+            )
+        )
+        assert result is not None
+        assert result.passed is False
+        failed_rules = {r.rule for r in result.failed}
+        # These 4 should NOT be in the failures (they are auto-passed)
+        for skip_rule in ai_client.OPENING_SCENE_SKIP_RULES:
+            assert skip_rule not in failed_rules
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_generate_validated_npc_response_passes_opening_scene_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """generate_validated_npc_response(None) passes is_opening_scene=True."""
+    ai_client.set_fake_ai_response('{"type":"ai","content":"You enter a room."}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore")
+        from dcs_simulation_engine.dal.base import CharacterRecord
+
+        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
+        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
+        updater = ai_client.UpdaterClient(system_prompt="test")
+
+        captured: dict[str, Any] = {}
+
+        async def mock_validate(text, *, pc, npc, updater, player_action, is_opening_scene=False):
+            captured["is_opening_scene"] = is_opening_scene
+            captured["player_action"] = player_action
+            return None  # all pass
+
+        monkeypatch.setattr(orch, "validate_npc_output", mock_validate)
+
+        result = asyncio.run(
+            orch.generate_validated_npc_response(None, pc=pc, npc=npc, updater=updater)
+        )
+        assert result is not None
+        assert captured["is_opening_scene"] is True
+        assert captured["player_action"] == ""
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_generate_validated_npc_response_normal_turn_no_opening_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """generate_validated_npc_response('I wave') passes is_opening_scene=False."""
+    ai_client.set_fake_ai_response('{"type":"ai","content":"The creature waves back."}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore")
+        from dcs_simulation_engine.dal.base import CharacterRecord
+
+        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
+        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
+        updater = ai_client.UpdaterClient(system_prompt="test")
+
+        captured: dict[str, Any] = {}
+
+        async def mock_validate(text, *, pc, npc, updater, player_action, is_opening_scene=False):
+            captured["is_opening_scene"] = is_opening_scene
+            captured["player_action"] = player_action
+            return None
+
+        monkeypatch.setattr(orch, "validate_npc_output", mock_validate)
+
+        result = asyncio.run(
+            orch.generate_validated_npc_response("I wave.", pc=pc, npc=npc, updater=updater)
+        )
+        assert result is not None
+        assert captured["is_opening_scene"] is False
+        assert captured["player_action"] == "I wave."
+    finally:
+        ai_client.set_fake_ai_response(None)
 
 
 # ── Individual AtomicValidator violation tests ──────────────────────

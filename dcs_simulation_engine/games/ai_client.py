@@ -61,6 +61,15 @@ class EnsembleValidationResult(NamedTuple):
 EngineValidationResult = EnsembleValidationResult
 RolePlayingLLMValidationResult = EnsembleValidationResult
 
+# Rules to skip during opening-scene validation — these are designed for
+# action-response context and produce false failures on narrative scene descriptions.
+OPENING_SCENE_SKIP_RULES: frozenset[str] = frozenset({
+    "VALID-FORM",
+    "VALID-TEMPORAL-STRUCTURE",
+    "INVENTED-PC-ACTION",
+    "ADJUDICATED-UNOBSERVABLE",
+})
+
 
 def set_fake_ai_response(value: str | None) -> None:
     """Set a process-local override returned by _call_openrouter when configured."""
@@ -376,12 +385,15 @@ class EnsembleValidator:
 
     async def validate(
         self, text: str, context: dict[str, str] | None = None,
+        skip_rules: frozenset[str] = frozenset(),
     ) -> EnsembleValidationResult:
         """Run pre-checks + all LLM validators in parallel."""
         ctx = context or {}
         pre_results = self._pre_checks(text)
 
         async def _run(rule: str, validator: AtomicValidator) -> ValidationResult:
+            if rule in skip_rules:
+                return ValidationResult(rule=rule, passed=True, reason="")
             try:
                 ctx_keys = self._context_routing.get(rule, [])
                 rule_ctx = "\n".join(
@@ -652,18 +664,19 @@ class ValidationOrchestrator:
         npc: CharacterRecord,
         updater: UpdaterClient,
         player_action: str,
+        is_opening_scene: bool = False,
     ) -> EnsembleValidationResult | None:
-        """Run RolePlayingLLMValidator on NPC output. Returns ``None`` if all pass.
-
-        Only ``RolePlayingLLMValidator`` runs here — ``EngineValidator`` and
-        ``GameValidator`` prompts are written for PC input and would produce
-        false failures on valid NPC narration.
-        """
+        """Run all ensemble validators on NPC output. Returns ``None`` if all pass."""
         ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=player_action)
-        result = await self._roleplaying.validate(text, ctx)
-        if result.failed:
-            return result
-        return None
+        skip = OPENING_SCENE_SKIP_RULES if is_opening_scene else frozenset()
+        results = list(
+            await asyncio.gather(
+                self._engine.validate(text, ctx, skip_rules=skip),
+                self._game.validate(text, ctx, skip_rules=skip),
+                self._roleplaying.validate(text, ctx, skip_rules=skip),
+            )
+        )
+        return self._merge_results(results)
 
     async def generate_validated_npc_response(
         self,
@@ -679,6 +692,7 @@ class ValidationOrchestrator:
         is exhausted. All failures are logged.
         """
         action = user_input or ""
+        is_opening_scene = user_input is None
         for attempt in range(1, self.NPC_OUTPUT_RETRY_BUDGET + 1):
             reply = await updater.chat(user_input)
             # Re-wrap in JSON for RolePlayingLLMValidator's VALID-SCHEMA check;
@@ -686,6 +700,7 @@ class ValidationOrchestrator:
             raw_wrapped = json.dumps({"type": "ai", "content": reply})
             result = await self.validate_npc_output(
                 raw_wrapped, pc=pc, npc=npc, updater=updater, player_action=action,
+                is_opening_scene=is_opening_scene,
             )
             if result is None:
                 return reply  # passed
