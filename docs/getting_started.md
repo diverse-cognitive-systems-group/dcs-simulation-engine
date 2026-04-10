@@ -1,6 +1,8 @@
 # Getting Started
 
-***The quickstart guide lives in the main repo's [README](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine?tab=readme-ov-file#how-can-i-use-it) or check out the [user guide](user_guide/configure.md) here in the docs.***
+The fastest way to start playing is to [try our live demo](https://dcs-free-play-ui.fly.dev/) or you can check out the [quickstart guide](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine?tab=readme-ov-file#how-can-i-use-it) to run the engine yourself.
+
+You can also reference the full [user guide](user_guide/configure.md) here in the docs.
 
 ### Key Terminology & Concepts
 

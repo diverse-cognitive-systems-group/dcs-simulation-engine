@@ -1,13 +1,13 @@
-DCS-SE is primarily designed to support our internal use cases. However, because our research is multidisciplinary, those use cases are highly variable. As a result, the system has been built to be inherently extensible and adaptable, and is applicable across a wide range of contexts—including research, training, and integration with external systems.
+The system is built to be extensible and adaptable, and is applicable across a wide range of contexts—including research, training, and integration with external systems.
 
-👉 See the [Codebase Reference](codebase_reference.md) section for codebase-specific design information including major components and data flows.
+👉 See the [Codebase Reference](../codebase_reference.md) section for codebase-specific design information including major components and data flows.
 
 ## Requirements Checklist
 
 DCS-SE is designed to support:
 
 - **A base set of environments + characters** with default configurations that server internal use cases but are extensible
-- **Gameplay style extensibility** so the core engine can be integrated with other front ends like VR, audio RPG style interactions, etc.
+- **Gameplay style extensibility** so the core engine can be integrated with other front ends like VR, audio RPG style interactions, etc. and support synchronous interaction patterns as well as turn-based.
 - **AI research workflows** (training & evaluation) including static and open-ended systems and agents mediating between DCSs (interfacing agents)
 - **Psych research workflows** (training & evaluation) with human participants
 - **Education and leadership training** use cases that expose neurotypical humans to neurodivergent simulated characters

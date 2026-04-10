@@ -41,16 +41,16 @@ Ultimately, the aim is to understand how radically different minds can meet, int
 
 ## How it works
 
-DCS-SE operates as a turn-based, text-based simulation similar to a tabletop RPG:
+It works *like an table-top role-playing game* environment where AI is the dungeon master and characters are diverse cognitive systems.
 
-- The player controls a character (PC)
+- The player controls the player character (PC)
 - The system simulates another cognitive system (non-player character, NPC)
-- Each turn, the player takes an action
-- The engine updates the world and generates the NPCs response
+- Each turn, the player takes an action and/or the simulator updates the world and generates the NPCs responses.
 
 Each simulated character is driven by a model that produces bounded, in-character behavior based on its sensory constraints, goals, and internal logic.
 
 A configurable game layer defines the structure of interaction:
+
 - Scenarios are implemented as games with varying constraints
 - Environments can be open-ended or tightly structured
 - Information (e.g., character type) may be hidden, requiring inference through behavior
