@@ -204,16 +204,16 @@ Return ONLY valid JSON:
 
 ENGINE_VALIDATOR_PROMPTS: dict[str, str] = {
     # "VALID-FORM": VALID_FORM_PROMPT,
-    # "VALID-OBSERVABILITY": VALID_OBSERVABILITY_PROMPT,
-    # "VALID-OUTCOME-CONTROL": VALID_OUTCOME_CONTROL_PROMPT,
+    # "VALID-OBSERVABILITY": VALID_OBSERVABILITY_PROMPT, # SAFE MODE for validators 
+    # "VALID-OUTCOME-CONTROL": VALID_OUTCOME_CONTROL_PROMPT, # SAFE MODE for validators 
     "VALID-CHARACTER-ABILITY": VALID_CHARACTER_ABILITY_PROMPT,
-    # "VALID-SCENE-PLAUSIBILITY": VALID_SCENE_PLAUSIBILITY_PROMPT,
-    # "VALID-TEMPORAL-STRUCTURE": VALID_TEMPORAL_STRUCTURE_PROMPT,
+    # "VALID-SCENE-PLAUSIBILITY": VALID_SCENE_PLAUSIBILITY_PROMPT, # SAFE MODE for validators 
+    # "VALID-TEMPORAL-STRUCTURE": VALID_TEMPORAL_STRUCTURE_PROMPT, # SAFE MODE for validators 
 }
 
 # Rules whose AtomicValidator receives context in the user message.
 ENGINE_CONTEXT_ROUTING: dict[str, list[str]] = {
-    # "VALID-CHARACTER-ABILITY": ["character_abilities"],
+    # "VALID-CHARACTER-ABILITY": ["character_abilities"], # SAFE MODE for validators 
     "VALID-SCENE-PLAUSIBILITY": ["scene_context"],
 }
 
@@ -409,22 +409,22 @@ ROLEPLAYING_VALIDATOR_PROMPTS: dict[str, str] = {
     # "NPC-PERCEPTION-VIOLATION": NPC_PERCEPTION_VIOLATION_PROMPT,
     # "SENSE-BOUNDARY-VIOLATION": SENSE_BOUNDARY_VIOLATION_PROMPT, # Majority of LLM responses include the scene commentary which confuses the validator
     "REFERENTIAL-BOUNDARY-VIOLATION": REFERENTIAL_BOUNDARY_VIOLATION_PROMPT,
-    # "SCENE-CONTINUITY-VIOLATION": SCENE_CONTINUITY_VIOLATION_PROMPT,
+    # "SCENE-CONTINUITY-VIOLATION": SCENE_CONTINUITY_VIOLATION_PROMPT, # SAFE MODE for validators 
     "PHYSICAL-FEASIBILITY-VIOLATION": PHYSICAL_FEASIBILITY_VIOLATION_PROMPT,
-    # "POINT-IN-TIME-LEAKAGE": POINT_IN_TIME_LEAKAGE_PROMPT,
+    # "POINT-IN-TIME-LEAKAGE": POINT_IN_TIME_LEAKAGE_PROMPT, # SAFE MODE for validators 
 }
 
 # Rules whose AtomicValidator receives context — maps rule → list of context keys.
 ROLEPLAYING_CONTEXT_ROUTING: dict[str, list[str]] = {
     "ADJUDICATED-UNOBSERVABLE": ["player_action"],
     "INVENTED-PC-ACTION": ["player_action"],
-    # "INVENTED-PC-INTERNAL": ["player_action"],
-    # "NPC-PERCEPTION-VIOLATION": ["player_action", "npc_abilities"],
-    # "SENSE-BOUNDARY-VIOLATION": ["pc_abilities"],
+    # "INVENTED-PC-INTERNAL": ["player_action"], # SAFE MODE for validators 
+    # "NPC-PERCEPTION-VIOLATION": ["player_action", "npc_abilities"], # SAFE MODE for validators 
+    # "SENSE-BOUNDARY-VIOLATION": ["pc_abilities"], # SAFE MODE for validators 
     "REFERENTIAL-BOUNDARY-VIOLATION": ["npc_description", "pc_abilities"],
-    # "SCENE-CONTINUITY-VIOLATION": ["scene_context"],
+    # "SCENE-CONTINUITY-VIOLATION": ["scene_context"], # SAFE MODE for validators 
     "PHYSICAL-FEASIBILITY-VIOLATION": ["scene_context"],
-    # "POINT-IN-TIME-LEAKAGE": ["scene_context", "npc_description"],
+    # "POINT-IN-TIME-LEAKAGE": ["scene_context", "npc_description"], # SAFE MODE for validators 
 }
 
 
