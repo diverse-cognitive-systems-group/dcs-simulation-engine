@@ -1,4 +1,4 @@
-👉 See the [`/examples/run_configs/`](..) folder for all example run configurations.
+👉 See the [`/examples/run_configs/`](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/tree/main/examples/run_configs) folder for all example run configurations.
 
 ## Education & Training
 
@@ -6,7 +6,7 @@ DCS-SE supports training and education by enabling human players to engage with 
 
 Because these populations are often underrepresented in everyday interactions, many professionals—such as clinicians, educators, managers, and caregivers—have limited opportunities to build fluency in communicating across cognitive differences.
 
-DCS-SE's [core characters](../design/characters.md) are grounded in real-world cognitive diversity, created with and evaluated by individuals with divergent profiles. This allows users to practice, observe, and refine interactions in a controlled environment, leading to more inclusive, adaptive, and effective approaches across domains.
+DCS-SE's [core characters](design/characters.md) are grounded in real-world cognitive diversity, created with and evaluated by individuals with divergent profiles. This allows users to practice, observe, and refine interactions in a controlled environment, leading to more inclusive, adaptive, and effective approaches across domains.
 
 ### Example: Inclusive Workplace Training
 
