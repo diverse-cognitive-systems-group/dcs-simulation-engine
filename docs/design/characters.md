@@ -2,17 +2,13 @@
 
 *Characters* are cognitive systems that can be used as player characters (PCs) or non-player characters (NPCs) in simulations.
 
-Each character is a fixed snapshot of a cognitive system, including its:
-
-- Persona
-- Abilities
-- Goals
+Each character is a fixed snapshot of a cognitive system, including its persona, abilities and goals.
 
 ## Core Characters
 Core characters are a curated set of cognitive systems included with the simulation engine. Each is selected to represent a distinct type of cognition—differing in goals, structure, or behavior—and is tested to ensure the engine can model it reliably.
 
-### Coverage & Inclusion Criteria
-A character is included if it meaningfully expands the range of cognitive systems we can model. This includes systems that challenge or extend typical assumptions about cognition and interaction.
+### Coverage
+A character is included if it meaningfully expands the range of cognitive systems we can model, especially those that challenge or extend typical assumptions about cognition and interaction.
 
 Examples include:
 
@@ -36,86 +32,34 @@ Examples include:
 
 - And additional forms as needed
 
-> See the character coverage reports for characters in development [Character Coverage - in development](../reports/character_coverage_report_dev.html) and production [Character Coverage - in production](../reports/character_coverage_report_prod.html) for details on coverage and gaps in our current character database.
+👉 See our character coverage reports for character's in [development](../reports/character_coverage_report_dev.html) and [production](../reports/character_coverage_report_prod.html).
 
-### Simulation Quality Control
+### Character Development
 
-Characters are designed to behave consistently so simulations remain reliable over time.
+Characters are defined using structured character sheets, informed by primary research and, where possible, in-person interviews.
 
-#### Character Development Process
+These sheets specify persona, abilities, goals, and other attributes required for simulation. They are iteratively refined to capture essential features of the cognitive system while remaining playable within the engine.
 
-Character sheets define each character and are refined through iterative testing.
+👉 See the [Custom Characters](../user_guide/advanced.md#custom-characters) section in the User Guide for the character development workflow.
 
-**1. Develop and Test**
+### Production Consistency & Stability
 
-- Create or modify a character sheet based on research (e.g., primary source materials, interviews with experts, etc.)
-- Add it to database (`database_seeds/dev/characters.json`)
-- Run simulations and observe behavior using live engine or human in the loop testing process (see `dcs-utils admin hitl --help` for details on how to run hitl tests)
+Character behavior depends on three components:
 
-**2. Evaluate Fidelity**
-- Flag character behavior that doesn't align with expectations (e.g., "Out of Character" flags)
-- Iterate until the character meets an in-character fidelity (ICF) threshold across scenarios
+- The character sheet
+- The system prompt
+- The role-playing model (ensembles)
 
-**3. Generate Report**
+All **evaluations are fingerprinted** against this full configuration. As a result, evaluations are valid only for the exact combination of character sheet, system prompt, and model(s) they were run against.
 
-Generate a character quality report using:
+Any change to one of these components (e.g., model version or prompt update) automatically invalidates prior evaluations and requires re-evaluation.
 
-```sh
-dcs generate report <path/to/results> --include sim-quality --title "Simulation Quality Report"
-```
+Character quality is governed by a character **release policy** (see `character-release-policy.yml` in the repository), which defines a minimum threshold score on evaluations that is required for characters to be included in production (e.g., in-character fidelity (ICF), scenario coverage).
 
-Example quality reports are includes in the `examples/` directory of the main repo.
+Evaluations are conducted by internal and, when possible, external experts to ensure characters meet required thresholds.
 
-**4. Publish for Review**
+For systems without real-world counterparts (e.g., alien or abstract systems), validation is based on DCS research group consensus regarding the character's plausibility and usefulness for research, informed by available evidence and theoretical grounding.
 
-Publish the character quality report using:
+Because evaluations are costly, role-playing models and prompts are kept as stable as possible. When changes occur, affected characters are re-evaluated (including internal and, when applicable, external review).
 
-```sh
-dcs publish report character_quality <path/to/results>
-```
-
-Or manually update the following:
-- Add results to `character_evaluations.json`
-- Add report to `docs/design/simulation_quality`
-- Add character to `database_seeds/prod/characters.json`    
-
-Then open a PR for peer review of the character.
-
-#### Production Consistency & Stability
-
-Character behavior depends on both the **character sheet** and the **model + system prompt** used to role-play it.
-
-To ensure consistency:
-
-- All evaluations are fingerprinted with the exact model and system prompt used
-- Evaluations are only valid of for the exact fingerprint + character hid they were run against
-
-If the model or system prompt changes, the character must be re-evaluated before it can be used in production.
-
-Because character evaluations are costly, we aim to keep role-playing models and prompts **as stable as possible**. When changes do occur, affected character undergo re-evaluation (including internal and, when applicable, external expert review).
-
-### External Validation of Simulation Quality
-
-In addition to internal evaluation, ...
-
-##### Real-World Systems
-
-When a real-world counterpart exists, we use external expert evaluations.
-
-#### Hypothetical or Non-Observable Systems
-
-For systems without real-world counterparts (e.g., alien, abstract, or imagined systems), validation is based on:
-
-- internal justification
-- coherence of the design
-- DCS research group consensus on usefulness and plausibility
-
-## Custom Characters
-
-Anyone can create custom characters using the workflow above.
-
-To propose inclusion in the core set, submit a PR with supporting evaluation and rationale.
-
-## Future Development
-
-The core character database is designed to be extensible. New characters can be added as needed to explore new dimensions of cognitive diversity or to address specific research questions. Any characters that we add will have been vetted as described above for its ability to meaningfully represent a distinct cognitive system and should undergo the same quality assurance processes as existing characters.
+👉 See the [Simulation Quality](simulation_quality.md) report for details on how role-playing quality is measured and maintained.
