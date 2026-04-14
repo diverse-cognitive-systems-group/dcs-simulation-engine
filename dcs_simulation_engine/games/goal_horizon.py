@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import Game, GameEvent
+from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import (
     UpdaterClient,
@@ -31,8 +31,16 @@ class Command(StrEnum):
 class GoalHorizonGame(Game):
     """Goal Horizon game: player interacts with NPC across scenes to understand their limits."""
 
+    GAME_NAME = "Goal Horizon"
+    GAME_DESCRIPTION = "Players are tasked with understanding the capabilities and limitations of another character."
+
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
+
+    class Overrides(BaseGameOverrides):
+        """Run-config-overridable parameters for GoalHorizonGame."""
+
+        player_retry_budget: int = 10
 
     def __init__(
         self,
@@ -42,6 +50,9 @@ class GoalHorizonGame(Game):
         validator: ValidatorClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+        enter_message: str | None = None,
+        help_message: str | None = None,
+        exit_message: str | None = None,
     ) -> None:
         """Initialise the game. Use create_from_context() as the public entry point."""
         self._pc = pc
@@ -50,6 +61,9 @@ class GoalHorizonGame(Game):
         self._validator = validator
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
+        self._enter_message = enter_message
+        self._help_message = help_message
+        self._exit_message = exit_message
         self._entered = False
         self._exited = False
         self._exit_reason = ""
@@ -62,10 +76,9 @@ class GoalHorizonGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
         """Factory called by SessionManager. Builds clients from character dicts.
 
-        Accepted kwargs:
-            retry_budget (int): overrides DEFAULT_RETRY_BUDGET
-            max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+        Accepted kwargs are validated against ``GoalHorizonGame.Overrides``.
         """
+        overrides = cls.Overrides.model_validate(kwargs)
         updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
         return cls(
@@ -73,8 +86,8 @@ class GoalHorizonGame(Game):
             npc=npc,
             updater=updater,
             validator=validator,
-            retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
-            max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
+            retry_budget=overrides.player_retry_budget,
+            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
         )
 
     def exit(self, reason: str) -> None:
@@ -105,6 +118,21 @@ class GoalHorizonGame(Game):
         """Player's confidence in their capability prediction, or empty string."""
         return self._capability_prediction_confidence
 
+    def _format_enter(self) -> str:
+        return self._enter_message or C.ENTER_CONTENT.format(
+            pc_hid=self._pc.hid,
+            pc_short_description=self._pc.short_description,
+            npc_hid=self._npc.hid,
+            npc_short_description=self._npc.short_description,
+        )
+
+    def _format_help(self) -> str:
+        return self._help_message or C.HELP_CONTENT.format(
+            pc_hid=self._pc.hid,
+            pc_short_description=self._pc.short_description,
+            npc_hid=self._npc.hid,
+        )
+
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
@@ -112,15 +140,7 @@ class GoalHorizonGame(Game):
 
         if not self._entered:
             self._entered = True
-            yield GameEvent.now(
-                type="info",
-                content=C.ENTER_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                    npc_hid=self._npc.hid,
-                    npc_short_description=self._npc.short_description,
-                ),
-            )
+            yield GameEvent.now(type="info", content=self._format_enter())
             opening = await self._updater.chat(None)
             yield GameEvent.now(type="ai", content=opening)
             return
@@ -139,7 +159,10 @@ class GoalHorizonGame(Game):
             self._capability_prediction_confidence = user_input
             self._awaiting_capability_confidence = False
             self.exit("player finished")
-            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+            yield GameEvent.now(
+                type="info",
+                content=self._exit_message or C.FINISH_CONTENT.format(finish_reason="player finished"),
+            )
             return
 
         command_event = self._handle_command(user_input)
@@ -184,11 +207,7 @@ class GoalHorizonGame(Game):
         if cmd == Command.HELP:
             return GameEvent.now(
                 type="info",
-                content=C.HELP_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                    npc_hid=self._npc.hid,
-                ),
+                content=self._format_help(),
                 command_response=True,
             )
 

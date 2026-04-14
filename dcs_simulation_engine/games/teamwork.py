@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import Game, GameEvent
+from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import (
     UpdaterClient,
@@ -29,8 +29,16 @@ class Command(StrEnum):
 class TeamworkGame(Game):
     """Teamwork game: player collaborates with NPC toward a shared goal."""
 
+    GAME_NAME = "Teamwork"
+    GAME_DESCRIPTION = "Players are tasked with collaborating with another character to achieve a shared goal."
+
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
+
+    class Overrides(BaseGameOverrides):
+        """Run-config-overridable parameters for TeamworkGame."""
+
+        player_retry_budget: int = 10
 
     def __init__(
         self,
@@ -40,6 +48,9 @@ class TeamworkGame(Game):
         validator: ValidatorClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+        enter_message: str | None = None,
+        help_message: str | None = None,
+        exit_message: str | None = None,
     ) -> None:
         """Initialise the game. Use create_from_context() as the public entry point."""
         self._pc = pc
@@ -48,6 +59,9 @@ class TeamworkGame(Game):
         self._validator = validator
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
+        self._enter_message = enter_message
+        self._help_message = help_message
+        self._exit_message = exit_message
         self._entered = False
         self._exited = False
         self._exit_reason = ""
@@ -58,19 +72,18 @@ class TeamworkGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "TeamworkGame":
         """Factory called by SessionManager. Builds clients from character dicts.
 
-        Accepted kwargs:
-            retry_budget (int): overrides DEFAULT_RETRY_BUDGET
-            max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+        Accepted kwargs are validated against ``TeamworkGame.Overrides``.
         """
-        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
+        overrides = cls.Overrides.model_validate(kwargs)
+        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc))
         return cls(
             pc=pc,
             npc=npc,
             updater=updater,
             validator=validator,
-            retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
-            max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
+            retry_budget=overrides.player_retry_budget,
+            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
         )
 
     def exit(self, reason: str) -> None:
@@ -96,6 +109,13 @@ class TeamworkGame(Game):
         """Player's reflection on challenges, or empty string."""
         return self._challenges
 
+    def _format_help(self) -> str:
+        return self._help_message or C.HELP_CONTENT.format(
+            pc_hid=self._pc.hid,
+            pc_short_description=self._pc.short_description,
+            npc_hid=self._npc.hid,
+        )
+
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
         """Advance the game one turn, yielding one or more GameEvents."""
         if self._exited:
@@ -105,11 +125,7 @@ class TeamworkGame(Game):
             self._entered = True
             yield GameEvent.now(
                 type="info",
-                content=C.HELP_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                    npc_hid=self._npc.hid,
-                ),
+                content=self._enter_message or self._format_help(),
             )
             opening = await self._updater.chat(None)
             yield GameEvent.now(type="ai", content=opening)
@@ -122,7 +138,10 @@ class TeamworkGame(Game):
             self._challenges = user_input
             self._awaiting_challenges = False
             self.exit("player finished")
-            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+            yield GameEvent.now(
+                type="info",
+                content=self._exit_message or C.FINISH_CONTENT.format(finish_reason="player finished"),
+            )
 
             return
 
@@ -167,11 +186,7 @@ class TeamworkGame(Game):
         if cmd == Command.HELP:
             return GameEvent.now(
                 type="info",
-                content=C.HELP_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                    npc_hid=self._npc.hid,
-                ),
+                content=self._format_help(),
                 command_response=True,
             )
 

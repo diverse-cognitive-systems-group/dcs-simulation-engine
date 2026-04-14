@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import Game, GameEvent
+from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import (
     UpdaterClient,
@@ -31,8 +31,18 @@ class Command(StrEnum):
 class ForesightGame(Game):
     """Foresight game: player interacts with NPC and makes predictions embedded in their actions."""
 
+    GAME_NAME = "Foresight"
+    GAME_DESCRIPTION = "Players are tasked with predicting the next action of a character."
+
     DEFAULT_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
+
+    class Overrides(BaseGameOverrides):
+        """Run-config-overridable parameters for ForesightGame."""
+
+        player_retry_budget: int = 10
+        max_predictions: int = 3
+        min_predictions: int = 1
 
     def __init__(
         self,
@@ -42,6 +52,9 @@ class ForesightGame(Game):
         validator: ValidatorClient,
         retry_budget: int = DEFAULT_RETRY_BUDGET,
         max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+        enter_message: str | None = None,
+        help_message: str | None = None,
+        exit_message: str | None = None,
     ) -> None:
         """Initialise the game. Use create_from_context() as the public entry point."""
         self._pc = pc
@@ -50,6 +63,9 @@ class ForesightGame(Game):
         self._validator = validator
         self._retry_budget = retry_budget
         self._max_input_length = max_input_length
+        self._enter_message = enter_message
+        self._help_message = help_message
+        self._exit_message = exit_message
         self._entered = False
         self._exited = False
         self._exit_reason = ""
@@ -58,19 +74,18 @@ class ForesightGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
         """Factory called by SessionManager. Builds clients from character dicts.
 
-        Accepted kwargs:
-            retry_budget (int): overrides DEFAULT_RETRY_BUDGET
-            max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
+        Accepted kwargs are validated against ``ForesightGame.Overrides``.
         """
-        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
+        overrides = cls.Overrides.model_validate(kwargs)
+        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc))
         validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES))
         return cls(
             pc=pc,
             npc=npc,
             updater=updater,
             validator=validator,
-            retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
-            max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
+            retry_budget=overrides.player_retry_budget,
+            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
         )
 
     def exit(self, reason: str) -> None:
@@ -91,8 +106,8 @@ class ForesightGame(Game):
         """Reason the game ended, or empty string."""
         return self._exit_reason
 
-    def _help_content(self) -> str:
-        return C.HELP_CONTENT.format(
+    def _format_help(self) -> str:
+        return self._help_message or C.HELP_CONTENT.format(
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             npc_hid=self._npc.hid,
@@ -105,7 +120,7 @@ class ForesightGame(Game):
 
         if not self._entered:
             self._entered = True
-            yield GameEvent.now(type="info", content=self._help_content())
+            yield GameEvent.now(type="info", content=self._enter_message or self._format_help())
             opening = await self._updater.chat(None)
             yield GameEvent.now(type="ai", content=opening)
             return
@@ -152,7 +167,7 @@ class ForesightGame(Game):
         cmd = command_body.split()[0].lower()
 
         if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=self._help_content(), command_response=True)
+            return GameEvent.now(type="info", content=self._format_help(), command_response=True)
 
         if cmd == Command.ABILITIES:
             return GameEvent.now(
@@ -170,7 +185,7 @@ class ForesightGame(Game):
             self.exit("player finished")
             return GameEvent.now(
                 type="info",
-                content=C.FINISH_CONTENT.format(finish_reason="player finished"),
+                content=self._exit_message or C.FINISH_CONTENT.format(finish_reason="player finished"),
                 command_response=True,
             )
 
