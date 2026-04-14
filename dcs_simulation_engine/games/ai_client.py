@@ -220,6 +220,36 @@ class ValidatorClient:
         return result
 
 
+class EngineClient:
+    """Merged client: validates input then advances the scene.
+
+    Wraps ``ValidatorClient`` and ``UpdaterClient`` so game logic only needs
+    one object.  ``chat()`` is used for the opening scene (no validation);
+    ``step()`` runs validate-then-update for every normal player turn.
+    """
+
+    def __init__(self, updater: UpdaterClient, validator: ValidatorClient) -> None:
+        """Initialise with a pre-built updater and validator."""
+        self._updater = updater
+        self._validator = validator
+
+    async def chat(self, user_input: str | None) -> str:
+        """Call the updater directly, bypassing validation (used for setup/opening)."""
+        return await self._updater.chat(user_input)
+
+    async def step(self, user_input: str) -> tuple[bool, str]:
+        """Validate ``user_input``, then advance the scene if valid.
+
+        Returns ``(True, reply)`` on success or ``(False, error_message)`` when
+        validation rejects the input.
+        """
+        validation = await self._validator.validate(user_input)
+        if validation.get("type") == "error":
+            return False, validation.get("content", "Invalid action.")
+        reply = await self._updater.chat(user_input)
+        return True, reply
+
+
 class ScorerResult(NamedTuple):
     """Parsed evaluation payload plus the raw JSON text returned by the scorer."""
 

@@ -8,10 +8,6 @@ import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
-from dcs_simulation_engine.games.explore import Command as ExploreCommand
-from dcs_simulation_engine.games.foresight import Command as ForesightCommand
-from dcs_simulation_engine.games.goal_horizon import Command as GoalHorizonCommand
-from dcs_simulation_engine.games.infer_intent import Command as InferIntentCommand
 from pymongo.database import Database
 
 pytestmark = [pytest.mark.unit, pytest.mark.anyio]
@@ -116,14 +112,14 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
 @pytest.mark.parametrize(
     ("game_name", "command_text", "expected_command_name"),
     [
-        ("Explore", f"/{ExploreCommand.HELP.value}", ExploreCommand.HELP.value),
-        ("Explore", f"/{ExploreCommand.ABILITIES.value}", ExploreCommand.ABILITIES.value),
-        ("Foresight", f"/{ForesightCommand.HELP.value}", ForesightCommand.HELP.value),
-        ("Foresight", f"/{ForesightCommand.FINISH.value}", ForesightCommand.FINISH.value),
-        ("Infer Intent", f"/{InferIntentCommand.HELP.value}", InferIntentCommand.HELP.value),
-        ("Infer Intent", f"/{InferIntentCommand.PREDICT_INTENT.value}", InferIntentCommand.PREDICT_INTENT.value),
-        ("Goal Horizon", f"/{GoalHorizonCommand.HELP.value}", GoalHorizonCommand.HELP.value),
-        ("Goal Horizon", f"/{GoalHorizonCommand.PREDICT_CAPABILITIES.value}", GoalHorizonCommand.PREDICT_CAPABILITIES.value),
+        ("Explore", "/help", "help"),
+        ("Explore", "/abilities", "abilities"),
+        ("Foresight", "/help", "help"),
+        ("Foresight", "/finish", "finish"),
+        ("Infer Intent", "/help", "help"),
+        ("Infer Intent", "/predict-intent", "predict-intent"),
+        ("Goal Horizon", "/help", "help"),
+        ("Goal Horizon", "/predict-capabilities", "predict-capabilities"),
     ],
 )
 async def test_game_level_command_filters_persist_command_events(

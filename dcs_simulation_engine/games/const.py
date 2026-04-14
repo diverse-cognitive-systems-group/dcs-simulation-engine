@@ -81,7 +81,7 @@ class InferIntent:
 
 ## Non-Player Character (NPC, the simulator): {npc_hid}
 
-*NPC details are hidden.*\
+{npc_abilities}\
 """
 
     GOAL_INFERENCE_QUESTION = """\

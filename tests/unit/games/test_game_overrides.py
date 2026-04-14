@@ -118,14 +118,6 @@ def mock_character():
     )
 
 
-def test_explore_create_default_messages(mock_character) -> None:
-    """ExploreGame built with no overrides stores None for message fields."""
-    game = ExploreGame.create_from_context(mock_character, mock_character)
-    assert game._enter_message is None
-    assert game._help_message is None
-    assert game._exit_message is None
-
-
 def test_explore_create_custom_retry_budget(mock_character) -> None:
     """ExploreGame built with player_retry_budget override uses that value."""
     game = ExploreGame.create_from_context(mock_character, mock_character, player_retry_budget=3)

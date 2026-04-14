@@ -250,7 +250,7 @@ async def test_additional_updater_rule_present_in_prompt(patch_llm_client, _isol
     )
     await session.step_async("")  # ENTER initialises the updater
 
-    assert "Goal Aligned Response" in session.game._updater._system_prompt, (
+    assert "Goal Aligned Response" in session.game._engine._updater._system_prompt, (
         "Expected 'Goal Aligned Response' rule in InferIntent updater system prompt"
     )
 
