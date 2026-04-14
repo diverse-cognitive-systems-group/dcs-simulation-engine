@@ -18,7 +18,7 @@ fmt:
 
 # Run test suite quietly
 test:
-	uv run pytest
+	uv run pytest -r s
 
 # Build documentation (MkDocs in this example).
 docs:
