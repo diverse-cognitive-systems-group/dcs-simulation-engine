@@ -2,6 +2,7 @@
 
 import pytest
 from dcs_simulation_engine.core.game import BaseGameOverrides, Game
+from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.explore import ExploreGame
 from dcs_simulation_engine.games.foresight import ForesightGame
 from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
@@ -14,20 +15,10 @@ pytestmark = [pytest.mark.unit]
 ALL_GAME_CLASSES = [ExploreGame, ForesightGame, GoalHorizonGame, InferIntentGame, TeamworkGame]
 
 
-# ---------------------------------------------------------------------------
-# ABC enforcement
-# ---------------------------------------------------------------------------
-
-
 def test_game_is_abstract() -> None:
     """Game cannot be instantiated directly because it is abstract."""
     with pytest.raises(TypeError):
         Game()  # type: ignore[abstract]
-
-
-# ---------------------------------------------------------------------------
-# Class-level metadata
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("cls", ALL_GAME_CLASSES)
@@ -44,11 +35,6 @@ def test_game_metadata_values() -> None:
     assert ForesightGame.GAME_NAME == "Foresight"
     assert GoalHorizonGame.GAME_NAME == "Goal Horizon"
     assert TeamworkGame.GAME_NAME == "Teamwork"
-
-
-# ---------------------------------------------------------------------------
-# parse_overrides() — valid inputs
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("cls", ALL_GAME_CLASSES)
@@ -83,11 +69,6 @@ def test_parse_overrides_foresight_game_specific_fields() -> None:
     assert overrides.min_predictions == 2
 
 
-# ---------------------------------------------------------------------------
-# parse_overrides() — invalid inputs (extra fields rejected)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize("cls", ALL_GAME_CLASSES)
 def test_parse_overrides_unknown_key_rejected(cls) -> None:
     """Unknown kwargs raise ValidationError because Overrides uses extra='forbid'."""
@@ -101,20 +82,18 @@ def test_parse_overrides_explore_rejects_foresight_field() -> None:
         ExploreGame.parse_overrides({"max_predictions": 5})
 
 
-# ---------------------------------------------------------------------------
-# create_from_context() — message overrides applied
-# ---------------------------------------------------------------------------
-
-
 @pytest.fixture
-def mock_character():
-    """Return a minimal CharacterRecord-like namespace for testing."""
-    from types import SimpleNamespace
-
-    return SimpleNamespace(
+def mock_character() -> CharacterRecord:
+    """Return a minimal CharacterRecord with the fields used by prompt rendering."""
+    return CharacterRecord(
         hid="test-char",
+        name="Test Character",
         short_description="A test character",
-        data={"abilities": ""},
+        data={
+            "abilities": ["can walk", "can speak"],
+            "long_description": "A detailed character description.",
+            "scenarios": ["A quiet room", "A busy hallway"],
+        },
     )
 
 

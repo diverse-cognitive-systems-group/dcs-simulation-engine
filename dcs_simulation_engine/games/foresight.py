@@ -1,13 +1,18 @@
 """Foresight game."""
 
+import re
+from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
 from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.games.ai_client import EngineClient, UpdaterClient, ValidatorClient
+from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
+from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import Foresight as C
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
+from dcs_simulation_engine.games.prompts import NEXT_ACTION_SCORER_TEMPLATE, build_scoring_prompt
+from loguru import logger
 
 
 class ForesightGame(Game):
@@ -16,38 +21,72 @@ class ForesightGame(Game):
     GAME_NAME = "Foresight"
     GAME_DESCRIPTION = "Players are tasked with predicting the next action of a character."
 
-    DEFAULT_RETRY_BUDGET = 10
-    DEFAULT_MAX_INPUT_LENGTH = 350
+    # This game required players to describe their PC action but also how they expect the NPC to respond for each turn, so we need to remove the validators that enforce that players only describe their own character's actions. Instead, we use a validator that required the PC action and optional NPC prediction.
+    PC_VALIDATOR_NAMES = [
+        "action-form-with-prediction",
+        "turn-scope",
+        "authority-boundary",
+        "capability-and-plausibility",
+        "game-intent-policy",
+    ]
+
+    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
 
     class Overrides(BaseGameOverrides):
         """Run-config-overridable parameters for ForesightGame."""
 
-        player_retry_budget: int = 10
-        max_predictions: int = 3
-        min_predictions: int = 1
+        show_npc_details: bool = False
+        show_final_score: bool = True
+
+    def __init__(
+        self,
+        *,
+        show_npc_details: bool,
+        show_final_score: bool,
+        scorer: ScorerClient | None = None,
+        transcript_provider: Callable[[], Awaitable[str]] | None = None,
+        **kwargs: Any,  # kwargs for base args
+    ) -> None:
+        """Initialise with game-specific prediction state."""
+        super().__init__(**kwargs)
+        self._show_npc_details = show_npc_details
+        self._show_final_score = show_final_score
+        self._scorer = scorer or ScorerClient()
+        self._transcript_provider = transcript_provider
+        self._predictions: dict[str, Any] = {}
+        self._score: dict[str, Any] = {}
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
         """Factory called by SessionManager."""
+        scorer = kwargs.pop("scorer", None)
+        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
-        engine = EngineClient(
-            updater=UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)),
-            validator=ValidatorClient(
-                system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES)
-            ),
+        engine = SimulatorClient(
+            pc=pc,
+            npc=npc,
+            pc_validator_names=cls.PC_VALIDATOR_NAMES,
         )
         return cls(
             pc=pc,
             npc=npc,
             engine=engine,
-            retry_budget=overrides.player_retry_budget,
-            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
+            scorer=scorer,
+            transcript_provider=transcript_provider,
+            **cls.build_base_init_kwargs(overrides),
+            show_npc_details=overrides.show_npc_details,
+            show_final_score=overrides.show_final_score,
         )
 
     @property
-    def finish_command(self) -> str:
-        """``/finish`` ends the game."""
-        return "finish"
+    def predictions(self) -> dict[str, Any]:
+        """Return the current predictions."""
+        return self._predictions
+
+    @property
+    def score(self) -> dict[str, Any]:
+        """Return the current score."""
+        return self._score
 
     def get_help_content(self) -> str:
         """Return the /help message content."""
@@ -55,22 +94,112 @@ class ForesightGame(Game):
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             npc_hid=self._npc.hid,
+            npc_short_description=self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*",
         )
 
     def get_abilities_content(self) -> str:
         """Return the /abilities message content."""
+        npc_abilities = (
+            format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*NPC details are hidden.*"
+        )
         return C.ABILITIES_CONTENT.format(
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
+            npc_abilities=npc_abilities,
         )
 
     async def on_finish(self) -> AsyncIterator[GameEvent]:
-        """Exit immediately and emit a closing message."""
+        """Score the final prediction, then exit."""
+        await self._score_prediction()
+
+        if self._show_final_score:
+            yield GameEvent.now(type="info", content=format_score_markdown(self._score))
+
         self.exit("player finished")
         yield GameEvent.now(
             type="info",
             content=C.FINISH_CONTENT.format(finish_reason="player finished"),
             command_response=True,
         )
+
+    async def _score_prediction(self) -> None:
+        """Score the player's latest next-action prediction."""
+        try:
+            if self._transcript_provider is None:
+                logger.warning("ForesightGame finishing without scoring because no transcript provider was supplied.")
+                self._score = {
+                    "tier": None,
+                    "score": None,
+                    "reasoning": "Final score could not be computed.",
+                }
+                return
+
+            transcript = (await self._transcript_provider()).strip()
+            if not transcript:
+                raise ValueError("Foresight scoring requires a non-empty transcript.")
+
+            guess = self._get_latest_prediction_guess(transcript)
+            if not guess:
+                raise ValueError("Foresight scoring requires a recorded prediction.")
+
+            prompt = build_scoring_prompt(
+                scoring_template=NEXT_ACTION_SCORER_TEMPLATE,
+                npc=self._npc,
+                transcript=transcript,
+                guess=guess,
+            )
+
+            result = await self._scorer.score(prompt=prompt, transcript=transcript)
+            self._score = result.evaluation or {}
+
+            if not isinstance(self._score, dict):
+                raise ValueError("Invalid scorer output format.")
+
+        except Exception:
+            logger.exception("Failed to compute final score.")
+            self._score = {
+                "tier": None,
+                "score": None,
+                "reasoning": "Final score could not be computed.",
+            }
+
+    def _get_latest_prediction_guess(self, transcript: str) -> str:
+        """Return the latest prediction from stored state or transcript."""
+        if self._predictions:
+            latest_prediction = next(reversed(self._predictions.values()))
+            guess = self._coerce_prediction_guess(latest_prediction)
+            if guess:
+                return guess
+
+        for line in reversed(transcript.splitlines()):
+            stripped_line = line.strip()
+            if not stripped_line:
+                continue
+
+            _, _, content = stripped_line.partition(":")
+            candidate = content.strip() if content else stripped_line
+            if not candidate:
+                continue
+
+            if candidate.lower().startswith("/predict-next"):
+                return candidate[len("/predict-next") :].strip()
+
+            if re.search(r"\bpredict(?:ion|ed|s)?\b", candidate, flags=re.IGNORECASE):
+                return candidate
+
+        return ""
+
+    def _coerce_prediction_guess(self, prediction: Any) -> str:
+        """Extract a string prediction from common payload shapes."""
+        if isinstance(prediction, str):
+            return prediction.strip()
+
+        if isinstance(prediction, dict):
+            for key in ("guess", "prediction", "content", "text", "value"):
+                value = prediction.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+
+        return ""

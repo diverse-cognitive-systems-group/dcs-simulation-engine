@@ -1,13 +1,17 @@
 """Infer Intent game."""
 
+from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
+from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.games.ai_client import EngineClient, UpdaterClient, ValidatorClient
+from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
+from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import InferIntent as C
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
+from dcs_simulation_engine.games.prompts import build_scoring_prompt, GOAL_INFERENCE_SCORER_TEMPLATE
+from loguru import logger
 
 
 class InferIntentGame(Game):
@@ -16,54 +20,54 @@ class InferIntentGame(Game):
     GAME_NAME = "Infer Intent"
     GAME_DESCRIPTION = "Players are tasked with understanding the intention of another character."
 
-    DEFAULT_RETRY_BUDGET = 3
-    DEFAULT_MAX_INPUT_LENGTH = 350
+    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
 
-    class Overrides(BaseGameOverrides):
+    class Overrides(Game.Overrides):
         """Run-config-overridable parameters for InferIntentGame."""
 
-        player_retry_budget: int = 3
-        hide_npc_details: bool = False
+        show_npc_details: bool = False
+        show_final_score: bool = True
 
     def __init__(
         self,
         *,
-        pc: CharacterRecord,
-        npc: CharacterRecord,
-        engine: Any,
-        retry_budget: int,
-        max_input_length: int,
-        hide_npc_details: bool,
+        show_npc_details: bool,
+        show_final_score: bool,
+        scorer: ScorerClient | None = None,
+        transcript_provider: Callable[[], Awaitable[str]] | None = None,
+        **kwargs: Any,  # kwargs for base args
     ) -> None:
         """Initialise with game-specific inference state."""
-        super().__init__(pc=pc, npc=npc, engine=engine, retry_budget=retry_budget, max_input_length=max_input_length)
-        self._hide_npc_details = hide_npc_details
+        super().__init__(**kwargs)
+        self._show_npc_details = show_npc_details
+        self._show_final_score = show_final_score
+        self._scorer = scorer or ScorerClient()
+        self._transcript_provider = transcript_provider
         self._goal_inference = ""
         self._goal_inference_confidence = ""
-        self._evaluation: dict[str, Any] = {}
+        self._score: dict[str, Any] = {}
         self._awaiting_confidence = False
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "InferIntentGame":
         """Factory called by SessionManager."""
+        scorer = kwargs.pop("scorer", None)
+        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
-        engine = EngineClient(
-            updater=UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)),
-            validator=ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc)),
+        engine = SimulatorClient(
+            pc=pc,
+            npc=npc,
         )
         return cls(
             pc=pc,
             npc=npc,
             engine=engine,
-            retry_budget=overrides.player_retry_budget,
-            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
-            hide_npc_details=overrides.hide_npc_details,
+            scorer=scorer,
+            transcript_provider=transcript_provider,
+            **cls.build_base_init_kwargs(overrides),
+            show_npc_details=overrides.show_npc_details,
+            show_final_score=overrides.show_final_score,
         )
-
-    @property
-    def finish_command(self) -> str:
-        """``/predict-intent`` starts the finish flow."""
-        return "predict-intent"
 
     @property
     def goal_inference(self) -> str:
@@ -76,9 +80,9 @@ class InferIntentGame(Game):
         return self._goal_inference_confidence
 
     @property
-    def evaluation(self) -> dict[str, Any]:
-        """LLM scoring result, or empty dict."""
-        return self._evaluation
+    def score(self) -> dict[str, Any]:
+        """Scorer result, or empty dict."""
+        return self._score
 
     def get_help_content(self) -> str:
         """Return the /help message content."""
@@ -86,14 +90,13 @@ class InferIntentGame(Game):
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             npc_hid=self._npc.hid,
+            npc_short_description=self._npc.data.get("short_description", "")) if self._show_npc_details else "*NPC details are hidden.*"
         )
 
     def get_abilities_content(self) -> str:
         """Return the /abilities message content."""
         npc_abilities = (
-            format_abilities_markdown(self._npc.data.get("abilities", ""))
-            if self._hide_npc_details
-            else "*NPC details are hidden.*"
+            format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*NPC details are hidden.*"
         )
         return C.ABILITIES_CONTENT.format(
             pc_hid=self._pc.hid,
@@ -110,13 +113,58 @@ class InferIntentGame(Game):
         yield GameEvent.now(type="info", content=C.GOAL_INFERENCE_QUESTION, command_response=True)
 
     async def on_finish_input(self, user_input: str) -> AsyncIterator[GameEvent]:
-        """Collect inference then confidence, then exit."""
+        """Collect inference then confidence, score, then exit."""
         if not self._awaiting_confidence:
             self._goal_inference = user_input
             self._awaiting_confidence = True
             yield GameEvent.now(type="info", content=C.GOAL_INFERENCE_CONFIDENCE)
-        else:
-            self._goal_inference_confidence = user_input
-            self._in_finish_flow = False
-            self.exit("player finished")
-            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+            return
+
+        self._goal_inference_confidence = user_input
+        self._in_finish_flow = False
+
+        await self._score_goal_inference()
+
+        if self._show_final_score:
+            yield GameEvent.now(type="info", content=format_score_markdown(self._score))
+
+        self.exit("player finished")
+        yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+
+    async def _score_goal_inference(self) -> None:
+        """Score the player's goal inference."""
+        try:
+            if self._transcript_provider is None:
+                logger.warning("InferIntentGame finishing without scoring because no transcript provider was supplied.")
+                self._score = {
+                    "tier": None,
+                    "score": None,
+                    "reasoning": "Final score couldn't be computed.",
+                }
+                return
+
+            transcript = (await self._transcript_provider()).strip()
+            if not transcript:
+                raise ValueError("Infer Intent scoring requires a non-empty transcript.")
+
+            prompt = build_scoring_prompt(
+                scoring_template=GOAL_INFERENCE_SCORER_TEMPLATE,
+                npc=self._npc,
+                transcript=transcript,
+                guess=self._goal_inference,
+            )
+
+            result = await self._scorer.score(prompt=prompt, transcript=transcript)
+            self._score = result.evaluation or {}
+
+            # Guard against malformed scorer output
+            if not isinstance(self._score, dict):
+                raise ValueError("Invalid scorer output format.")
+
+        except Exception:
+            logger.exception("Failed to compute final score.")
+            self._score = {
+                "tier": None,
+                "score": None,
+                "reasoning": "Final score couldn't be computed.",
+            }

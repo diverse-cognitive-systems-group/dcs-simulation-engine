@@ -255,6 +255,7 @@ def sync_mongo_provider(async_mongo_provider: AsyncMongoProvider) -> SyncAsyncPr
 # ============================================================================
 
 _MOCK_AI_RESPONSE = '{"type": "ai", "content": "The flatworm moves slowly across the surface."}'
+_MOCK_TEAMWORK_OPENING_RESPONSE = '{"type": "ai", "content": "You enter a new space. In this space, a loose panel hangs over a flooded control box.", "metadata": {"shared_goal": "to secure the exposed control box before the room fully floods"}}'
 _MOCK_VALIDATOR_RESPONSE = '{"type": "info", "content": "Action accepted."}'
 
 
@@ -275,6 +276,9 @@ def patch_llm_client(monkeypatch):
         # Validator sends only a system message (no conversation history)
         if len(messages) == 1 and messages[0].get("role") == "system":
             return _MOCK_VALIDATOR_RESPONSE
+        system_prompt = messages[0].get("content", "") if messages else ""
+        if "generate a shared goal" in system_prompt.lower():
+            return _MOCK_TEAMWORK_OPENING_RESPONSE
         # Updater sends system + conversation history (2+ messages)
         return _MOCK_AI_RESPONSE
 

@@ -67,6 +67,8 @@ async def test_teamwork_enter_step(patch_llm_client, _isolate_db_state, async_mo
     ai_events = [e for e in enter_events if e.get("type") == "ai"]
     assert len(ai_events) > 0, "Expected AI opening response after welcome"
 
+    assert session.game.shared_goal == "to secure the exposed control box before the room fully floods"
+
     assert session.turns == 1, "After ENTER, turns should be 1"
     assert not session.exited, "Session should not be exited after ENTER"
 
@@ -87,6 +89,8 @@ async def test_help_command(patch_llm_client, _isolate_db_state, async_mongo_pro
 
     info_events = [e for e in help_events if e.get("type") == "info"]
     assert len(info_events) > 0, "Expected info event from /help"
+    content = " ".join(e["content"] for e in info_events)
+    assert "to secure the exposed control box before the room fully floods" in content
     assert not session.exited, "Session should remain active after /help"
 
 
@@ -110,7 +114,7 @@ async def test_abilities_command(patch_llm_client, _isolate_db_state, async_mong
     content = " ".join(e["content"] for e in info_events)
     assert "NA" in content, "PC hid should appear in /abilities"
     assert "FW" in content, "NPC hid should appear in /abilities"
-    assert "NPC details are hidden" in content, "NPC description should be hidden in /abilities"
+    assert "NPC details are hidden" not in content, "NPC details should be shown in /abilities by default"
     assert not session.exited, "Session should remain active after /abilities"
 
 

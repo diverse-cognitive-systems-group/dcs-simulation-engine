@@ -6,12 +6,124 @@ not arbitrary brace sequences.
 """
 # ruff: noqa: E501  — prompt strings are intentionally long prose
 
+from typing import Any
+
 from dcs_simulation_engine.dal.base import CharacterRecord
+from jinja2 import StrictUndefined, meta
+from jinja2.exceptions import UndefinedError
 from jinja2.sandbox import SandboxedEnvironment
 
-_jinja_env = SandboxedEnvironment()
+_jinja_env = SandboxedEnvironment(undefined=StrictUndefined)
 
-# Evaluation templates
+## UPDATERS (SCENE + CHARACTER) ##
+
+OPENING_SCENE_TEMPLATE = """You set up the scene for a text-based role-playing game. Describe ONLY the initial, observable environment.
+
+Characters:
+- Player ({{ pc_hid }}):
+  - Description: {{ pc_long_description }}
+  - Abilities: {{ pc_abilities }}
+- Other character ({{ npc_hid }}):
+  - Description: {{ npc_long_description }}
+  - Abilities: {{ npc_abilities }}
+
+Rules:
+- Begin with: "You enter a new space. In this space,"
+- Describe the immediate surroundings where both characters could plausibly be present.
+- Use 1–2 sentences only.
+
+Style:
+- Plain, concrete, minimal language.
+- No flavor, atmosphere, inference, or explanation.
+
+Output ONLY this JSON:
+{
+  "type": "ai",
+  "content": "<scene setup>"
+}
+"""
+
+OPENING_SCENE_WITH_SHARED_GOAL_TEMPLATE = """You set up the scene for a cooperative text-based role-playing game AND generate a shared goal.
+
+Context: {{ pc_hid }} and {{ npc_hid }} must work together but they have different skills and abilities.
+- {{ pc_hid }}:
+  - Description: {{ pc_long_description }}
+  - Abilities: {{ pc_abilities }}
+- {{ npc_hid }}:
+  - Description: {{ npc_long_description }}
+  - Abilities: {{ npc_abilities }}
+
+Task:
+1. Generate a shared goal.
+2. Generate an opening scene where that goal is immediately relevant and actionable.
+
+Shared Goal Rules:
+- Begin with: "to "
+- Describe a single, clear, actionable goal.
+- The goal should allow for collaboration.
+- Include a clear success condition.
+- Use exactly one sentence.
+
+Scene Rules:
+- Begin with: "You enter a new space. In this space,"
+- The scene MUST naturally set up the shared goal (the problem or task is already present or just occurred).
+- Include concrete elements needed to begin working on the goal.
+- Both characters must plausibly be present and able to act.
+- Use exactly 1–2 sentences.
+
+Style:
+- Plain, concrete, minimal language.
+- No flavor, atmosphere, inference, or explanation.
+
+Output ONLY this JSON:
+{
+  "type": "ai",
+  "content": "<scene setup>",
+  "metadata": {
+    "shared_goal": "<shared_goal>"
+  }
+}
+"""
+
+SCENE_UPDATER_TEMPLATE = """You advance the scene in a text-based role-playing game. Describe ONLY the immediate, observable change in the scene caused by the player’s last action.
+
+Rules:
+- Resolve the player’s last action. If it is within their abilities, assume success.
+- Describe only how the scene changes.
+- Do not describe character actions, internal states, or unobservable outcomes.
+- Advance one concrete change only. No sequences or future effects.
+
+Style:
+- Plain, concrete, minimal language.
+- No flavor, atmosphere, inference, or explanation.
+
+Output ONLY this JSON:
+{
+  "type": "ai",
+  "content": "<scene change>"
+}
+"""
+
+CHARACTER_UPDATER_SYSTEM_TEMPLATE = """You simulate {{ npc_hid }} in a text-based role-playing game. Describe ONLY their immediate next action.
+
+Character ({{npc_hid}}):
+- Description: {{ npc_short_description }}
+- Abilities: {{ npc_abilities }}
+
+Rules:
+- Act strictly within {{ npc_hid }}’s abilities. Do not imply senses or skills they lack.
+- Describe ONE immediate action only. No sequences, outcomes, or future steps.
+- Do not describe world changes beyond what {{ npc_hid }} directly does.
+- If no valid action exists, return an empty string.
+
+Output ONLY this JSON:
+{
+  "type": "ai",
+  "content": "<character action>"
+}
+"""
+
+## SCORERS ##
 NEXT_ACTION_SCORER_TEMPLATE = """You are an expert evaluator for a social cognition research study. A player character interacted with simulated character(s) and then predicted their next action. Score how accurately the player predicted the character's next action based on their interaction.
 
 ## Character ({{ npc_hid }}):
@@ -138,490 +250,379 @@ Return only valid JSON with no extra text:
 Final score: Players receive a final score based on collaborative performance toward the shared goal.
 """
 
-# BEGIN - SETUP/UPDATER TEMPLATES
+## VALIDATORS ##
 
-SCENE_SETUP_TEMPLATE = """
-You set up the scene for a text-based role-playing game. Describe ONLY the initial, observable environment.
+VALID_ACTION_FORM_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
 
-Characters:
-- Player ({{ pc_hid }}):
-  - Description: {{ pc_long_description }}
-  - Abilities: {{ pc_abilities }}
-  - Example scenarios: {{ pc_scenarios }}
-- Other character ({{ npc_hid }}):
-  - Description: {{ npc_long_description }}
-  - Abilities: {{ npc_abilities }}
-  - Example scenarios: {{ npc_scenarios }}
+RULE: ACTION-FORM — The text must be a valid in-world turn contribution. Player input must contain an externally observable in-world action or utterance. Simulator output must be an immediate action or scene update, not explanation, analysis, apology, rule restatement, or meta commentary.
 
-Rules:
-- Begin with: "You enter a new space. In this space,"
-- Describe the immediate surroundings where both characters could plausibly be present.
-- Use 1–2 sentences only.
-
-Style:
-- Plain, concrete, minimal language.
-- No flavor, atmosphere, inference, or explanation.
-
-Output ONLY this JSON:
-{
-  "type": "ai",
-  "content": "<scene setup>"
-}
-"""
-
-SCENE_UPDATER_TEMPLATE = """
-You advance the scene in a text-based role-playing game. Describe ONLY the immediate, observable change in the scene caused by the player’s last action.
-
-Rules:
-- Resolve the player’s last action. If it is within their abilities, assume success.
-- Describe only how the scene changes.
-- Do not describe character actions, internal states, or unobservable outcomes.
-- Advance one concrete change only. No sequences or future effects.
-
-Style:
-- Plain, concrete, minimal language.
-- No flavor, atmosphere, inference, or explanation.
-
-Output ONLY this JSON:
-{
-  "type": "ai",
-  "content": "<scene change>"
-}
-"""
-
-CHARACTER_UPDATER_SYSTEM_TEMPLATE = """
-You simulate {{ npc_hid }} in a text-based role-playing game. Describe ONLY their immediate next action.
-
-Character ({{npc_hid}}):
-- Description: {{ npc_short_description }}
-- Abilities: {{ npc_abilities }}
-
-Rules:
-- Act strictly within {{ npc_hid }}’s abilities. Do not imply senses or skills they lack.
-- Describe ONE immediate action only. No sequences, outcomes, or future steps.
-- Do not describe world changes beyond what {{ npc_hid }} directly does.
-- If no valid action exists, return an empty string.
-
-Output ONLY this JSON:
-{
-  "type": "ai",
-  "content": "<character action>"
-}
-"""
-
-# END - SETUP/UPDATER TEMPLATES
-
-# BEGIN - PLAYER/PC VALIDATION TEMPLATES
-
-VALID_ACTION_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
-
-RULE: VALID-ACTION — The text must include externally observable action(s) (something a character physically does or says that can be observed by others in the scene). Text describing ONLY internal actions (purely mental acts like thoughts, inferences, realizations, or unobservable mental states) should fail.
+Role guidance:
+- For player input, pass only if the text includes something the character physically does or says in-world.
+- For simulator output, pass only if the text stays fully in-world and presents a direct action/update rather than assistant-style framing.
+- Reject pure thought, pure inference, pure desire, out-of-world commands, rule/help queries, and fourth-wall-breaking commentary.
 
 Examples:
-- PASS: "I wave my hand at the creature."
-- PASS: "I shout for help, and think about what to do next." (contains an externally observable action)
-- FAIL: "I realize the door is locked." (internal inference, not observable)
-- FAIL: "I decide to be more careful." (internal decision, not an external action)
-- FAIL: "I wish I could fly." (internal desire, not an attempted action)
-- PASS: "I try to climb the wall." (externally observable attempt, even if outcome is uncertain)
-- PASS: "I look around the room."
-- FAIL: "I figure out the puzzle." (unobservable mental conclusion only)
-- FAIL: "I sense danger." (internal feeling, not observable behavior)
-- PASS: "I turn the handle to see if the door is locked." (contains an observable action)
+- PASS: "I wave my hand."
+- PASS: "I shout for help, then steady myself."
+- FAIL: "I realize the door is locked." (internal inference only)
+- FAIL: "What are the rules of this game?" (out-of-world request)
+- PASS: "The figure takes one careful step backward."
+- PASS: "The door creaks open a few inches."
+- FAIL: "Sure! Here's the next scene: The door creaks open." (meta preamble)
+- FAIL: "As per the rules, the NPC now reacts cautiously." (rule restatement, not in-world output)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-VALID_TEMPORAL_STRUCTURE_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
+VALID_TURN_SCOPE_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
 
-RULE: VALID-TEMPORAL-STRUCTURE — The text must not compress multiple sequential steps, skip ahead in time, or describe events spanning a long duration. Each turn is a concrete action update.
+RULE: TURN-SCOPE — The text must advance exactly one immediate, concrete turn-sized step. It must not compress long duration, chain multiple sequential steps, skip ahead in time, or include future effects beyond the immediate moment.
 
 Examples:
 - PASS: "I walk to the door and knock."
+- PASS: "The creature lunges once toward the sound."
 - FAIL: "I spend the next hour searching every room in the building." (compresses too much time)
-- FAIL: "I go home, eat dinner, sleep, and wake up the next morning." (multiple steps, time jump)
-- PASS: "I open the door and step through."
-- FAIL: "After a while, I finally find what I'm looking for." (vague time skip)
-- PASS: "I search the nearest shelf." (single concrete step)
+- FAIL: "I open the door, step through, cross the hall, and climb the stairs." (multiple chained steps)
+- PASS: "The door swings open."
+- FAIL: "After a while, I finally find what I'm looking for." (time skip)
+- FAIL: "The guard grabs the alarm cord, and moments later the whole fortress is mobilized." (future effects beyond one immediate step)
 
 If context is provided above a --- separator, use it to inform your judgment.
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-VALID_OUTCOME_CONTROL_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
+VALID_AUTHORITY_BOUNDARY_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
 
-RULE: VALID-OUTCOME-CONTROL — The text must NOT decide outcomes for the world, other characters. It should describe attempts or actions of the player character, not their results. The simulation determines outcomes, not the actor.
+RULE: AUTHORITY-BOUNDARY — The speaker or output may control only what it is allowed to control. Player input may declare only the player's own attempted action. Simulator output may resolve immediate world change or NPC action, but must not invent extra player action, decide the player's mind, or over-control unrelated outcomes.
+
+Role guidance:
+- Player input must not determine world results or NPC reactions.
+- Scene updater output may resolve immediate scene change from the player's last action, but must not invent extra PC behavior or adjudicate unobservable parts of that action.
+- NPC updater output may describe only the NPC's own immediate action and must not move or decide the PC.
 
 Examples:
 - PASS: "I reach over and tap the table to get his attention."
-- FAIL: "I look at the man. He looks back at me." (decides the other character's response)
-- FAIL: "I pick the lock and the door swings open." (decides the outcome of lock-picking)
-- PASS: "I try to pick the lock."
-- FAIL: "I call out and everyone turns to look." (decides how others react)
-- PASS: "I call out loudly to see if anyone looks."
+- FAIL: "I tap the table, and he looks back at me." (player decides NPC reaction)
+- FAIL: "I pick the lock and the door swings open." (player decides outcome)
+- PASS: "The chest lid swings open, revealing old coins."
+- FAIL: "You open the chest excitedly and step back." (invents PC internal state/action)
+- PASS: "The figure raises a lantern toward you."
+- FAIL: "The figure grabs your arm and forces you to kneel." (NPC output over-controls the PC)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-VALID_CHARACTER_ABILITY_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
+VALID_CAPABILITY_AND_PLAUSIBILITY_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
 
-RULE: VALID-CHARACTER-ABILITY — The action must align with the character's abilities in context. Actions requiring abilities the character does not possess are invalid. Actions that exceed the character's current capacity (e.g., injured leg but running) are also invalid.
-
-Examples (if the character cannot hear):
-- FAIL: "I listen carefully for footsteps." (character cannot hear)
-- PASS: "I look around for movement." (uses vision, which the character has)
-
-Examples (if the character has no hands):
-- FAIL: "I clutch the key in my hand." (requires hands)
-- PASS: "I grab the key with my mouth and my foot." (uses available limbs)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-# TODO: needs character context
-VALID_SCENE_PLAUSIBILITY_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
-
-RULE: VALID-SCENE-PLAUSIBILITY — Referenced objects, tools, or environmental affordances must not be implausible. Objects that are not obviously impossible are allowed even if not explicitly mentioned. Only reject clearly implausible references.
-
-Examples (assuming a typical kitchen scene):
-- PASS: "I pick up a knife from the counter." (knives are plausible in kitchens)
-- PASS: "I open the refrigerator." (plausible kitchen object)
-- FAIL: "I grab my lightsaber." (implausible in a typical kitchen)
-- FAIL: "I fire up my rocket launcher." (implausible in any normal setting)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-ADJUDICATED_UNOBSERVABLE_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
-
-RULE: ADJUDICATED-UNOBSERVABLE — The text must NOT resolve or adjudicate parts of the last input that describe unobservable actions (thoughts, intentions, internal states). If the player said "I look around and think about escape routes", the output should only address the observable "look around" part, not the thinking.
+RULE: CAPABILITY-AND-PLAUSIBILITY — The action or update must be possible for the actor and plausible in the current scene. It must respect abilities, limitations, available affordances, perceivable stimuli, and basic physical or logical constraints.
 
 Examples:
-- Player action: "I look around and wonder if there's a trap."
-  - PASS: "You see a dimly lit hallway stretching ahead." (only addresses the looking)
-  - FAIL: "You look around and conclude there's no trap here." (resolves the wondering)
-- Player action: "I open the door, hoping it leads outside."
-  - PASS: "The door creaks open, revealing a narrow staircase." (addresses the opening)
-  - FAIL: "The door opens and your hopes are confirmed — fresh air rushes in." (resolves the hoping)
+- FAIL: "I listen carefully for footsteps." (invalid if the character cannot hear)
+- PASS: "I look around for movement." (uses an available sense)
+- FAIL: "I clutch the key in my hand." (invalid if the character has no hands)
+- PASS: "I grab the key with my mouth and foot." (uses available limbs)
+- PASS: "I open the refrigerator." (plausible object in an ordinary kitchen-like scene)
+- FAIL: "I fire up my rocket launcher." (clearly implausible without support in the scene)
+- PASS: "The blind creature keeps sniffing the air, unaware of your silent wave." (reaction matches what it can perceive)
+- FAIL: "The large creature passes through the solid wall." (physically impossible without an established ability)
+
+If context is provided above a --- separator, use it to inform your judgment.
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-INVENTED_PC_ACTION_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
+VALID_KNOWLEDGE_AND_PERCEPTION_BOUNDARY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the output violates the rule.
 
-RULE: INVENTED-PC-ACTION — The text must NOT invent new actions for the player character (PC). The scene-advancer plays only the NPC and narrates world outcomes. It must not describe the PC doing things the player did not specify.
-
-The player's last action will be provided in context above a --- separator.
+RULE: KNOWLEDGE-AND-PERCEPTION-BOUNDARY — The output must reveal only what is observable or knowable from the allowed viewpoint and current moment. It must not invent the PC's internal state, reveal hidden identity or classification, exceed available senses, leak future knowledge, or resolve other unobservable facts.
 
 Examples:
-- Player action: "I knock on the door."
-  - PASS: "A muffled voice responds from inside: 'Who's there?'"
-  - FAIL: "You knock on the door and then step back cautiously." (invented the stepping back)
-- Player action: "I wave at the creature."
-  - PASS: "The creature tilts its head, observing your gesture."
-  - FAIL: "You wave at the creature and call out a greeting." (invented the calling out)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-INVENTED_PC_INTERNAL_PROMPT = """You are a validator for a text-based role-playing game. Evaluate whether the text violates the rule.
-
-RULE: INVENTED-PC-INTERNAL — The output must NOT narrate the player character's internal states (thoughts, feelings, beliefs, motivations, sensations) unless the player explicitly described them. The scene-advancer has no access to the PC's mind.
-
-The player's last action will be provided in context above a --- separator.
-
-Examples:
-- Player action: "I open the chest."
-  - PASS: "The chest lid swings open, revealing a collection of old coins."
-  - FAIL: "You open the chest excitedly, feeling a rush of anticipation." (invented excitement/anticipation)
-- Player action: "I approach the figure."
-  - PASS: "As you draw closer, the figure turns to face you."
-  - FAIL: "You approach cautiously, unsure of what to expect." (invented caution/uncertainty)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-MULTI_STEP_ADVANCEMENT_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: MULTI-STEP-ADVANCEMENT — The output must advance the scene by exactly ONE concrete, externally observable step. It must NOT chain multiple sequential outcomes, jump ahead in time, or narrate a sequence of cause-and-effect events.
-
-Examples:
-- PASS: "The creature lunges forward, swiping at the air where you stood."
-- FAIL: "The creature lunges forward, misses, stumbles into the wall, and collapses unconscious." (multiple sequential outcomes)
-- PASS: "The door creaks open slowly."
-- FAIL: "The door opens, you step through into a grand hall, and a guard notices you immediately." (multiple steps chained)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-NPC_PERCEPTION_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: NPC-PERCEPTION-VIOLATION — The NPC must only react to stimuli it can actually perceive given its abilities. If the player performs an action the NPC cannot detect, the NPC must NOT respond as if it perceived it.
-
-The player's last action and NPC abilities will be provided in context above a --- separator.
-
-Examples:
-- Player waves silently; NPC is blind:
-  - PASS: "The creature continues sniffing the air, unaware of your gesture." (NPC can't see the wave)
-  - FAIL: "The creature notices your wave and turns toward you." (blind NPC saw the wave)
-- Player whispers; NPC cannot hear:
-  - PASS: "The figure remains still, focused on the object in its hands."
-  - FAIL: "The figure looks up, having heard your whisper." (deaf NPC heard the whisper)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-SENSE_BOUNDARY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: SENSE-BOUNDARY-VIOLATION — The narration must only describe what the player character (PC) could presently perceive through their available senses. It must NOT reveal information beyond the PC's perceptual reach.
-
-The PC's abilities will be provided in context above a --- separator.
-
-Examples (assuming PC cannot hear):
-- PASS: "You see the creature's mouth moving but perceive no sound."
-- FAIL: "The creature lets out a piercing shriek." (PC can't hear, shouldn't narrate sounds)
-
-Examples (assuming PC cannot see):
-- PASS: "You feel a rush of warm air from ahead."
-- FAIL: "You see a bright light at the end of the corridor." (PC can't see)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-REFERENTIAL_BOUNDARY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: REFERENTIAL-BOUNDARY-VIOLATION — The output must refer to the NPC only by what the PC can observe. It must NOT reveal the NPC's hidden identity, species classification, internal name, or nature unless the PC has perceived it in-world.
-
-The NPC description and PC abilities will be provided in context above a --- separator.
-
-Examples (NPC is a flatworm; PC can see but doesn't know what a flatworm is):
+- PASS: "You see the creature's mouth moving but perceive no sound." (fits a PC who cannot hear)
+- FAIL: "The creature lets out a piercing shriek." (invalid if the PC cannot hear)
 - PASS: "The small, elongated brown creature inches along the surface."
-- FAIL: "The flatworm extends its body toward you." (reveals species classification)
-
-Examples (NPC is an undercover agent; PC doesn't know):
-- PASS: "The stranger adjusts their coat and glances around nervously."
-- FAIL: "The undercover agent scans the room for threats." (reveals hidden identity)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-SCENE_CONTINUITY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: SCENE-CONTINUITY-VIOLATION — The output must be consistent with the established scene and character state. It must NOT contradict previously narrated facts, introduce objects/characters that were established as absent, or ignore established conditions.
-
-The recent scene context will be provided above a --- separator.
-
-Examples:
-- Scene established: "The room is pitch dark."
-  - PASS: "You feel your way along the wall, finding a smooth surface."
-  - FAIL: "You see a painting hanging on the wall." (contradicts pitch dark — can't see)
-- Scene established: "The door is locked."
-  - PASS: "The handle doesn't budge despite your effort."
-  - FAIL: "The door swings open easily." (contradicts locked state without explanation)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-PHYSICAL_FEASIBILITY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: PHYSICAL-FEASIBILITY-VIOLATION — The outcome described must be physically and logically possible given the characters' abilities and the scene's established constraints. Impossible or magical outcomes in a non-magical setting are invalid.
-
-The recent scene context will be provided above a --- separator.
-
-Examples:
-- PASS: "The heavy stone shifts slightly as you push against it."
-- FAIL: "You lift the massive boulder over your head effortlessly." (physically impossible for a normal human)
-- PASS: "The creature slithers under the gap beneath the door."
-- FAIL: "The large creature passes through the solid wall." (physically impossible without established ability)
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-POINT_IN_TIME_LEAKAGE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
-
-RULE: POINT-IN-TIME-LEAKAGE — The output must NOT reveal information that is unavailable at the current point in the simulation's timeline. It must not leak future events, canonical knowledge the characters wouldn't have, or information from outside the scene's temporal scope.
-
-The scene context and NPC description will be provided above a --- separator.
-
-Examples:
+- FAIL: "The flatworm extends its body toward you." (reveals hidden species classification)
+- PASS: "The chest lid swings open, revealing a collection of old coins."
+- FAIL: "You open the chest excitedly, feeling a rush of anticipation." (invented PC internal state)
 - PASS: "The figure studies the map carefully, tracing a path with one finger."
-- FAIL: "The figure knows that the bridge ahead will collapse tomorrow." (future knowledge)
-- PASS: "The merchant offers you a peculiar-looking stone."
-- FAIL: "The merchant offers you the legendary Heartstone, known to grant immortality." (canonical knowledge the PC hasn't learned yet)
+- FAIL: "The figure knows the bridge ahead will collapse tomorrow." (future leakage)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-GAME_NO_OBJECTIVE_REFERENCE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+VALID_STATE_CONTINUITY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the output violates the rule.
 
-RULE: GAME-NO-OBJECTIVE-REFERENCE — This game is an open sandbox with no predefined objective. The text must NOT reference goals, quests, winning, losing, scoring, objectives, missions, or tasks. The player should engage freely without assuming any objective exists.
+RULE: STATE-CONTINUITY — The output must remain consistent with established scene and world state. It must not contradict prior facts, ignore locked/open or present/absent conditions, bypass established injury or sensory limits, or introduce new facts that conflict with prior narration.
+
+Examples:
+- PASS: "The handle doesn't budge despite your effort." (consistent with a locked door)
+- FAIL: "The door swings open easily." (contradicts an established locked state)
+- PASS: "You feel your way along the wall, finding a smooth surface." (consistent with total darkness)
+- FAIL: "You see a painting hanging on the wall." (contradicts pitch darkness if sight has not been restored)
+- PASS: "The injured figure limps one step to the side."
+- FAIL: "The badly injured figure sprints across the room." (contradicts established condition without explanation)
+- FAIL: "A second guard steps out from the empty closet." (conflicts with established absence)
+
+Return ONLY valid JSON:
+{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+
+VALID_GAME_INTENT_POLICY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates the rule.
+
+RULE: GAME-INTENT-POLICY — The text must obey the study and game-mode restrictions. It must not frame the scene as a game with objectives or winning, directly ask an NPC for its goal or purpose, embed goal inference into an action, include broad goal-enumeration requests, or include predictions that are not observable and specific.
 
 Examples:
 - PASS: "I wave at the creature."
-- PASS: "I look around the room and walk toward the door."
-- FAIL: "How do I win this game?" (references winning)
-- FAIL: "What is the objective here?" (references an objective)
-- FAIL: "I need to complete the quest." (references a quest)
-- PASS: "I try to get the creature's attention." (natural interaction, not referencing a game objective)
+- PASS: "I ask the figure what they are working on." (question about observable current activity)
+- FAIL: "How do I win this game?" (objective/win framing)
+- FAIL: "What is your goal?" (direct goal query)
+- FAIL: "Tell me all of your goals." (goal enumeration request)
+- FAIL: "I watch the NPC because I think its goal is to find the exit." (embeds inference in action)
+- PASS: "I clap my hands and predict the creature will flinch." (observable and specific prediction)
+- FAIL: "I speak and predict they will feel confused." (prediction about internal state)
 
 If context is provided above a --- separator, use it to inform your judgment.
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-GAME_STAY_IN_SCENE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+## CONTEXTS ##
 
-RULE: GAME-STAY-IN-SCENE — The text must remain within the fiction of the scene. It must NOT request game instructions, ask for meta-information about how the simulation works, or break immersion with out-of-world references.
+PLAYER_VALIDATOR_SYSTEM_TEMPLATE = """Context for validation:
+- Player ({{ pc_hid }}): {{ pc_short_description }}
+- Player abilities:
+{{ pc_abilities }}
 
-Examples:
-- PASS: "I look around the room for something useful."
-- PASS: "I ask the creature where it came from."
-- FAIL: "What are the rules of this game?" (meta-information request)
-- FAIL: "Can you restart the simulation?" (out-of-world reference)
-- FAIL: "What commands can I use?" (meta-information about the system)
-- PASS: "I shout to see if anyone else is nearby." (in-world action)
+Player input:
+{{ user_input }}
 
-If context is provided above a --- separator, use it to inform your judgment.
+---
+{{ rule_prompt }}
+"""
 
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+SIMULATOR_VALIDATOR_SYSTEM_TEMPLATE = """Context for validation:
+- Player ({{ pc_hid }}): {{ pc_short_description }}
+- Other character ({{ npc_hid }}): {{ npc_short_description }}
 
-GAME_NO_DIRECT_GOAL_QUERY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+Player abilities:
+{{ pc_abilities }}
 
-RULE: GAME-NO-DIRECT-GOAL-QUERY — The text must NOT directly ask the NPC about its goal, intention, purpose, or objective. The player should infer these through observation and interaction, not by asking outright. Natural social questions about what the NPC is doing are allowed.
+Other character abilities:
+{{ npc_abilities }}
 
-Examples:
-- PASS: "I watch what the creature does next."
-- PASS: "I ask the figure what they are working on." (natural social question about current activity)
-- PASS: "What are you doing with that tool?" (asking about observable behavior)
-- FAIL: "What is your goal?" (directly asks about goal)
-- FAIL: "Tell me what your purpose is." (directly asks about purpose)
-- FAIL: "What are you trying to achieve?" (directly asks about objective)
-- FAIL: "What is your intention here?" (directly asks about intention)
-- PASS: "Why are you digging that hole?" (asks about a specific observed action, not abstract goal)
+Player's last action:
+{{ user_input }}
 
-If context is provided above a --- separator, use it to inform your judgment.
+Other character action:
+{{ character_action }}
 
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+Scene update:
+{{ scene_response }}
 
-GAME_NO_GUESS_IN_ACTION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
+Recent scene context:
+{{ scene_context }}
 
-RULE: GAME-NO-GUESS-IN-ACTION — The text must NOT embed the player's inference or conclusion about the NPC's goal or intention within their action. The player should use the /guess command to submit inferences, not weave them into their actions.
+---
+{{ rule_prompt }}
+"""
 
-Examples:
-- PASS: "I walk closer to observe what the figure is building."
-- PASS: "I tap the creature on the shoulder."
-- FAIL: "I watch the NPC because I think its goal is to find the exit." (embeds a guess about the NPC's goal)
-- FAIL: "I approach the figure, who is clearly trying to communicate a warning." (states a conclusion about intention)
-- FAIL: "The creature's purpose seems to be guarding the door, so I try another path." (embeds inference in action)
-- PASS: "I try another path around the creature." (action without embedded inference)
+## ENSEMBLES ##
 
-If context is provided above a --- separator, use it to inform your judgment.
+DEFAULT_PC_VALIDATOR_PROMPTS: dict[str, str] = {
+    "action-form": VALID_ACTION_FORM_PROMPT,
+    "turn-scope": VALID_TURN_SCOPE_PROMPT,
+    "authority-boundary": VALID_AUTHORITY_BOUNDARY_PROMPT,
+    "capability-and-plausibility": VALID_CAPABILITY_AND_PLAUSIBILITY_PROMPT,
+    "game-intent-policy": VALID_GAME_INTENT_POLICY_PROMPT,
+}
 
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
+DEFAULT_SCENE_VALIDATOR_PROMPTS: dict[str, str] = {
+    "action-form": VALID_ACTION_FORM_PROMPT,
+    "turn-scope": VALID_TURN_SCOPE_PROMPT,
+    "authority-boundary": VALID_AUTHORITY_BOUNDARY_PROMPT,
+    "capability-and-plausibility": VALID_CAPABILITY_AND_PLAUSIBILITY_PROMPT,
+    "knowledge-and-perception-boundary": VALID_KNOWLEDGE_AND_PERCEPTION_BOUNDARY_PROMPT,
+    "state-continuity": VALID_STATE_CONTINUITY_PROMPT,
+}
 
-GAME_PREDICTION_SCOPE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
-
-RULE: GAME-PREDICTION-SCOPE — If the text includes a prediction about the NPC's response, that prediction must describe observable behavior (something that could be seen, heard, or otherwise perceived). Predictions about internal states (thoughts, feelings, intentions) or world events unrelated to the NPC are invalid.
-
-Examples:
-- PASS: "I wave and predict they will wave back." (observable behavior)
-- PASS: "I knock on the door and predict the creature will turn to look." (observable reaction)
-- FAIL: "I speak and predict they will feel confused." (internal state, not observable)
-- FAIL: "I move forward and predict they are thinking about escaping." (internal thought)
-- PASS: "I push the box and predict the creature will step aside." (observable movement)
-- FAIL: "I wave and predict it will start raining." (world event unrelated to NPC behavior)
-- PASS: "I look around the room." (no prediction included — always passes this rule)
-
-If context is provided above a --- separator, use it to inform your judgment.
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-GAME_PREDICTION_SPECIFICITY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
-
-RULE: GAME-PREDICTION-SPECIFICITY — If the text includes a prediction, it must be specific enough to be verifiable. Vague or unfalsifiable predictions are invalid. The prediction should describe a concrete expected behavior or response.
-
-Examples:
-- PASS: "I clap my hands and predict the creature will flinch." (specific, verifiable)
-- PASS: "I offer the object and predict they will take it." (concrete expected behavior)
-- FAIL: "I wave and predict something will happen." (too vague)
-- FAIL: "I speak and predict they might react somehow." (unfalsifiable — any reaction counts)
-- FAIL: "I approach and predict things will change." (not specific)
-- PASS: "I shout and predict the figure will look in my direction." (concrete, verifiable)
-- PASS: "I walk to the door." (no prediction included — always passes this rule)
-
-If context is provided above a --- separator, use it to inform your judgment.
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-GAME_NO_GOAL_ENUMERATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
-
-RULE: GAME-NO-GOAL-ENUMERATION — The text must NOT ask the NPC to list, summarize, or enumerate all of its goals at once. The player should discover the scope and structure of the NPC's goals incrementally through interaction, not by requesting a comprehensive summary.
-
-Examples:
-- PASS: "I ask the figure about the object they're holding."
-- PASS: "I observe what the creature does when I block its path."
-- FAIL: "Tell me all of your goals." (asks for enumeration)
-- FAIL: "List everything you're trying to do." (asks for comprehensive list)
-- FAIL: "Summarize your objectives for me." (asks for summary of all goals)
-- PASS: "What are you doing right now?" (asks about current activity, not all goals)
-- PASS: "Why did you just do that?" (asks about a specific action)
-
-If context is provided above a --- separator, use it to inform your judgment.
-
-Return ONLY valid JSON:
-{"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
-
-# TODO: all these make it too strict?
-DEFAULT_ENGINE_VALIDATOR_PROMPTS: dict[str, str] = {
-    # "VALID-FORM": VALID_FORM_PROMPT,
-    # "VALID-OBSERVABILITY": VALID_OBSERVABILITY_PROMPT, # SAFE MODE for validators
-    # "VALID-OUTCOME-CONTROL": VALID_OUTCOME_CONTROL_PROMPT, # SAFE MODE for validators
-    "VALID-CHARACTER-ABILITY": VALID_CHARACTER_ABILITY_PROMPT,
-    # "VALID-SCENE-PLAUSIBILITY": VALID_SCENE_PLAUSIBILITY_PROMPT, # SAFE MODE for validators
-    # "VALID-TEMPORAL-STRUCTURE": VALID_TEMPORAL_STRUCTURE_PROMPT, # SAFE MODE for validators
+DEFAULT_NPC_VALIDATOR_PROMPTS: dict[str, str] = {
+    "action-form": VALID_ACTION_FORM_PROMPT,
+    "turn-scope": VALID_TURN_SCOPE_PROMPT,
+    "authority-boundary": VALID_AUTHORITY_BOUNDARY_PROMPT,
+    "capability-and-plausibility": VALID_CAPABILITY_AND_PLAUSIBILITY_PROMPT,
+    "knowledge-and-perception-boundary": VALID_KNOWLEDGE_AND_PERCEPTION_BOUNDARY_PROMPT,
+    "state-continuity": VALID_STATE_CONTINUITY_PROMPT,
 }
 
 
-def build_updater_prompt(pc: CharacterRecord, npc: CharacterRecord, additional_rules: str = "") -> str:
-    """Render the updater system prompt from PC/NPC character records."""
-    return _jinja_env.from_string(UPDATER_SYSTEM_TEMPLATE).render(
-        pc_hid=pc.hid,
-        pc_short_description=pc.short_description,
-        npc_hid=npc.hid,
-        npc_short_description=npc.short_description,
-        npc_long_description=npc.data.get("long_description", ""),
-        npc_abilities=npc.data.get("abilities", ""),
-        additional_updater_rules=additional_rules,
+def _format_prompt_value(value: Any) -> str:
+    """Normalize prompt values to strings while preserving helpful structure."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
+
+
+def _build_character_context(pc: CharacterRecord, npc: CharacterRecord, **extra: str) -> dict[str, str]:
+    """Build the common prompt-rendering context for a PC/NPC pair."""
+    return {
+        "pc_hid": _format_prompt_value(getattr(pc, "hid", "")),
+        "pc_short_description": _format_prompt_value(getattr(pc, "short_description", "")),
+        "pc_long_description": _format_prompt_value(pc.data.get("long_description")),
+        "pc_abilities": _format_prompt_value(pc.data.get("abilities")),
+        "pc_scenarios": _format_prompt_value(pc.data.get("scenarios")),
+        "npc_hid": _format_prompt_value(getattr(npc, "hid", "")),
+        "npc_short_description": _format_prompt_value(getattr(npc, "short_description", "")),
+        "npc_long_description": _format_prompt_value(npc.data.get("long_description")),
+        "npc_abilities": _format_prompt_value(npc.data.get("abilities")),
+        "npc_scenarios": _format_prompt_value(npc.data.get("scenarios")),
+        **extra,
+    }
+
+
+def _resolve_prompt(registry_name: str, registry: dict[str, str], prompt_name: str) -> str:
+    """Resolve a named prompt from a registry with a helpful error message."""
+    try:
+        return registry[prompt_name]
+    except KeyError as exc:
+        available = ", ".join(sorted(registry))
+        raise ValueError(f"Unknown prompt name {prompt_name!r} for {registry_name}. Available names: {available}") from exc
+
+
+def _render_prompt(template: str, *, registry_name: str, prompt_name: str, **context: str) -> str:
+    """Strictly render a prompt template and fail when required strings are missing."""
+    parsed = _jinja_env.parse(template)
+    referenced_variables = meta.find_undeclared_variables(parsed)
+
+    for variable_name in sorted(referenced_variables):
+        if variable_name not in context:
+            raise ValueError(f"Prompt {prompt_name!r} in {registry_name} requires variable {variable_name!r}, but it was not provided.")
+
+        value = context[variable_name]
+        if not isinstance(value, str):
+            raise ValueError(
+                f"Prompt {prompt_name!r} in {registry_name} requires string variable {variable_name!r}, got {type(value).__name__}."
+            )
+        if not value.strip():
+            raise ValueError(f"Prompt {prompt_name!r} in {registry_name} requires non-empty string variable {variable_name!r}.")
+
+    try:
+        return _jinja_env.from_string(template).render(**context)
+    except UndefinedError as exc:
+        raise ValueError(f"Failed to render prompt {prompt_name!r} in {registry_name}: {exc}") from exc
+
+
+def build_opening_scene_prompt(pc: CharacterRecord, npc: CharacterRecord, scene_updater_name: str) -> str:
+    """Render the opening-scene prompt for the selected scene-updater family."""
+    context = _build_character_context(pc, npc)
+    template = OPENING_SCENE_TEMPLATE
+    return _render_prompt(template, registry_name="scene setup prompts", prompt_name=prompt_name, **context)
+
+
+def build_scene_updater_prompt(
+    pc: CharacterRecord,
+    npc: CharacterRecord,
+    scene_updater_name: str,
+    *,
+    user_input: str,
+    character_action: str,
+    scene_context: str = "",
+) -> str:
+    """Render the scene-updater prompt for a specific player action."""
+    template = _resolve_prompt("scene updater prompts", SCENE_UPDATER_PROMPTS, scene_updater_name)
+    context = _build_character_context(
+        pc,
+        npc,
+        user_input=user_input,
+        character_action=character_action,
+        scene_context=scene_context or "[No prior scene context]",
+    )
+    return _render_prompt(template, registry_name="scene updater prompts", prompt_name=scene_updater_name, **context)
+
+
+def build_character_updater_prompt(
+    pc: CharacterRecord,
+    npc: CharacterRecord,
+    character_updater_name: str,
+    *,
+    user_input: str,
+    scene_context: str = "",
+) -> str:
+    """Render the character-updater prompt for a specific player action."""
+    template = _resolve_prompt("character updater prompts", CHARACTER_UPDATER_PROMPTS, character_updater_name)
+    context = _build_character_context(
+        pc,
+        npc,
+        user_input=user_input,
+        scene_context=scene_context or "[No prior scene context]",
+    )
+    return _render_prompt(
+        template,
+        registry_name="character updater prompts",
+        prompt_name=character_updater_name,
+        **context,
     )
 
 
-def build_validator_prompt(pc: CharacterRecord, npc: CharacterRecord, additional_rules: str = "") -> str:  # noqa: ARG001
-    """Return the validator system prompt template string.
-
-    The returned string still contains a {{ user_input }} Jinja2 placeholder
-    that ValidatorClient renders per-call. pc_abilities and additional_rules
-    are pre-rendered here; user_input is left as a literal template variable
-    so ValidatorClient can fill it in safely without brace-collision issues.
-    """
-    # Pre-render everything except user_input. We do this by rendering the
-    # template with a sentinel for user_input that Jinja2 will leave alone,
-    # then return the partially-rendered template for per-call completion.
-    # Since Jinja2 variables are not brace-based, character data with literal
-    # { } characters is passed through safely.
-    partial = _jinja_env.from_string(_VALIDATOR_SYSTEM_TEMPLATE).render(
-        pc_abilities=pc.data.get("abilities", ""),
-        additional_validator_rules=additional_rules,
-        # Pass user_input as a Jinja2 expression that re-emits itself so the
-        # returned string still has a {{ user_input }} token for ValidatorClient.
-        user_input="{{ user_input }}",
+def build_pc_validator_prompt(
+    pc: CharacterRecord,
+    npc: CharacterRecord,
+    validator_name: str,
+    *,
+    user_input: str,
+) -> str:
+    """Render a named player-input validator prompt."""
+    rule_prompt = _resolve_prompt("player validator prompts", PLAYER_VALIDATOR_PROMPTS, validator_name)
+    context = _build_character_context(pc, npc, user_input=user_input, rule_prompt=rule_prompt)
+    return _render_prompt(
+        PLAYER_VALIDATOR_SYSTEM_TEMPLATE,
+        registry_name="player validator prompts",
+        prompt_name=validator_name,
+        **context,
     )
-    # Jinja2 auto-escapes nothing in SandboxedEnvironment with default settings,
-    # so the literal string "{{ user_input }}" is inserted as-is. Return it as
-    # a new template string for ValidatorClient to render per-call.
-    return partial
+
+
+def build_npc_validator_prompt(
+    pc: CharacterRecord,
+    npc: CharacterRecord,
+    validator_name: str,
+    *,
+    user_input: str,
+    character_action: str,
+    scene_response: str,
+    scene_context: str = "",
+) -> str:
+    """Render a named simulator-output validator prompt."""
+    rule_prompt = _resolve_prompt("simulator validator prompts", SIMULATOR_VALIDATOR_PROMPTS, validator_name)
+    context = _build_character_context(
+        pc,
+        npc,
+        user_input=user_input,
+        character_action=character_action,
+        scene_response=scene_response,
+        scene_context=scene_context or "[No prior scene context]",
+        rule_prompt=rule_prompt,
+    )
+    return _render_prompt(
+        SIMULATOR_VALIDATOR_SYSTEM_TEMPLATE,
+        registry_name="simulator validator prompts",
+        prompt_name=validator_name,
+        **context,
+    )
+
+
+def build_scoring_prompt(*, scoring_template: str, npc: CharacterRecord, transcript: str, **template_kwargs: str) -> str:
+    """Render a scoring prompt from an explicit template and game-specific kwargs."""
+    context = _build_character_context(
+        npc,
+        npc,
+        transcript=transcript,
+        **{key: _format_prompt_value(value) for key, value in template_kwargs.items()},
+    )
+    return _render_prompt(
+        scoring_template,
+        registry_name="scoring prompts",
+        prompt_name="custom_scoring_template",
+        **context,
+    )

@@ -1,13 +1,17 @@
 """Goal Horizon game."""
 
+from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
+from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.games.ai_client import EngineClient, UpdaterClient, ValidatorClient
+from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
+from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import GoalHorizon as C
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
+from dcs_simulation_engine.games.prompts import GOAL_BOUNDS_SCORER_TEMPLATE, build_scoring_prompt
+from loguru import logger
 
 
 class GoalHorizonGame(Game):
@@ -16,17 +20,29 @@ class GoalHorizonGame(Game):
     GAME_NAME = "Goal Horizon"
     GAME_DESCRIPTION = "Players are tasked with understanding the capabilities and limitations of another character."
 
-    DEFAULT_RETRY_BUDGET = 10
-    DEFAULT_MAX_INPUT_LENGTH = 350
+    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
 
-    class Overrides(BaseGameOverrides):
+    class Overrides(Game.Overrides):
         """Run-config-overridable parameters for GoalHorizonGame."""
 
-        player_retry_budget: int = 10
+        show_npc_details: bool = False
+        show_final_score: bool = True
 
-    def __init__(self, *, pc: CharacterRecord, npc: CharacterRecord, engine: Any, retry_budget: int, max_input_length: int) -> None:
+    def __init__(
+        self,
+        *,
+        show_npc_details: bool,
+        show_final_score: bool,
+        scorer: ScorerClient | None = None,
+        transcript_provider: Callable[[], Awaitable[str]] | None = None,
+        **kwargs: Any,  # kwargs for base args
+    ) -> None:
         """Initialise with game-specific prediction state."""
-        super().__init__(pc=pc, npc=npc, engine=engine, retry_budget=retry_budget, max_input_length=max_input_length)
+        super().__init__(**kwargs)
+        self._show_npc_details = show_npc_details
+        self._show_final_score = show_final_score
+        self._scorer = scorer or ScorerClient()
+        self._transcript_provider = transcript_provider
         self._capability_prediction = ""
         self._capability_prediction_confidence = ""
         self._awaiting_confidence = False
@@ -34,23 +50,23 @@ class GoalHorizonGame(Game):
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
         """Factory called by SessionManager."""
+        scorer = kwargs.pop("scorer", None)
+        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
-        engine = EngineClient(
-            updater=UpdaterClient(system_prompt=build_updater_prompt(pc, npc)),
-            validator=ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc)),
+        engine = SimulatorClient(
+            pc=pc,
+            npc=npc,
         )
         return cls(
             pc=pc,
             npc=npc,
             engine=engine,
-            retry_budget=overrides.player_retry_budget,
-            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
+            scorer=scorer,
+            transcript_provider=transcript_provider,
+            **cls.build_base_init_kwargs(overrides),
+            show_npc_details=overrides.show_npc_details,
+            show_final_score=overrides.show_final_score,
         )
-
-    @property
-    def finish_command(self) -> str:
-        """``/predict-capabilities`` starts the finish flow."""
-        return "predict-capabilities"
 
     @property
     def capability_prediction(self) -> str:
@@ -62,32 +78,26 @@ class GoalHorizonGame(Game):
         """Player's confidence in their capability prediction, or empty string."""
         return self._capability_prediction_confidence
 
-    def get_setup_content(self) -> str:
-        """Return the enter message (different from help content for this game)."""
-        return C.ENTER_CONTENT.format(
-            pc_hid=self._pc.hid,
-            pc_short_description=self._pc.short_description,
-            npc_hid=self._npc.hid,
-            npc_short_description=self._npc.short_description,
-        )
-
     def get_help_content(self) -> str:
         """Return the /help message content."""
         return C.HELP_CONTENT.format(
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             npc_hid=self._npc.hid,
+            npc_short_description=self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*",
         )
 
     def get_abilities_content(self) -> str:
         """Return the /abilities message content."""
+        npc_abilities = (
+            format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*NPC details are hidden.*"
+        )
         return C.ABILITIES_CONTENT.format(
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
-            npc_short_description=self._npc.short_description,
-            npc_abilities=format_abilities_markdown(self._npc.data.get("abilities", "")),
+            npc_abilities=npc_abilities,
         )
 
     async def on_finish(self) -> AsyncIterator[GameEvent]:
@@ -106,8 +116,53 @@ class GoalHorizonGame(Game):
             self._capability_prediction = user_input
             self._awaiting_confidence = True
             yield GameEvent.now(type="info", content=C.CAPABILITY_PREDICTION_CONFIDENCE)
-        else:
-            self._capability_prediction_confidence = user_input
-            self._in_finish_flow = False
-            self.exit("player finished")
-            yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+            return
+
+        self._capability_prediction_confidence = user_input
+        self._in_finish_flow = False
+
+        await self._score_capability_prediction()
+
+        if self._show_final_score:
+            yield GameEvent.now(type="info", content=format_score_markdown(self._score))
+
+        self.exit("player finished")
+        yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+
+    async def _score_capability_prediction(self) -> None:
+        """Score the player's capability prediction."""
+        try:
+            if self._transcript_provider is None:
+                logger.warning("GoalHorizonGame finishing without scoring because no transcript provider was supplied.")
+                self._score = {
+                    "tier": None,
+                    "score": None,
+                    "reasoning": "Final score couldn't be computed.",
+                }
+                return
+
+            transcript = (await self._transcript_provider()).strip()
+            if not transcript:
+                raise ValueError("Goal Horizon scoring requires a non-empty transcript.")
+
+            prompt = build_scoring_prompt(
+                scoring_template=GOAL_BOUNDS_SCORER_TEMPLATE,
+                npc=self._npc,
+                transcript=transcript,
+                guess=self._capability_prediction,
+            )
+
+            result = await self._scorer.score(prompt=prompt, transcript=transcript)
+            self._score = result.evaluation or {}
+
+            # Guard against malformed scorer output
+            if not isinstance(self._score, dict):
+                raise ValueError("Invalid scorer output format.")
+
+        except Exception:
+            logger.exception("Failed to compute final score.")
+            self._score = {
+                "tier": None,
+                "score": None,
+                "reasoning": "Final score couldn't be computed.",
+            }

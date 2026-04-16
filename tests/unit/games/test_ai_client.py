@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from dcs_simulation_engine.games import ai_client
+from dcs_simulation_engine.games.ai_client import _extract_response_metadata
 
 
 @pytest.mark.unit
@@ -99,3 +100,17 @@ def test_validate_openrouter_configuration_allows_fake_mode(
         ai_client.validate_openrouter_configuration()
     finally:
         ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_extract_response_metadata_prefers_metadata_object() -> None:
+    payload = {"type": "ai", "content": "scene", "metadata": {"shared_goal": "to repair the door"}, "shared_goal": "legacy"}
+
+    assert _extract_response_metadata(payload) == {"shared_goal": "to repair the door"}
+
+
+@pytest.mark.unit
+def test_extract_response_metadata_falls_back_to_extra_top_level_keys() -> None:
+    payload = {"type": "ai", "content": "scene", "shared_goal": "to repair the door"}
+
+    assert _extract_response_metadata(payload) == {"shared_goal": "to repair the door"}

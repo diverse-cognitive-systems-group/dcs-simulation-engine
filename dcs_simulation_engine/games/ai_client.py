@@ -1,15 +1,10 @@
-"""Async AI client for new-style games.
-
-Provides two client types:
-- UpdaterClient: stateful, maintains conversation history for multi-turn chat.
-- ValidatorClient: stateless, sends only the system prompt + current action each call.
-
-Both call OpenRouter's OpenAI-compatible chat completions endpoint.
-"""
+"""Async AI client."""
 # ruff: noqa: E501  — prompt strings are intentionally long prose
 
+import asyncio
 import json
 import os
+from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 import httpx
@@ -17,14 +12,26 @@ from dcs_simulation_engine.core.constants import (
     OPENROUTER_BASE_URL,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.games.prompts import (
+    CHARACTER_UPDATER_SYSTEM_TEMPLATE,
+    DEFAULT_NPC_VALIDATOR_PROMPTS,
+    DEFAULT_PC_VALIDATOR_PROMPTS,
+    DEFAULT_SCENE_VALIDATOR_PROMPTS,
+    OPENING_SCENE_TEMPLATE,
+    PLAYER_VALIDATOR_SYSTEM_TEMPLATE,
+    SCENE_UPDATER_TEMPLATE,
+    SIMULATOR_VALIDATOR_SYSTEM_TEMPLATE,
+)
 from jinja2.sandbox import SandboxedEnvironment
 from loguru import logger
 
 DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
+_PROMPT_ENV = SandboxedEnvironment()
 
 
+# TODO: I don't get why this fake_ai_response is here....why not in testing?
 def set_fake_ai_response(value: str | None) -> None:
     """Set a process-local override returned by _call_openrouter when configured."""
     global _FAKE_AI_RESPONSE
@@ -92,7 +99,23 @@ def _strip_json_fences(raw: str) -> str:
     return text
 
 
-def _normalize_inference_evaluation(parsed: dict[str, Any]) -> dict[str, Any]:
+def _extract_response_metadata(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Return normalized metadata from a simulator payload.
+
+    The preferred response shape puts optional structured data under a
+    dedicated ``metadata`` object. For backwards compatibility, if that key is
+    absent, any additional top-level keys are treated as metadata.
+    """
+    metadata = parsed.get("metadata")
+    if isinstance(metadata, dict):
+        return metadata
+
+    reserved_keys = {"type", "content", "metadata"}
+    extras = {key: value for key, value in parsed.items() if key not in reserved_keys}
+    return extras if extras else {}
+
+
+def _normalize_evaluation(parsed: dict[str, Any]) -> dict[str, Any]:
     """Validate and normalize the scorer payload into a stable dict shape."""
     try:
         tier = int(parsed["tier"])
@@ -102,11 +125,11 @@ def _normalize_inference_evaluation(parsed: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"Invalid inference evaluation payload: {parsed!r}") from exc
 
     if tier < 0 or tier > 3:
-        raise ValueError(f"Inference evaluation tier must be between 0 and 3; got {tier!r}")
+        raise ValueError(f"Evaluation tier must be between 0 and 3; got {tier!r}")
     if score < 0 or score > 100:
-        raise ValueError(f"Inference evaluation score must be between 0 and 100; got {score!r}")
+        raise ValueError(f"Evaluation score must be between 0 and 100; got {score!r}")
     if not reasoning.strip():
-        raise ValueError("Inference evaluation reasoning must be non-empty.")
+        raise ValueError("Evaluation reasoning must be non-empty.")
 
     return {
         "tier": tier,
@@ -115,139 +138,493 @@ def _normalize_inference_evaluation(parsed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-_INFERENCE_SCORER_TEMPLATE = """
-You are an expert evaluator for a social cognition research study.
-
-A player interacted with a simulated character and then guessed the character's goal or intention.
-Your job is to score how accurately the player identified the character's goal.
-
-## NPC Character Profile
-{{ npc_long_description }}
-
-Abilities:
-{{ npc_abilities }}
-
-## Interaction Transcript
-{{ transcript }}
-
-## Player's Guess
-{{ guess }}
-
-## Scoring Rubric
-- Tier 0 (0-24): Completely incorrect - the guess bears no meaningful resemblance to the character's actual behavior or goal
-- Tier 1 (25-49): Weak resemblance - some superficial overlap but fundamentally misses the goal
-- Tier 2 (50-74): Partial understanding - captures key aspects but incomplete or imprecise
-- Tier 3 (75-100): Nearly or fully correct - accurately identifies the goal with appropriate nuance
-
-## Instructions
-1. Based on the NPC character profile and the transcript, identify the most plausible goal or intention driving the NPC's behavior.
-2. Compare the player's guess to that goal.
-3. Select a tier (0-3) and assign a specific score within that tier's range.
-4. Briefly explain your reasoning.
-
-Return only valid JSON with no extra text:
-{
-    "tier": <int 0-3>,
-    "score": <int 0-100>,
-    "reasoning": <str>
-}
-"""
+def _format_prompt_value(value: Any) -> str:
+    """Normalize prompt values to strings while preserving simple list structure."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
 
 
-class UpdaterClient:
-    """Stateful async client for the scene-advancing (updater) LLM.
+def _build_character_context(pc: CharacterRecord, npc: CharacterRecord, **extra: Any) -> dict[str, str]:
+    """Build the common prompt-rendering context for a PC/NPC pair."""
+    context: dict[str, Any] = {
+        "pc_hid": getattr(pc, "hid", ""),
+        "pc_short_description": getattr(pc, "short_description", ""),
+        "pc_long_description": pc.data.get("long_description", ""),
+        "pc_abilities": pc.data.get("abilities", ""),
+        "pc_scenarios": pc.data.get("scenarios", ""),
+        "npc_hid": getattr(npc, "hid", ""),
+        "npc_short_description": getattr(npc, "short_description", ""),
+        "npc_long_description": npc.data.get("long_description", ""),
+        "npc_abilities": npc.data.get("abilities", ""),
+        "npc_scenarios": npc.data.get("scenarios", ""),
+        **extra,
+    }
+    return {key: _format_prompt_value(value) for key, value in context.items()}
 
-    Maintains the full conversation history so the model has context for each
-    new turn. The system prompt is injected once at the start of each history.
-    """
 
-    def __init__(self, system_prompt: str, model: str = DEFAULT_MODEL) -> None:
-        """Initialise with a system prompt and model identifier."""
-        self._system_prompt = system_prompt
-        self._model = model
-        self._history: list[dict[str, str]] = []
+def _render_prompt(template: str, **context: Any) -> str:
+    """Render a prompt template with normalized string context."""
+    return _PROMPT_ENV.from_string(template).render(**{key: _format_prompt_value(value) for key, value in context.items()})
+
+
+@dataclass(frozen=True)
+class SimulatorValidationFailure:
+    """Normalized validation failure detail for a specific stage and validator."""
+
+    stage: str
+    validator_name: str
+    message: str
+    raw_result: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class SimulatorComponentResult:
+    """Generation and validation metadata for one simulator output component."""
+
+    name: str
+    content: str
+    ok: bool
+    metadata: dict[str, Any] = field(default_factory=dict)
+    retries_used: int = 0
+    validation_failures: list[SimulatorValidationFailure] = field(default_factory=list)
+    raw_response: str = ""
+
+
+@dataclass(frozen=True)
+class SimulatorTurnResult:
+    """Structured result for one attempted simulator turn."""
+
+    ok: bool
+    error_message: str | None = None
+    scene_response: str = ""
+    character_action: str = ""
+    pc_validation_failures: list[SimulatorValidationFailure] = field(default_factory=list)
+    scene_result: SimulatorComponentResult | None = None
+    npc_result: SimulatorComponentResult | None = None
+
+
+class ParsedSimulatorResponse(NamedTuple):
+    """Normalized model response with primary content plus optional metadata."""
+
+    type: str
+    content: str
+    metadata: dict[str, Any]
+    raw_response: str
+
+
+class SimulatorClient:
+    """Thin orchestrator around configurable validation and scene/NPC advancement."""
+
+    DEFAULT_PC_VALIDATOR_NAMES = list(DEFAULT_PC_VALIDATOR_PROMPTS.keys())
+    DEFAULT_SCENE_VALIDATOR_NAMES = list(DEFAULT_SCENE_VALIDATOR_PROMPTS.keys())
+    DEFAULT_NPC_VALIDATOR_NAMES = list(DEFAULT_NPC_VALIDATOR_PROMPTS.keys())
+
+    def __init__(
+        self,
+        *,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        pc_validator_names: list[str] | None = None,
+        scene_validator_names: list[str] | None = None,
+        npc_validator_names: list[str] | None = None,
+        opening_scene_template: str | None = None,
+        scene_updater_template: str | None = None,
+        npc_updater_template: str | None = None,
+        opening_scene_model: str = DEFAULT_MODEL,
+        scene_updater_model: str = DEFAULT_MODEL,
+        npc_updater_model: str = DEFAULT_MODEL,
+        validator_model: str = DEFAULT_MODEL,
+    ) -> None:
+        self._pc = pc
+        self._npc = npc
+        self._history: list[str] = []
+        self._scene_context_events: list[str] = []
+
+        self._pc_validator_names = list(pc_validator_names) if pc_validator_names is not None else list(self.DEFAULT_PC_VALIDATOR_NAMES)
+        self._scene_validator_names = (
+            list(scene_validator_names) if scene_validator_names is not None else list(self.DEFAULT_SCENE_VALIDATOR_NAMES)
+        )
+        self._npc_validator_names = list(npc_validator_names) if npc_validator_names is not None else list(self.DEFAULT_NPC_VALIDATOR_NAMES)
+
+        self._ensure_known_names(self._pc_validator_names, DEFAULT_PC_VALIDATOR_PROMPTS, "pc validators")
+        self._ensure_known_names(self._scene_validator_names, DEFAULT_SCENE_VALIDATOR_PROMPTS, "scene validators")
+        self._ensure_known_names(self._npc_validator_names, DEFAULT_NPC_VALIDATOR_PROMPTS, "npc validators")
+
+        self._opening_scene_template = opening_scene_template or OPENING_SCENE_TEMPLATE
+        self._scene_updater_template = scene_updater_template or SCENE_UPDATER_TEMPLATE
+        self._npc_updater_template = npc_updater_template or CHARACTER_UPDATER_SYSTEM_TEMPLATE
+
+        self._opening_scene_model = opening_scene_model
+        self._scene_updater_model = scene_updater_model
+        self._npc_updater_model = npc_updater_model
+        self._validator_model = validator_model
+
+    @staticmethod
+    def _ensure_known_names(names: list[str], registry: dict[str, str], label: str) -> None:
+        """Validate configured prompt-name selections early with a helpful error."""
+        unknown = sorted(name for name in names if name not in registry)
+        if unknown:
+            available = ", ".join(sorted(registry))
+            raise ValueError(f"Unknown {label}: {', '.join(unknown)}. Available names: {available}")
 
     @property
-    def history(self) -> list[dict[str, str]]:
-        """Read-only copy of the conversation history."""
-        return list(self._history)
+    def scene_opener_model(self) -> str:
+        """Return the scene-opener model identifier for metadata recording."""
+        return self._opening_scene_model
 
-    def reset(self) -> None:
-        """Clear conversation history (e.g. on game reset)."""
-        self._history = []
+    @property
+    def scene_updater_model(self) -> str:
+        """Return the scene-updater model identifier for metadata recording."""
+        return self._scene_updater_model
 
-    async def chat(self, user_input: str | None) -> str:
-        """Send the user's action and return the NPC's response content string."""
-        # On the very first call (no history, no input), prompt the model to open the scene.
-        content = user_input or "Begin."
-        self._history.append({"role": "user", "content": content})
+    @property
+    def npc_updater_model(self) -> str:
+        """Return the NPC-updater model identifier for metadata recording."""
+        return self._npc_updater_model
 
-        messages = [{"role": "system", "content": self._system_prompt}] + self._history
-        raw = await _call_openrouter(messages, self._model)
+    @property
+    def validator_model(self) -> str:
+        """Return the validator model identifier for metadata recording."""
+        return self._validator_model
 
-        # Parse the JSON wrapper the updater prompt requests.
+    @property
+    def pc_validator_names(self) -> list[str]:
+        """Configured PC validator names for this simulator instance."""
+        return list(self._pc_validator_names)
+
+    @property
+    def scene_validator_names(self) -> list[str]:
+        """Configured scene validator names for this simulator instance."""
+        return list(self._scene_validator_names)
+
+    @property
+    def npc_validator_names(self) -> list[str]:
+        """Configured NPC validator names for this simulator instance."""
+        return list(self._npc_validator_names)
+
+    def _scene_context(self) -> str:
+        if not self._scene_context_events:
+            return "[No prior scene context]"
+        return "\n".join(self._scene_context_events[-12:])
+
+    def _prompt_context(self, **extra: Any) -> dict[str, str]:
+        """Build the render context used by simulator prompt templates."""
+        return _build_character_context(self._pc, self._npc, **extra)
+
+    async def _call_json_prompt(self, *, system_prompt: str, user_input: str | None, model: str) -> ParsedSimulatorResponse:
+        """Execute a prompt and return normalized content plus optional metadata."""
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input or "Begin."}]
+        raw = await _call_openrouter(messages, model)
         parsed = _parse_json_response(raw)
-        reply = parsed.get("content", raw)
+        return ParsedSimulatorResponse(
+            type=str(parsed.get("type", "ai")),
+            content=str(parsed.get("content", raw)),
+            metadata=_extract_response_metadata(parsed),
+            raw_response=raw,
+        )
 
-        self._history.append({"role": "assistant", "content": reply})
-        logger.debug(f"UpdaterClient reply ({len(reply)} chars)")
-        return reply
+    def _build_opening_scene_prompt(self) -> str:
+        """Render the configured opening-scene template."""
+        return _render_prompt(self._opening_scene_template, **self._prompt_context())
 
+    def _build_npc_prompt(self, *, user_input: str) -> str:
+        """Render the configured NPC updater prompt."""
+        return _render_prompt(
+            self._npc_updater_template,
+            **self._prompt_context(
+                user_input=user_input,
+                scene_context=self._scene_context(),
+                character_action="",
+            ),
+        )
 
-class ValidatorClient:
-    """Stateless async client for the input-validation LLM.
+    def _build_scene_prompt(self, *, user_input: str, character_action: str = "") -> str:
+        """Render the configured scene updater prompt."""
+        return _render_prompt(
+            self._scene_updater_template,
+            **self._prompt_context(
+                user_input=user_input,
+                scene_context=self._scene_context(),
+                character_action=character_action,
+            ),
+        )
 
-    Sends a fresh context each call: just the pre-rendered system prompt
-    (which already includes pc abilities) plus the user's proposed action.
-    No history is maintained between calls.
-    """
+    def _build_pc_validator_prompt(self, *, validator_name: str, user_input: str) -> str:
+        """Render one named player-input validator prompt."""
+        return _render_prompt(
+            PLAYER_VALIDATOR_SYSTEM_TEMPLATE,
+            **self._prompt_context(
+                user_input=user_input,
+                rule_prompt=DEFAULT_PC_VALIDATOR_PROMPTS[validator_name],
+            ),
+        )
 
-    def __init__(self, system_prompt_template: str, model: str = DEFAULT_MODEL) -> None:
-        """Initialise with the Jinja2 template string from build_validator_prompt()."""
-        # The template has a {{ user_input }} placeholder filled per-call via Jinja2.
-        # Character data with literal { } braces is safe because Jinja2 only
-        # expands {{ var }} syntax, not arbitrary brace sequences.
-        self._system_prompt_template = system_prompt_template
-        self._model = model
+    def _build_component_validator_prompt(
+        self,
+        *,
+        validator_name: str,
+        target: str,
+        user_input: str,
+        character_action: str,
+        scene_response: str,
+    ) -> str:
+        """Render one named simulator-output validator prompt focused on one component."""
+        registry = DEFAULT_NPC_VALIDATOR_PROMPTS if target == "npc" else DEFAULT_SCENE_VALIDATOR_PROMPTS
+        target_instruction = (
+            "Validation target: NPC action only. Treat the scene update as supporting context only.\n\n"
+            if target == "npc"
+            else "Validation target: scene update only. Treat the other character action as supporting context only.\n\n"
+        )
+        return _render_prompt(
+            SIMULATOR_VALIDATOR_SYSTEM_TEMPLATE,
+            **self._prompt_context(
+                user_input=user_input,
+                character_action=character_action,
+                scene_response=scene_response,
+                scene_context=self._scene_context(),
+                rule_prompt=target_instruction + registry[validator_name],
+            ),
+        )
 
-    async def validate(self, user_input: str) -> dict[str, Any]:
-        """Validate a user action. Returns {"type": "info"|"error", "content": str}."""
-        system_prompt = SandboxedEnvironment().from_string(self._system_prompt_template).render(user_input=user_input)
-        messages = [{"role": "system", "content": system_prompt}]
-        raw = await _call_openrouter(messages, self._model)
+    async def _run_validator(self, system_prompt: str) -> dict[str, Any]:
+        raw = await _call_openrouter([{"role": "system", "content": system_prompt}], self._validator_model)
         result = _parse_json_response(raw)
-        logger.debug(f"ValidatorClient result: {result}")
+        logger.debug(f"Validator result: {result}")
         return result
 
+    async def _run_named_pc_validator(self, validator_name: str, user_input: str) -> tuple[str, dict[str, Any]]:
+        """Execute one configured player-input validator."""
+        return validator_name, await self._run_validator(
+            self._build_pc_validator_prompt(validator_name=validator_name, user_input=user_input)
+        )
 
-class EngineClient:
-    """Merged client: validates input then advances the scene.
+    async def _generate_npc_action(self, *, user_input: str) -> tuple[str, str]:
+        """Generate the NPC's next action."""
+        return await self._call_json_prompt(
+            system_prompt=self._build_npc_prompt(user_input=user_input),
+            user_input=user_input,
+            model=self._npc_updater_model,
+        )
 
-    Wraps ``ValidatorClient`` and ``UpdaterClient`` so game logic only needs
-    one object.  ``chat()`` is used for the opening scene (no validation);
-    ``step()`` runs validate-then-update for every normal player turn.
-    """
+    async def _generate_scene_response(self, *, user_input: str, character_action: str = "") -> tuple[str, str]:
+        """Generate the scene's next immediate update."""
+        return await self._call_json_prompt(
+            system_prompt=self._build_scene_prompt(user_input=user_input, character_action=character_action),
+            user_input=user_input,
+            model=self._scene_updater_model,
+        )
 
-    def __init__(self, updater: UpdaterClient, validator: ValidatorClient) -> None:
-        """Initialise with a pre-built updater and validator."""
-        self._updater = updater
-        self._validator = validator
+    @staticmethod
+    def _validation_error(result: dict[str, Any], *, default_message: str) -> str | None:
+        if result.get("type") == "error":
+            return str(result.get("content") or default_message)
+        if result.get("pass") is False:
+            return str(result.get("reason") or result.get("content") or default_message)
+        return None
 
-    async def chat(self, user_input: str | None) -> str:
-        """Call the updater directly, bypassing validation (used for setup/opening)."""
-        return await self._updater.chat(user_input)
+    async def _collect_pc_validation_failures(self, user_input: str) -> list[SimulatorValidationFailure]:
+        """Run all configured PC validators concurrently and return failures only."""
+        validator_tasks = [
+            asyncio.create_task(self._run_named_pc_validator(validator_name, user_input)) for validator_name in self._pc_validator_names
+        ]
+        failures: list[SimulatorValidationFailure] = []
+        try:
+            for task in asyncio.as_completed(validator_tasks):
+                validator_name, result = await task
+                error_message = self._validation_error(result, default_message="Invalid action.")
+                if error_message is not None:
+                    failures.append(
+                        SimulatorValidationFailure(
+                            stage="pc_validation",
+                            validator_name=validator_name,
+                            message=error_message,
+                            raw_result=result,
+                        )
+                    )
+                    for pending_task in validator_tasks:
+                        if not pending_task.done():
+                            pending_task.cancel()
+                    break
+        finally:
+            await asyncio.gather(*validator_tasks, return_exceptions=True)
 
-    async def step(self, user_input: str) -> tuple[bool, str]:
-        """Validate ``user_input``, then advance the scene if valid.
+        return failures
 
-        Returns ``(True, reply)`` on success or ``(False, error_message)`` when
-        validation rejects the input.
-        """
-        validation = await self._validator.validate(user_input)
-        if validation.get("type") == "error":
-            return False, validation.get("content", "Invalid action.")
-        reply = await self._updater.chat(user_input)
-        return True, reply
+    async def _validate_component(
+        self,
+        *,
+        target: str,
+        validator_names: list[str],
+        user_input: str,
+        character_action: str,
+        scene_response: str,
+    ) -> list[SimulatorValidationFailure]:
+        """Validate one generated component against its configured validator ensemble."""
+        failures: list[SimulatorValidationFailure] = []
+        for validator_name in validator_names:
+            result = await self._run_validator(
+                self._build_component_validator_prompt(
+                    validator_name=validator_name,
+                    target=target,
+                    user_input=user_input,
+                    character_action=character_action,
+                    scene_response=scene_response,
+                )
+            )
+            error_message = self._validation_error(result, default_message=f"Invalid {target} output.")
+            if error_message is not None:
+                failures.append(
+                    SimulatorValidationFailure(
+                        stage=f"{target}_validation",
+                        validator_name=validator_name,
+                        message=error_message,
+                        raw_result=result,
+                    )
+                )
+                break
+        return failures
+
+    async def _cancel_tasks(self, *tasks: asyncio.Task[Any]) -> None:
+        """Cancel unfinished tasks and absorb cancellation errors."""
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def chat(self, user_input: str | None) -> ParsedSimulatorResponse:
+        """Generate the opening scene without player-input validation."""
+        opening = await self._call_json_prompt(
+            system_prompt=self._build_opening_scene_prompt(),
+            user_input=user_input,
+            model=self._opening_scene_model,
+        )
+        self._history.append(f"Opening scene: {opening.content}")
+        self._scene_context_events.append(f"Opening scene: {opening.content}")
+        return opening
+
+    async def step(self, user_input: str) -> SimulatorTurnResult:
+        """Validate player input, then generate and validate NPC/scene outputs."""
+        pc_validation_task = asyncio.create_task(self._collect_pc_validation_failures(user_input))
+        npc_generation_task = asyncio.create_task(self._generate_npc_action(user_input=user_input))
+        scene_generation_task = asyncio.create_task(self._generate_scene_response(user_input=user_input))
+
+        pc_validation_failures = await pc_validation_task
+        if pc_validation_failures:
+            await self._cancel_tasks(npc_generation_task, scene_generation_task)
+            return SimulatorTurnResult(
+                ok=False,
+                error_message=pc_validation_failures[0].message,
+                pc_validation_failures=pc_validation_failures,
+            )
+
+        npc_response = await npc_generation_task
+        scene_response_payload = await scene_generation_task
+        character_action = npc_response.content
+        npc_raw = npc_response.raw_response
+        scene_response = scene_response_payload.content
+        scene_raw = scene_response_payload.raw_response
+
+        npc_failures = await self._validate_component(
+            target="npc",
+            validator_names=self._npc_validator_names,
+            user_input=user_input,
+            character_action=character_action,
+            scene_response=scene_response,
+        )
+        npc_retries_used = 0
+        if npc_failures:
+            npc_retries_used = 1
+            npc_response = await self._generate_npc_action(user_input=user_input)
+            character_action = npc_response.content
+            npc_raw = npc_response.raw_response
+            npc_failures = await self._validate_component(
+                target="npc",
+                validator_names=self._npc_validator_names,
+                user_input=user_input,
+                character_action=character_action,
+                scene_response=scene_response,
+            )
+
+        scene_failures = await self._validate_component(
+            target="scene",
+            validator_names=self._scene_validator_names,
+            user_input=user_input,
+            character_action=character_action,
+            scene_response=scene_response,
+        )
+        scene_retries_used = 0
+        if scene_failures:
+            scene_retries_used = 1
+            scene_response_payload = await self._generate_scene_response(user_input=user_input, character_action=character_action)
+            scene_response = scene_response_payload.content
+            scene_raw = scene_response_payload.raw_response
+            scene_failures = await self._validate_component(
+                target="scene",
+                validator_names=self._scene_validator_names,
+                user_input=user_input,
+                character_action=character_action,
+                scene_response=scene_response,
+            )
+
+        npc_result = SimulatorComponentResult(
+            name="npc",
+            content=character_action,
+            ok=not npc_failures,
+            metadata=npc_response.metadata,
+            retries_used=npc_retries_used,
+            validation_failures=npc_failures,
+            raw_response=npc_raw,
+        )
+        scene_result = SimulatorComponentResult(
+            name="scene",
+            content=scene_response,
+            ok=not scene_failures,
+            metadata=scene_response_payload.metadata,
+            retries_used=scene_retries_used,
+            validation_failures=scene_failures,
+            raw_response=scene_raw,
+        )
+
+        if npc_failures or scene_failures:
+            first_failure = (npc_failures or scene_failures)[0]
+            return SimulatorTurnResult(
+                ok=False,
+                error_message=first_failure.message,
+                scene_response=scene_response,
+                character_action=character_action,
+                pc_validation_failures=pc_validation_failures,
+                scene_result=scene_result,
+                npc_result=npc_result,
+            )
+
+        self._scene_context_events.extend(
+            [
+                f"Player action: {user_input}",
+                f"{self._npc.hid} action: {character_action}",
+                f"Scene update: {scene_response}",
+            ]
+        )
+        self._history.extend(
+            [
+                f"Player action: {user_input}",
+                f"{self._npc.hid} action: {character_action}",
+                f"Scene update: {scene_response}",
+            ]
+        )
+        logger.debug(f"SimulatorClient scene reply ({len(scene_response)} chars)")
+        return SimulatorTurnResult(
+            ok=True,
+            scene_response=scene_response,
+            character_action=character_action,
+            pc_validation_failures=pc_validation_failures,
+            scene_result=scene_result,
+            npc_result=npc_result,
+        )
 
 
 class ScorerResult(NamedTuple):
@@ -258,27 +635,21 @@ class ScorerResult(NamedTuple):
 
 
 class ScorerClient:
-    """One-shot stateless client that scores a player's goal inference against the NPC profile."""
+    """One-shot stateless client that executes a rendered scoring prompt."""
 
-    def __init__(self, npc: CharacterRecord, model: str = DEFAULT_MODEL) -> None:
-        """Initialise with NPC character record and model identifier."""
-        self._npc = npc
+    def __init__(self, model: str = DEFAULT_MODEL) -> None:
+        """Initialise with model identifier only."""
         self._model = model
 
-    async def score(self, transcript: str, guess: str) -> ScorerResult:
-        """Score the player's goal inference and return parsed + raw JSON results."""
-        prompt = (
-            SandboxedEnvironment()
-            .from_string(_INFERENCE_SCORER_TEMPLATE)
-            .render(
-                npc_long_description=self._npc.data.get("long_description", ""),
-                npc_abilities=self._npc.data.get("abilities", ""),
-                transcript=transcript,
-                guess=guess,
-            )
-        )
+    async def score(self, *, prompt: str, transcript: str) -> ScorerResult:
+        """Execute a rendered scoring prompt and return parsed + raw JSON results."""
+        if not prompt.strip():
+            raise ValueError("Scoring prompt must be non-empty.")
+        if not transcript.strip():
+            raise ValueError("Scoring transcript must be non-empty.")
+
         raw = await _call_openrouter([{"role": "user", "content": prompt}], self._model)
         stripped = _strip_json_fences(raw)
-        result = _normalize_inference_evaluation(_parse_json_response(raw))
+        result = _normalize_evaluation(_parse_json_response(raw))
         logger.debug(f"ScorerClient result: {result}")
         return ScorerResult(evaluation=result, raw_json=stripped)

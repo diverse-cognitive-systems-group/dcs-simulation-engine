@@ -1,13 +1,17 @@
 """Teamwork game."""
 
+from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
 from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.games.ai_client import EngineClient, UpdaterClient, ValidatorClient
+from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
+from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import Teamwork as C
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
+from dcs_simulation_engine.games.prompts import OPENING_SCENE_WITH_SHARED_GOAL_TEMPLATE, SHARED_GOAL_SCORER_TEMPLATE, build_scoring_prompt
+from loguru import logger
 
 
 class TeamworkGame(Game):
@@ -16,44 +20,80 @@ class TeamworkGame(Game):
     GAME_NAME = "Teamwork"
     GAME_DESCRIPTION = "Players are tasked with collaborating with another character to achieve a shared goal."
 
-    DEFAULT_RETRY_BUDGET = 10
-    DEFAULT_MAX_INPUT_LENGTH = 350
+    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
+    # Note: NPCs have to be able to move towards a textually described objective. All pc_eligible characters can do this.
+    DEFAULT_NPCS_ALLOWED: CharacterFilter = get_character_filter("all")
 
     class Overrides(BaseGameOverrides):
         """Run-config-overridable parameters for TeamworkGame."""
 
-        player_retry_budget: int = 10
+        show_npc_details: bool = True
+        show_final_score: bool = True
 
-    def __init__(self, *, pc: CharacterRecord, npc: CharacterRecord, engine: Any, retry_budget: int, max_input_length: int) -> None:
-        """Initialise with game-specific challenges state."""
-        super().__init__(pc=pc, npc=npc, engine=engine, retry_budget=retry_budget, max_input_length=max_input_length)
+    def __init__(
+        self,
+        *,
+        show_npc_details: bool,
+        show_final_score: bool,
+        scorer: ScorerClient | None = None,
+        transcript_provider: Callable[[], Awaitable[str]] | None = None,
+        **kwargs: Any,  # kwargs for base args
+    ) -> None:
+        """Initialise with game-specific prediction state."""
+        super().__init__(**kwargs)
+        self._show_npc_details = show_npc_details
+        self._show_final_score = show_final_score
+        self._scorer = scorer or ScorerClient()
+        self._transcript_provider = transcript_provider
         self._challenges = ""
+        self._shared_goal = ""
+        self._score: dict[str, Any] = {}
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "TeamworkGame":
         """Factory called by SessionManager."""
+        scorer = kwargs.pop("scorer", None)
+        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
-        engine = EngineClient(
-            updater=UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES)),
-            validator=ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc)),
-        )
+        engine = SimulatorClient(pc=pc, npc=npc, opening_scene_template=OPENING_SCENE_WITH_SHARED_GOAL_TEMPLATE)
         return cls(
             pc=pc,
             npc=npc,
             engine=engine,
-            retry_budget=overrides.player_retry_budget,
-            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
+            scorer=scorer,
+            transcript_provider=transcript_provider,
+            **cls.build_base_init_kwargs(overrides),
+            show_npc_details=overrides.show_npc_details,
+            show_final_score=overrides.show_final_score,
         )
 
     @property
-    def finish_command(self) -> str:
-        """``/finish`` starts the challenges collection flow."""
-        return "finish"
+    def shared_goal(self) -> str:
+        """The shared goal for this game instance."""
+        return self._shared_goal
 
     @property
     def challenges(self) -> str:
         """Player's reflection on challenges, or empty string."""
         return self._challenges
+
+    @property
+    def score(self) -> dict[str, Any]:
+        """Scorer result, or empty dict."""
+        return self._score
+
+    def _consume_model_metadata(self, *, stage: str, metadata: dict[str, Any]) -> None:
+        """Persist shared goal metadata produced by the model."""
+        if stage != "opening":
+            return
+
+        shared_goal = metadata.get("shared_goal")
+        if isinstance(shared_goal, str) and shared_goal.strip():
+            self._shared_goal = shared_goal.strip()
+
+    def get_setup_content(self) -> str:
+        """Return custom setup with goal."""
+        return self.get_help_content()
 
     def get_help_content(self) -> str:
         """Return the /help message content."""
@@ -61,15 +101,22 @@ class TeamworkGame(Game):
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             npc_hid=self._npc.hid,
+            npc_short_description=self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*",
+            shared_goal=self._shared_goal,
         )
 
     def get_abilities_content(self) -> str:
         """Return the /abilities message content."""
+        npc_abilities = (
+            format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*NPC details are hidden.*"
+        )
         return C.ABILITIES_CONTENT.format(
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
+            npc_short_description=(self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*"),
+            npc_abilities=npc_abilities,
         )
 
     async def on_finish(self) -> AsyncIterator[GameEvent]:
@@ -78,8 +125,51 @@ class TeamworkGame(Game):
         yield GameEvent.now(type="info", content=C.CHALLENGES_QUESTION, command_response=True)
 
     async def on_finish_input(self, user_input: str) -> AsyncIterator[GameEvent]:
-        """Store challenges answer then exit."""
+        """Store challenges answer, score, then exit."""
         self._challenges = user_input
         self._in_finish_flow = False
+
+        await self._score_teamwork()
+
+        if self._show_final_score:
+            yield GameEvent.now(type="info", content=format_score_markdown(self._score))
+
         self.exit("player finished")
         yield GameEvent.now(type="info", content=C.FINISH_CONTENT.format(finish_reason="player finished"))
+
+    async def _score_teamwork(self) -> None:
+        """Score the player's teamwork reflection against collaborative performance."""
+        try:
+            if self._transcript_provider is None:
+                logger.warning("TeamworkGame finishing without scoring because no transcript provider was supplied.")
+                self._score = {
+                    "tier": None,
+                    "score": None,
+                    "reasoning": "Final score couldn't be computed.",
+                }
+                return
+
+            transcript = (await self._transcript_provider()).strip()
+            if not transcript:
+                raise ValueError("Teamwork scoring requires a non-empty transcript.")
+
+            prompt = build_scoring_prompt(
+                scoring_template=SHARED_GOAL_SCORER_TEMPLATE,
+                npc=self._npc,
+                transcript=transcript,
+                guess=self._challenges,
+            )
+
+            result = await self._scorer.score(prompt=prompt, transcript=transcript)
+            self._score = result.evaluation or {}
+
+            if not isinstance(self._score, dict):
+                raise ValueError("Invalid scorer output format.")
+
+        except Exception:
+            logger.exception("Failed to compute final score.")
+            self._score = {
+                "tier": None,
+                "score": None,
+                "reasoning": "Final score couldn't be computed.",
+            }

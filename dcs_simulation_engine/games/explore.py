@@ -2,12 +2,11 @@
 
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
+from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.games.ai_client import EngineClient, UpdaterClient, ValidatorClient
+from dcs_simulation_engine.games.ai_client import SimulatorClient
 from dcs_simulation_engine.games.const import Explore as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
-from dcs_simulation_engine.games.prompts import build_updater_prompt, build_validator_prompt
 
 
 class ExploreGame(Game):
@@ -16,34 +15,22 @@ class ExploreGame(Game):
     GAME_NAME = "Explore"
     GAME_DESCRIPTION = "Players are given no tasks -- an open-ended playground."
 
-    DEFAULT_RETRY_BUDGET = 10
-    DEFAULT_MAX_INPUT_LENGTH = 350
-
-    class Overrides(BaseGameOverrides):
+    class Overrides(Game.Overrides):
         """Run-config-overridable parameters for ExploreGame."""
 
-        player_retry_budget: int = 10
+        pass  # no additional overrides
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ExploreGame":
         """Factory called by SessionManager."""
         overrides = cls.Overrides.model_validate(kwargs)
-        engine = EngineClient(
-            updater=UpdaterClient(system_prompt=build_updater_prompt(pc, npc)),
-            validator=ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc)),
-        )
+        engine = SimulatorClient(pc=pc, npc=npc)
         return cls(
             pc=pc,
             npc=npc,
             engine=engine,
-            retry_budget=overrides.player_retry_budget,
-            max_input_length=cls.DEFAULT_MAX_INPUT_LENGTH,
+            **cls.build_base_init_kwargs(overrides),
         )
-
-    @property
-    def finish_command(self) -> str:
-        """``/finish`` ends the game."""
-        return "finish"
 
     def get_help_content(self) -> str:
         """Return the /help message content."""

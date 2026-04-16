@@ -271,8 +271,8 @@ class SessionManager:
             MongoColumns.STATUS: "active",
             MongoColumns.TURNS_COMPLETED: 0,
             MongoColumns.MODEL_PROFILE: {
-                "updater_model": getattr(getattr(self.game, "_updater", None), "_model", None),
-                "validator_model": getattr(getattr(self.game, "_validator", None), "_model", None),
+                "updater_model": getattr(getattr(self.game, "_engine", None), "updater_model", None),
+                "validator_model": getattr(getattr(self.game, "_engine", None), "validator_model", None),
                 "scorer_model": getattr(getattr(self.game, "_scorer", None), "_model", None),
             },
             MongoColumns.GAME_CONFIG_SNAPSHOT: self.game_config.model_dump(mode="json"),
