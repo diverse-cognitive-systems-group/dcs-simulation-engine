@@ -41,6 +41,7 @@ class SessionEventRecorder:
         batch_size: int = 20,
         flush_interval_ms: int = 200,
         max_queue_size: int = 1000,
+        resume: bool = False,
     ) -> None:
         self._db = db
         self._session_doc = dict(session_doc)
@@ -55,7 +56,10 @@ class SessionEventRecorder:
             persisted_at_field=MongoColumns.PERSISTED_AT,
             ignore_duplicate_key_errors=True,
         )
-        self._seq = 0
+        # On resume the document already exists; seed _seq from last_seq so new
+        # events get monotonically increasing sequence numbers.
+        self._seq = int(session_doc.get(MongoColumns.LAST_SEQ, 0))
+        self._resume = resume
         self._finalized = False
         self._entered = False
 
@@ -72,7 +76,8 @@ class SessionEventRecorder:
             return self
         self._entered = True
         await self._writer.__aenter__()
-        await self._sessions_coll.insert_one(self._session_doc)
+        if not self._resume:
+            await self._sessions_coll.insert_one(self._session_doc)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:

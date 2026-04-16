@@ -238,10 +238,29 @@ class ExperimentManager:
         source: str = "experiment",
     ) -> tuple["SessionEntry", AssignmentRecord]:
         """Start a gameplay session for the current assignment."""
+        from dcs_simulation_engine.api.registry import hydrate_session_async
+        from dcs_simulation_engine.dal.mongo.const import MongoColumns
+
         assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id))
         if assignment is None:
             raise ValueError("No active assignment is available for this player.")
+
         if assignment.status == "in_progress":
+            # Check whether the existing session is still resumable before
+            # refusing to start.  If it is paused (in registry or in DB),
+            # return it instead of creating a duplicate session.
+            existing_session_id = assignment.data.get(MongoColumns.ACTIVE_SESSION_ID)
+            if existing_session_id:
+                existing_entry = registry.get(existing_session_id)
+                if existing_entry is None:
+                    existing_entry = await hydrate_session_async(
+                        session_id=existing_session_id,
+                        player_id=player.id,
+                        provider=provider,
+                        registry=registry,
+                    )
+                if existing_entry is not None and not existing_entry.manager.exited:
+                    return existing_entry, assignment
             raise ValueError("This assignment is already in progress.")
 
         manager = await SessionManager.create_async(

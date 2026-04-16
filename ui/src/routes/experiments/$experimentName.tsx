@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import type { ExperimentSetupResponse } from '@/api/generated/model/experimentSetupResponse'
 import { clearAuth, isAuthenticated, setActiveExperimentName } from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { cn } from '@/lib/utils'
@@ -50,39 +51,13 @@ interface ExperimentFormSchema {
   questions: ExperimentQuestion[]
 }
 
-interface ExperimentAssignmentSummary {
-  assignment_id: string
-  game_name: string
-  character_hid: string
-  status: 'assigned' | 'in_progress' | 'completed' | 'interrupted'
-}
-
-interface ExperimentProgressResponse {
-  total: number
-  completed: number
-  is_complete: boolean
-}
-
 interface EligibleAssignmentOption {
   game_name: string
   character_hid: string
 }
 
-interface ExperimentSetupResponse {
-  experiment_name: string
-  description: string
-  is_open: boolean
-  forms: ExperimentFormSchema[]
-  progress: ExperimentProgressResponse
-  current_assignment: ExperimentAssignmentSummary | null
-  pending_post_play: boolean
-  assignment_completed: boolean
-  assignment_mode: string
-  assignments: ExperimentAssignmentSummary[]
-}
-
 interface ExperimentPlayerResponse {
-  assignment: ExperimentAssignmentSummary | null
+  assignment: { assignment_id: string; game_name: string; character_hid: string; status: string } | null
 }
 
 function titleCase(value: string): string {
@@ -879,9 +854,15 @@ function ExperimentPage() {
                     game selection are disabled while your assignment is active.
                   </AlertDescription>
                 </Alert>
-                <Button onClick={handleStartSession} disabled={submitting === 'session'}>
-                  {submitting === 'session' ? 'Starting session…' : 'Start Assigned Session'}
-                </Button>
+                {data.resumable_session_id ? (
+                  <Button onClick={handleStartSession} disabled={submitting === 'session'}>
+                    {submitting === 'session' ? 'Resuming session…' : 'Resume Assigned Session'}
+                  </Button>
+                ) : (
+                  <Button onClick={handleStartSession} disabled={submitting === 'session'}>
+                    {submitting === 'session' ? 'Starting session…' : 'Start Assigned Session'}
+                  </Button>
+                )}
               </div>
             )}
 

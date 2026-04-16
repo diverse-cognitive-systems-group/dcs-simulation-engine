@@ -79,6 +79,34 @@ class InferIntentGame(Game):
             max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
         )
 
+    def export_state(self) -> dict:
+        """Return a snapshot of all mutable game state."""
+        return {
+            "entered": self._entered,
+            "exited": self._exited,
+            "exit_reason": self._exit_reason,
+            "retry_budget": self._retry_budget,
+            "awaiting_goal_inference": self._awaiting_goal_inference,
+            "awaiting_goal_inference_confidence": self._awaiting_goal_inference_confidence,
+            "goal_inference": self._goal_inference,
+            "goal_inference_confidence": self._goal_inference_confidence,
+            "evaluation": self._evaluation,
+            "updater_history": self._updater.export_history(),
+        }
+
+    def import_state(self, state: dict) -> None:
+        """Restore mutable game state from a snapshot."""
+        self._entered = bool(state.get("entered", False))
+        self._exited = bool(state.get("exited", False))
+        self._exit_reason = str(state.get("exit_reason", ""))
+        self._retry_budget = int(state.get("retry_budget", self.DEFAULT_RETRY_BUDGET))
+        self._awaiting_goal_inference = bool(state.get("awaiting_goal_inference", False))
+        self._awaiting_goal_inference_confidence = bool(state.get("awaiting_goal_inference_confidence", False))
+        self._goal_inference = str(state.get("goal_inference", ""))
+        self._goal_inference_confidence = str(state.get("goal_inference_confidence", ""))
+        self._evaluation = dict(state.get("evaluation", {}))
+        self._updater.import_history(state.get("updater_history", []))
+
     def exit(self, reason: str) -> None:
         """Mark the game as ended."""
         if self._exited:

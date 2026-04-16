@@ -77,6 +77,32 @@ class GoalHorizonGame(Game):
             max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
         )
 
+    def export_state(self) -> dict:
+        """Return a snapshot of all mutable game state."""
+        return {
+            "entered": self._entered,
+            "exited": self._exited,
+            "exit_reason": self._exit_reason,
+            "retry_budget": self._retry_budget,
+            "awaiting_capability_prediction": self._awaiting_capability_prediction,
+            "awaiting_capability_confidence": self._awaiting_capability_confidence,
+            "capability_prediction": self._capability_prediction,
+            "capability_prediction_confidence": self._capability_prediction_confidence,
+            "updater_history": self._updater.export_history(),
+        }
+
+    def import_state(self, state: dict) -> None:
+        """Restore mutable game state from a snapshot."""
+        self._entered = bool(state.get("entered", False))
+        self._exited = bool(state.get("exited", False))
+        self._exit_reason = str(state.get("exit_reason", ""))
+        self._retry_budget = int(state.get("retry_budget", self.DEFAULT_RETRY_BUDGET))
+        self._awaiting_capability_prediction = bool(state.get("awaiting_capability_prediction", False))
+        self._awaiting_capability_confidence = bool(state.get("awaiting_capability_confidence", False))
+        self._capability_prediction = str(state.get("capability_prediction", ""))
+        self._capability_prediction_confidence = str(state.get("capability_prediction_confidence", ""))
+        self._updater.import_history(state.get("updater_history", []))
+
     def exit(self, reason: str) -> None:
         """Mark the game as ended."""
         if self._exited:

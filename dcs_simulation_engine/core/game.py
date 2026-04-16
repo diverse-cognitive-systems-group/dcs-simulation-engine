@@ -52,6 +52,24 @@ class Game:
         """Reason the game ended, or empty string."""
         raise NotImplementedError
 
+    def export_state(self) -> dict:
+        """Return a JSON-serialisable snapshot of this game's mutable state.
+
+        Must include every field needed to restore behaviour exactly — lifecycle
+        flags, retry budgets, state-machine booleans, collected player inputs,
+        and evaluation payloads.  The returned dict is stored under the
+        ``game_state`` key of the session ``runtime_state`` document.
+        """
+        raise NotImplementedError
+
+    def import_state(self, state: dict) -> None:
+        """Restore mutable state from a snapshot produced by ``export_state``.
+
+        Called by ``SessionManager.create_from_snapshot`` immediately after the
+        game instance is constructed via ``create_from_context``.
+        """
+        raise NotImplementedError
+
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "Game":
         """Factory method called by SessionManager.

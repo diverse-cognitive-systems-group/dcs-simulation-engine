@@ -176,6 +176,14 @@ class UpdaterClient:
         """Clear conversation history (e.g. on game reset)."""
         self._history = []
 
+    def export_history(self) -> list[dict[str, str]]:
+        """Return a JSON-serialisable copy of the conversation history."""
+        return list(self._history)
+
+    def import_history(self, history: list[dict[str, str]]) -> None:
+        """Restore conversation history from a snapshot."""
+        self._history = list(history)
+
     async def chat(self, user_input: str | None) -> str:
         """Send the user's action and return the NPC's response content string."""
         # On the very first call (no history, no input), prompt the model to open the scene.

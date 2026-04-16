@@ -170,6 +170,8 @@ class ExperimentSetupResponse(BaseModel):
     assignment_completed: bool = False
     assignment_mode: str = "auto"
     assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
+    # Set when the current assignment has a paused session the player can resume.
+    resumable_session_id: str | None = None
 
 
 class EligibleAssignmentOption(BaseModel):

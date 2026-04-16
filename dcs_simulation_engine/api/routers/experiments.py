@@ -103,6 +103,12 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
     pending_post_play = player_state["pending_post_play"] is not None
     assignment_completed = bool(player_state["has_finished_experiment"])
 
+    # Surface resumable_session_id so the frontend can show a Resume CTA.
+    from dcs_simulation_engine.dal.mongo.const import MongoColumns
+    resumable_session_id: str | None = None
+    if current_assignment is not None and current_assignment.status == "in_progress":
+        resumable_session_id = current_assignment.data.get(MongoColumns.ACTIVE_SESSION_ID) or None
+
     progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=config.name)
     return ExperimentSetupResponse(
         experiment_name=config.name,
@@ -115,6 +121,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         assignment_completed=assignment_completed,
         assignment_mode=config.assignment_strategy.assignment_mode,
         assignments=[_assignment_summary(a) for a in player_state.get("assignments", [])],
+        resumable_session_id=resumable_session_id,
     )
 
 
