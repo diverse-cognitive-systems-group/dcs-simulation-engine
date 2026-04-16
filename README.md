@@ -56,25 +56,22 @@ Users can design, run, and deploy custom engine configurations—including their
 
 [👉 Usage](USAGE.md) for detailed instructions.
 
-## Why'd we build this?
-Interfacing between different cognitive systems--even within the same species and cultures--is often difficult. **We lack reliable metrics for evaluating how well an AI, human, or any cognitive system understands the goals and perspectives of minds unlike its own.** 
+### Features
 
-This tool addresses that gap by modeling configurable interaction scenarios where humans, AI systems, and other characters — each with distinct sensory, perceptual, regulatory, and action modalities — can engage, coordinate, and uncover what the other cares about, how their goalspace is structured, and how to accomplish shared or competing objectives.
-
-There’s also a social reason: divergent humans are, by definition, outliers in the bell curve and often underrepresented in everyday interaction. That makes communicating with fundamentally different minds an underdeveloped skill for many. Our simulated characters draw from real (neuro-) divergent humans, making aspects of their behavior more widely accessible to neurotypical individuals. While the primary purpose of this tool is research, we hope that by including a wide range of real human cognitive profiles, both researchers and users will be encouraged to explore, understand, and learn from minds that are not usually easy to encounter or practice engaging with.
-
-Ultimately, our long-term goal is to build systems that let us "walk up to" any being — of any kind, anywhere in the cosmos — and understand the potential for interaction. We want to recognize what its capacities and abilities are, what it may care about, what forms of communication are possible, what goals we might share, and what we can actually do together. 
-
-This tool is a step toward that larger research objective. It gives us a controlled way to explore how radically different minds might meet, interpret one another, and discover the foundations of engagement.
-
-## How does it work?
-The system runs like a turn-based, text-only tabletop role playing game (RPG). You play a character; the simulator plays another. Each turn, you describe an action, and the engine generates the next world step that includes any actions from simulated character.
-
-Behind the scenes, every simulated response comes from a dedicated model trained generated bounded representations of diverse cognitive systems. It takes your action, updates the world state, and replies in character, reflecting that system’s sensory limits, goals, and behavioral patterns.
-
-A configurable game layer sits on top of this core. The scenario, what information is hidden or revealed, and how the interaction should flow is configurable. Some games, for example, conceal the character’s type so the player must infer it through behavior alone.
-
-In short: you take an action, the engine performs a world step through the simulation model, and the story advances — always in character.
+| Item | Supported | Notes |
+|------|----------|------|
+| Easy setup (pip, API keys, run) | ✅ | Minimal friction onboarding |
+| Out-of-the-box platform support | ✅ | Includes: built-in games & characters, React UI, local + Fly.io runs, reporting & analytics |
+| Headless / modular usage | ✅ | Engine can run without UI or default deployment stack |
+| Custom deployments & providers | ✅ | Containerized; deploy anywhere, plug in custom infra/UI |
+| YAML run configurations | ✅ | Reproducible, config-driven runs |
+| Configurable game parameters | ✅ | Optional game-specific configurations |
+| Dev workflows & container | ✅ | Extensible + consistent onboarding |
+| Example workflows | ✅ | Provided in `examples/` |
+| Python game classes | ✅ | Flexible, expressive game logic |
+| Game lifecycle validation | ✅ | Setup, step, finish, evaluate |
+| Python runtime performance | ❌ | Not ideal for ultra low-latency use cases; performant AI |
+| Multi-character interactions | ❌ | Not fully implemented yet |
 
 ## Contact
 

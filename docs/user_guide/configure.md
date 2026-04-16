@@ -1,5 +1,7 @@
 # Configure an engine run
 
+⚠️ Note: This page is incomplete and/or missing information.
+
 A run configuration specifies how the engine should be run including:
 
 - what players (human and/or AI) are participating

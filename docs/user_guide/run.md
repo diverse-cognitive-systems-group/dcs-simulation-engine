@@ -1,6 +1,8 @@
 # Run the engine
 
-The engine can be run locally and played just on your local computer or it can be run remotely (on an external server, called a "deployment") so that the access link can be shared with players (human or AI).
+⚠️ Note: This page is incomplete and/or missing information.
+
+The engine can be run locally and played just on your local computer or it can be run remotely (on an external server, called a "deployment") so that the access link can be shared any player(s) (human or AI).
 
 ## Run locally
 

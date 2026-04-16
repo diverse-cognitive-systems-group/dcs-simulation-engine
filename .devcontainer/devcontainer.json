@@ -50,7 +50,8 @@
                 "streetsidesoftware.code-spell-checker",
                 "tamasfe.even-better-toml",
                 "wholroyd.jinja",
-                "mechatroner.rainbow-csv"
+                "mechatroner.rainbow-csv",
+                "google.geminicodeassist"
             ],
             "settings": {
                 "editor.formatOnSave": true,
