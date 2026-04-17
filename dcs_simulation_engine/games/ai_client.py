@@ -453,7 +453,6 @@ class EngineValidator(EnsembleValidator):
 
     _prompts = ENGINE_VALIDATOR_PROMPTS
     _context_routing = ENGINE_CONTEXT_ROUTING
-    RULES: list[str] = list(ENGINE_VALIDATOR_PROMPTS)
 
 
 class GameValidator(EnsembleValidator):
@@ -490,7 +489,6 @@ class ExploreGameValidator(GameValidator):
 
     _prompts = EXPLORE_GAME_PROMPTS
     _context_routing = EXPLORE_GAME_CONTEXT_ROUTING
-    RULES: list[str] = list(EXPLORE_GAME_PROMPTS)
 
 
 class InferIntentGameValidator(GameValidator):
@@ -498,7 +496,6 @@ class InferIntentGameValidator(GameValidator):
 
     _prompts = INFER_INTENT_GAME_PROMPTS
     _context_routing = INFER_INTENT_GAME_CONTEXT_ROUTING
-    RULES: list[str] = list(INFER_INTENT_GAME_PROMPTS)
 
 
 class ForesightGameValidator(GameValidator):
@@ -506,7 +503,6 @@ class ForesightGameValidator(GameValidator):
 
     _prompts = FORESIGHT_GAME_PROMPTS
     _context_routing = FORESIGHT_GAME_CONTEXT_ROUTING
-    RULES: list[str] = list(FORESIGHT_GAME_PROMPTS)
 
 
 class GoalHorizonGameValidator(GameValidator):
@@ -514,7 +510,6 @@ class GoalHorizonGameValidator(GameValidator):
 
     _prompts = GOAL_HORIZON_GAME_PROMPTS
     _context_routing = GOAL_HORIZON_GAME_CONTEXT_ROUTING
-    RULES: list[str] = list(GOAL_HORIZON_GAME_PROMPTS)
 
 
 class RolePlayingValidator(EnsembleValidator):
@@ -526,7 +521,6 @@ class RolePlayingValidator(EnsembleValidator):
 
     _prompts = ROLEPLAYING_VALIDATOR_PROMPTS
     _context_routing = ROLEPLAYING_CONTEXT_ROUTING
-    RULES: list[str] = list(ROLEPLAYING_VALIDATOR_PROMPTS)
 
 
 class ValidationOrchestrator:

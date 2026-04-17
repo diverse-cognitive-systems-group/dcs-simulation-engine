@@ -377,8 +377,8 @@ def test_orchestrator_validate_input_pc_fail_propagates() -> None:
         # Engine (1) + Game (2) + RolePlaying (5) = 8 failures; no
         # conditional skip — role-playing runs for every actor.
         expected = (
-            len(ai_client.EngineValidator.RULES)
-            + len(ai_client.ExploreGameValidator.RULES)
+            len(ai_client.ENGINE_VALIDATOR_PROMPTS)
+            + len(ai_client.EXPLORE_GAME_PROMPTS)
             + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
         )
         assert len(result.failed) == expected
@@ -400,8 +400,8 @@ def test_orchestrator_pc_rp_runs_for_human() -> None:
         )
         assert result is not None
         expected = (
-            len(ai_client.EngineValidator.RULES)
-            + len(ai_client.ExploreGameValidator.RULES)
+            len(ai_client.ENGINE_VALIDATOR_PROMPTS)
+            + len(ai_client.EXPLORE_GAME_PROMPTS)
             + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
         )
         assert len(result.failed) == expected
@@ -423,8 +423,8 @@ def test_orchestrator_pc_rp_runs_for_llm() -> None:
         )
         assert result is not None
         expected = (
-            len(ai_client.EngineValidator.RULES)
-            + len(ai_client.ExploreGameValidator.RULES)
+            len(ai_client.ENGINE_VALIDATOR_PROMPTS)
+            + len(ai_client.EXPLORE_GAME_PROMPTS)
             + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
         )
         assert len(result.failed) == expected
