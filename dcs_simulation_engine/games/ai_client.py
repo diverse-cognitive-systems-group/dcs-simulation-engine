@@ -456,60 +456,56 @@ class EngineValidator(EnsembleValidator):
 
 
 class GameValidator(EnsembleValidator):
-    """Base class for game-specific ensemble validators.
+    """Ensemble of game-specific validation rules.
 
-    Use ``GameValidator.for_game(game_name)`` to obtain the correct
-    validator for a given game.  Each subclass sets ``_prompts`` and
-    ``_context_routing`` following the standard EnsembleValidator pattern.
+    Built via ``GameValidator.for_game(game_name)``. Each registered game
+    supplies its own ``_prompts`` and ``_context_routing`` dicts; rule
+    behavior is pure data, so one class serves all games.
     """
 
-    _prompts: dict[str, str] = {}
-    _context_routing: dict[str, list[str]] = {}
+    _registry: "dict[str, tuple[dict[str, str], dict[str, list[str]]]]" = {
+        "explore": (EXPLORE_GAME_PROMPTS, EXPLORE_GAME_CONTEXT_ROUTING),
+        "infer intent": (INFER_INTENT_GAME_PROMPTS, INFER_INTENT_GAME_CONTEXT_ROUTING),
+        "foresight": (FORESIGHT_GAME_PROMPTS, FORESIGHT_GAME_CONTEXT_ROUTING),
+        "goal horizon": (GOAL_HORIZON_GAME_PROMPTS, GOAL_HORIZON_GAME_CONTEXT_ROUTING),
+    }
+
+    def __init__(
+        self,
+        validators: dict[str, AtomicValidator],
+        *,
+        game_name: str,
+        prompts: dict[str, str],
+        context_routing: dict[str, list[str]],
+    ) -> None:
+        super().__init__(validators)
+        self._game_name = game_name
+        self._prompts = prompts
+        self._context_routing = context_routing
+
+    @property
+    def ensemble_name(self) -> str:
+        """Legacy-compatible label used in logs and persisted event records."""
+        return "".join(w.capitalize() for w in self._game_name.split()) + "GameValidator"
 
     @classmethod
     def for_game(cls, game_name: str, model: str = DEFAULT_VALIDATOR_MODEL) -> "GameValidator":
-        """Factory: return the GameValidator subclass for *game_name*."""
-        registry: dict[str, type[GameValidator]] = {
-            "explore": ExploreGameValidator,
-            "infer intent": InferIntentGameValidator,
-            "foresight": ForesightGameValidator,
-            "goal horizon": GoalHorizonGameValidator,
-        }
+        """Factory: build a GameValidator for *game_name* from the registry."""
         key = game_name.strip().lower()
-        klass = registry.get(key)
-        if klass is None:
-            raise ValueError(
-                f"No GameValidator registered for game: {game_name!r}"
-            )
-        return klass.create(model=model)
-
-
-class ExploreGameValidator(GameValidator):
-    """Game-specific rules for the Explore sandbox game."""
-
-    _prompts = EXPLORE_GAME_PROMPTS
-    _context_routing = EXPLORE_GAME_CONTEXT_ROUTING
-
-
-class InferIntentGameValidator(GameValidator):
-    """Game-specific rules for the Infer Intent game."""
-
-    _prompts = INFER_INTENT_GAME_PROMPTS
-    _context_routing = INFER_INTENT_GAME_CONTEXT_ROUTING
-
-
-class ForesightGameValidator(GameValidator):
-    """Game-specific rules for the Foresight game."""
-
-    _prompts = FORESIGHT_GAME_PROMPTS
-    _context_routing = FORESIGHT_GAME_CONTEXT_ROUTING
-
-
-class GoalHorizonGameValidator(GameValidator):
-    """Game-specific rules for the Goal Horizon game."""
-
-    _prompts = GOAL_HORIZON_GAME_PROMPTS
-    _context_routing = GOAL_HORIZON_GAME_CONTEXT_ROUTING
+        entry = cls._registry.get(key)
+        if entry is None:
+            raise ValueError(f"No GameValidator registered for game: {game_name!r}")
+        prompts, routing = entry
+        validators = {
+            rule: AtomicValidator(system_prompt=prompt, model=model)
+            for rule, prompt in prompts.items()
+        }
+        return cls(
+            validators,
+            game_name=key,
+            prompts=prompts,
+            context_routing=routing,
+        )
 
 
 class RolePlayingValidator(EnsembleValidator):
@@ -663,7 +659,7 @@ class ValidationOrchestrator:
 
         labeled: list[tuple[str, EnsembleValidationResult]] = [
             ("EngineValidator", results[0]),
-            (type(self._game).__name__, results[1]),
+            (self._game.ensemble_name, results[1]),
             ("RolePlayingValidator", results[2]),
         ]
         await self._record_violations(

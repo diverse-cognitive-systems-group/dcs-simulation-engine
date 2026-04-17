@@ -228,13 +228,20 @@ def test_roleplaying_validator_llm_fail_propagates() -> None:
 
 @pytest.mark.unit
 def test_game_validator_for_game_returns_correct_class() -> None:
-    """GameValidator.for_game returns the right subclass for each game."""
+    """GameValidator.for_game builds a GameValidator tagged with the right game."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
-        assert isinstance(ai_client.GameValidator.for_game("Explore"), ai_client.ExploreGameValidator)
-        assert isinstance(ai_client.GameValidator.for_game("infer intent"), ai_client.InferIntentGameValidator)
-        assert isinstance(ai_client.GameValidator.for_game("Foresight"), ai_client.ForesightGameValidator)
-        assert isinstance(ai_client.GameValidator.for_game("goal horizon"), ai_client.GoalHorizonGameValidator)
+        cases = [
+            ("Explore", "explore", "ExploreGameValidator"),
+            ("infer intent", "infer intent", "InferIntentGameValidator"),
+            ("Foresight", "foresight", "ForesightGameValidator"),
+            ("goal horizon", "goal horizon", "GoalHorizonGameValidator"),
+        ]
+        for input_name, expected_key, expected_label in cases:
+            v = ai_client.GameValidator.for_game(input_name)
+            assert isinstance(v, ai_client.GameValidator)
+            assert v._game_name == expected_key
+            assert v.ensemble_name == expected_label
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -248,10 +255,10 @@ def test_game_validator_for_game_unknown_raises() -> None:
 
 @pytest.mark.unit
 def test_explore_game_validator_all_pass() -> None:
-    """ExploreGameValidator reports passed=True when all 2 rules pass."""
+    """GameValidator for 'explore' reports passed=True when all 2 rules pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
-        v = ai_client.ExploreGameValidator.create()
+        v = ai_client.GameValidator.for_game("explore")
         result = asyncio.run(v.validate("I wave at the creature."))
         assert result.passed is True
         assert len(result.results) == 2
@@ -262,10 +269,10 @@ def test_explore_game_validator_all_pass() -> None:
 
 @pytest.mark.unit
 def test_infer_intent_game_validator_all_pass() -> None:
-    """InferIntentGameValidator reports passed=True when all 2 rules pass."""
+    """GameValidator for 'infer intent' reports passed=True when all 2 rules pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
-        v = ai_client.InferIntentGameValidator.create()
+        v = ai_client.GameValidator.for_game("infer intent")
         result = asyncio.run(v.validate("I watch the creature carefully."))
         assert result.passed is True
         assert len(result.results) == 2
@@ -276,10 +283,10 @@ def test_infer_intent_game_validator_all_pass() -> None:
 
 @pytest.mark.unit
 def test_foresight_game_validator_all_pass() -> None:
-    """ForesightGameValidator reports passed=True when all 2 rules pass."""
+    """GameValidator for 'foresight' reports passed=True when all 2 rules pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
-        v = ai_client.ForesightGameValidator.create()
+        v = ai_client.GameValidator.for_game("foresight")
         result = asyncio.run(v.validate("I wave and predict they will wave back."))
         assert result.passed is True
         assert len(result.results) == 2
@@ -290,10 +297,10 @@ def test_foresight_game_validator_all_pass() -> None:
 
 @pytest.mark.unit
 def test_goal_horizon_game_validator_all_pass() -> None:
-    """GoalHorizonGameValidator reports passed=True when all 2 rules pass."""
+    """GameValidator for 'goal horizon' reports passed=True when all 2 rules pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
-        v = ai_client.GoalHorizonGameValidator.create()
+        v = ai_client.GameValidator.for_game("goal horizon")
         result = asyncio.run(v.validate("I observe the creature."))
         assert result.passed is True
         assert len(result.results) == 2
@@ -307,7 +314,7 @@ def test_game_validator_llm_fail_propagates() -> None:
     """GameValidator reports failures from LLM-based validators."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "references a quest"}')
     try:
-        v = ai_client.ExploreGameValidator.create()
+        v = ai_client.GameValidator.for_game("explore")
         result = asyncio.run(v.validate("How do I complete the quest?"))
         assert result.passed is False
         assert len(result.failed) == 2
@@ -325,7 +332,8 @@ def test_orchestrator_create() -> None:
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
         assert isinstance(orch._engine, ai_client.EngineValidator)
-        assert isinstance(orch._game, ai_client.ExploreGameValidator)
+        assert isinstance(orch._game, ai_client.GameValidator)
+        assert orch._game._game_name == "explore"
         assert isinstance(orch._roleplaying, ai_client.RolePlayingValidator)
         assert orch.is_llm_player is False
     finally:
