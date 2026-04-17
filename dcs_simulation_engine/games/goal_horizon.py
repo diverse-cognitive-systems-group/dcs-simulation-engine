@@ -9,7 +9,7 @@ from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
 from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import GoalHorizon as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
-from dcs_simulation_engine.games.prompts import GOAL_BOUNDS_SCORER_TEMPLATE, build_scoring_prompt
+from dcs_simulation_engine.games.prompts import SCORER_GOAL_BOUNDS, build_scoring_prompt
 from loguru import logger
 
 
@@ -132,7 +132,7 @@ class GoalHorizonGame(Game):
                 raise ValueError("Goal Horizon scoring requires a non-empty transcript.")
 
             prompt = build_scoring_prompt(
-                scoring_template=GOAL_BOUNDS_SCORER_TEMPLATE,
+                scoring_template=SCORER_GOAL_BOUNDS,
                 npc=self._npc,
                 transcript=transcript,
                 guess=self._capability_prediction,

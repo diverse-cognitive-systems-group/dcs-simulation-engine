@@ -197,8 +197,8 @@ class Game(ABC):
         self._consume_turn_metadata(result)
         if result.ok:
             self._filtered_transcript_buffer.append(f"Player ({self._pc.hid}): {user_input}")
-            self._filtered_transcript_buffer.append(f"Simulator: {result.character_action}\n{result.scene_response}")
-        yield GameEvent.now(type="ai" if result.ok else "error", content=result.scene_response if result.ok else (result.error_message or ""))
+            self._filtered_transcript_buffer.append(f"Simulator: {result.simulator_response}")
+        yield GameEvent.now(type="ai" if result.ok else "error", content=result.simulator_response if result.ok else (result.error_message or ""))
         if not result.ok:
             self._player_retry_budget -= 1
             logger.debug(f"Validation failed. Retry budget remaining: {self._player_retry_budget}")
@@ -215,7 +215,7 @@ class Game(ABC):
 
     def _consume_turn_metadata(self, result: Any) -> None:
         """Forward optional component metadata from a simulator turn to the game hook."""
-        for stage, component in (("npc", getattr(result, "npc_result", None)), ("scene", getattr(result, "scene_result", None))):
+        for stage, component in (("updater", getattr(result, "updater_result", None)),):
             if component is None:
                 continue
             self._consume_model_metadata(stage=stage, metadata=getattr(component, "metadata", {}) or {})

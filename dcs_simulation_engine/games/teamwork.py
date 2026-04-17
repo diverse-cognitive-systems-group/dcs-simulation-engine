@@ -9,7 +9,7 @@ from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
 from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import Teamwork as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
-from dcs_simulation_engine.games.prompts import OPENING_SCENE_WITH_SHARED_GOAL_TEMPLATE, SHARED_GOAL_SCORER_TEMPLATE, build_scoring_prompt
+from dcs_simulation_engine.games.prompts import OPENER_WITH_SHARED_GOAL, SCORER_SHARED_GOAL, build_scoring_prompt
 from loguru import logger
 
 
@@ -51,7 +51,7 @@ class TeamworkGame(Game):
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
         overrides = cls.Overrides.model_validate(kwargs)
-        engine = SimulatorClient(pc=pc, npc=npc, opening_scene_template=OPENING_SCENE_WITH_SHARED_GOAL_TEMPLATE)
+        engine = SimulatorClient(pc=pc, npc=npc, opener_template=OPENER_WITH_SHARED_GOAL)
         return cls(
             pc=pc,
             npc=npc,
@@ -140,9 +140,11 @@ class TeamworkGame(Game):
                 raise ValueError("Teamwork scoring requires a non-empty transcript.")
 
             prompt = build_scoring_prompt(
-                scoring_template=SHARED_GOAL_SCORER_TEMPLATE,
+                scoring_template=SCORER_SHARED_GOAL,
                 npc=self._npc,
+                pc=self._pc,
                 transcript=transcript,
+                shared_goal=self._shared_goal,
                 guess=self._challenges,
             )
 

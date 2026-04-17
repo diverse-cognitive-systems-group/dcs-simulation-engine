@@ -9,7 +9,7 @@ from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
 from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import InferIntent as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
-from dcs_simulation_engine.games.prompts import build_scoring_prompt, GOAL_INFERENCE_SCORER_TEMPLATE
+from dcs_simulation_engine.games.prompts import SCORER_GOAL_INFERENCE, build_scoring_prompt
 from loguru import logger
 
 
@@ -85,7 +85,9 @@ class InferIntentGame(Game):
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             npc_hid=self._npc.hid,
-            npc_short_description=self._npc.data.get("short_description", "")) if self._show_npc_details else "*NPC details are hidden.*"
+            npc_short_description=(
+                self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*"
+            ),
         )
 
     def get_abilities_content(self) -> str:
@@ -134,7 +136,7 @@ class InferIntentGame(Game):
                 raise ValueError("Infer Intent scoring requires a non-empty transcript.")
 
             prompt = build_scoring_prompt(
-                scoring_template=GOAL_INFERENCE_SCORER_TEMPLATE,
+                scoring_template=SCORER_GOAL_INFERENCE,
                 npc=self._npc,
                 transcript=transcript,
                 guess=self._goal_inference,

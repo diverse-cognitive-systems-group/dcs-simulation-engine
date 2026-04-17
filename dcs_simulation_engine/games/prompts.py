@@ -745,10 +745,46 @@ DEFAULT_SIMULATOR_TURN_VALIDATORS = [
 ]
 
 
+def _format_prompt_value(value: object) -> str:
+    """Normalize prompt values to strings while preserving simple list structure."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
+
+
+def _build_character_context(pc: CharacterRecord, npc: CharacterRecord, **extra: object) -> dict[str, str]:
+    """Build the shared prompt-rendering context for a PC/NPC pair."""
+    context: dict[str, object] = {
+        "pc_hid": getattr(pc, "hid", ""),
+        "pc_short_description": getattr(pc, "short_description", ""),
+        "pc_long_description": pc.data.get("long_description", ""),
+        "pc_abilities": pc.data.get("abilities", ""),
+        "pc_goals": pc.data.get("goals", ""),
+        "pc_scenarios": pc.data.get("scenarios", ""),
+        "npc_hid": getattr(npc, "hid", ""),
+        "npc_short_description": getattr(npc, "short_description", ""),
+        "npc_long_description": npc.data.get("long_description", ""),
+        "npc_abilities": npc.data.get("abilities", ""),
+        "npc_goals": npc.data.get("goals", ""),
+        "npc_scenarios": npc.data.get("scenarios", ""),
+        **extra,
+    }
+    return {key: _format_prompt_value(value) for key, value in context.items()}
+
+
+def _render_prompt(template: str, **context: object) -> str:
+    """Render a prompt template with normalized string context."""
+    normalized_context = {key: _format_prompt_value(value) for key, value in context.items()}
+    return template.format(**normalized_context)
+
+
 def build_opener_prompt(pc: CharacterRecord, npc: CharacterRecord, *, template: str = OPENER) -> str:
     """Render the opening-scene prompt."""
-    # TODO
-    return ""
+    return _render_prompt(template, **_build_character_context(pc, npc))
 
 
 def build_updater_prompt(
@@ -761,33 +797,61 @@ def build_updater_prompt(
     template: str = UPDATER,
 ) -> str:
     """Render the simulation updater prompt."""
-    # TODO
-    return ""
+    return _render_prompt(
+        template,
+        **_build_character_context(
+            pc,
+            npc,
+            game_objective=game_objective,
+            transcript=transcript,
+            player_action=player_action,
+        ),
+    )
 
 
 def build_player_validator_prompt(
     pc: CharacterRecord, npc: CharacterRecord, *, player_action: str, transcript: str, validator_template: str
 ) -> str:
     """Render a named player-input validator prompt."""
-    # TODO
-    return ""
+    return _render_prompt(
+        validator_template,
+        **_build_character_context(
+            pc,
+            npc,
+            player_action=player_action,
+            transcript=transcript,
+        ),
+    )
 
 
 def build_simulator_validator_prompt(
     pc: CharacterRecord, npc: CharacterRecord, *, simulator_response: str, transcript: str, game_objective: str, validator_template: str
 ) -> str:
     """Render a named simulator response validator prompt."""
-    # TODO
-    return ""
+    return _render_prompt(
+        validator_template,
+        **_build_character_context(
+            pc,
+            npc,
+            simulator_response=simulator_response,
+            transcript=transcript,
+            game_objective=game_objective,
+        ),
+    )
 
-
-def build_scorer_prompt(*, scoring_template: str, npc: CharacterRecord, transcript: str, **template_kwargs: str) -> str:
+def build_scorer_prompt(
+    *,
+    scoring_template: str,
+    npc: CharacterRecord,
+    transcript: str,
+    pc: CharacterRecord | None = None,
+    **template_kwargs: str,
+) -> str:
     """Render a scoring prompt from an explicit template and game-specific kwargs."""
     context = _build_character_context(
-        npc,
+        pc or npc,
         npc,
         transcript=transcript,
         **{key: _format_prompt_value(value) for key, value in template_kwargs.items()},
     )
-    # TODO
-    return ""
+    return _render_prompt(scoring_template, **context)

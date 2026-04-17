@@ -10,7 +10,10 @@ from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
 from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import Foresight as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
-from dcs_simulation_engine.games.prompts import NEXT_ACTION_SCORER_TEMPLATE, build_scoring_prompt
+from dcs_simulation_engine.games.prompts import (
+    SCORER_NEXT_ACTION,
+    build_scoring_prompt,
+)
 from loguru import logger
 
 
@@ -21,13 +24,7 @@ class ForesightGame(Game):
     GAME_DESCRIPTION = "Players are tasked with predicting the next action of a character."
 
     # This game required players to describe their PC action but also how they expect the NPC to respond for each turn, so we need to remove the validators that enforce that players only describe their own character's actions. Instead, we use a validator that required the PC action and optional NPC prediction.
-    PC_VALIDATOR_NAMES = [
-        "action-form-with-prediction",
-        "turn-scope",
-        "authority-boundary",
-        "capability-and-plausibility",
-        "game-intent-policy",
-    ]
+    PLAYER_TURN_VALIDATORS = []
 
     DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
 
@@ -61,7 +58,7 @@ class ForesightGame(Game):
         engine = SimulatorClient(
             pc=pc,
             npc=npc,
-            pc_validator_names=cls.PC_VALIDATOR_NAMES,
+            player_turn_validators=cls.PLAYER_TURN_VALIDATORS,
         )
         return cls(
             pc=pc,
@@ -131,7 +128,7 @@ class ForesightGame(Game):
                 raise ValueError("Foresight scoring requires a recorded prediction.")
 
             prompt = build_scoring_prompt(
-                scoring_template=NEXT_ACTION_SCORER_TEMPLATE,
+                scoring_template=SCORER_NEXT_ACTION,
                 npc=self._npc,
                 transcript=transcript,
                 guess=guess,
