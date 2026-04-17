@@ -219,7 +219,7 @@ ENGINE_CONTEXT_ROUTING: dict[str, list[str]] = {
 
 
 # ---------------------------------------------------------------------------
-# Atomic validator prompts for RolePlayingLLMValidator
+# Atomic validator prompts for RolePlayingValidator
 # Each prompt targets ONE rule applied to UpdaterClient (MPC) output.
 # VALID-SCHEMA is handled programmatically and has no prompt here.
 # ---------------------------------------------------------------------------

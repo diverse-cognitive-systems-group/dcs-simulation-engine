@@ -1,8 +1,9 @@
 """Session event persistence for deterministic transcript reconstruction."""
 # ruff: noqa: D102,D105,D107
 
+import json
 from datetime import datetime
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 from uuid import uuid4
 
 from dcs_simulation_engine.dal.mongo.async_writer import AsyncMongoWriter
@@ -10,6 +11,9 @@ from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
 from pymongo.asynchronous.database import AsyncDatabase
+
+if TYPE_CHECKING:
+    from dcs_simulation_engine.games.ai_client import ValidationResult
 
 _ALLOWED_EVENT_CLASSIFICATIONS = {
     ("internal", "system", "session_start"),
@@ -20,6 +24,11 @@ _ALLOWED_EVENT_CLASSIFICATIONS = {
     ("outbound", "system", "command"),
     ("outbound", "system", "info"),
     ("outbound", "system", "error"),
+    # Validation violations pack source+character-type into event_source:
+    # pc_human, pc_llm, npc_llm.
+    ("internal", "pc_human", "validation_violation"),
+    ("internal", "pc_llm", "validation_violation"),
+    ("internal", "npc_llm", "validation_violation"),
 }
 
 
@@ -190,11 +199,11 @@ class SessionEventRecorder:
             event_type=event_type,
         )
         ts = event_ts or utc_now()
-        self._seq += 1
+        seq = self._next_seq()
         event_id = str(uuid4())
         doc = {
             MongoColumns.SESSION_ID: self._session_id,
-            MongoColumns.SEQ: self._seq,
+            MongoColumns.SEQ: seq,
             MongoColumns.EVENT_ID: event_id,
             MongoColumns.EVENT_TS: ts,
             MongoColumns.DIRECTION: direction,
@@ -208,7 +217,11 @@ class SessionEventRecorder:
             MongoColumns.VISIBLE_TO_USER: True,
         }
         await self._writer.enqueue(doc)
-        return RecordedSessionEvent(event_id=event_id, seq=self._seq)
+        return RecordedSessionEvent(event_id=event_id, seq=seq)
+
+    def _next_seq(self) -> int:
+        self._seq += 1
+        return self._seq
 
 
 class RecordedSessionEvent(NamedTuple):
@@ -216,3 +229,98 @@ class RecordedSessionEvent(NamedTuple):
 
     event_id: str
     seq: int
+
+
+class ValidationEventRecorder(SessionEventRecorder):
+    """Sidecar recorder for validation rule violations.
+
+    Shares seq allocation with a primary `SessionEventRecorder` so that
+    the `(session_id, seq)` unique index holds across both instances.
+    """
+
+    def __init__(
+        self,
+        *,
+        db: AsyncDatabase[Any],
+        session_doc: dict[str, Any],
+        primary: SessionEventRecorder,
+        batch_size: int = 20,
+        flush_interval_ms: int = 200,
+        max_queue_size: int = 1000,
+    ) -> None:
+        super().__init__(
+            db=db,
+            session_doc=session_doc,
+            batch_size=batch_size,
+            flush_interval_ms=flush_interval_ms,
+            max_queue_size=max_queue_size,
+        )
+        self._primary = primary
+
+    async def __aenter__(self) -> "ValidationEventRecorder":
+        if self._entered:
+            return self
+        self._entered = True
+        await self._writer.__aenter__()
+        return self
+
+    async def finalize(
+        self,
+        *,
+        termination_reason: str,
+        status: str,
+        turns_completed: int,
+    ) -> None:
+        _ = (termination_reason, status, turns_completed)
+        return
+
+    def _next_seq(self) -> int:
+        self._primary._seq += 1
+        return self._primary._seq
+
+    async def record_violation(
+        self,
+        *,
+        event_source: str,
+        violation_type: str,
+        violation_ensemble: str,
+        response: str,
+        violation_reason: str,
+        turn_index: int,
+    ) -> RecordedSessionEvent:
+        payload = json.dumps({
+            "violation_type": violation_type,
+            "violation_ensemble": violation_ensemble,
+            "response": response,
+            "violation_reason": violation_reason,
+        })
+        return await self._enqueue_event(
+            direction="internal",
+            event_source=event_source,
+            event_type="validation_violation",
+            content=payload,
+            content_format="json",
+            turn_index=turn_index,
+            command_name=None,
+            command_args=None,
+            event_ts=None,
+        )
+
+    async def record_ensemble_violations(
+        self,
+        *,
+        event_source: str,
+        ensemble_name: str,
+        failed: list["ValidationResult"],
+        response: str,
+        turn_index: int,
+    ) -> None:
+        for r in failed:
+            await self.record_violation(
+                event_source=event_source,
+                violation_type=r.rule,
+                violation_ensemble=ensemble_name,
+                response=response,
+                violation_reason=r.reason,
+                turn_index=turn_index,
+            )

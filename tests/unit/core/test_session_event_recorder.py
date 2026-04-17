@@ -2,16 +2,19 @@
 # ruff: noqa: D102,D103,D105,D107
 
 import asyncio
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
 from dcs_simulation_engine.core.session_event_recorder import (
     SessionEventRecorder,
+    ValidationEventRecorder,
     _validate_event_classification,
 )
 from dcs_simulation_engine.dal.mongo.async_writer import AsyncMongoWriter
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.games.ai_client import ValidationResult
 
 
 class _InsertOneResult:
@@ -187,6 +190,152 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
     )
 
 
+def _build_session_doc() -> dict[str, Any]:
+    started_at = datetime.now(timezone.utc)
+    return {
+        "session_id": "session-v1",
+        "player_id": "player-1",
+        "game_name": "Explore",
+        "source": "api",
+        "pc_hid": "NA",
+        "npc_hid": "FW",
+        "session_started_at": started_at,
+        "session_ended_at": None,
+        "termination_reason": None,
+        "status": "active",
+        "turns_completed": 0,
+        "model_profile": {"updater_model": "m", "validator_model": "m", "scorer_model": None},
+        "game_config_snapshot": {"name": "Explore"},
+        "last_seq": 0,
+        "created_at": started_at,
+        "updated_at": started_at,
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_validation_event_recorder_persists_violation_row() -> None:
+    """record_violation writes one internal/validation_violation row with JSON content."""
+    db = FakeAsyncDB({
+        MongoColumns.SESSIONS: FakeAsyncCollection(),
+        MongoColumns.SESSION_EVENTS: FakeAsyncCollection(),
+    })
+    session_doc = _build_session_doc()
+
+    async with SessionEventRecorder(db=db, session_doc=session_doc, flush_interval_ms=10) as primary:
+        async with ValidationEventRecorder(
+            db=db, session_doc=session_doc, primary=primary, flush_interval_ms=10,
+        ) as vr:
+            await vr.record_violation(
+                event_source="pc_human",
+                violation_type="VALID-CHARACTER-ABILITY",
+                violation_ensemble="EngineValidator",
+                response="I fly to the moon.",
+                violation_reason="PC cannot fly.",
+                turn_index=2,
+            )
+        await primary.finalize(termination_reason="user_exit_command", status="closed", turns_completed=2)
+
+    events = db[MongoColumns.SESSION_EVENTS].docs
+    violation_docs = [d for d in events if d["event_type"] == "validation_violation"]
+    assert len(violation_docs) == 1
+    doc = violation_docs[0]
+    assert doc["direction"] == "internal"
+    assert doc["event_source"] == "pc_human"
+    assert doc["content_format"] == "json"
+    assert doc["turn_index"] == 2
+    parsed = json.loads(doc["content"])
+    assert parsed == {
+        "violation_type": "VALID-CHARACTER-ABILITY",
+        "violation_ensemble": "EngineValidator",
+        "response": "I fly to the moon.",
+        "violation_reason": "PC cannot fly.",
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_validation_event_recorder_shares_seq_with_primary() -> None:
+    """Violation seqs come from the primary's counter so (session_id, seq) stays unique."""
+    db = FakeAsyncDB({
+        MongoColumns.SESSIONS: FakeAsyncCollection(),
+        MongoColumns.SESSION_EVENTS: FakeAsyncCollection(),
+    })
+    session_doc = _build_session_doc()
+
+    async with SessionEventRecorder(db=db, session_doc=session_doc, flush_interval_ms=10) as primary:
+        async with ValidationEventRecorder(
+            db=db, session_doc=session_doc, primary=primary, flush_interval_ms=10,
+        ) as vr:
+            await primary.record_inbound(content="hi", turn_index=1, event_type="message")
+            await vr.record_violation(
+                event_source="pc_human", violation_type="R1", violation_ensemble="E",
+                response="x", violation_reason="bad", turn_index=1,
+            )
+            await primary.record_outbound(
+                event_type="message", event_source="npc", content="hello", turn_index=1,
+            )
+        await primary.finalize(termination_reason="user_exit_command", status="closed", turns_completed=1)
+
+    events = db[MongoColumns.SESSION_EVENTS].docs
+    seqs = [d["seq"] for d in events]
+    assert len(seqs) == len(set(seqs)), f"duplicate seqs: {seqs}"
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_validation_event_recorder_does_not_insert_second_sessions_row() -> None:
+    """Sidecar __aenter__ must not duplicate the primary's sessions row."""
+    db = FakeAsyncDB({
+        MongoColumns.SESSIONS: FakeAsyncCollection(),
+        MongoColumns.SESSION_EVENTS: FakeAsyncCollection(),
+    })
+    session_doc = _build_session_doc()
+
+    async with SessionEventRecorder(db=db, session_doc=session_doc, flush_interval_ms=10) as primary:
+        async with ValidationEventRecorder(
+            db=db, session_doc=session_doc, primary=primary, flush_interval_ms=10,
+        ):
+            pass
+        assert len(db[MongoColumns.SESSIONS].docs) == 1
+        await primary.finalize(termination_reason="user_exit_command", status="closed", turns_completed=0)
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_validation_event_recorder_records_multiple_violations_in_order() -> None:
+    """record_ensemble_violations writes one row per failed ValidationResult."""
+    db = FakeAsyncDB({
+        MongoColumns.SESSIONS: FakeAsyncCollection(),
+        MongoColumns.SESSION_EVENTS: FakeAsyncCollection(),
+    })
+    session_doc = _build_session_doc()
+
+    failed = [
+        ValidationResult(rule="R1", passed=False, reason="reason1"),
+        ValidationResult(rule="R2", passed=False, reason="reason2"),
+    ]
+    async with SessionEventRecorder(db=db, session_doc=session_doc, flush_interval_ms=10) as primary:
+        async with ValidationEventRecorder(
+            db=db, session_doc=session_doc, primary=primary, flush_interval_ms=10,
+        ) as vr:
+            await vr.record_ensemble_violations(
+                event_source="npc_llm",
+                ensemble_name="RolePlayingValidator",
+                failed=failed,
+                response="bad output",
+                turn_index=3,
+            )
+        await primary.finalize(termination_reason="user_exit_command", status="closed", turns_completed=3)
+
+    violations = [d for d in db[MongoColumns.SESSION_EVENTS].docs if d["event_type"] == "validation_violation"]
+    assert len(violations) == 2
+    rules = [json.loads(d["content"])["violation_type"] for d in violations]
+    assert rules == ["R1", "R2"]
+    assert all(d["event_source"] == "npc_llm" for d in violations)
+    assert all(json.loads(d["content"])["violation_ensemble"] == "RolePlayingValidator" for d in violations)
+
+
 @pytest.mark.unit
 @pytest.mark.parametrize(
     ("direction", "event_source", "event_type", "is_valid"),
@@ -199,9 +348,16 @@ async def test_session_event_recorder_records_sequence_and_finalize() -> None:
         ("outbound", "system", "command", True),
         ("outbound", "system", "info", True),
         ("outbound", "system", "error", True),
+        ("internal", "pc_human", "validation_violation", True),
+        ("internal", "pc_llm", "validation_violation", True),
+        ("internal", "npc_llm", "validation_violation", True),
         ("outbound", "npc", "info", False),
         ("inbound", "user", "error", False),
         ("internal", "system", "info", False),
+        ("internal", "user", "validation_violation", False),
+        ("internal", "pc", "validation_violation", False),
+        ("internal", "npc", "validation_violation", False),
+        ("outbound", "pc_human", "validation_violation", False),
     ],
 )
 def test_validate_event_classification_accepts_only_supported_combinations(

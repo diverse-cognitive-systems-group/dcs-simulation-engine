@@ -193,10 +193,11 @@ class InferIntentGame(Game):
             yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
             return
 
-        # Ensemble validation (Engine + Game + conditional RolePlayingLLM).
+        # Ensemble validation (Engine + Game + RolePlaying).
         if self._ensemble is not None:
-            ensemble_result = await self._ensemble.validate_pc_input(
-                user_input, pc=self._pc, npc=self._npc, updater=self._updater,
+            ensemble_result = await self._ensemble.validate_input(
+                user_input, source="pc", pc=self._pc, npc=self._npc,
+                updater=self._updater, player_action=user_input,
             )
             if ensemble_result is not None:
                 msg = format_ensemble_failures(ensemble_result)

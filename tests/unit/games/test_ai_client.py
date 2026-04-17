@@ -155,83 +155,70 @@ def test_atomic_validator_malformed_json() -> None:
         ai_client.set_fake_ai_response(None)
 
 
-# ── RolePlayingLLMValidator tests ────────────────────────────────────
+# ── NPC schema pre-check tests ─────────────────────────────────────
 
 
 @pytest.mark.unit
-def test_roleplaying_validator_schema_pass() -> None:
-    """VALID-SCHEMA passes for well-formed updater JSON."""
-    result = ai_client.RolePlayingLLMValidator._check_schema('{"type": "ai", "content": "hello"}')
-    assert result.passed is True
-    assert result.rule == "VALID-SCHEMA"
+def test_check_npc_schema_pass() -> None:
+    """_check_npc_schema returns None for well-formed updater JSON."""
+    assert ai_client._check_npc_schema('{"type": "ai", "content": "hello"}') is None
 
 
 @pytest.mark.unit
-def test_roleplaying_validator_schema_fail_not_json() -> None:
-    """VALID-SCHEMA fails for non-JSON text."""
-    result = ai_client.RolePlayingLLMValidator._check_schema("not json")
-    assert result.passed is False
-    assert "not valid JSON" in result.reason
+def test_check_npc_schema_fail_not_json() -> None:
+    """_check_npc_schema reports VALID-SCHEMA failure for non-JSON text."""
+    result = ai_client._check_npc_schema("not json")
+    assert result is not None
+    assert result.failed[0].rule == "VALID-SCHEMA"
+    assert "not valid JSON" in result.failed[0].reason
 
 
 @pytest.mark.unit
-def test_roleplaying_validator_schema_fail_wrong_keys() -> None:
-    """VALID-SCHEMA fails when required keys are missing."""
-    result = ai_client.RolePlayingLLMValidator._check_schema('{"foo": "bar"}')
-    assert result.passed is False
-    assert "type" in result.reason or "content" in result.reason
+def test_check_npc_schema_fail_wrong_keys() -> None:
+    """_check_npc_schema reports failure when required keys are missing."""
+    result = ai_client._check_npc_schema('{"foo": "bar"}')
+    assert result is not None
+    reason = result.failed[0].reason
+    assert "type" in reason or "content" in reason
 
 
 @pytest.mark.unit
-def test_roleplaying_validator_schema_fail_extra_keys() -> None:
-    """VALID-SCHEMA fails when extra keys are present."""
-    result = ai_client.RolePlayingLLMValidator._check_schema(
+def test_check_npc_schema_fail_extra_keys() -> None:
+    """_check_npc_schema reports failure when extra keys are present."""
+    result = ai_client._check_npc_schema(
         '{"type": "ai", "content": "hello", "extra": 1}'
     )
-    assert result.passed is False
-    assert "Extra keys" in result.reason
+    assert result is not None
+    assert "Extra keys" in result.failed[0].reason
+
+
+# ── RolePlayingValidator tests ────────────────────────────────────
 
 
 @pytest.mark.unit
 def test_roleplaying_validator_all_pass() -> None:
-    """RolePlayingLLMValidator reports passed=True when all rules pass."""
+    """RolePlayingValidator reports passed=True when all rules pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
-        v = ai_client.RolePlayingLLMValidator.create()
-        result = asyncio.run(v.validate('{"type": "ai", "content": "The door creaks open."}'))
+        v = ai_client.RolePlayingValidator.create()
+        result = asyncio.run(v.validate("The door creaks open."))
         assert result.passed is True
         assert len(result.failed) == 0
-        assert len(result.results) == 10  # 1 schema + 9 LLM
-    finally:
-        ai_client.set_fake_ai_response(None)
-
-
-@pytest.mark.unit
-def test_roleplaying_validator_schema_fail_propagates() -> None:
-    """RolePlayingLLMValidator reports passed=False when schema check fails."""
-    ai_client.set_fake_ai_response('{"pass": true}')
-    try:
-        v = ai_client.RolePlayingLLMValidator.create()
-        result = asyncio.run(v.validate("not valid json at all"))
-        assert result.passed is False
-        failed_rules = [r.rule for r in result.failed]
-        assert "VALID-SCHEMA" in failed_rules
+        # 5 LLM rules (no schema pre-check in the validator itself).
+        assert len(result.results) == len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
 def test_roleplaying_validator_llm_fail_propagates() -> None:
-    """RolePlayingLLMValidator reports failures from LLM-based validators."""
+    """RolePlayingValidator reports failures from LLM-based validators."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "invented action"}')
     try:
-        v = ai_client.RolePlayingLLMValidator.create()
-        result = asyncio.run(v.validate('{"type": "ai", "content": "You step back."}'))
+        v = ai_client.RolePlayingValidator.create()
+        result = asyncio.run(v.validate("You step back."))
         assert result.passed is False
-        # Schema passes but all 11 LLM rules fail
-        schema_results = [r for r in result.results if r.rule == "VALID-SCHEMA"]
-        assert schema_results[0].passed is True
-        assert len(result.failed) == 9
+        assert len(result.failed) == len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -339,103 +326,123 @@ def test_orchestrator_create() -> None:
         orch = ai_client.ValidationOrchestrator.create("explore")
         assert isinstance(orch._engine, ai_client.EngineValidator)
         assert isinstance(orch._game, ai_client.ExploreGameValidator)
-        assert isinstance(orch._roleplaying, ai_client.RolePlayingLLMValidator)
+        assert isinstance(orch._roleplaying, ai_client.RolePlayingValidator)
         assert orch.is_llm_player is False
     finally:
         ai_client.set_fake_ai_response(None)
 
 
+def _make_pc_npc_updater() -> tuple[Any, Any, Any]:
+    from dcs_simulation_engine.dal.base import CharacterRecord
+
+    pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
+    npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
+    updater = ai_client.UpdaterClient(system_prompt="test")
+    return pc, npc, updater
+
+
 @pytest.mark.unit
-def test_orchestrator_pc_input_all_pass() -> None:
-    """validate_pc_input returns None when all validators pass."""
+def test_orchestrator_validate_input_pc_all_pass() -> None:
+    """validate_input(source='pc') returns None when all validators pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
-        result = asyncio.run(orch.validate_pc_input("I wave.", pc=pc, npc=npc, updater=updater))
+        pc, npc, updater = _make_pc_npc_updater()
+        result = asyncio.run(
+            orch.validate_input(
+                "I wave.", source="pc", pc=pc, npc=npc, updater=updater,
+                player_action="I wave.",
+            )
+        )
         assert result is None
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
-def test_orchestrator_pc_input_fail_propagates() -> None:
-    """validate_pc_input returns merged failures when validators fail."""
+def test_orchestrator_validate_input_pc_fail_propagates() -> None:
+    """validate_input returns merged failures from all three ensembles."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "invalid"}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
-        result = asyncio.run(orch.validate_pc_input("bad input", pc=pc, npc=npc, updater=updater))
+        pc, npc, updater = _make_pc_npc_updater()
+        result = asyncio.run(
+            orch.validate_input(
+                "bad input", source="pc", pc=pc, npc=npc, updater=updater,
+                player_action="bad input",
+            )
+        )
         assert result is not None
         assert result.passed is False
-        # Engine (6 rules) + Game (2 rules) = 8 failures
-        assert len(result.failed) == 8
+        # Engine (1) + Game (2) + RolePlaying (5) = 8 failures; no
+        # conditional skip — role-playing runs for every actor.
+        expected = (
+            len(ai_client.EngineValidator.RULES)
+            + len(ai_client.ExploreGameValidator.RULES)
+            + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
+        )
+        assert len(result.failed) == expected
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
-def test_orchestrator_pc_rp_skipped_for_human() -> None:
-    """RolePlayingLLMValidator is NOT invoked for human players (is_llm_player=False)."""
+def test_orchestrator_pc_rp_runs_for_human() -> None:
+    """RolePlayingValidator runs for human PC (no longer gated by is_llm_player)."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "fail"}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore", is_llm_player=False)
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
-        result = asyncio.run(orch.validate_pc_input("x", pc=pc, npc=npc, updater=updater))
+        pc, npc, updater = _make_pc_npc_updater()
+        result = asyncio.run(
+            orch.validate_input(
+                "x", source="pc", pc=pc, npc=npc, updater=updater, player_action="x",
+            )
+        )
         assert result is not None
-        # Only Engine (6) + Game (2) = 8, NOT 8 + 11 roleplaying
-        assert len(result.failed) == 8
+        expected = (
+            len(ai_client.EngineValidator.RULES)
+            + len(ai_client.ExploreGameValidator.RULES)
+            + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
+        )
+        assert len(result.failed) == expected
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
-def test_orchestrator_pc_rp_included_for_llm() -> None:
-    """RolePlayingLLMValidator IS invoked for LLM players (is_llm_player=True)."""
+def test_orchestrator_pc_rp_runs_for_llm() -> None:
+    """RolePlayingValidator runs for LLM PC as well — same rule set, no schema."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "fail"}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore", is_llm_player=True)
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
-        result = asyncio.run(orch.validate_pc_input("x", pc=pc, npc=npc, updater=updater))
+        pc, npc, updater = _make_pc_npc_updater()
+        result = asyncio.run(
+            orch.validate_input(
+                "x", source="pc", pc=pc, npc=npc, updater=updater, player_action="x",
+            )
+        )
         assert result is not None
-        # Engine (6) + Game (2) + RolePlayingLLM (11 LLM + 1 schema) = 20
-        # But schema is a pre-check on the raw text "x", which will fail too
-        assert len(result.failed) == 18
+        expected = (
+            len(ai_client.EngineValidator.RULES)
+            + len(ai_client.ExploreGameValidator.RULES)
+            + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
+        )
+        assert len(result.failed) == expected
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
-def test_orchestrator_npc_output_all_pass() -> None:
-    """validate_npc_output returns None when all validators pass."""
+def test_orchestrator_validate_input_npc_all_pass() -> None:
+    """validate_input(source='npc') returns None when all validators pass."""
     ai_client.set_fake_ai_response('{"pass": true}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
+        pc, npc, updater = _make_pc_npc_updater()
         result = asyncio.run(
-            orch.validate_npc_output(
+            orch.validate_input(
                 '{"type": "ai", "content": "hello"}',
-                pc=pc, npc=npc, updater=updater, player_action="I wave.",
+                source="npc", pc=pc, npc=npc, updater=updater, player_action="I wave.",
             )
         )
         assert result is None
@@ -470,6 +477,152 @@ def test_format_ensemble_failures() -> None:
     assert "RULE-B" not in msg
 
 
+# ── ValidationOrchestrator + recorder tests ─────────────────────────
+
+
+class _RecordedCall:
+    """Captured record_ensemble_violations invocation."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+
+
+class _StubRecorder:
+    """In-memory stub of ValidationEventRecorder.record_ensemble_violations."""
+
+    def __init__(self) -> None:
+        self.calls: list[_RecordedCall] = []
+
+    async def record_ensemble_violations(self, **kwargs: Any) -> None:
+        self.calls.append(_RecordedCall(**kwargs))
+
+
+@pytest.mark.unit
+def test_orchestrator_records_pc_human_violations_per_ensemble() -> None:
+    """validate_input for a human PC records under event_source='pc_human'."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "no good"}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore", is_llm_player=False)
+        recorder = _StubRecorder()
+        orch.attach_recorder(recorder, turn_index_provider=lambda: 7)  # type: ignore[arg-type]
+
+        pc, npc, updater = _make_pc_npc_updater()
+
+        result = asyncio.run(
+            orch.validate_input(
+                "bad text", source="pc", pc=pc, npc=npc, updater=updater,
+                player_action="bad text",
+            )
+        )
+
+        assert result is not None
+        # All three ensembles fail now (role-playing runs regardless of character type).
+        assert len(recorder.calls) == 3
+        ensembles = {c.kwargs["ensemble_name"] for c in recorder.calls}
+        assert ensembles == {"EngineValidator", "ExploreGameValidator", "RolePlayingValidator"}
+        for call in recorder.calls:
+            assert call.kwargs["event_source"] == "pc_human"
+            assert call.kwargs["response"] == "bad text"
+            assert call.kwargs["turn_index"] == 7
+            assert len(call.kwargs["failed"]) > 0
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_orchestrator_records_pc_llm_violations_per_ensemble() -> None:
+    """validate_input for an LLM PC records under event_source='pc_llm'."""
+    ai_client.set_fake_ai_response('{"pass": false, "reason": "no good"}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore", is_llm_player=True)
+        recorder = _StubRecorder()
+        orch.attach_recorder(recorder, turn_index_provider=lambda: 2)  # type: ignore[arg-type]
+
+        pc, npc, updater = _make_pc_npc_updater()
+
+        result = asyncio.run(
+            orch.validate_input(
+                "bad text", source="pc", pc=pc, npc=npc, updater=updater,
+                player_action="bad text",
+            )
+        )
+
+        assert result is not None
+        assert {c.kwargs["event_source"] for c in recorder.calls} == {"pc_llm"}
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_orchestrator_records_nothing_when_all_pc_ensembles_pass() -> None:
+    """No record_ensemble_violations calls when validation passes cleanly."""
+    ai_client.set_fake_ai_response('{"pass": true}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore")
+        recorder = _StubRecorder()
+        orch.attach_recorder(recorder, turn_index_provider=lambda: 1)  # type: ignore[arg-type]
+
+        pc, npc, updater = _make_pc_npc_updater()
+
+        result = asyncio.run(
+            orch.validate_input(
+                "I wave.", source="pc", pc=pc, npc=npc, updater=updater,
+                player_action="I wave.",
+            )
+        )
+
+        assert result is None
+        assert recorder.calls == []
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_orchestrator_records_npc_violations_with_unwrapped_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """generate_validated_npc_response records failures per retry with unwrapped reply and event_source='npc_llm'."""
+    ai_client.set_fake_ai_response('{"type":"ai","content":"reply-text"}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore")
+        recorder = _StubRecorder()
+        orch.attach_recorder(recorder, turn_index_provider=lambda: 4)  # type: ignore[arg-type]
+
+        pc, npc, updater = _make_pc_npc_updater()
+
+        fake_failed = [ai_client.ValidationResult(rule="RULE-X", passed=False, reason="bad")]
+
+        async def failing_validate(
+            text, *, source, pc, npc, updater, player_action="",
+            skip_rules=frozenset(), response_text=None,
+        ):
+            await recorder.record_ensemble_violations(
+                event_source=orch._event_source(source),
+                ensemble_name="EngineValidator",
+                failed=fake_failed,
+                response=response_text if response_text is not None else text,
+                turn_index=orch._turn_index(),
+            )
+            return ai_client.EnsembleValidationResult(
+                passed=False, results=fake_failed, failed=fake_failed,
+            )
+
+        monkeypatch.setattr(orch, "validate_input", failing_validate)
+
+        reply = asyncio.run(
+            orch.generate_validated_npc_response("I wave.", pc=pc, npc=npc, updater=updater)
+        )
+
+        assert reply is None  # retry budget exhausted
+        assert len(recorder.calls) == ai_client.ValidationOrchestrator.NPC_OUTPUT_RETRY_BUDGET
+        for call in recorder.calls:
+            assert call.kwargs["event_source"] == "npc_llm"
+            assert call.kwargs["response"] == "reply-text"
+            assert call.kwargs["turn_index"] == 4
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
 # ── Opening scene skip-rules tests ────────────────────────────────
 
 
@@ -489,16 +642,17 @@ def test_ensemble_validate_skips_rules_in_skip_set() -> None:
     """EnsembleValidator.validate() auto-passes rules listed in skip_rules."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "would fail"}')
     try:
-        v = ai_client.EngineValidator.create()
-        skip = frozenset({"VALID-FORM", "VALID-TEMPORAL-STRUCTURE"})
+        v = ai_client.RolePlayingValidator.create()
+        active_rules = set(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
+        skip = frozenset(active_rules & {"INVENTED-PC-ACTION", "ADJUDICATED-UNOBSERVABLE"})
         result = asyncio.run(v.validate("some text", skip_rules=skip))
-        # 6 total engine rules; 2 skipped (auto-pass), 4 run (all fail)
-        assert len(result.results) == 6
+        # Active rules: skipped ones auto-pass, the rest fail.
+        assert len(result.results) == len(active_rules)
         skipped = [r for r in result.results if r.rule in skip]
         assert all(r.passed for r in skipped)
         non_skipped = [r for r in result.results if r.rule not in skip]
         assert all(not r.passed for r in non_skipped)
-        assert len(result.failed) == 4
+        assert len(result.failed) == len(active_rules) - len(skip)
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -510,33 +664,28 @@ def test_ensemble_validate_skip_rules_empty_runs_all() -> None:
     try:
         v = ai_client.EngineValidator.create()
         result = asyncio.run(v.validate("some text"))
-        assert len(result.failed) == 6  # all 6 engine rules fail
+        assert len(result.failed) == 1  # all 1 engine rule fails
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
-def test_orchestrator_npc_output_opening_scene_skips_rules() -> None:
-    """validate_npc_output with is_opening_scene=True auto-passes skipped rules."""
+def test_orchestrator_validate_input_npc_opening_scene_skips_rules() -> None:
+    """validate_input(source='npc') with OPENING_SCENE_SKIP_RULES auto-passes those rules."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "fail"}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
+        pc, npc, updater = _make_pc_npc_updater()
         result = asyncio.run(
-            orch.validate_npc_output(
+            orch.validate_input(
                 '{"type": "ai", "content": "You enter a dimly lit room."}',
-                pc=pc, npc=npc, updater=updater, player_action="",
-                is_opening_scene=True,
+                source="npc", pc=pc, npc=npc, updater=updater, player_action="",
+                skip_rules=ai_client.OPENING_SCENE_SKIP_RULES,
             )
         )
         assert result is not None
         assert result.passed is False
         failed_rules = {r.rule for r in result.failed}
-        # These 4 should NOT be in the failures (they are auto-passed)
         for skip_rule in ai_client.OPENING_SCENE_SKIP_RULES:
             assert skip_rule not in failed_rules
     finally:
@@ -544,67 +693,105 @@ def test_orchestrator_npc_output_opening_scene_skips_rules() -> None:
 
 
 @pytest.mark.unit
-def test_generate_validated_npc_response_passes_opening_scene_flag(
+def test_generate_validated_npc_response_passes_opening_scene_skip_rules(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """generate_validated_npc_response(None) passes is_opening_scene=True."""
+    """generate_validated_npc_response(None) forwards OPENING_SCENE_SKIP_RULES to validate_input."""
     ai_client.set_fake_ai_response('{"type":"ai","content":"You enter a room."}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
+        pc, npc, updater = _make_pc_npc_updater()
 
         captured: dict[str, Any] = {}
 
-        async def mock_validate(text, *, pc, npc, updater, player_action, is_opening_scene=False):
-            captured["is_opening_scene"] = is_opening_scene
+        async def mock_validate(
+            text, *, source, pc, npc, updater, player_action="",
+            skip_rules=frozenset(), response_text=None,
+        ):
+            captured["source"] = source
+            captured["skip_rules"] = skip_rules
             captured["player_action"] = player_action
             return None  # all pass
 
-        monkeypatch.setattr(orch, "validate_npc_output", mock_validate)
+        monkeypatch.setattr(orch, "validate_input", mock_validate)
 
         result = asyncio.run(
             orch.generate_validated_npc_response(None, pc=pc, npc=npc, updater=updater)
         )
         assert result is not None
-        assert captured["is_opening_scene"] is True
+        assert captured["source"] == "npc"
+        assert captured["skip_rules"] == ai_client.OPENING_SCENE_SKIP_RULES
         assert captured["player_action"] == ""
     finally:
         ai_client.set_fake_ai_response(None)
 
 
 @pytest.mark.unit
-def test_generate_validated_npc_response_normal_turn_no_opening_flag(
+def test_generate_validated_npc_response_normal_turn_no_skip_rules(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """generate_validated_npc_response('I wave') passes is_opening_scene=False."""
+    """generate_validated_npc_response('I wave.') forwards an empty skip_rules set."""
     ai_client.set_fake_ai_response('{"type":"ai","content":"The creature waves back."}')
     try:
         orch = ai_client.ValidationOrchestrator.create("explore")
-        from dcs_simulation_engine.dal.base import CharacterRecord
-
-        pc = CharacterRecord(hid="pc1", name="PC", short_description="a player", data={"abilities": "can see"})
-        npc = CharacterRecord(hid="npc1", name="NPC", short_description="a creature", data={"abilities": "can move"})
-        updater = ai_client.UpdaterClient(system_prompt="test")
+        pc, npc, updater = _make_pc_npc_updater()
 
         captured: dict[str, Any] = {}
 
-        async def mock_validate(text, *, pc, npc, updater, player_action, is_opening_scene=False):
-            captured["is_opening_scene"] = is_opening_scene
+        async def mock_validate(
+            text, *, source, pc, npc, updater, player_action="",
+            skip_rules=frozenset(), response_text=None,
+        ):
+            captured["source"] = source
+            captured["skip_rules"] = skip_rules
             captured["player_action"] = player_action
             return None
 
-        monkeypatch.setattr(orch, "validate_npc_output", mock_validate)
+        monkeypatch.setattr(orch, "validate_input", mock_validate)
 
         result = asyncio.run(
             orch.generate_validated_npc_response("I wave.", pc=pc, npc=npc, updater=updater)
         )
         assert result is not None
-        assert captured["is_opening_scene"] is False
+        assert captured["source"] == "npc"
+        assert captured["skip_rules"] == frozenset()
         assert captured["player_action"] == "I wave."
+    finally:
+        ai_client.set_fake_ai_response(None)
+
+
+@pytest.mark.unit
+def test_generate_validated_npc_response_records_schema_failure_and_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When _check_npc_schema reports failure, the response is recorded under NpcSchema and retried."""
+    ai_client.set_fake_ai_response('{"type":"ai","content":"ignored"}')
+    try:
+        orch = ai_client.ValidationOrchestrator.create("explore")
+        recorder = _StubRecorder()
+        orch.attach_recorder(recorder, turn_index_provider=lambda: 9)  # type: ignore[arg-type]
+        pc, npc, updater = _make_pc_npc_updater()
+
+        forced_failure = ai_client.ValidationResult("VALID-SCHEMA", False, "forced")
+        forced = ai_client.EnsembleValidationResult(
+            passed=False, results=[forced_failure], failed=[forced_failure],
+        )
+        monkeypatch.setattr(ai_client, "_check_npc_schema", lambda _text: forced)
+
+        async def should_not_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+            raise AssertionError("validate_input should be skipped when schema fails")
+
+        monkeypatch.setattr(orch, "validate_input", should_not_run)
+
+        reply = asyncio.run(
+            orch.generate_validated_npc_response("I wave.", pc=pc, npc=npc, updater=updater)
+        )
+        assert reply is None
+        assert len(recorder.calls) == ai_client.ValidationOrchestrator.NPC_OUTPUT_RETRY_BUDGET
+        for call in recorder.calls:
+            assert call.kwargs["event_source"] == "npc_llm"
+            assert call.kwargs["ensemble_name"] == ai_client.NPC_SCHEMA_ENSEMBLE
+            assert call.kwargs["failed"][0].rule == "VALID-SCHEMA"
     finally:
         ai_client.set_fake_ai_response(None)
 

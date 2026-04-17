@@ -11,13 +11,17 @@ Both call OpenRouter's OpenAI-compatible chat completions endpoint.
 import asyncio
 import json
 import os
-from typing import Any, NamedTuple
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Self
 
 import httpx
 from dcs_simulation_engine.core.constants import (
     OPENROUTER_BASE_URL,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
+
+if TYPE_CHECKING:
+    from dcs_simulation_engine.core.session_event_recorder import ValidationEventRecorder
 from dcs_simulation_engine.games.prompts import (
     ENGINE_CONTEXT_ROUTING,
     ENGINE_VALIDATOR_PROMPTS,
@@ -56,10 +60,6 @@ class EnsembleValidationResult(NamedTuple):
     results: list[ValidationResult]  # all per-rule results
     failed: list[ValidationResult]  # convenience: only failures
 
-
-# Backward-compatible aliases
-EngineValidationResult = EnsembleValidationResult
-RolePlayingLLMValidationResult = EnsembleValidationResult
 
 # Rules to skip during opening-scene validation — these are designed for
 # action-response context and produce false failures on narrative scene descriptions.
@@ -315,6 +315,38 @@ def format_ensemble_failures(result: EnsembleValidationResult) -> str:
     return "\n".join(lines) if lines else "Validation failed."
 
 
+NPC_SCHEMA_ENSEMBLE: str = "NpcSchema"
+
+
+def _check_npc_schema(text: str) -> EnsembleValidationResult | None:
+    """Verify NPC output matches ``{"type": "ai", "content": "..."}``.
+
+    Returns ``None`` on success, or an ``EnsembleValidationResult`` whose
+    single failure carries rule ``VALID-SCHEMA`` on failure.
+    """
+    stripped = text.strip()
+    failure: ValidationResult | None = None
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        failure = ValidationResult("VALID-SCHEMA", False, "Response is not valid JSON")
+    else:
+        if not isinstance(parsed, dict):
+            failure = ValidationResult("VALID-SCHEMA", False, "Response is not a JSON object")
+        elif parsed.get("type") != "ai" or "content" not in parsed:
+            failure = ValidationResult(
+                "VALID-SCHEMA", False, 'Missing or wrong "type"/"content" keys',
+            )
+        else:
+            extra = set(parsed.keys()) - {"type", "content"}
+            if extra:
+                failure = ValidationResult("VALID-SCHEMA", False, f"Extra keys: {extra}")
+
+    if failure is None:
+        return None
+    return EnsembleValidationResult(passed=False, results=[failure], failed=[failure])
+
+
 class AtomicValidator:
     """A validator that checks for a SINGLE condition.
 
@@ -371,7 +403,7 @@ class EnsembleValidator:
         self._validators = validators
 
     @classmethod
-    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "EnsembleValidator":
+    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> Self:
         """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
         validators = {
             rule: AtomicValidator(system_prompt=prompt, model=model)
@@ -423,15 +455,6 @@ class EngineValidator(EnsembleValidator):
     _context_routing = ENGINE_CONTEXT_ROUTING
     RULES: list[str] = list(ENGINE_VALIDATOR_PROMPTS)
 
-    @classmethod
-    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "EngineValidator":
-        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
-        validators = {
-            rule: AtomicValidator(system_prompt=prompt, model=model)
-            for rule, prompt in cls._prompts.items()
-        }
-        return cls(validators)
-
 
 class GameValidator(EnsembleValidator):
     """Base class for game-specific ensemble validators.
@@ -443,15 +466,6 @@ class GameValidator(EnsembleValidator):
 
     _prompts: dict[str, str] = {}
     _context_routing: dict[str, list[str]] = {}
-
-    @classmethod
-    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "GameValidator":
-        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
-        validators = {
-            rule: AtomicValidator(system_prompt=prompt, model=model)
-            for rule, prompt in cls._prompts.items()
-        }
-        return cls(validators)
 
     @classmethod
     def for_game(cls, game_name: str, model: str = DEFAULT_VALIDATOR_MODEL) -> "GameValidator":
@@ -503,53 +517,23 @@ class GoalHorizonGameValidator(GameValidator):
     RULES: list[str] = list(GOAL_HORIZON_GAME_PROMPTS)
 
 
-class RolePlayingLLMValidator(EnsembleValidator):
-    """LLM role-play fidelity rules for UpdaterClient (MPC) output.
+class RolePlayingValidator(EnsembleValidator):
+    """Role-play fidelity rules applied to both PC and NPC input.
 
-    VALID-SCHEMA is checked programmatically via ``_pre_checks``;
-    the remaining 11 rules are checked via AtomicValidator in parallel.
+    All rules are checked via AtomicValidator in parallel. Schema-format
+    checks live outside this validator (see ``_check_npc_schema``).
     """
 
     _prompts = ROLEPLAYING_VALIDATOR_PROMPTS
     _context_routing = ROLEPLAYING_CONTEXT_ROUTING
-    RULES: list[str] = ["VALID-SCHEMA"] + list(ROLEPLAYING_VALIDATOR_PROMPTS)
-
-    @classmethod
-    def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> "RolePlayingLLMValidator":
-        """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
-        validators = {
-            rule: AtomicValidator(system_prompt=prompt, model=model)
-            for rule, prompt in cls._prompts.items()
-        }
-        return cls(validators)
-
-    def _pre_checks(self, text: str) -> list[ValidationResult]:
-        """Programmatic VALID-SCHEMA check before LLM validation."""
-        return [self._check_schema(text)]
-
-    @staticmethod
-    def _check_schema(text: str) -> ValidationResult:
-        """Check updater output matches ``{"type": "ai", "content": "..."}``."""
-        stripped = text.strip()
-        try:
-            parsed = json.loads(stripped)
-        except json.JSONDecodeError:
-            return ValidationResult("VALID-SCHEMA", False, "Response is not valid JSON")
-        if not isinstance(parsed, dict):
-            return ValidationResult("VALID-SCHEMA", False, "Response is not a JSON object")
-        if parsed.get("type") != "ai" or "content" not in parsed:
-            return ValidationResult("VALID-SCHEMA", False, 'Missing or wrong "type"/"content" keys')
-        extra = set(parsed.keys()) - {"type", "content"}
-        if extra:
-            return ValidationResult("VALID-SCHEMA", False, f"Extra keys: {extra}")
-        return ValidationResult("VALID-SCHEMA", True, "")
+    RULES: list[str] = list(ROLEPLAYING_VALIDATOR_PROMPTS)
 
 
 class ValidationOrchestrator:
-    """Composes EngineValidator, GameValidator, and RolePlayingLLMValidator.
+    """Composes EngineValidator, GameValidator, and RolePlayingValidator.
 
-    Provides ``validate_pc_input`` and ``generate_validated_npc_response`` as
-    the two public entry points used by game ``step()`` methods.
+    Exposes ``validate_input`` and ``generate_validated_npc_response`` as
+    the public entry points used by game ``step()`` methods.
     """
 
     NPC_OUTPUT_RETRY_BUDGET: int = 2
@@ -558,7 +542,7 @@ class ValidationOrchestrator:
         self,
         engine_validator: EngineValidator,
         game_validator: GameValidator,
-        roleplaying_validator: RolePlayingLLMValidator,
+        roleplaying_validator: RolePlayingValidator,
         is_llm_player: bool = False,
     ) -> None:
         """Initialise with pre-built sub-validators."""
@@ -566,6 +550,17 @@ class ValidationOrchestrator:
         self._game = game_validator
         self._roleplaying = roleplaying_validator
         self._is_llm_player = is_llm_player
+        self._recorder: "ValidationEventRecorder | None" = None
+        self._turn_index: Callable[[], int] = lambda: 0
+
+    def attach_recorder(
+        self,
+        recorder: "ValidationEventRecorder",
+        turn_index_provider: Callable[[], int],
+    ) -> None:
+        """Attach a validation recorder + turn-index callback so violations are persisted."""
+        self._recorder = recorder
+        self._turn_index = turn_index_provider
 
     @classmethod
     def create(
@@ -578,7 +573,7 @@ class ValidationOrchestrator:
         return cls(
             engine_validator=EngineValidator.create(model=model),
             game_validator=GameValidator.for_game(game_name, model=model),
-            roleplaying_validator=RolePlayingLLMValidator.create(model=model),
+            roleplaying_validator=RolePlayingValidator.create(model=model),
             is_llm_player=is_llm_player,
         )
 
@@ -630,53 +625,98 @@ class ValidationOrchestrator:
         return None
 
     # ------------------------------------------------------------------
-    # PC input validation
+    # Event source packing
     # ------------------------------------------------------------------
 
-    async def validate_pc_input(
+    def _event_source(self, source: Literal["pc", "npc"]) -> str:
+        """Pack source + character type into a single event_source string."""
+        if source == "npc":
+            return "npc_llm"
+        return "pc_llm" if self._is_llm_player else "pc_human"
+
+    # ------------------------------------------------------------------
+    # Unified input validation
+    # ------------------------------------------------------------------
+
+    async def validate_input(
         self,
         text: str,
         *,
+        source: Literal["pc", "npc"],
         pc: CharacterRecord,
         npc: CharacterRecord,
         updater: UpdaterClient,
+        player_action: str = "",
+        skip_rules: frozenset[str] = frozenset(),
+        response_text: str | None = None,
     ) -> EnsembleValidationResult | None:
-        """Run ensemble validators on PC input. Returns ``None`` if all pass."""
-        ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=text)
-        coros = [
-            self._engine.validate(text, ctx),
-            self._game.validate(text, ctx),
-        ]
-        if self._is_llm_player:
-            coros.append(self._roleplaying.validate(text, ctx))
-        results = list(await asyncio.gather(*coros))
-        return self._merge_results(results)
+        """Run all ensemble validators on an input. Returns ``None`` if all pass.
 
-    # ------------------------------------------------------------------
-    # NPC output validation
-    # ------------------------------------------------------------------
-
-    async def validate_npc_output(
-        self,
-        text: str,
-        *,
-        pc: CharacterRecord,
-        npc: CharacterRecord,
-        updater: UpdaterClient,
-        player_action: str,
-        is_opening_scene: bool = False,
-    ) -> EnsembleValidationResult | None:
-        """Run all ensemble validators on NPC output. Returns ``None`` if all pass."""
+        ``source`` identifies whether the text came from the PC or NPC and,
+        combined with the orchestrator's ``is_llm_player`` flag, drives the
+        ``event_source`` label used by the recorder. ``response_text``
+        overrides the recorded text (NPC-side: text is a JSON wrapper;
+        response_text is the unwrapped reply).
+        """
         ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=player_action)
-        skip = OPENING_SCENE_SKIP_RULES if is_opening_scene else frozenset()
         results = list(
             await asyncio.gather(
-                self._engine.validate(text, ctx, skip_rules=skip),
-                self._game.validate(text, ctx, skip_rules=skip),
-                self._roleplaying.validate(text, ctx, skip_rules=skip),
+                self._engine.validate(text, ctx, skip_rules=skip_rules),
+                self._game.validate(text, ctx, skip_rules=skip_rules),
+                self._roleplaying.validate(text, ctx, skip_rules=skip_rules),
             )
         )
+
+        labeled: list[tuple[str, EnsembleValidationResult]] = [
+            ("EngineValidator", results[0]),
+            (type(self._game).__name__, results[1]),
+            ("RolePlayingValidator", results[2]),
+        ]
+        await self._record_violations(
+            labeled,
+            event_source=self._event_source(source),
+            response=response_text if response_text is not None else text,
+        )
+
         return self._merge_results(results)
+
+    async def _record_violations(
+        self,
+        labeled: list[tuple[str, EnsembleValidationResult]],
+        *,
+        event_source: str,
+        response: str,
+    ) -> None:
+        """Record each ensemble's failures to the attached validation recorder."""
+        if self._recorder is None:
+            return
+        ti = self._turn_index()
+        for ensemble_name, res in labeled:
+            if res.failed:
+                await self._recorder.record_ensemble_violations(
+                    event_source=event_source,
+                    ensemble_name=ensemble_name,
+                    failed=res.failed,
+                    response=response,
+                    turn_index=ti,
+                )
+
+    async def _record_schema_failure(
+        self,
+        *,
+        failure: EnsembleValidationResult,
+        response: str,
+    ) -> None:
+        """Record an NPC schema-check failure under the NpcSchema ensemble."""
+        if self._recorder is None:
+            return
+        await self._recorder.record_ensemble_violations(
+            event_source=self._event_source("npc"),
+            ensemble_name=NPC_SCHEMA_ENSEMBLE,
+            failed=failure.failed,
+            response=response,
+            turn_index=self._turn_index(),
+        )
 
     async def generate_validated_npc_response(
         self,
@@ -693,14 +733,29 @@ class ValidationOrchestrator:
         """
         action = user_input or ""
         is_opening_scene = user_input is None
+        skip = OPENING_SCENE_SKIP_RULES if is_opening_scene else frozenset()
         for attempt in range(1, self.NPC_OUTPUT_RETRY_BUDGET + 1):
             reply = await updater.chat(user_input)
-            # Re-wrap in JSON for RolePlayingLLMValidator's VALID-SCHEMA check;
-            # updater.chat() already parsed and extracted the content field.
+            # Re-wrap in JSON for the schema pre-check; updater.chat() already
+            # parsed and extracted the content field.
             raw_wrapped = json.dumps({"type": "ai", "content": reply})
-            result = await self.validate_npc_output(
-                raw_wrapped, pc=pc, npc=npc, updater=updater, player_action=action,
-                is_opening_scene=is_opening_scene,
+            schema_fail = _check_npc_schema(raw_wrapped)
+            if schema_fail is not None:
+                await self._record_schema_failure(failure=schema_fail, response=reply)
+                msg = format_ensemble_failures(schema_fail)
+                logger.warning(
+                    "NPC output schema check failed (attempt {}/{}): {}",
+                    attempt,
+                    self.NPC_OUTPUT_RETRY_BUDGET,
+                    msg,
+                )
+                updater.pop_last_response()
+                continue
+            result = await self.validate_input(
+                raw_wrapped,
+                source="npc",
+                pc=pc, npc=npc, updater=updater, player_action=action,
+                skip_rules=skip, response_text=reply,
             )
             if result is None:
                 return reply  # passed
