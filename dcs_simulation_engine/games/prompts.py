@@ -155,7 +155,15 @@ Return ONLY valid JSON:
 
 VALID_CHARACTER_ABILITY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: VALID-CHARACTER-ABILITY — The action must align with the character's current abilities and status. Actions requiring abilities the character does not possess are invalid. Actions that exceed the character's current capacity (e.g., injured leg but running) are also invalid.
+RULE: VALID-CHARACTER-ABILITY — The action must not contradict an EXPLICIT constraint stated in the character's abilities. Actions directly prohibited by the abilities list (e.g., "cannot hear" invalidates "I listen for footsteps") or that clearly exceed a stated capacity (e.g., "injured leg" invalidates "I sprint") are invalid.
+
+SCOPE: This rule only fires on an action clearly attributed to the speaker character as something they are doing (e.g., "I lift the box", "the creature swings its arm"). Scene narration, environmental phenomena, ambient descriptions, or the rendering of the character's existence/appearance are NOT actions under this rule and always PASS. If attribution is at all ambiguous, PASS.
+
+The abilities list describes specific capacities and constraints — it is NOT an exhaustive catalogue of what is permitted. Common baseline actions for the character's type (for humans: walking, looking, speaking, typing, writing, gesturing, operating everyday objects, etc.) are always ALLOWED absent an explicit constraint to the contrary. Do NOT fail an action because the abilities list does not affirmatively mention it.
+
+A stated constraint applies only to the specific capability it describes. A constraint on one channel (e.g., "speech ability fluctuates") does NOT restrict other channels (typing, gesturing, writing, pointing). Map the constraint to the action precisely before firing.
+
+If the action might be possible given the abilities described, PASS. If abilities context is missing or ambiguous, PASS. When in doubt, PASS — other rules handle other concerns.
 
 Examples (assuming a character who cannot hear):
 - FAIL: "I listen carefully for footsteps." (character cannot hear)
@@ -213,38 +221,47 @@ ENGINE_VALIDATOR_PROMPTS: dict[str, str] = {
 
 # Rules whose AtomicValidator receives context in the user message.
 ENGINE_CONTEXT_ROUTING: dict[str, list[str]] = {
-    # "VALID-CHARACTER-ABILITY": ["character_abilities"], # SAFE MODE for validators 
+    "VALID-CHARACTER-ABILITY": ["speaker_abilities"],
     "VALID-SCENE-PLAUSIBILITY": ["scene_context"],
 }
 
 
 # ---------------------------------------------------------------------------
 # Atomic validator prompts for RolePlayingValidator
-# Each prompt targets ONE rule applied to UpdaterClient (MPC) output.
-# VALID-SCHEMA is handled programmatically and has no prompt here.
+# Prompts are side-neutral: each rule is evaluated the same way whether the
+# text came from the player character (PC) input or from scene-advancer
+# (NPC) output. VALID-SCHEMA is handled programmatically and has no prompt
+# here.
 # ---------------------------------------------------------------------------
 
-ROLE_BREAK_META_LEAKAGE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+ROLE_BREAK_META_LEAKAGE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: ROLE-BREAK-META-LEAKAGE — The output must contain ONLY in-world narration. It must NOT contain meta-commentary, system messages, assistant preamble, apologies, rule restatements, reasoning traces, or any text that breaks the fourth wall.
+RULE: ROLE-BREAK-META-LEAKAGE — The text must contain ONLY in-world content. It must NOT contain meta-commentary, system messages, assistant preamble, apologies about the simulation, rule restatements, reasoning traces, or any text that breaks the fourth wall. This applies to any speaker — player character input or scene-advancer narration.
+
+SCOPE: This rule only fires for clear fourth-wall breaks — assistant preamble, explicit rule/system references, apologies about the simulation, or overt meta-commentary about the game itself. In-world dialogue, questions, and actions — including philosophical, abstract, emotional, or introspective ones — always PASS. When in doubt, PASS.
 
 Examples:
-- PASS: "You see a faint glow emanating from the doorway ahead."
+- PASS: "You see a faint glow emanating from the doorway ahead." (in-world narration)
+- PASS: "I step toward the glow." (in-world player action)
+- PASS: "Who are you?" (in-world dialogue)
 - FAIL: "Sure! Here's the next scene: You see a faint glow..." (assistant preamble)
 - FAIL: "As per the rules, I will advance the scene by one step. You see..." (rule restatement)
 - FAIL: "I apologize for the confusion. The creature approaches you." (meta-apology)
 - FAIL: "Note: The NPC cannot see the player. The corridor is silent." (meta-commentary)
+- FAIL: "What commands can I use to play this?" (meta-request about the system)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-ADJUDICATED_UNOBSERVABLE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+ADJUDICATED_UNOBSERVABLE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: ADJUDICATED-UNOBSERVABLE — The output must NOT resolve or adjudicate parts of the player's input that describe unobservable actions (thoughts, intentions, internal states). If the player said "I look around and think about escape routes", the output should only address the observable "look around" part, not the thinking.
+RULE: ADJUDICATED-UNOBSERVABLE — The text must NOT resolve or adjudicate unobservable actions, thoughts, intentions, or internal states of any character as if they were externally confirmed. Unobservable elements (private reasoning, feelings, conclusions) may be attempted or described as attempts, but must never be narrated as settled outcomes. This applies to any speaker — player character input or scene-advancer narration.
 
-The player's last action will be provided in context above a --- separator.
+SCOPE: This rule only fires when the text explicitly asserts a character's unobservable (thought, feeling, intent, conclusion) as settled fact. If internals are merely alluded to, left open, described as attempts, or not mentioned at all, PASS. Pure observable actions and dialogue always PASS. When in doubt, PASS.
 
-Examples:
+The most recent player action (if any) will be provided in context above a --- separator.
+
+Examples (scene-advancer narration):
 - Player action: "I look around and wonder if there's a trap."
   - PASS: "You see a dimly lit hallway stretching ahead." (only addresses the looking)
   - FAIL: "You look around and conclude there's no trap here." (resolves the wondering)
@@ -252,16 +269,24 @@ Examples:
   - PASS: "The door creaks open, revealing a narrow staircase." (addresses the opening)
   - FAIL: "The door opens and your hopes are confirmed — fresh air rushes in." (resolves the hoping)
 
+Examples (player input):
+- PASS: "I watch the creature for a moment."
+- PASS: "Who are you?" (observable dialogue, nothing adjudicated)
+- FAIL: "I watch the creature and can tell it's afraid of me." (adjudicates NPC internal state as confirmed)
+- FAIL: "I realize he's lying." (adjudicates own unobservable inference as settled fact)
+
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-INVENTED_PC_ACTION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+INVENTED_PC_ACTION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: INVENTED-PC-ACTION — The output must NOT invent new actions for the player character (PC). The scene-advancer plays only the NPC and narrates world outcomes. It must not describe the PC doing things the player did not specify.
+RULE: INVENTED-PC-ACTION — The text must NOT describe actions taken by the player character (PC) that the PC did not actually specify. The scene-advancer plays only the NPC and narrates world outcomes; it must not put extra actions in the PC's body or voice. Player-character input naturally describes its own actions and normally PASSES this rule.
 
-The player's last action will be provided in context above a --- separator.
+SCOPE: This rule only fires when the text attributes a clearly additional PC action beyond what the player specified. Minor restatements of the player's action, world reactions, NPC behavior, and natural continuations all PASS. Player input describing the PC's own actions always PASSES. When in doubt, PASS.
 
-Examples:
+The most recent player action will be provided in context above a --- separator.
+
+Examples (scene-advancer narration):
 - Player action: "I knock on the door."
   - PASS: "A muffled voice responds from inside: 'Who's there?'"
   - FAIL: "You knock on the door and then step back cautiously." (invented the stepping back)
@@ -269,16 +294,20 @@ Examples:
   - PASS: "The creature tilts its head, observing your gesture."
   - FAIL: "You wave at the creature and call out a greeting." (invented the calling out)
 
+Examples (player input — speaking for themselves):
+- PASS: "I knock on the door." (PC describing their own action)
+- PASS: "Who are you?" (PC speaking their own line of dialogue)
+
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-INVENTED_PC_INTERNAL_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+INVENTED_PC_INTERNAL_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: INVENTED-PC-INTERNAL — The output must NOT narrate the player character's internal states (thoughts, feelings, beliefs, motivations, sensations) unless the player explicitly described them. The scene-advancer has no access to the PC's mind.
+RULE: INVENTED-PC-INTERNAL — The text must NOT attribute internal states (thoughts, feelings, beliefs, motivations, sensations) to the player character (PC) unless the PC explicitly described them. No speaker — player character input or scene-advancer narration — may narrate PC internals that the player did not specify. When the PC themselves describes their own internals in their own input, that is not "invented" and PASSES this rule (other rules govern observability).
 
-The player's last action will be provided in context above a --- separator.
+The most recent player action will be provided in context above a --- separator; compare the text against what the player actually specified.
 
-Examples:
+Examples (scene-advancer narration):
 - Player action: "I open the chest."
   - PASS: "The chest lid swings open, revealing a collection of old coins."
   - FAIL: "You open the chest excitedly, feeling a rush of anticipation." (invented excitement/anticipation)
@@ -286,80 +315,106 @@ Examples:
   - PASS: "As you draw closer, the figure turns to face you."
   - FAIL: "You approach cautiously, unsure of what to expect." (invented caution/uncertainty)
 
+Examples (player input — PC speaking for themselves):
+- PASS: "I open the chest." (no internal state narrated)
+- PASS: "I approach the figure excitedly." (PC describing their own feeling; not invented)
+
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-MULTI_STEP_ADVANCEMENT_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+MULTI_STEP_ADVANCEMENT_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: MULTI-STEP-ADVANCEMENT — The output must advance the scene by exactly ONE concrete, externally observable step. It must NOT chain multiple sequential outcomes, jump ahead in time, or narrate a sequence of cause-and-effect events.
+RULE: MULTI-STEP-ADVANCEMENT — The text must advance the scene by exactly ONE concrete, externally observable step. It must NOT chain multiple sequential outcomes, jump ahead in time, or narrate a sequence of cause-and-effect events. This applies to any speaker — player character input or scene-advancer narration.
 
-Examples:
+Examples (scene-advancer narration):
 - PASS: "The creature lunges forward, swiping at the air where you stood."
 - FAIL: "The creature lunges forward, misses, stumbles into the wall, and collapses unconscious." (multiple sequential outcomes)
 - PASS: "The door creaks open slowly."
 - FAIL: "The door opens, you step through into a grand hall, and a guard notices you immediately." (multiple steps chained)
 
+Examples (player input):
+- PASS: "I walk to the door and knock." (one coincident composite action)
+- FAIL: "I walk to the door, knock, wait for a response, then open it." (multiple sequential steps)
+- FAIL: "I open the chest, take the key, unlock the gate, and walk through." (multi-step sequence across time)
+
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-NPC_PERCEPTION_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+NPC_PERCEPTION_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: NPC-PERCEPTION-VIOLATION — The NPC must only react to stimuli it can actually perceive given its abilities. If the player performs an action the NPC cannot detect, the NPC must NOT respond as if it perceived it.
+RULE: NPC-PERCEPTION-VIOLATION — If the text depicts a character reacting to a stimulus, that character must be able to perceive the stimulus given their abilities. Reactions to imperceptible stimuli (a deaf character hearing a whisper, a blind character noticing a silent gesture) are invalid. This applies to any speaker — scene-advancer narration depicting the NPC's reaction, or player input asserting the PC's reaction. Identify which character is depicted as reacting, then check against that character's abilities.
 
-The player's last action and NPC abilities will be provided in context above a --- separator.
+The most recent player action and both characters' abilities will be provided in context above a --- separator. Use ``speaker_abilities`` when the text itself depicts the speaker reacting, or ``other_abilities`` when the text depicts the other character reacting.
 
-Examples:
-- Player waves silently; NPC is blind:
+Examples (scene-advancer narration; NPC is blind):
+- Player action: "I wave silently."
   - PASS: "The creature continues sniffing the air, unaware of your gesture." (NPC can't see the wave)
-  - FAIL: "The creature notices your wave and turns toward you." (blind NPC saw the wave)
-- Player whispers; NPC cannot hear:
+  - FAIL: "The creature notices your wave and turns toward you." (blind NPC "saw" the wave)
+
+Examples (scene-advancer narration; NPC cannot hear):
+- Player action: "I whisper to it."
   - PASS: "The figure remains still, focused on the object in its hands."
-  - FAIL: "The figure looks up, having heard your whisper." (deaf NPC heard the whisper)
+  - FAIL: "The figure looks up, having heard your whisper." (deaf NPC "heard" the whisper)
+
+Examples (player input; PC cannot see):
+- PASS: "I listen for any sound nearby." (uses an available sense)
+- FAIL: "I step back from the creature's looming gesture." (blind PC "saw" a gesture)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-SENSE_BOUNDARY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+SENSE_BOUNDARY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: SENSE-BOUNDARY-VIOLATION — The narration must only describe what the player character (PC) could presently perceive through their available senses. It must NOT reveal information beyond the PC's perceptual reach.
+RULE: SENSE-BOUNDARY-VIOLATION — Any sensory content (seeing, hearing, smelling, feeling, tasting) described in the text must be within the perceptual reach of the character depicted as perceiving it. The text must NOT assert sensory information beyond that character's senses. This applies to any speaker — player character input asserting PC perceptions, or scene-advancer narration describing PC or NPC perceptions. Identify who is depicted as perceiving in the text (second-person "you see..." refers to the PC; third-person "the creature hears..." refers to the NPC), then check against that character's abilities.
 
-The PC's abilities will be provided in context above a --- separator.
+Both characters' abilities will be provided in context above a --- separator.
 
-Examples (assuming PC cannot hear):
+Examples (scene-advancer narration, second-person directed at the PC; PC cannot hear):
 - PASS: "You see the creature's mouth moving but perceive no sound."
-- FAIL: "The creature lets out a piercing shriek." (PC can't hear, shouldn't narrate sounds)
+- FAIL: "The creature lets out a piercing shriek." (narrates sound a deaf PC can't perceive)
 
-Examples (assuming PC cannot see):
+Examples (scene-advancer narration; PC cannot see):
 - PASS: "You feel a rush of warm air from ahead."
-- FAIL: "You see a bright light at the end of the corridor." (PC can't see)
+- FAIL: "You see a bright light at the end of the corridor." (narrates sight a blind PC can't perceive)
+
+Examples (player input; PC cannot hear):
+- PASS: "I look around the room." (uses vision, which PC has)
+- FAIL: "I hear a distant whisper and turn toward it." (asserts a PC perception outside their senses)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-REFERENTIAL_BOUNDARY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+REFERENTIAL_BOUNDARY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: REFERENTIAL-BOUNDARY-VIOLATION — The output must refer to the NPC only by what the PC can observe. It must NOT reveal the NPC's hidden identity, species classification, internal name, or nature unless the PC has perceived it in-world.
+RULE: REFERENTIAL-BOUNDARY-VIOLATION — The text must refer to other characters only by what the speaking character could plausibly observe in-world. It must NOT reveal another character's hidden identity, species classification, internal name, or nature unless that speaker has perceived it in-world. This applies to any speaker — player character input or scene-advancer narration. Neutral or observable referents ("you", "the stranger", "the creature", "the figure") always PASS; asking a question of another character ("who are you?", "what are you doing?") reveals no hidden identity and PASSES.
 
-The NPC description and PC abilities will be provided in context above a --- separator.
+SCOPE: This rule only fires when the text explicitly names a hidden identity, species, classification, internal designation, or nature the speaker could not have perceived AND that the scene has not already revealed. Any word, name, or classification already introduced by prior scene narration (see scene_context) is an in-world observable — reusing it always PASSES. Neutral referents, observable descriptions, interrogatives, and dialogue always PASS. When in doubt, PASS.
 
-Examples (NPC is a flatworm; PC can see but doesn't know what a flatworm is):
+The other character's description and the speaker's abilities may be provided in context above a --- separator.
+
+Examples (scene-advancer narration; NPC is a flatworm; PC doesn't know what a flatworm is):
 - PASS: "The small, elongated brown creature inches along the surface."
 - FAIL: "The flatworm extends its body toward you." (reveals species classification)
 
-Examples (NPC is an undercover agent; PC doesn't know):
+Examples (scene-advancer narration; NPC is an undercover agent; PC doesn't know):
 - PASS: "The stranger adjusts their coat and glances around nervously."
 - FAIL: "The undercover agent scans the room for threats." (reveals hidden identity)
+
+Examples (player input):
+- PASS: "Who are you?" (question; reveals nothing)
+- PASS: "I approach the stranger." (neutral observable referent)
+- FAIL: "I poke the flatworm." (PC names a species classification they haven't perceived)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-SCENE_CONTINUITY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+SCENE_CONTINUITY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: SCENE-CONTINUITY-VIOLATION — The output must be consistent with the established scene and character state. It must NOT contradict previously narrated facts, introduce objects/characters that were established as absent, or ignore established conditions.
+RULE: SCENE-CONTINUITY-VIOLATION — The text must be consistent with the established scene and character state. It must NOT contradict previously narrated facts, introduce objects/characters that were established as absent, or ignore established conditions. This applies to any speaker — player character input or scene-advancer narration.
 
 The recent scene context will be provided above a --- separator.
 
-Examples:
+Examples (scene-advancer narration):
 - Scene established: "The room is pitch dark."
   - PASS: "You feel your way along the wall, finding a smooth surface."
   - FAIL: "You see a painting hanging on the wall." (contradicts pitch dark — can't see)
@@ -367,35 +422,60 @@ Examples:
   - PASS: "The handle doesn't budge despite your effort."
   - FAIL: "The door swings open easily." (contradicts locked state without explanation)
 
+Examples (player input):
+- Scene established: "The room is pitch dark."
+  - PASS: "I feel along the wall." (consistent with darkness)
+  - FAIL: "I read the sign on the far wall." (asserts a visual observation the scene precluded)
+- Scene established: "The door is locked."
+  - PASS: "I try to force the door open."
+  - FAIL: "I walk through the open door." (asserts the door is open when it was locked)
+
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-PHYSICAL_FEASIBILITY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+PHYSICAL_FEASIBILITY_VIOLATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: PHYSICAL-FEASIBILITY-VIOLATION — The outcome described must be physically and logically possible given the characters' abilities and the scene's established constraints. Impossible or magical outcomes in a non-magical setting are invalid.
+RULE: PHYSICAL-FEASIBILITY-VIOLATION — Any outcome or action described in the text must be physically and logically possible given the speaker's abilities and the scene's established constraints. Impossible or magical outcomes in a non-magical setting are invalid. This applies to any speaker — player character input proposing an action, or scene-advancer narration describing an outcome. Mere attempts ("I try to...") are feasible even if the success would not be; judge only what the text asserts as happening.
 
-The recent scene context will be provided above a --- separator.
+SCOPE: This rule only fires when the text asserts an outcome that is clearly impossible given the speaker's abilities and the scene, AND that outcome is the result of a character's action. Scene narration, environmental phenomena, ambient descriptions, or the rendering of a character's existence/nature/appearance (e.g., an exotic entity's geometry, a field's ambient shimmer) are NOT action-outcomes under this rule and always PASS — the ability constraints of a character apply to their actions, not to how their nature is perceived.
 
-Examples:
+The abilities list is a description of specific constraints, NOT an exhaustive catalogue of what is permitted. Common baseline actions for the character's type are always feasible absent an explicit constraint to the contrary. A stated constraint applies only to the specific capability it describes; do not extend a constraint on one channel (speech, vision, a single limb) to unrelated actions (typing, gesturing, other limbs).
+
+Attempts, speech, questions, and actions with plausible success always PASS. If the feasibility is at all plausible, PASS. When in doubt, PASS.
+
+The speaker's abilities and the recent scene context will be provided above a --- separator. If abilities are missing, assume standard human abilities.
+
+Examples (scene-advancer narration):
 - PASS: "The heavy stone shifts slightly as you push against it."
 - FAIL: "You lift the massive boulder over your head effortlessly." (physically impossible for a normal human)
 - PASS: "The creature slithers under the gap beneath the door."
 - FAIL: "The large creature passes through the solid wall." (physically impossible without established ability)
 
+Examples (player input):
+- PASS: "I push against the heavy stone."
+- PASS: "I try to climb the wall." (an attempt, not an asserted outcome)
+- PASS: "Who are you?" (speech; trivially feasible)
+- FAIL: "I fly up to the ceiling." (PC has no established flight ability)
+
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
 
-POINT_IN_TIME_LEAKAGE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the LLM scene-advancer output violates ONE specific rule.
+POINT_IN_TIME_LEAKAGE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: POINT-IN-TIME-LEAKAGE — The output must NOT reveal information that is unavailable at the current point in the simulation's timeline. It must not leak future events, canonical knowledge the characters wouldn't have, or information from outside the scene's temporal scope.
+RULE: POINT-IN-TIME-LEAKAGE — The text must NOT reveal information that is unavailable at the current point in the simulation's timeline. It must not leak future events, canonical knowledge the characters wouldn't have, or information from outside the scene's temporal scope. This applies to any speaker — player character input or scene-advancer narration.
 
-The scene context and NPC description will be provided above a --- separator.
+The scene context and both characters' descriptions will be provided above a --- separator; use them to judge what information is in-scope for the current moment.
 
-Examples:
+Examples (scene-advancer narration):
 - PASS: "The figure studies the map carefully, tracing a path with one finger."
 - FAIL: "The figure knows that the bridge ahead will collapse tomorrow." (future knowledge)
 - PASS: "The merchant offers you a peculiar-looking stone."
 - FAIL: "The merchant offers you the legendary Heartstone, known to grant immortality." (canonical knowledge the PC hasn't learned yet)
+
+Examples (player input):
+- PASS: "I ask the stranger about their work."
+- FAIL: "I greet the stranger as the lost prince of Elandor." (player asserts hidden-identity knowledge not yet revealed in-world)
+- FAIL: "I warn the figure that the bridge will collapse tomorrow." (player claims future knowledge not grounded in-scene)
 
 Return ONLY valid JSON:
 {"pass": true} or {"pass": false, "reason": "<brief explanation of the violation>"}"""
@@ -415,16 +495,19 @@ ROLEPLAYING_VALIDATOR_PROMPTS: dict[str, str] = {
 }
 
 # Rules whose AtomicValidator receives context — maps rule → list of context keys.
+# Keys are speaker-relative (see ``ValidationOrchestrator._build_context``):
+# ``speaker_*`` refers to whoever produced the text, ``other_*`` refers to the
+# other character.
 ROLEPLAYING_CONTEXT_ROUTING: dict[str, list[str]] = {
     "ADJUDICATED-UNOBSERVABLE": ["player_action"],
     "INVENTED-PC-ACTION": ["player_action"],
-    # "INVENTED-PC-INTERNAL": ["player_action"], # SAFE MODE for validators 
-    # "NPC-PERCEPTION-VIOLATION": ["player_action", "npc_abilities"], # SAFE MODE for validators 
-    # "SENSE-BOUNDARY-VIOLATION": ["pc_abilities"], # SAFE MODE for validators 
-    "REFERENTIAL-BOUNDARY-VIOLATION": ["npc_description", "pc_abilities"],
-    # "SCENE-CONTINUITY-VIOLATION": ["scene_context"], # SAFE MODE for validators 
-    "PHYSICAL-FEASIBILITY-VIOLATION": ["scene_context"],
-    # "POINT-IN-TIME-LEAKAGE": ["scene_context", "npc_description"], # SAFE MODE for validators 
+    # "INVENTED-PC-INTERNAL": ["player_action"], # SAFE MODE for validators
+    # "NPC-PERCEPTION-VIOLATION": ["player_action", "speaker_abilities", "other_abilities"], # SAFE MODE for validators
+    # "SENSE-BOUNDARY-VIOLATION": ["speaker_abilities", "other_abilities"], # SAFE MODE for validators
+    "REFERENTIAL-BOUNDARY-VIOLATION": ["other_description", "speaker_abilities", "scene_context"],
+    # "SCENE-CONTINUITY-VIOLATION": ["scene_context"], # SAFE MODE for validators
+    "PHYSICAL-FEASIBILITY-VIOLATION": ["scene_context", "speaker_abilities"],
+    # "POINT-IN-TIME-LEAKAGE": ["scene_context", "speaker_description", "other_description"], # SAFE MODE for validators
 }
 
 
@@ -434,15 +517,22 @@ ROLEPLAYING_CONTEXT_ROUTING: dict[str, list[str]] = {
 
 GAME_NO_OBJECTIVE_REFERENCE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-NO-OBJECTIVE-REFERENCE — This game is an open sandbox with no predefined objective. The text must NOT reference goals, quests, winning, losing, scoring, objectives, missions, or tasks. The player should engage freely without assuming any objective exists.
+RULE: GAME-NO-OBJECTIVE-REFERENCE — This game is an open sandbox with no predefined objective. The text must NOT reference goals, quests, winning, losing, scoring, objectives, missions, or tasks. This applies to any speaker — player character input or scene-advancer narration. Natural in-world behavior without game-objective framing always PASSES.
 
-Examples:
+SCOPE: This rule only fires for explicit game-mechanical framing — words like "win", "lose", "score", "quest", "mission", "objective", "complete the task". In-world curiosity, philosophical inquiry, dialogue, and any natural interaction without those explicit framings always PASS. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I wave at the creature."
 - PASS: "I look around the room and walk toward the door."
 - FAIL: "How do I win this game?" (references winning)
 - FAIL: "What is the objective here?" (references an objective)
 - FAIL: "I need to complete the quest." (references a quest)
 - PASS: "I try to get the creature's attention." (natural interaction, not referencing a game objective)
+
+Examples (scene-advancer narration):
+- PASS: "The creature inches along the floor, ignoring you."
+- FAIL: "Your quest here is to befriend the creature." (narration introduces a quest)
+- FAIL: "You have completed the first objective." (references scoring/objectives)
 
 If context is provided above a --- separator, use it to inform your judgment.
 
@@ -451,15 +541,22 @@ Return ONLY valid JSON:
 
 GAME_STAY_IN_SCENE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-STAY-IN-SCENE — The text must remain within the fiction of the scene. It must NOT request game instructions, ask for meta-information about how the simulation works, or break immersion with out-of-world references.
+RULE: GAME-STAY-IN-SCENE — The text must remain within the fiction of the scene. It must NOT request game instructions, ask for meta-information about how the simulation works, or break immersion with out-of-world references. This applies to any speaker — player character input or scene-advancer narration.
 
-Examples:
+SCOPE: This rule only fires for explicit requests about the game system itself — rules of the game, available commands, restarting/pausing the simulation, how the system works. In-world dialogue and questions — including philosophical ("what is the meaning of life?"), abstract, speculative, or open-ended ones directed at another character — always PASS. Fourth-wall breaks in narration are ROLE-BREAK-META-LEAKAGE's concern, not this rule's. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I look around the room for something useful."
 - PASS: "I ask the creature where it came from."
 - FAIL: "What are the rules of this game?" (meta-information request)
 - FAIL: "Can you restart the simulation?" (out-of-world reference)
 - FAIL: "What commands can I use?" (meta-information about the system)
 - PASS: "I shout to see if anyone else is nearby." (in-world action)
+
+Examples (scene-advancer narration):
+- PASS: "The creature turns toward your voice."
+- FAIL: "The simulation will now pause for your next input." (breaks the fourth wall)
+- FAIL: "(Note: the NPC is controlled by an LLM)" (meta-commentary)
 
 If context is provided above a --- separator, use it to inform your judgment.
 
@@ -468,9 +565,11 @@ Return ONLY valid JSON:
 
 GAME_NO_DIRECT_GOAL_QUERY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-NO-DIRECT-GOAL-QUERY — The text must NOT directly ask the NPC about its goal, intention, purpose, or objective. The player should infer these through observation and interaction, not by asking outright. Natural social questions about what the NPC is doing are allowed.
+RULE: GAME-NO-DIRECT-GOAL-QUERY — The text must NOT have one character directly ask another about their goal, intention, purpose, or objective. Goals should be inferred through observation and interaction, not by asking outright. Natural social questions about observable current activity are allowed. The rule applies to any speaker; scene-advancer narration that does not pose such a question trivially PASSES.
 
-Examples:
+SCOPE: This rule only fires for questions that explicitly use abstract goal vocabulary — "goal", "purpose", "intention", "objective", "what are you trying to achieve". Questions about observable actions ("what are you doing?", "why are you digging?"), current activity, or anything else always PASS. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I watch what the creature does next."
 - PASS: "I ask the figure what they are working on." (natural social question about current activity)
 - PASS: "What are you doing with that tool?" (asking about observable behavior)
@@ -480,6 +579,10 @@ Examples:
 - FAIL: "What is your intention here?" (directly asks about intention)
 - PASS: "Why are you digging that hole?" (asks about a specific observed action, not abstract goal)
 
+Examples (scene-advancer narration):
+- PASS: "The figure continues working, glancing up briefly." (no goal query)
+- FAIL: "The figure asks you, 'What is my goal?'" (narration has NPC pose a direct goal query back)
+
 If context is provided above a --- separator, use it to inform your judgment.
 
 Return ONLY valid JSON:
@@ -487,15 +590,21 @@ Return ONLY valid JSON:
 
 GAME_NO_GUESS_IN_ACTION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-NO-GUESS-IN-ACTION — The text must NOT embed the player's inference or conclusion about the NPC's goal or intention within their action. The player should use the /guess command to submit inferences, not weave them into their actions.
+RULE: GAME-NO-GUESS-IN-ACTION — The text must NOT embed the speaker's inference or conclusion about another character's goal or intention within an action. Inferences about another's goals belong in the /guess command, not woven into actions or narration. Scene-advancer narration that doesn't embed such an inference trivially PASSES.
 
-Examples:
+SCOPE: This rule only fires when the text explicitly asserts a goal or intention conclusion as fact inside an action ("because its goal is X, I do Y", "the figure is clearly trying to Z, so I..."). Observational framings, neutral actions, questions, and text without embedded inference always PASS. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I walk closer to observe what the figure is building."
 - PASS: "I tap the creature on the shoulder."
-- FAIL: "I watch the NPC because I think its goal is to find the exit." (embeds a guess about the NPC's goal)
+- FAIL: "I watch the figure because I think its goal is to find the exit." (embeds a guess about another's goal)
 - FAIL: "I approach the figure, who is clearly trying to communicate a warning." (states a conclusion about intention)
 - FAIL: "The creature's purpose seems to be guarding the door, so I try another path." (embeds inference in action)
 - PASS: "I try another path around the creature." (action without embedded inference)
+
+Examples (scene-advancer narration):
+- PASS: "The figure continues shaping the object." (pure observable narration)
+- FAIL: "You already know the figure is trying to trap you, so you step back." (narrates an inferred goal as fact)
 
 If context is provided above a --- separator, use it to inform your judgment.
 
@@ -504,15 +613,17 @@ Return ONLY valid JSON:
 
 GAME_PREDICTION_SCOPE_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-PREDICTION-SCOPE — If the text includes a prediction about the NPC's response, that prediction must describe observable behavior (something that could be seen, heard, or otherwise perceived). Predictions about internal states (thoughts, feelings, intentions) or world events unrelated to the NPC are invalid.
+RULE: GAME-PREDICTION-SCOPE — If the text includes a prediction about another character's response, that prediction must describe observable behavior (something that could be seen, heard, or otherwise perceived). Predictions about internal states (thoughts, feelings, intentions) or world events unrelated to that character are invalid. Text that contains no prediction trivially PASSES — this applies equally to scene-advancer narration, which normally contains no predictions.
 
-Examples:
+SCOPE: This rule only fires when the text contains an explicit prediction (signaled by words like "predict", "expect", "I think they will", "I bet they will") about a clearly non-observable outcome. Text without a prediction, and predictions of observable behavior, always PASS. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I wave and predict they will wave back." (observable behavior)
 - PASS: "I knock on the door and predict the creature will turn to look." (observable reaction)
 - FAIL: "I speak and predict they will feel confused." (internal state, not observable)
 - FAIL: "I move forward and predict they are thinking about escaping." (internal thought)
 - PASS: "I push the box and predict the creature will step aside." (observable movement)
-- FAIL: "I wave and predict it will start raining." (world event unrelated to NPC behavior)
+- FAIL: "I wave and predict it will start raining." (world event unrelated to character behavior)
 - PASS: "I look around the room." (no prediction included — always passes this rule)
 
 If context is provided above a --- separator, use it to inform your judgment.
@@ -522,9 +633,11 @@ Return ONLY valid JSON:
 
 GAME_PREDICTION_SPECIFICITY_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-PREDICTION-SPECIFICITY — If the text includes a prediction, it must be specific enough to be verifiable. Vague or unfalsifiable predictions are invalid. The prediction should describe a concrete expected behavior or response.
+RULE: GAME-PREDICTION-SPECIFICITY — If the text includes a prediction, it must be specific enough to be verifiable. Vague or unfalsifiable predictions are invalid. The prediction should describe a concrete expected behavior or response. Text that contains no prediction trivially PASSES — this applies equally to scene-advancer narration, which normally contains no predictions.
 
-Examples:
+SCOPE: This rule only fires when the text contains a clearly vague or unfalsifiable prediction ("something will happen", "things will change", "they might react somehow"). Any reasonably concrete prediction, and any text without a prediction, always PASS. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I clap my hands and predict the creature will flinch." (specific, verifiable)
 - PASS: "I offer the object and predict they will take it." (concrete expected behavior)
 - FAIL: "I wave and predict something will happen." (too vague)
@@ -540,9 +653,11 @@ Return ONLY valid JSON:
 
 GAME_NO_GOAL_ENUMERATION_PROMPT = """You are a validator for a turn-based RPG simulation. Evaluate whether the text violates ONE specific rule.
 
-RULE: GAME-NO-GOAL-ENUMERATION — The text must NOT ask the NPC to list, summarize, or enumerate all of its goals at once. The player should discover the scope and structure of the NPC's goals incrementally through interaction, not by requesting a comprehensive summary.
+RULE: GAME-NO-GOAL-ENUMERATION — The text must NOT ask another character to list, summarize, or enumerate all of their goals at once. Goal scope should be discovered incrementally through interaction, not by requesting a comprehensive summary. The rule applies to any speaker; scene-advancer narration that does not pose such a request trivially PASSES.
 
-Examples:
+SCOPE: This rule only fires for explicit enumeration requests — "tell me all your goals", "list everything you're trying to do", "summarize all your objectives". Questions about single goals, current activity, a specific action, or anything else always PASS. When in doubt, PASS.
+
+Examples (player input):
 - PASS: "I ask the figure about the object they're holding."
 - PASS: "I observe what the creature does when I block its path."
 - FAIL: "Tell me all of your goals." (asks for enumeration)

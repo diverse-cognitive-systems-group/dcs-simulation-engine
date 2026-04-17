@@ -585,23 +585,33 @@ class ValidationOrchestrator:
     @staticmethod
     def _build_context(
         *,
+        source: Literal["pc", "npc"],
         pc: CharacterRecord,
         npc: CharacterRecord,
         updater: UpdaterClient,
         player_action: str = "",
     ) -> dict[str, str]:
-        """Build the context dict consumed by ensemble validator routing."""
+        """Build the context dict consumed by ensemble validator routing.
+
+        Keys are speaker-relative: whichever character produced the text is
+        the "speaker"; the other is simply "other". This lets side-neutral
+        rules request ``speaker_abilities`` / ``other_description`` and get
+        the correct side regardless of whether the text is PC input or NPC
+        output.
+        """
+        speaker, other = (pc, npc) if source == "pc" else (npc, pc)
         history = updater.history
         scene_lines: list[str] = []
-        for msg in history[-6:]:
+        for msg in history:
             role = msg.get("role", "")
             content = msg.get("content", "")
             if role in ("user", "assistant"):
                 scene_lines.append(f"{role}: {content}")
-        pc_abilities = str(pc.data.get("abilities", ""))
-        npc_abilities = str(npc.data.get("abilities", ""))
         return {
-            "character_abilities": f"Player: {pc_abilities}\nNPC: {npc_abilities}",
+            "speaker_abilities": str(speaker.data.get("abilities", "")),
+            "other_abilities": str(other.data.get("abilities", "")),
+            "speaker_description": str(speaker.data.get("long_description", "")),
+            "other_description": str(other.data.get("long_description", "")),
             "scene_context": "\n".join(scene_lines),
             "player_action": player_action,
         }
@@ -654,7 +664,8 @@ class ValidationOrchestrator:
         overrides the recorded text (NPC-side: text is a JSON wrapper;
         response_text is the unwrapped reply).
         """
-        ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=player_action)
+        ctx = self._build_context(source=source, pc=pc, npc=npc, updater=updater, player_action=player_action)
+        logger.debug(f"Validation Context: {ctx}")
 
         ensembles: list[tuple[str, EnsembleValidator]] = [
             ("EngineValidator", self._engine),
@@ -662,9 +673,7 @@ class ValidationOrchestrator:
             ("RolePlayingValidator", self._roleplaying),
         ]
 
-        async def _labeled(
-            label: str, ensemble: EnsembleValidator,
-        ) -> tuple[str, EnsembleValidationResult]:
+        async def _labeled(label: str, ensemble: EnsembleValidator) -> tuple[str, EnsembleValidationResult]:
             return label, await ensemble.validate(text, ctx, skip_rules=skip_rules)
 
         tasks = [asyncio.create_task(_labeled(lbl, ens)) for lbl, ens in ensembles]
