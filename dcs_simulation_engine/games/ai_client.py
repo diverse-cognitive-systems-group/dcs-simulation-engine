@@ -4,8 +4,9 @@
 import asyncio
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import httpx
 from dcs_simulation_engine.core.constants import (
@@ -24,12 +25,14 @@ from dcs_simulation_engine.games.prompts import (
 )
 from loguru import logger
 
+if TYPE_CHECKING:
+    from dcs_simulation_engine.core.session_event_recorder import ValidationEventRecorder
+
 DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
 
 
-# TODO: I don't get why this fake_ai_response is here....why not in testing?
 def set_fake_ai_response(value: str | None) -> None:
     """Set a process-local override returned by _call_openrouter when configured."""
     global _FAKE_AI_RESPONSE
@@ -205,9 +208,7 @@ class SimulatorClient:
             list(player_turn_validators) if player_turn_validators is not None else list(DEFAULT_PLAYER_TURN_VALIDATORS)
         )
         self._simulator_turn_validators = (
-            list(simulator_turn_validators)
-            if simulator_turn_validators is not None
-            else list(DEFAULT_SIMULATOR_TURN_VALIDATORS)
+            list(simulator_turn_validators) if simulator_turn_validators is not None else list(DEFAULT_SIMULATOR_TURN_VALIDATORS)
         )
 
         self._opener_template = opener_template or OPENER
@@ -216,6 +217,8 @@ class SimulatorClient:
         self._opener_model = opener_model
         self._updater_model = updater_model
         self._validator_model = validator_model
+        self._recorder: "ValidationEventRecorder | None" = None
+        self._turn_index: Callable[[], int] = lambda: 0
 
     @property
     def scene_opener_model(self) -> str:
@@ -241,6 +244,11 @@ class SimulatorClient:
     def simulator_turn_validators(self) -> list[str]:
         """Configured simulator-turn validators for this simulator instance."""
         return list(self._simulator_turn_validators)
+
+    def attach_recorder(self, recorder: "ValidationEventRecorder", turn_index_provider: Callable[[], int]) -> None:
+        """Attach a validation recorder and turn-index provider."""
+        self._recorder = recorder
+        self._turn_index = turn_index_provider
 
     def _transcript_context(self) -> str:
         if not self._transcript_events:
@@ -386,6 +394,29 @@ class SimulatorClient:
 
         return failures
 
+    async def _record_validation_failures(
+        self,
+        *,
+        failures: list[SimulatorValidationFailure],
+        event_source: str,
+        response: str,
+    ) -> None:
+        """Persist validation failures when a recorder is attached."""
+        if self._recorder is None or not failures:
+            return
+
+        turn_index = self._turn_index()
+        for failure in failures:
+            await self._recorder.record_violation(
+                event_source=event_source,
+                validator_name=failure.validator_name,
+                stage=failure.stage,
+                message=failure.message,
+                response=response,
+                raw_result=failure.raw_result,
+                turn_index=turn_index,
+            )
+
     async def _validate_simulator_response(
         self,
         *,
@@ -439,12 +470,22 @@ class SimulatorClient:
             user_input=user_input,
             simulator_response=response.content,
         )
+        await self._record_validation_failures(
+            failures=failures,
+            event_source="simulator_validation",
+            response=response.content,
+        )
         if failures:
             retries_used = 1
             response = await self._generate_simulator_response(user_input=user_input)
             failures = await self._validate_simulator_response(
                 user_input=user_input,
                 simulator_response=response.content,
+            )
+            await self._record_validation_failures(
+                failures=failures,
+                event_source="simulator_validation",
+                response=response.content,
             )
 
         return SimulatorComponentResult(
@@ -488,6 +529,11 @@ class SimulatorClient:
 
         if player_validation_failures:
             await self._cancel_tasks(updater_generation_task)
+            await self._record_validation_failures(
+                failures=player_validation_failures,
+                event_source="player_validation",
+                response=user_input,
+            )
             return SimulatorTurnResult(
                 ok=False,
                 error_message=player_validation_failures[0].message,
