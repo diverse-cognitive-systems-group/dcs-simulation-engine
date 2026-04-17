@@ -63,12 +63,14 @@ class EnsembleValidationResult(NamedTuple):
 
 # Rules to skip during opening-scene validation — these are designed for
 # action-response context and produce false failures on narrative scene descriptions.
-OPENING_SCENE_SKIP_RULES: frozenset[str] = frozenset({
-    "VALID-FORM",
-    "VALID-TEMPORAL-STRUCTURE",
-    "INVENTED-PC-ACTION",
-    "ADJUDICATED-UNOBSERVABLE",
-})
+OPENING_SCENE_SKIP_RULES: frozenset[str] = frozenset(
+    {
+        "VALID-FORM",
+        "VALID-TEMPORAL-STRUCTURE",
+        "INVENTED-PC-ACTION",
+        "ADJUDICATED-UNOBSERVABLE",
+    }
+)
 
 
 def set_fake_ai_response(value: str | None) -> None:
@@ -306,7 +308,6 @@ class ScorerClient:
         return ScorerResult(evaluation=result, raw_json=stripped)
 
 
-
 def format_ensemble_failures(result: EnsembleValidationResult) -> str:
     """Convert ensemble validation failures into a user-facing error string."""
     if not result.failed:
@@ -335,7 +336,9 @@ def _check_npc_schema(text: str) -> EnsembleValidationResult | None:
             failure = ValidationResult("VALID-SCHEMA", False, "Response is not a JSON object")
         elif parsed.get("type") != "ai" or "content" not in parsed:
             failure = ValidationResult(
-                "VALID-SCHEMA", False, 'Missing or wrong "type"/"content" keys',
+                "VALID-SCHEMA",
+                False,
+                'Missing or wrong "type"/"content" keys',
             )
         else:
             extra = set(parsed.keys()) - {"type", "content"}
@@ -382,7 +385,7 @@ class AtomicValidator:
 
         logger.debug(f"AtomicValidator result: {result}, reason: {reason}")
         return bool(result), str(reason)
-    
+
 
 class EnsembleValidator:
     """Base class for ensemble validators that compose AtomicValidators.
@@ -405,10 +408,7 @@ class EnsembleValidator:
     @classmethod
     def create(cls, model: str = DEFAULT_VALIDATOR_MODEL) -> Self:
         """Build all AtomicValidators from the subclass's ``_prompts`` dict."""
-        validators = {
-            rule: AtomicValidator(system_prompt=prompt, model=model)
-            for rule, prompt in cls._prompts.items()
-        }
+        validators = {rule: AtomicValidator(system_prompt=prompt, model=model) for rule, prompt in cls._prompts.items()}
         return cls(validators)
 
     def _pre_checks(self, text: str) -> list[ValidationResult]:
@@ -416,33 +416,51 @@ class EnsembleValidator:
         return []
 
     async def validate(
-        self, text: str, context: dict[str, str] | None = None,
+        self,
+        text: str,
+        context: dict[str, str] | None = None,
         skip_rules: frozenset[str] = frozenset(),
     ) -> EnsembleValidationResult:
-        """Run pre-checks + all LLM validators in parallel."""
+        """Run pre-checks + LLM validators in parallel, stopping at the first failure.
+
+        Pre-check failures short-circuit before any LLM calls are made.
+        Atomic LLM validators race in parallel; the first failure observed
+        cancels the remaining in-flight validators to avoid wasted work.
+        """
         ctx = context or {}
         pre_results = self._pre_checks(text)
+        pre_failed = [r for r in pre_results if not r.passed]
+        if pre_failed:
+            return EnsembleValidationResult(passed=False, results=pre_results, failed=pre_failed)
 
         async def _run(rule: str, validator: AtomicValidator) -> ValidationResult:
             if rule in skip_rules:
                 return ValidationResult(rule=rule, passed=True, reason="")
             try:
                 ctx_keys = self._context_routing.get(rule, [])
-                rule_ctx = "\n".join(
-                    f"{k}: {ctx.get(k, '')}" for k in ctx_keys if ctx.get(k)
-                )
+                rule_ctx = "\n".join(f"{k}: {ctx.get(k, '')}" for k in ctx_keys if ctx.get(k))
                 passed, reason = await validator.validate(text, context=rule_ctx)
                 return ValidationResult(rule=rule, passed=passed, reason=reason)
             except Exception as exc:
                 logger.warning(f"{type(self).__name__} rule {rule} raised: {exc}")
                 return ValidationResult(rule=rule, passed=False, reason=f"Validator error: {exc}")
 
-        llm_results = list(
-            await asyncio.gather(*[_run(r, v) for r, v in self._validators.items()])
-        )
-        results = pre_results + llm_results
-        failed = [r for r in results if not r.passed]
-        return EnsembleValidationResult(passed=len(failed) == 0, results=results, failed=failed)
+        tasks = [asyncio.create_task(_run(r, v)) for r, v in self._validators.items()]
+        collected: list[ValidationResult] = list(pre_results)
+        try:
+            for finished in asyncio.as_completed(tasks):
+                result = await finished
+                collected.append(result)
+                if not result.passed:
+                    break
+        finally:
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        failed = [r for r in collected if not r.passed]
+        return EnsembleValidationResult(passed=len(failed) == 0, results=collected, failed=failed)
 
 
 class EngineValidator(EnsembleValidator):
@@ -496,10 +514,7 @@ class GameValidator(EnsembleValidator):
         if entry is None:
             raise ValueError(f"No GameValidator registered for game: {game_name!r}")
         prompts, routing = entry
-        validators = {
-            rule: AtomicValidator(system_prompt=prompt, model=model)
-            for rule, prompt in prompts.items()
-        }
+        validators = {rule: AtomicValidator(system_prompt=prompt, model=model) for rule, prompt in prompts.items()}
         return cls(
             validators,
             game_name=key,
@@ -543,22 +558,13 @@ class ValidationOrchestrator:
         self._recorder: "ValidationEventRecorder | None" = None
         self._turn_index: Callable[[], int] = lambda: 0
 
-    def attach_recorder(
-        self,
-        recorder: "ValidationEventRecorder",
-        turn_index_provider: Callable[[], int],
-    ) -> None:
+    def attach_recorder(self, recorder: "ValidationEventRecorder", turn_index_provider: Callable[[], int]) -> None:
         """Attach a validation recorder + turn-index callback so violations are persisted."""
         self._recorder = recorder
         self._turn_index = turn_index_provider
 
     @classmethod
-    def create(
-        cls,
-        game_name: str,
-        is_llm_player: bool = False,
-        model: str = DEFAULT_VALIDATOR_MODEL,
-    ) -> "ValidationOrchestrator":
+    def create(cls, game_name: str, is_llm_player: bool = False, model: str = DEFAULT_VALIDATOR_MODEL) -> "ValidationOrchestrator":
         """Build all sub-validators for the given game."""
         return cls(
             engine_validator=EngineValidator.create(model=model),
@@ -649,26 +655,39 @@ class ValidationOrchestrator:
         response_text is the unwrapped reply).
         """
         ctx = self._build_context(pc=pc, npc=npc, updater=updater, player_action=player_action)
-        results = list(
-            await asyncio.gather(
-                self._engine.validate(text, ctx, skip_rules=skip_rules),
-                self._game.validate(text, ctx, skip_rules=skip_rules),
-                self._roleplaying.validate(text, ctx, skip_rules=skip_rules),
-            )
-        )
 
-        labeled: list[tuple[str, EnsembleValidationResult]] = [
-            ("EngineValidator", results[0]),
-            (self._game.ensemble_name, results[1]),
-            ("RolePlayingValidator", results[2]),
+        ensembles: list[tuple[str, EnsembleValidator]] = [
+            ("EngineValidator", self._engine),
+            (self._game.ensemble_name, self._game),
+            ("RolePlayingValidator", self._roleplaying),
         ]
+
+        async def _labeled(
+            label: str, ensemble: EnsembleValidator,
+        ) -> tuple[str, EnsembleValidationResult]:
+            return label, await ensemble.validate(text, ctx, skip_rules=skip_rules)
+
+        tasks = [asyncio.create_task(_labeled(lbl, ens)) for lbl, ens in ensembles]
+        collected: list[tuple[str, EnsembleValidationResult]] = []
+        try:
+            for finished in asyncio.as_completed(tasks):
+                label, res = await finished
+                collected.append((label, res))
+                if res.failed:
+                    break
+        finally:
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
         await self._record_violations(
-            labeled,
+            collected,
             event_source=self._event_source(source),
             response=response_text if response_text is not None else text,
         )
 
-        return self._merge_results(results)
+        return self._merge_results([r for _, r in collected])
 
     async def _record_violations(
         self,
@@ -744,8 +763,12 @@ class ValidationOrchestrator:
             result = await self.validate_input(
                 raw_wrapped,
                 source="npc",
-                pc=pc, npc=npc, updater=updater, player_action=action,
-                skip_rules=skip, response_text=reply,
+                pc=pc,
+                npc=npc,
+                updater=updater,
+                player_action=action,
+                skip_rules=skip,
+                response_text=reply,
             )
             if result is None:
                 return reply  # passed

@@ -212,13 +212,17 @@ def test_roleplaying_validator_all_pass() -> None:
 
 @pytest.mark.unit
 def test_roleplaying_validator_llm_fail_propagates() -> None:
-    """RolePlayingValidator reports failures from LLM-based validators."""
+    """RolePlayingValidator reports a failure when an LLM-based validator fails.
+
+    Short-circuits on first failure, so at least one failure is reported.
+    """
     ai_client.set_fake_ai_response('{"pass": false, "reason": "invented action"}')
     try:
         v = ai_client.RolePlayingValidator.create()
         result = asyncio.run(v.validate("You step back."))
         assert result.passed is False
-        assert len(result.failed) == len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
+        assert len(result.failed) >= 1
+        assert all(r.rule in ai_client.ROLEPLAYING_VALIDATOR_PROMPTS for r in result.failed)
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -311,13 +315,13 @@ def test_goal_horizon_game_validator_all_pass() -> None:
 
 @pytest.mark.unit
 def test_game_validator_llm_fail_propagates() -> None:
-    """GameValidator reports failures from LLM-based validators."""
+    """GameValidator reports a failure when an LLM-based validator fails."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "references a quest"}')
     try:
         v = ai_client.GameValidator.for_game("explore")
         result = asyncio.run(v.validate("How do I complete the quest?"))
         assert result.passed is False
-        assert len(result.failed) == 2
+        assert len(result.failed) >= 1
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -382,14 +386,8 @@ def test_orchestrator_validate_input_pc_fail_propagates() -> None:
         )
         assert result is not None
         assert result.passed is False
-        # Engine (1) + Game (2) + RolePlaying (5) = 8 failures; no
-        # conditional skip — role-playing runs for every actor.
-        expected = (
-            len(ai_client.ENGINE_VALIDATOR_PROMPTS)
-            + len(ai_client.EXPLORE_GAME_PROMPTS)
-            + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
-        )
-        assert len(result.failed) == expected
+        # Short-circuits on the first failure; at least one is reported.
+        assert len(result.failed) >= 1
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -407,12 +405,7 @@ def test_orchestrator_pc_rp_runs_for_human() -> None:
             )
         )
         assert result is not None
-        expected = (
-            len(ai_client.ENGINE_VALIDATOR_PROMPTS)
-            + len(ai_client.EXPLORE_GAME_PROMPTS)
-            + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
-        )
-        assert len(result.failed) == expected
+        assert len(result.failed) >= 1
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -430,12 +423,7 @@ def test_orchestrator_pc_rp_runs_for_llm() -> None:
             )
         )
         assert result is not None
-        expected = (
-            len(ai_client.ENGINE_VALIDATOR_PROMPTS)
-            + len(ai_client.EXPLORE_GAME_PROMPTS)
-            + len(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
-        )
-        assert len(result.failed) == expected
+        assert len(result.failed) >= 1
     finally:
         ai_client.set_fake_ai_response(None)
 
@@ -524,10 +512,11 @@ def test_orchestrator_records_pc_human_violations_per_ensemble() -> None:
         )
 
         assert result is not None
-        # All three ensembles fail now (role-playing runs regardless of character type).
-        assert len(recorder.calls) == 3
+        # Short-circuits across ensembles: at least one failing ensemble is recorded,
+        # and every recorded ensemble name is one of the three known validators.
+        assert len(recorder.calls) >= 1
         ensembles = {c.kwargs["ensemble_name"] for c in recorder.calls}
-        assert ensembles == {"EngineValidator", "ExploreGameValidator", "RolePlayingValidator"}
+        assert ensembles <= {"EngineValidator", "ExploreGameValidator", "RolePlayingValidator"}
         for call in recorder.calls:
             assert call.kwargs["event_source"] == "pc_human"
             assert call.kwargs["response"] == "bad text"
@@ -647,20 +636,21 @@ def test_opening_scene_skip_rules_constant() -> None:
 
 @pytest.mark.unit
 def test_ensemble_validate_skips_rules_in_skip_set() -> None:
-    """EnsembleValidator.validate() auto-passes rules listed in skip_rules."""
+    """EnsembleValidator.validate() never treats a skipped rule as a failure."""
     ai_client.set_fake_ai_response('{"pass": false, "reason": "would fail"}')
     try:
         v = ai_client.RolePlayingValidator.create()
         active_rules = set(ai_client.ROLEPLAYING_VALIDATOR_PROMPTS)
         skip = frozenset(active_rules & {"INVENTED-PC-ACTION", "ADJUDICATED-UNOBSERVABLE"})
         result = asyncio.run(v.validate("some text", skip_rules=skip))
-        # Active rules: skipped ones auto-pass, the rest fail.
-        assert len(result.results) == len(active_rules)
-        skipped = [r for r in result.results if r.rule in skip]
-        assert all(r.passed for r in skipped)
-        non_skipped = [r for r in result.results if r.rule not in skip]
-        assert all(not r.passed for r in non_skipped)
-        assert len(result.failed) == len(active_rules) - len(skip)
+        # Short-circuits on first non-skipped failure; no skipped rule should appear
+        # in the failure set, and skipped rules that were observed must have passed.
+        assert result.passed is False
+        failed_rules = {r.rule for r in result.failed}
+        assert not (failed_rules & skip)
+        for r in result.results:
+            if r.rule in skip:
+                assert r.passed
     finally:
         ai_client.set_fake_ai_response(None)
 
