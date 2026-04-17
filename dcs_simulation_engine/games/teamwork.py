@@ -1,6 +1,5 @@
 """Teamwork game."""
 
-from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
 from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
@@ -36,7 +35,6 @@ class TeamworkGame(Game):
         show_npc_details: bool,
         show_final_score: bool,
         scorer: ScorerClient | None = None,
-        transcript_provider: Callable[[], Awaitable[str]] | None = None,
         **kwargs: Any,  # kwargs for base args
     ) -> None:
         """Initialise with game-specific prediction state."""
@@ -44,7 +42,6 @@ class TeamworkGame(Game):
         self._show_npc_details = show_npc_details
         self._show_final_score = show_final_score
         self._scorer = scorer or ScorerClient()
-        self._transcript_provider = transcript_provider
         self._challenges = ""
         self._shared_goal = ""
         self._score: dict[str, Any] = {}
@@ -53,7 +50,6 @@ class TeamworkGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "TeamworkGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
         engine = SimulatorClient(pc=pc, npc=npc, opening_scene_template=OPENING_SCENE_WITH_SHARED_GOAL_TEMPLATE)
         return cls(
@@ -61,7 +57,6 @@ class TeamworkGame(Game):
             npc=npc,
             engine=engine,
             scorer=scorer,
-            transcript_provider=transcript_provider,
             **cls.build_base_init_kwargs(overrides),
             show_npc_details=overrides.show_npc_details,
             show_final_score=overrides.show_final_score,
@@ -140,16 +135,7 @@ class TeamworkGame(Game):
     async def _score_teamwork(self) -> None:
         """Score the player's teamwork reflection against collaborative performance."""
         try:
-            if self._transcript_provider is None:
-                logger.warning("TeamworkGame finishing without scoring because no transcript provider was supplied.")
-                self._score = {
-                    "tier": None,
-                    "score": None,
-                    "reasoning": "Final score couldn't be computed.",
-                }
-                return
-
-            transcript = (await self._transcript_provider()).strip()
+            transcript = self.get_transcript().strip()
             if not transcript:
                 raise ValueError("Teamwork scoring requires a non-empty transcript.")
 

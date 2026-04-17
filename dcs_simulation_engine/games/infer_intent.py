@@ -1,6 +1,5 @@
 """Infer Intent game."""
 
-from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
 from dcs_simulation_engine.core.game import Game, GameEvent
@@ -34,7 +33,6 @@ class InferIntentGame(Game):
         show_npc_details: bool,
         show_final_score: bool,
         scorer: ScorerClient | None = None,
-        transcript_provider: Callable[[], Awaitable[str]] | None = None,
         **kwargs: Any,  # kwargs for base args
     ) -> None:
         """Initialise with game-specific inference state."""
@@ -42,7 +40,6 @@ class InferIntentGame(Game):
         self._show_npc_details = show_npc_details
         self._show_final_score = show_final_score
         self._scorer = scorer or ScorerClient()
-        self._transcript_provider = transcript_provider
         self._goal_inference = ""
         self._goal_inference_confidence = ""
         self._score: dict[str, Any] = {}
@@ -52,7 +49,6 @@ class InferIntentGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "InferIntentGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
         engine = SimulatorClient(
             pc=pc,
@@ -63,7 +59,6 @@ class InferIntentGame(Game):
             npc=npc,
             engine=engine,
             scorer=scorer,
-            transcript_provider=transcript_provider,
             **cls.build_base_init_kwargs(overrides),
             show_npc_details=overrides.show_npc_details,
             show_final_score=overrides.show_final_score,
@@ -134,16 +129,7 @@ class InferIntentGame(Game):
     async def _score_goal_inference(self) -> None:
         """Score the player's goal inference."""
         try:
-            if self._transcript_provider is None:
-                logger.warning("InferIntentGame finishing without scoring because no transcript provider was supplied.")
-                self._score = {
-                    "tier": None,
-                    "score": None,
-                    "reasoning": "Final score couldn't be computed.",
-                }
-                return
-
-            transcript = (await self._transcript_provider()).strip()
+            transcript = self.get_transcript().strip()
             if not transcript:
                 raise ValueError("Infer Intent scoring requires a non-empty transcript.")
 

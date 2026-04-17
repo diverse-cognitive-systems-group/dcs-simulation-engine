@@ -123,6 +123,7 @@ class Game(ABC):
         self._exited = False
         self._exit_reason = ""
         self._in_finish_flow = False
+        self._filtered_transcript_buffer: list[str] = []
 
     # ---- Concrete lifecycle (no more boilerplate in each game) -----------
 
@@ -144,6 +145,10 @@ class Game(ABC):
         """Reason the game ended, or empty string."""
         return self._exit_reason
 
+    def get_transcript(self) -> str:
+        """Return the filtered game transcript (opening + successful turns only)."""
+        return "\n".join(self._filtered_transcript_buffer)
+
     # ---- Default step() with routing -------------------------------------
 
     async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
@@ -164,6 +169,7 @@ class Game(ABC):
             yield GameEvent.now(type="info", content=self.get_setup_content())
             opening = await self._engine.chat(None)
             self._consume_model_metadata(stage="opening", metadata=opening.metadata)
+            self._filtered_transcript_buffer.append(f"Opening scene: {opening.content}")
             yield GameEvent.now(type=opening.type, content=opening.content)
             return
 
@@ -189,6 +195,9 @@ class Game(ABC):
 
         result = await self._engine.step(user_input)
         self._consume_turn_metadata(result)
+        if result.ok:
+            self._filtered_transcript_buffer.append(f"Player ({self._pc.hid}): {user_input}")
+            self._filtered_transcript_buffer.append(f"Simulator: {result.character_action}\n{result.scene_response}")
         yield GameEvent.now(type="ai" if result.ok else "error", content=result.scene_response if result.ok else (result.error_message or ""))
         if not result.ok:
             self._player_retry_budget -= 1

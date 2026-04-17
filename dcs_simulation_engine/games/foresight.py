@@ -1,7 +1,6 @@
 """Foresight game."""
 
 import re
-from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
 from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
@@ -44,7 +43,6 @@ class ForesightGame(Game):
         show_npc_details: bool,
         show_final_score: bool,
         scorer: ScorerClient | None = None,
-        transcript_provider: Callable[[], Awaitable[str]] | None = None,
         **kwargs: Any,  # kwargs for base args
     ) -> None:
         """Initialise with game-specific prediction state."""
@@ -52,7 +50,6 @@ class ForesightGame(Game):
         self._show_npc_details = show_npc_details
         self._show_final_score = show_final_score
         self._scorer = scorer or ScorerClient()
-        self._transcript_provider = transcript_provider
         self._predictions: dict[str, Any] = {}
         self._score: dict[str, Any] = {}
 
@@ -60,7 +57,6 @@ class ForesightGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
         engine = SimulatorClient(
             pc=pc,
@@ -72,7 +68,6 @@ class ForesightGame(Game):
             npc=npc,
             engine=engine,
             scorer=scorer,
-            transcript_provider=transcript_provider,
             **cls.build_base_init_kwargs(overrides),
             show_npc_details=overrides.show_npc_details,
             show_final_score=overrides.show_final_score,
@@ -127,16 +122,7 @@ class ForesightGame(Game):
     async def _score_prediction(self) -> None:
         """Score the player's latest next-action prediction."""
         try:
-            if self._transcript_provider is None:
-                logger.warning("ForesightGame finishing without scoring because no transcript provider was supplied.")
-                self._score = {
-                    "tier": None,
-                    "score": None,
-                    "reasoning": "Final score could not be computed.",
-                }
-                return
-
-            transcript = (await self._transcript_provider()).strip()
+            transcript = self.get_transcript().strip()
             if not transcript:
                 raise ValueError("Foresight scoring requires a non-empty transcript.")
 

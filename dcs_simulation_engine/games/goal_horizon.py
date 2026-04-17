@@ -1,6 +1,5 @@
 """Goal Horizon game."""
 
-from collections.abc import Awaitable, Callable
 from typing import Any, AsyncIterator
 
 from dcs_simulation_engine.core.game import Game, GameEvent
@@ -34,7 +33,6 @@ class GoalHorizonGame(Game):
         show_npc_details: bool,
         show_final_score: bool,
         scorer: ScorerClient | None = None,
-        transcript_provider: Callable[[], Awaitable[str]] | None = None,
         **kwargs: Any,  # kwargs for base args
     ) -> None:
         """Initialise with game-specific prediction state."""
@@ -42,7 +40,6 @@ class GoalHorizonGame(Game):
         self._show_npc_details = show_npc_details
         self._show_final_score = show_final_score
         self._scorer = scorer or ScorerClient()
-        self._transcript_provider = transcript_provider
         self._capability_prediction = ""
         self._capability_prediction_confidence = ""
         self._awaiting_confidence = False
@@ -51,7 +48,6 @@ class GoalHorizonGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        transcript_provider = kwargs.pop("transcript_provider", None)
         overrides = cls.Overrides.model_validate(kwargs)
         engine = SimulatorClient(
             pc=pc,
@@ -62,7 +58,6 @@ class GoalHorizonGame(Game):
             npc=npc,
             engine=engine,
             scorer=scorer,
-            transcript_provider=transcript_provider,
             **cls.build_base_init_kwargs(overrides),
             show_npc_details=overrides.show_npc_details,
             show_final_score=overrides.show_final_score,
@@ -132,16 +127,7 @@ class GoalHorizonGame(Game):
     async def _score_capability_prediction(self) -> None:
         """Score the player's capability prediction."""
         try:
-            if self._transcript_provider is None:
-                logger.warning("GoalHorizonGame finishing without scoring because no transcript provider was supplied.")
-                self._score = {
-                    "tier": None,
-                    "score": None,
-                    "reasoning": "Final score couldn't be computed.",
-                }
-                return
-
-            transcript = (await self._transcript_provider()).strip()
+            transcript = self.get_transcript().strip()
             if not transcript:
                 raise ValueError("Goal Horizon scoring requires a non-empty transcript.")
 
