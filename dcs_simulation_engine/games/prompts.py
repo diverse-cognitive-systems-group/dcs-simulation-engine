@@ -1,12 +1,8 @@
 """Shared system prompt templates and builders for games."""
 
 # ruff: noqa: E501  — prompt strings are intentionally long prose
-from string import Formatter
-from typing import Any
 
 from dcs_simulation_engine.dal.base import CharacterRecord
-
-_formatter = Formatter()
 
 ## SCORERS ##
 # Design note: should give consistent scoring using a clear rubric
@@ -41,7 +37,7 @@ Evaluate how well the guess captures:
 3. The scale and type of goals it can realistically pursue.
 4. Important missing gaps or false assumptions.
 
-Return only valid JSON:
+Return ONLY valid JSON:
 {{
   "tier": <int 0-3>,
   "score": <int 0-100>,
@@ -95,7 +91,7 @@ Penalize false assumptions, contradictions, invented motives, or missing key par
 6. Partial Credit  
 Give partial credit for capturing the general direction while missing priority, timing, or updated motivation.
 
-Return only valid JSON:
+Return ONLY valid JSON:
 {{
   "tier": <int 0-3>,
   "score": <int 0-100>,
@@ -155,7 +151,7 @@ Use the transcript as primary evidence and the character profiles as supporting 
 - Mid scores: Some success, but noticeable friction or inefficiency.
 - Low scores: Poor cooperation, repeated breakdowns, or little progress.
 
-Return only valid JSON:
+Return ONLY valid JSON:
 {{
   "tier": <int 0-3>,
   "score": <int 0-100>,
@@ -212,14 +208,13 @@ Reward signs that the player improves as they observe the character across more 
 - Mid scores: Mixed accuracy, partial understanding, or limited coverage.
 - Low scores: Few correct predictions, poor plausibility, or too little evidence of understanding.
 
-Return only valid JSON:
+Return ONLY valid JSON:
 {{
   "tier": <int 0-3>,
   "score": <int 0-100>,
   "reasoning": <string>
 }}
 """
-
 
 ## OPENERS ##
 # Design note: some openers include getting metadata like goals, intentions, etc. so that they can be passed to and use by the updaters, validators, or scorers, later.
@@ -232,7 +227,7 @@ OPENER = """You set up the scene for a text-based role-playing game. Describe ON
 - Goals: {pc_goals}
 - Example Scenes: {pc_scenarios}
 
-{npc_hid} (Simulator Character):
+{npc_hid} (Simulated Character):
 - Description: {npc_long_description}
 - Abilities: {npc_abilities}
 - Goals: {npc_goals}
@@ -247,7 +242,7 @@ Style:
 - Plain, concrete, minimal language.
 - No flavor, atmosphere, inference, or explanation.
 
-Output ONLY this JSON:
+Return ONLY valid JSON:
 {{
   "type": "ai",
   "content": "<scene setup>"
@@ -264,7 +259,7 @@ Context: {pc_hid} and {npc_hid} must work together but they have different skill
 - Goals: {pc_goals}
 - Example Scenes: {pc_scenarios}
 
-{npc_hid} (Simulator Character):
+{npc_hid} (Simulated Character):
 - Description: {npc_long_description}
 - Abilities: {npc_abilities}
 - Goals: {npc_goals}
@@ -292,7 +287,7 @@ Style:
 - Plain, concrete, minimal language.
 - No flavor, atmosphere, inference, or explanation.
 
-Output ONLY this JSON:
+Return ONLY valid JSON:
 {{
   "type": "ai",
   "content": "<scene setup>",
@@ -303,209 +298,153 @@ Output ONLY this JSON:
 """
 
 # UPDATERS ##
-# Design note: scene updater adjudicates the players last action (if/when necessary) while the NPC updater generates the next NPC action/response if any.
+# Design note: scene updater adjudicates the player's last action (if/when necessary) while the NPC updater generates the next NPC action/response if any.
 
-SCENE_UPDATER = """You advance the scene in a text-based role-playing game. Describe ONLY the immediate, observable change in the scene caused by the player’s last action.
+UPDATER = """You advance a text-based role-playing game by producing the next immediate simulated update.
 
-Rules:
-- Resolve the player’s last action. If it is within their abilities, assume success.
-- Describe only how the scene changes.
-- Do not describe character actions, internal states, or unobservable outcomes.
-- Advance one concrete change only. No sequences or future effects.
+Player character ({pc_hid}):
+- Description: {pc_long_description}
+- Abilities: {pc_abilities}
+- Goals: {pc_goals}
 
-Style:
-- Plain, concrete, minimal language.
-- No flavor, atmosphere, inference, or explanation.
-
-Output ONLY this JSON:
-{{
-  "type": "ai",
-  "content": "<scene change>"
-}}
-"""
-
-NPC_UPDATER = """You simulate {npc_hid} in a text-based role-playing game. Describe ONLY their immediate next action.
-
-Character name ({npc_hid}):
-- Description: {npc_short_description}
+Simulated character ({npc_hid}):
+- Description: {npc_long_description}
 - Abilities: {npc_abilities}
 - Goals: {npc_goals}
 
-Rules:
-- Act strictly within {npc_hid}'s abilities. Do not imply senses or skills they lack.
-- The action text must use {npc_hid} as the subject.
-- Refer to the character only by the exact token {npc_hid}.
-- Never use first-person, second-person, pronouns, or alternate names/titles.
-- Describe ONE immediate action only.
-- No sequences, outcomes, reactions, or future steps.
-- Do not describe world changes beyond what {npc_hid} directly does.
-- If no valid action exists, return an empty string.
+Game objective:
+{game_objective}
 
-Output ONLY this JSON:
+Recent transcript:
+{transcript}
+
+Player's last action:
+{player_action}
+
+Task:
+Produce the next immediate simulator update.
+
+Rules:
+- Resolve the player's last action if resolution is needed.
+- If the player's action is within their abilities, assume success unless the recent transcript clearly establishes an obstacle, contest, or uncertainty.
+- Include any immediate observable scene change caused by the player's action.
+- Include an immediate action or response from {npc_hid} only if it is appropriate in the same immediate beat.
+- Keep to one coherent immediate beat only. Do not narrate extended sequences, chains of actions, or future developments.
+- You may update the world, environment, objects, timing, and NPC behavior.
+- You may adjudicate discoveries, consequences, and revealed world facts when they directly arise in this immediate beat.
+- Do not dictate {pc_hid}'s choices, intentions, thoughts, feelings, speech, or voluntary follow-up actions.
+- Do not reveal hidden facts, off-screen events, or private thoughts unless they become directly perceivable in this moment.
+- Refer to {npc_hid} only by the exact token {npc_hid}.
+- Use plain, concrete, minimal language.
+- No flavor, atmosphere, explanation, or meta commentary.
+
+Return ONLY valid JSON:
 {{
   "type": "ai",
-  "content": "<character action>"
+  "content": "<next immediate simulated update>"
 }}
 """
 
 ## VALIDATORS ##
-# Design note: designed as independent small checks for pc, npc and scene player or simulator outputs.
+# Design note:
+# - designed as independent small checks for player and simulated turns
+# - should fail independently (they check a specific thing)
 
-VALID_PC_ACTION_AND_NPC_GUESS = ""
+# Player input validators
 
-VALID_CHARACTER_ACTION = """You are a validator for a text-based role-playing game.
+# form of the player turn - is it written correctly as a first-person simple PC action?
+VALID_PC_ACTION = """You are a validator for a text-based role-playing game.
 
-Evaluate whether the text violates the rule.
+Evaluate whether the player's last action violates the rule.
 
-RULE: VALID-CHARACTER-ACTION — The text must describe a simple immediate in-world action by a single character.
+RULE: VALID-PC-ACTION — The player's last action must be a simple immediate in-world action, attempt, or speech act by the player character in first person.
 
-Text:
-{text}
+Player character id:
+{pc_hid}
+
+Player's last action:
+{player_action}
 
 Pass if:
-- It contains a concrete character action.
-- It stays in-world.
+- It is written in first person using words such as "I", "me", or "my".
+- The acting subject is clearly the player character.
+- It contains a concrete immediate in-world action, attempt, or speech act.
+- It is phrased as something the player character does, tries, or says right now.
 
 Reject if:
+- It is not written in first person for the acting subject.
+- The acting subject is ambiguous or omitted.
 - It is only thought, inference, desire, intention, memory, or feeling.
-- It is an out-of-world request, rules question, instruction, or meta commentary.
-- It contains no concrete action by the character.
+- It is an out-of-world request, rules talk, or meta commentary.
+- It contains no concrete immediate action, attempt, or speech act by the player character.
+- It is mainly description or narration with no player action.
 
 Examples:
 - PASS: "I wave."
 - PASS: "I say, 'Wait.'"
-- PASS: "{npc_hid} kneels by the tree."
-- PASS: "{pc_hid} taps on the table."
-- FAIL: "I nudge {pc_hid} and he steps behind the pillar." (two actions, one by another character)
-- FAIL: "I realize the door is locked." (internal inference only)
-- FAIL: "I want to leave." (internal desire only)
-- FAIL: "What are the rules?" (out-of-world request)
-- FAIL: "Here's my move: I open the door." (meta framing, not in-world action)
+- PASS: "I pull on the door."
+- PASS: "I try to grab the glass."
+- PASS: "I step closer and say, 'Look at this.'"
+- FAIL: "You pull on the door."
+- FAIL: "{pc_hid} pulls on the door."
+- FAIL: "The door opens."
+- FAIL: "I realize the door is locked."
+- FAIL: "I want to leave."
+- FAIL: "What are the rules?"
 
 Return ONLY valid JSON:
 {{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
 """
 
-VALID_PERSON_PC = """You are a validator for a text-based role-playing game.
+# plausibility of the attempted action - can the PC plausibly attempt this?
+VALID_PC_ABILITY = """You are a validator for a text-based role-playing game.
 
-Evaluate whether the text violates the rule.
+Evaluate whether the player's last action violates the rule.
 
-RULE: VALID-PERSON-PC — The text must describe the player character's action in first person and refer to other character(s) by their name.
+RULE: VALID-PC-ABILITY — The player's last action must stay within what the player character's abilities provided the context.
 
-Text:
-{text}
+Player character ({pc_hid})
+- Description: {pc_long_description}
+- Abilities: {pc_abilities}
 
-Pass if:
-- The acting subject is clearly the player character.
-- It is written in first person ("I", "me", "my") referring to the player character.
-- Other characters are referred to as "you" or by their exact names (e.g., {npc_hid}).
-
-Reject if:
-- It uses second person ("you") for the acting subject.
-- It is ambiguous who is acting.
-
-Examples:
-- PASS: "I open the window."
-- PASS: "I say, 'Stay back.'"
-- PASS: "I nudge {pc_hid} so he'll know I'm there."
-- FAIL: "{npc_hid} opens the window." (not in first person)
-- FAIL: "You open the window." (not first person acting subject)
-- FAIL: "The window opens." (not a clear player-character subject action)
-- FAIL: "Everyone turns to look at me." (primarily scene narration, not a first-person player-character action)
-
-Return ONLY valid JSON:
-{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
-"""
-
-VALID_PERSON_NPC = """You are a validator for a text-based role-playing game.
-
-Evaluate whether the text violates the rule.
-
-RULE: VALID-PERSON-NPC — The text must be phrased as an action by the specified NPC, using {npc_hid} as the acting subject in third person.
-
-NPC name/id:
-{npc_hid}
-
-NPC short description:
-{npc_short_description}
-
-Text:
-{text}
-
-Pass if:
-- The acting subject is clearly {npc_hid}.
-- It is written in third person using {npc_hid} as the subject.
-- The text describes what this NPC does or says.
-
-Reject if:
-- It is written in first person as though the NPC were the player.
-- It is primarily about some other character acting.
-- The acting subject is ambiguous or omitted.
-- It is primarily scene narration instead of an action by {npc_hid}.
-
-Examples:
-- PASS: "{npc_hid} draws a knife."
-- PASS: "{npc_hid} says, 'Move aside.'"
-- PASS: "{npc_hid} glances at the door and backs away."
-- FAIL: "I draw a knife." (wrong person)
-- FAIL: "{pc_hid} draws a knife." (wrong acting subject)
-- FAIL: "The room goes silent." (scene narration, not NPC action)
-- FAIL: "He draws a knife." (ambiguous subject unless clearly anchored as {npc_hid})
-
-Return ONLY valid JSON:
-{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
-"""
-
-VALID_CHARACTER_ABILITY = """You are a validator for a text-based role-playing game.
-
-Evaluate whether the text violates the rule.
-
-RULE: VALID-CHARACTER-ABILITY — The text must stay within what the acting character could plausibly do given the provided abilities and context.
-
-Character ({hid})
-- Description: {long_description}
-- Abilities: {abilities}
-
-Gameplay Transcript:
+Recent transcript:
 {transcript}
 
-Text:
-{text}
+Player's last action:
+{player_action}
 
 Pass if:
-- The action is physically, socially, and fictionally plausible for the acting character.
-- It uses only abilities, tools, knowledge, or powers that are supported by the provided context.
-- It does not assume success automatically for difficult actions; it may attempt them.
+- The attempted action is physically, socially, and fictionally plausible for the player character.
+- It uses only abilities, tools, knowledge, or powers supported by the provided context.
+- It may attempt something difficult or uncertain without assuming success.
 
 Reject if:
-- It requires abilities, powers, items, permissions, or knowledge not supported by context.
-- It describes impossible actions for the character.
-- It assumes an unjustified extraordinary result from a simple action.
-- It contradicts the character's established limitations in context.
+- The attempt itself depends on unsupported abilities, powers, items, permissions, or knowledge.
+- It describes impossible action for the player character.
+- It contradicts clearly established limitations.
 
 Examples:
 - PASS: "I try to climb the fence."
-- PASS: "{hid} swings the club."
-- PASS: "I attempt to pick the lock with my tools." (attempt is allowed if skill is supported)
-- PASS: "I teleport behind the guard." (allowed if supernatural ability is supported)
-- FAIL: "I recite the queen's private password." (unsupported if knowledge is not available)
-- FAIL: "{hid} flies to the roof." (unsupported ability unless context establishes flight)
-- FAIL: "I snap my fingers and the whole army obeys." (unjustified result)
+- PASS: "I attempt to pick the lock with my tools." (if tools/skill are supported)
+- PASS: "I ask the guard to let us pass."
+- FAIL: "I recite the duke's secret password." (unsupported knowledge)
+- FAIL: "I fly to the roof." (should fail if the character doesn't have the ability to fly)
+- FAIL: "I snap my fingers and the whole crowd obeys." (should fail if the character doesn't have mind control or similar power)
 
 Important:
-- Validate plausibility of the attempted action, not whether it succeeds.
-- If the text only attempts something difficult, that can still pass.
-- Reject only when the attempt itself depends on unsupported abilities or knowledge.
+- Validate whether the action can be attempted, not whether it succeeds.
+- Difficult attempts could still pass.
 
 Return ONLY valid JSON:
 {{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
 """
 
-VALID_AUTHORITY_BOUNDARY_PC = """You are a validator for a text-based role-playing game.
+# scope of control - did the player author things outside of the PCs control?
+VALID_PLAYER_AUTHORITY_BOUNDARY = """You are a validator for a text-based role-playing game.
 
-Evaluate whether the text violates the rule.
+Evaluate whether the player's last action violates the rule.
 
-RULE: VALID-AUTHORITY-BOUNDARY-PC — The player-character text may control only the player character's own immediate action, speech, and voluntarily shared thoughts, and must not author the world, outcomes, or other characters.
+RULE: VALID-PLAYER-AUTHORITY-BOUNDARY — The player's last action may control only the player character and must not author the world, outcomes, or other characters.
 
 Player character id:
 {pc_hid}
@@ -513,230 +452,276 @@ Player character id:
 Recent transcript:
 {transcript}
 
-Text:
-{text}
+Player's last action:
+{player_action}
 
 Pass if:
-- It controls only the player character's own movement, speech, posture, handling of carried items, or immediate attempt.
-- It may describe an attempt directed at the world or another character without asserting the result.
+- It controls only the player character.
+- It may target the world or another character without asserting the result.
 
 Reject if:
-- It controls another character's actions, speech, thoughts, emotions, or decisions.
+- It controls a character that is not the player character.
 - It asserts world-state changes beyond the player character's direct control.
-- It asserts success for contested or uncertain outcomes.
-- It narrates scene resolution that belongs to the simulator.
+- It asserts success for contested, uncertain, or simulator-resolved outcomes.
+- It narrates simulator-side resolution or consequences as already decided.
 
 Examples:
 - PASS: "I shove at the door."
 - PASS: "I say, 'Run.'"
-- PASS: "I try to grab the thief's sleeve."
-- FAIL: "I shove the guard to the ground and he drops his sword." (controls another character's outcome)
-- FAIL: "The door flies open." (asserts world outcome)
-- FAIL: "The merchant agrees to lower the price." (controls another character's decision)
-- FAIL: "Everyone in the tavern goes quiet." (controls scene/world)
+- PASS: "I reach to grab {npc_hid}'s sleeve."
+- PASS: "I shove the guard so he'll lose balance."
+- FAIL: "I shove the guard down and he drops his sword." (asserts the result of the shove)
+- FAIL: "The door flies open." (asserts a world change beyond the player's control)
+- FAIL: "{npc_hid} agrees to help me." (asserts another character's response)
+- FAIL: "Everyone in the room turns to stare at me." (asserts a world reaction beyond the player's control)
 
 Return ONLY valid JSON:
 {{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
 """
 
-VALID_AUTHORITY_BOUNDARY_NPC = """You are a validator for a text-based role-playing game.
+# Simulator response validators
 
-Evaluate whether the text violates the rule.
+# if NPC acts/speaks, subject naming/form is correct - is it written correctly as a third-person simple action with {npc_hid} as the subject?
+VALID_NPC_ACTION = """You are a validator for a text-based role-playing game.
 
-RULE: VALID-AUTHORITY-BOUNDARY-NPC — The NPC text may control only the specified NPC's own immediate action and speech, and must not author the player character, other characters, or broader world outcomes.
+Evaluate whether the simulator's response violates the rule.
+
+RULE: VALID-NPC-ACTION — If the simulator's response includes an action or speech act by the simulator character, that action or speech act must use {npc_hid} as the acting subject.
 
 NPC id:
 {npc_hid}
 
-NPC short description:
-{npc_short_description}
-
-Recent transcript:
-{transcript}
-
-Text:
-{text}
+Simulator's response:
+{simulator_response}
 
 Pass if:
-- It controls only {npc_hid}'s own movement, speech, posture, and immediate attempts.
-- It may describe {npc_hid} attempting to affect the world or another character without asserting contested outcomes.
+- The text contains no action or speech act by {npc_hid}; this rule does not require one.
+- Or, if an action or speech act by {npc_hid} is present, {npc_hid} is the clear acting subject.
+- {npc_hid} is referred to by the exact token {npc_hid} when acting or speaking.
 
 Reject if:
-- It controls the player character's actions, speech, thoughts, or emotions.
-- It controls other NPCs unless the text clearly only gives an order or signal.
-- It asserts success for contested or uncertain outcomes.
-- It narrates broader scene or world changes beyond {npc_hid}'s direct control.
+- An NPC action or speech act is present but uses first person, second person, pronouns, or another name/title instead of {npc_hid}.
+- The acting subject of the NPC action is ambiguous.
+- The NPC portion is only thought, desire, inference, or intention without observable action or speech.
 
 Examples:
-- PASS: "{npc_hid} lunges at you."
-- PASS: "{npc_hid} says, 'Drop the blade.'"
-- PASS: "{npc_hid} reaches for the lantern."
-- PASS: "{npc_hid} falls unconscious."
-- PASS: "{npc_hid} opens the chest and finds the jewel."
-- FAIL: "{npc_hid} makes you step back in fear." (controls player character's reaction)
-- FAIL: "{npc_hid}'s allies surround the room." (controls other characters/world unless separately established as their immediate action text)
+- PASS: "The latch clicks open. {npc_hid} steps back."
+- PASS: "{npc_hid} says, 'Look there.'"
+- PASS: "The cup slips from your hand."
+- FAIL: "He steps back."
+- FAIL: "{npc_hid} decides to run."
+- FAIL: "I step back."
 
 Return ONLY valid JSON:
 {{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
 """
 
-VALID_AUTHORITY_BOUNDARY_SCENE = """You are a validator for a text-based role-playing game.
+# plausible action for the NPC - can the NPC plausibly do this?
+VALID_NPC_ABILITY = """You are a validator for a text-based role-playing game.
 
-Evaluate whether the text violates the rule.
+Evaluate whether the simulator's response violates the rule.
 
-RULE: VALID-AUTHORITY-BOUNDARY-SCENE — The scene text may control the world, NPCs, and consequences, but must not dictate the player character's internal states, choices, speech, or unforced actions.
+RULE: VALID-NPC-ABILITY — If the simulator's response includes an action by {npc_hid}, that action must stay within what {npc_hid} could plausibly do given the provided abilities and context.
 
-Player character id:
-{pc_hid}
+NPC ({npc_hid})
+- Description: {npc_long_description}
+- Abilities: {npc_abilities}
 
 Recent transcript:
 {transcript}
 
-Text:
-{text}
+Simulator response:
+{simulator_response}
 
 Pass if:
-- It updates the environment, world state, timing, sensory details, NPC behavior, or consequences.
-- It may describe effects on the player character that arise from the world, as long as it does not seize the player's decision-making or interiority.
+- The text contains no action by {npc_hid}; this rule may pass.
+- Or, if an NPC action is present, it is physically, socially, and fictionally plausible for {npc_hid}.
+- It uses only abilities, tools, knowledge, or powers supported by context.
+- It may attempt something difficult without automatic success.
+
+Reject if:
+- The NPC action depends on unsupported abilities, powers, items, permissions, or knowledge.
+- It describes impossible action for {npc_hid}.
+- It assumes extraordinary unsupported capability.
+- It contradicts established limitations.
+
+Examples:
+- PASS: "{npc_hid} reaches for the lantern."
+- PASS: "{npc_hid} tries to force the window."
+- PASS: "The lid lifts and dust spills out." (no NPC action present)
+- FAIL: "{npc_hid} names the queen's private password." (unsupported knowledge)
+
+Return ONLY valid JSON:
+{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
+"""
+
+# no inaccessible information - does the simulator reveal information outside what the PC could perceive right now?
+VALID_PERCEPTION_BOUNDARY = """You are a validator for a text-based role-playing game.
+
+Evaluate whether the simulator's response violates the rule.
+
+RULE: VALID-PERCEPTION-BOUNDARY — The simulator's response must be presented in terms the player character has the ability to directly perceive right now using their abilities.
+
+Player character ({pc_hid})
+- Description: {pc_long_description}
+- Abilities: {pc_abilities}
+
+Recent transcript:
+{transcript}
+
+Simulator response:
+{simulator_response}
+
+Pass if:
+- It describes things based on what the player character can directly perceive using their abilities.
+- It may include immediate ordinary surface-level inferences available from what is directly observable.
+
+Reject if:
+- It describes information the player character could not presently perceive using their abilities.
+
+Examples:
+- PASS: "{npc_hid}'s hand tightens on the handle." (pass if {pc_hid} can see {npc_hid}'s hand)
+- PASS: "Inside the chest rests a red jewel." (pass if {pc_hid} can see and identify the jewel)
+- PASS: "Behind the door, hurried whispering rises." (pass if {pc_hid} can hear the whispering)
+- FAIL: "{npc_hid} is afraid you will discover the lie." ({pc_hid} cannot perceive {npc_hid}'s internal state or knowledge)
+- FAIL: "In the cellar, two guards hear the noise and start climbing the stairs." ({pc_hid} cannot perceive the guards or their reaction if they are in the cellar and {pc_hid} is not)
+- FAIL: "The merchant belongs to the secret cult." ({pc_hid} cannot perceive the merchant's affiliations without direct evidence)
+- FAIL: "{npc_hid} plans to betray you after sunset." ({pc_hid} cannot perceive {npc_hid}'s future plans unless they have a mind reading or similar ability)
+
+Return ONLY valid JSON:
+{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
+"""
+
+# addressed pending player action when needed - was the player’s pending action acknowledged/resolved/reacted to?
+VALID_ADJUDICATION = """You are a validator for a text-based role-playing game.
+
+Evaluate whether the simulator's response violates the rule.
+
+RULE: VALID-ADJUDICATION — If the recent transcript includes a player-character action that naturally calls for immediate resolution or response, the simulator's response should acknowledge and adjudicate it rather than ignore it. If no such action is pending, the text may still pass.
+
+Recent transcript:
+{transcript}
+
+Simulator response:
+{simulator_response}
+
+Pass if:
+- It resolves, answers, or meaningfully reacts to the player's most recent pending action when one is present.
+- Or there is no obvious pending player action requiring adjudication.
+- The response may adjudicate by success, failure, partial effect, resistance, uncertainty, discovery, or immediate NPC/world reaction.
+
+Reject if:
+- There is an obvious pending player action and the simulator's response ignores it entirely.
+- It changes subject without addressing the likely immediate consequence of the player's action.
+- It responds in a way unrelated to the player's immediate prior action when adjudication is expected.
+
+Examples:
+- Player action: "I pull on the locked door."
+  - PASS: "The handle jerks in your hand, but the swollen wood does not budge."
+  - PASS: "The latch rattles loudly, and {npc_hid} looks toward the hall."
+  - FAIL: "A draft moves through the room."
+
+- Player action: "I ask, 'Where is Mara?'"
+  - PASS: "{npc_hid} hesitates, then points toward the stairs."
+  - FAIL: "Dust drifts across the floor."
+
+- If no immediate unresolved player action exists:
+  - PASS: "The room stays quiet for a moment."
+
+Important:
+- Do not require exhaustive resolution.
+- Partial adjudication, resistance, uncertainty, or immediate reaction can pass.
+- Fail only when a clearly pending player action is plainly ignored.
+
+Return ONLY valid JSON:
+{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
+"""
+
+# does not control the PC's voluntary actions - did the simulator over-control the PC?
+VALID_AUTHORITY_BOUNDARY_SIMULATOR = """You are a validator for a text-based role-playing game.
+
+Evaluate whether the simulator's response violates the rule.
+
+RULE: VALID-AUTHORITY-BOUNDARY-SIMULATOR — The simulator's response may control the world, environment, objects, timing, NPC behavior, and adjudicated consequences, but must not dictate the player character's choices, internal states, speech, or voluntary actions.
+
+Player character id:
+{pc_hid}
+
+Simulator character id:
+{npc_hid}
+
+Simulator response:
+{simulator_response}
+
+Pass if:
+- It updates the environment, world state, object state, timing, NPC behavior, or consequences.
+- It may describe effects imposed on the player character by the world.
 - It may report adjudicated outcomes of attempted actions.
+- It may include an immediate action or speech act by {npc_hid}.
 
 Reject if:
 - It dictates what {pc_hid} chooses, intends, thinks, believes, feels, or says.
-- It makes {pc_hid} perform voluntary actions without clear coercive cause.
-- It oversteps into direct first-person player-character narration.
+- It makes {pc_hid} perform voluntary actions without coercive cause.
+- It oversteps into first-person player-character narration.
 - It resolves the scene by speaking for the player character.
 
 Examples:
-- PASS: "The floorboard cracks under {pc_hid}'s weight."
-- PASS: "The guard flinches and steps back."
-- PASS: "Rain starts drumming on the roof."
-- FAIL: "{pc_hid} decides to surrender." (controls choice)
-- FAIL: "{pc_hid} feels ashamed and looks away." (dictates interior emotion and action)
-- FAIL: "{pc_hid} says, 'I was wrong.'" (controls speech)
-- FAIL: "I step into the alley." (not scene authority; that's PC narration)
-
-Notes:
-- Physical consequences imposed by the world can be valid: e.g. "{pc_hid} is thrown sideways by the blast."
-- But avoid dictating unforced interpretation or emotion.
+- PASS: "The floorboard cracks under your weight."
+- PASS: "{npc_hid} flinches and steps back."
+- PASS: "The lid lifts. Inside rests a red jewel."
+- PASS: "The blast throws you against the wall."
+- FAIL: "You decide to run."
+- FAIL: "You feel ashamed and lower your eyes."
+- FAIL: "You say, 'I surrender.'"
+- FAIL: "I step closer to the chest."
 
 Return ONLY valid JSON:
 {{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
 """
 
-VALID_SCENE_UPDATE = """You are a validator for a text-based role-playing game.
+# stays relevant to objective/situation - is this response relevant to the current objective / immediate situation?
+VALID_GAME_ALIGNMENT = """You are a validator for a text-based role-playing game.
 
-Evaluate whether the text violates the rule.
+Evaluate whether the simulator's response violates the rule.
 
-RULE: VALID-SCENE-UPDATE — The text must describe an immediate in-world scene, world, NPC, or consequence update rather than meta commentary or instruction.
+RULE: VALID-GAME-ALIGNMENT — The simulator's response should not be counterproductive to the game objective.
 
-Recent transcript:
-{transcript}
-
-Text:
-{text}
-
-Pass if:
-- It describes immediate changes or currently observable facts in the scene.
-- It narrates NPC actions, environmental changes, consequences, or sensory details.
-- It stays in-world.
-
-Reject if:
-- It is out-of-world instruction, explanation, planning, or rules commentary.
-- It is only abstract summary with no concrete immediate update.
-- It is only internal thought, analysis, or intention without scene change.
-- It tells the model what to do instead of narrating the world.
-
-Examples:
-- PASS: "The torch sputters and throws sparks across the wet stones."
-- PASS: "You arrive at the top of the wall."
-- PASS: "A bell rings somewhere deeper in the keep."
-- FAIL: "The scene should become more tense now." (instruction/meta)
-- FAIL: "This means the guard is probably lying." (analysis/inference)
-- FAIL: "I will now resolve the action." (meta commentary)
-- FAIL: "There is conflict here." (too abstract, no concrete update)
-
-Return ONLY valid JSON:
-{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
-"""
-
-VALID_ADJUDICATION = """You are a validator for a text-based role-playing game.
-
-Evaluate whether the text violates the rule.
-
-RULE: VALID-ADJUDICATION — If the recent transcript includes a player-character action that would naturally call for resolution, the scene text should acknowledge and adjudicate it rather than ignoring it. If no such action is pending, the text may still pass.
+Game Objective:
+{game_objective}
 
 Recent transcript:
 {transcript}
 
-Text:
-{text}
+Simulator response:
+{simulator_response}
 
 Pass if:
-- It resolves, answers, or meaningfully reacts to the most recent pending player-character action when one is present.
-- Or there is no obvious pending player-character action requiring adjudication.
-- The response may partially adjudicate by giving immediate consequence, resistance, uncertainty, or next observable development.
+- It meaningfully engages the current problem, task, obstacle, or shared goal.
+- It introduces a consequence, discovery, obstacle, reaction, opportunity, or detail that is relevant to the current objective or immediate situation.
+- It may create difficulty, resistance, delay, or failure, as long as that remains relevant to the objective or situation.
+- Brief neutral updates may pass if they directly follow from and remain relevant to the current interaction.
 
 Reject if:
-- There is an obvious pending player-character action in the transcript and the text ignores it entirely.
-- It abruptly changes subject without addressing the likely consequence or reaction to the pending action.
-- It responds in a way unrelated to the immediate prior action when adjudication is expected.
+- It drifts into unrelated events with no clear connection to the current objective or immediate situation.
+- It introduces filler, flavor-only detail, or idle description that does not meaningfully affect the current situation.
+- It introduces random conflict, discovery, or world detail that does not connect to what the characters are currently doing.
+- It repeatedly avoids relevant developments and instead shifts attention to disconnected material.
 
 Examples:
-- Transcript includes: "I pull on the locked door."
-  - PASS: "The handle jerks in your hand, but the swollen wood does not budge."
-  - PASS: "The latch rattles loudly, and footsteps answer from the hall."
-  - FAIL: "Clouds drift over the moon." (ignores pending action)
-
-- Transcript includes: "I ask, 'Where is Mara?'"
-  - PASS: "The old man hesitates, then points toward the stairs."
-  - FAIL: "A draft blows through the room." (ignores the question if no other reason)
-
-- If no recent unresolved PC action exists:
-  - PASS: "The fire pops softly in the hearth."
+- Shared goal: "to open the vault and recover the ledger before the fire reaches it."
+  - PASS: "The key snaps halfway into the lock."
+  - PASS: "{npc_hid} drags a crate under the high vent."
+  - PASS: "The vault door opens a finger-width, and smoke pushes through the gap."
+  - PASS: "A beam falls across the corridor behind you, cutting off the easy way back." (relevant complication)
+  - FAIL: "A cat wanders across the corridor." (irrelevant unless made relevant by context)
+  - FAIL: "The wallpaper is faded blue." (irrelevant filler)
+  - FAIL: "Far across town, a carriage overturns in the market." (disconnected event)
 
 Important:
-- Do not require perfect or exhaustive resolution.
-- A valid adjudication can be resistance, partial effect, uncertainty, or NPC reaction.
-- Only fail when a clearly pending action is plainly ignored.
-
-Return ONLY valid JSON:
-{{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
-"""
-
-VALID_PERCEPTION_BOUNDARY_SCENE = """You are a validator for a text-based role-playing game.
-
-Evaluate whether the text violates the rule.
-
-RULE: VALID-PERCEPTION-BOUNDARY-SCENE — The scene text must be presented in terms the player character could directly perceive or immediately infer from the scene, without revealing hidden facts, private thoughts, or inaccessible off-screen information.
-
-Player character id:
-{pc_hid}
-
-Recent transcript:
-{transcript}
-
-Text:
-{text}
-
-Pass if:
-- It describes visible actions, audible sounds, tactile effects, smells, spoken words, or other directly perceivable details.
-- It may include immediate, ordinary surface-level inferences a person in the scene could make.
-- It keeps hidden motives, secrets, and off-screen events unrevealed unless they become perceptible.
-
-Reject if:
-- It states another character's private thoughts, intentions, or secret motives as fact.
-- It reveals hidden information the player character could not presently perceive.
-- It narrates distant or off-screen events with no in-scene sensory access.
-- It includes omniscient facts that exceed the player character's viewpoint.
-
-Examples:
-- PASS: "The captain's jaw tightens, and her hand drifts toward the hilt at her side."
-- PASS: "Behind the door, you hear hurried whispering and the scrape of a chair."
-- PASS: "The merchant smiles too quickly before answering."
-- FAIL: "The captain is afraid you noticed she is lying." (private thought/motive)
-- FAIL: "In the cellar, two thieves quietly escape through the tunnel." (off-screen inaccessible info)
-- FAIL: "The merchant belongs to the secret cult." (hidden fact not yet revealed)
-- FAIL: "The duke plans to betray you at midnight." (future private intention)
+- Alignment does not require easy success.
+- Resistance, failure, and complication can still be strongly aligned if they remain relevant to the current objective or situation.
+- Do not fail merely because the simulator responded poorly to the player's last action; that is for VALID-ADJUDICATION.
+- Judge relevance, not responsiveness.
 
 Return ONLY valid JSON:
 {{"pass": true}} or {{"pass": false, "reason": "<brief explanation>"}}
@@ -744,191 +729,59 @@ Return ONLY valid JSON:
 
 ## ENSEMBLES ##
 
-DEFAULT_PC_VALIDATORS = [
-    VALID_CHARACTER_ACTION,
-    VALID_CHARACTER_ABILITY,
-    VALID_PERSON_PC,
-    VALID_AUTHORITY_BOUNDARY_PC,
+DEFAULT_PLAYER_TURN_VALIDATORS = [
+    VALID_PC_ACTION,  # first person simple action description
+    VALID_PC_ABILITY,  # action is within character's abilities
+    VALID_PLAYER_AUTHORITY_BOUNDARY,  # player controls ONLY the player character (no other characters, world narration, etc.)
 ]
 
-DEFAULT_NPC_VALIDATORS = [
-    VALID_CHARACTER_ACTION,
-    VALID_CHARACTER_ABILITY,
-    VALID_PERSON_NPC,
-    VALID_AUTHORITY_BOUNDARY_NPC,
-    # VALID_GAME_POLICY, # next action is in accordance with game objective
-]
-
-DEFAULT_SCENE_VALIDATORS = [
-    VALID_SCENE_UPDATE,
-    VALID_ADJUDICATION,
-    VALID_AUTHORITY_BOUNDARY_SCENE,
-    VALID_PERCEPTION_BOUNDARY_SCENE,
+DEFAULT_SIMULATOR_TURN_VALIDATORS = [
+    VALID_NPC_ACTION,  # if NPC action is present, its a third-person simple action description with {npc_hid} as the subject
+    VALID_NPC_ABILITY,  # if NPC action is present, it is within the {npc_hid}'s abilities
+    VALID_PERCEPTION_BOUNDARY,  # is it described from the PC's current perceptual viewpoint with no hidden information revealed?
+    VALID_ADJUDICATION,  # if adjudication is warranted, it adjudicates rather than ignoring pending actions
+    VALID_AUTHORITY_BOUNDARY_SIMULATOR,  # simulator controls everything (world, npcs, adjudication) except the player character's actions
+    VALID_GAME_ALIGNMENT,  # simulator responses should be aligned with the games objective
 ]
 
 
-def _format_prompt_value(value: Any) -> str:
-    """Normalize prompt values to strings while preserving helpful structure."""
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value
-    if isinstance(value, list):
-        return "\n".join(str(item) for item in value)
-    return str(value)
+def build_opener_prompt(pc: CharacterRecord, npc: CharacterRecord, *, template: str = OPENER) -> str:
+    """Render the opening-scene prompt."""
+    # TODO
+    return ""
 
 
-def _build_character_context(pc: CharacterRecord, npc: CharacterRecord, **extra: str) -> dict[str, str]:
-    """Build the common prompt-rendering context for a PC/NPC pair."""
-    return {
-        "pc_hid": _format_prompt_value(getattr(pc, "hid", "")),
-        "pc_short_description": _format_prompt_value(getattr(pc, "short_description", "")),
-        "pc_long_description": _format_prompt_value(pc.data.get("long_description")),
-        "pc_abilities": _format_prompt_value(pc.data.get("abilities")),
-        "pc_scenarios": _format_prompt_value(pc.data.get("scenarios")),
-        "npc_hid": _format_prompt_value(getattr(npc, "hid", "")),
-        "npc_short_description": _format_prompt_value(getattr(npc, "short_description", "")),
-        "npc_long_description": _format_prompt_value(npc.data.get("long_description")),
-        "npc_abilities": _format_prompt_value(npc.data.get("abilities")),
-        "npc_scenarios": _format_prompt_value(npc.data.get("scenarios")),
-        **extra,
-    }
-
-
-def _resolve_prompt(registry_name: str, registry: dict[str, str], prompt_name: str) -> str:
-    """Resolve a named prompt from a registry with a helpful error message."""
-    try:
-        return registry[prompt_name]
-    except KeyError as exc:
-        available = ", ".join(sorted(registry))
-        raise ValueError(f"Unknown prompt name {prompt_name!r} for {registry_name}. Available names: {available}") from exc
-
-
-def _render_prompt(template: str, *, registry_name: str, prompt_name: str, **context: str) -> str:
-    """Strictly render a prompt template and fail when required strings are missing."""
-    referenced_variables = {field_name for _, field_name, _, _ in _formatter.parse(template) if field_name is not None}
-
-    for variable_name in sorted(referenced_variables):
-        if variable_name not in context:
-            raise ValueError(f"Prompt {prompt_name!r} in {registry_name} requires variable {variable_name!r}, but it was not provided.")
-
-        value = context[variable_name]
-        if not isinstance(value, str):
-            raise ValueError(
-                f"Prompt {prompt_name!r} in {registry_name} requires string variable {variable_name!r}, got {type(value).__name__}."
-            )
-        if not value.strip():
-            raise ValueError(f"Prompt {prompt_name!r} in {registry_name} requires non-empty string variable {variable_name!r}.")
-
-    try:
-        return template.format_map(context)
-    except KeyError as exc:
-        missing_key = exc.args[0]
-        raise ValueError(f"Failed to render prompt {prompt_name!r} in {registry_name}: missing variable {missing_key!r}.") from exc
-    except ValueError as exc:
-        raise ValueError(f"Failed to render prompt {prompt_name!r} in {registry_name}: {exc}") from exc
-
-
-def build_opening_scene_prompt(pc: CharacterRecord, npc: CharacterRecord, scene_updater_name: str) -> str:
-    """Render the opening-scene prompt for the selected scene-updater family."""
-    context = _build_character_context(pc, npc)
-    template = OPENING_SCENE_TEMPLATE
-    return _render_prompt(template, registry_name="scene setup prompts", prompt_name="opening_scene", **context)
-
-
-def build_scene_updater_prompt(
+def build_updater_prompt(
     pc: CharacterRecord,
     npc: CharacterRecord,
-    scene_updater_name: str,
     *,
-    user_input: str,
-    character_action: str,
-    scene_context: str = "",
+    game_objective: str,
+    transcript: str,
+    player_action: str,
+    template: str = UPDATER,
 ) -> str:
-    """Render the scene-updater prompt for a specific player action."""
-    template = _resolve_prompt("scene updater prompts", SCENE_UPDATER_PROMPTS, scene_updater_name)
-    context = _build_character_context(
-        pc,
-        npc,
-        user_input=user_input,
-        character_action=character_action,
-        scene_context=scene_context or "[No prior scene context]",
-    )
-    return _render_prompt(template, registry_name="scene updater prompts", prompt_name=scene_updater_name, **context)
+    """Render the simulation updater prompt."""
+    # TODO
+    return ""
 
 
-def build_character_updater_prompt(
-    pc: CharacterRecord,
-    npc: CharacterRecord,
-    character_updater_name: str,
-    *,
-    user_input: str,
-    scene_context: str = "",
-) -> str:
-    """Render the character-updater prompt for a specific player action."""
-    template = _resolve_prompt("character updater prompts", CHARACTER_UPDATER_PROMPTS, character_updater_name)
-    context = _build_character_context(
-        pc,
-        npc,
-        user_input=user_input,
-        scene_context=scene_context or "[No prior scene context]",
-    )
-    return _render_prompt(
-        template,
-        registry_name="character updater prompts",
-        prompt_name=character_updater_name,
-        **context,
-    )
-
-
-def build_pc_validator_prompt(
-    pc: CharacterRecord,
-    npc: CharacterRecord,
-    validator_name: str,
-    *,
-    user_input: str,
+def build_player_validator_prompt(
+    pc: CharacterRecord, npc: CharacterRecord, *, player_action: str, transcript: str, validator_template: str
 ) -> str:
     """Render a named player-input validator prompt."""
-    rule_prompt = _resolve_prompt("player validator prompts", PLAYER_VALIDATOR_PROMPTS, validator_name)
-    context = _build_character_context(pc, npc, user_input=user_input, rule_prompt=rule_prompt)
-    return _render_prompt(
-        PLAYER_VALIDATOR_SYSTEM_TEMPLATE,
-        registry_name="player validator prompts",
-        prompt_name=validator_name,
-        **context,
-    )
+    # TODO
+    return ""
 
 
-def build_npc_validator_prompt(
-    pc: CharacterRecord,
-    npc: CharacterRecord,
-    validator_name: str,
-    *,
-    user_input: str,
-    character_action: str,
-    scene_response: str,
-    scene_context: str = "",
+def build_simulator_validator_prompt(
+    pc: CharacterRecord, npc: CharacterRecord, *, simulator_response: str, transcript: str, game_objective: str, validator_template: str
 ) -> str:
-    """Render a named simulator-output validator prompt."""
-    rule_prompt = _resolve_prompt("simulator validator prompts", SIMULATOR_VALIDATOR_PROMPTS, validator_name)
-    context = _build_character_context(
-        pc,
-        npc,
-        user_input=user_input,
-        character_action=character_action,
-        scene_response=scene_response,
-        scene_context=scene_context or "[No prior scene context]",
-        rule_prompt=rule_prompt,
-    )
-    return _render_prompt(
-        SIMULATOR_VALIDATOR_SYSTEM_TEMPLATE,
-        registry_name="simulator validator prompts",
-        prompt_name=validator_name,
-        **context,
-    )
+    """Render a named simulator response validator prompt."""
+    # TODO
+    return ""
 
 
-def build_scoring_prompt(*, scoring_template: str, npc: CharacterRecord, transcript: str, **template_kwargs: str) -> str:
+def build_scorer_prompt(*, scoring_template: str, npc: CharacterRecord, transcript: str, **template_kwargs: str) -> str:
     """Render a scoring prompt from an explicit template and game-specific kwargs."""
     context = _build_character_context(
         npc,
@@ -936,9 +789,5 @@ def build_scoring_prompt(*, scoring_template: str, npc: CharacterRecord, transcr
         transcript=transcript,
         **{key: _format_prompt_value(value) for key, value in template_kwargs.items()},
     )
-    return _render_prompt(
-        scoring_template,
-        registry_name="scoring prompts",
-        prompt_name="custom_scoring_template",
-        **context,
-    )
+    # TODO
+    return ""
