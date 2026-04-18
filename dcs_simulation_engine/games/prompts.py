@@ -740,6 +740,8 @@ Return ONLY valid JSON:
 
 ## ENSEMBLES ##
 
+# NOTE: Opener has no post generation validators in this design. They can be added if/when needed.
+
 DEFAULT_PLAYER_TURN_VALIDATORS = [
     VALID_PC_ACTION,  # first person simple action description
     VALID_PC_ABILITY,  # action is within character's abilities

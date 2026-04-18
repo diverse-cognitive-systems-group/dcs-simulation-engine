@@ -103,6 +103,38 @@ def test_validate_openrouter_configuration_allows_fake_mode(
 
 
 @pytest.mark.unit
+@pytest.mark.anyio
+async def test_call_openrouter_with_retry_succeeds_on_second_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Retry wrapper should recover from a transient failure on the first attempt."""
+    calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("transient failure")
+        return "ok"
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+    result = await ai_client._call_openrouter_with_retry([], "model")
+    assert result == "ok"
+    assert calls == 2
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_call_openrouter_with_retry_raises_after_two_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Retry wrapper should propagate the exception after both attempts fail."""
+
+    async def fake_call(messages, model):
+        raise RuntimeError("persistent failure")
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+    with pytest.raises(RuntimeError, match="persistent failure"):
+        await ai_client._call_openrouter_with_retry([], "model")
+
+
+@pytest.mark.unit
 def test_extract_response_metadata_prefers_metadata_object() -> None:
     """Metadata payload should win over legacy duplicated top-level keys."""
     payload = {"type": "ai", "content": "scene", "metadata": {"shared_goal": "to repair the door"}, "shared_goal": "legacy"}

@@ -81,6 +81,15 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
     return data["choices"][0]["message"]["content"]
 
 
+async def _call_openrouter_with_retry(messages: list[dict[str, str]], model: str) -> str:
+    """Call _call_openrouter with 1 automatic retry on transient failure."""
+    try:
+        return await _call_openrouter(messages, model)
+    except Exception:
+        logger.warning("LLM call failed; retrying once.")
+        return await _call_openrouter(messages, model)
+
+
 def _parse_json_response(raw: str) -> dict[str, Any]:
     """Parse a JSON response from the LLM, stripping markdown code fences if present."""
     text = _strip_json_fences(raw)
@@ -282,7 +291,7 @@ class SimulatorClient:
     async def _call_json_prompt(self, *, system_prompt: str, user_input: str | None, model: str) -> ParsedSimulatorResponse:
         """Execute a prompt and return normalized content plus optional metadata."""
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input or "Begin."}]
-        raw = await _call_openrouter(messages, model)
+        raw = await _call_openrouter_with_retry(messages, model)
         parsed = _parse_json_response(raw)
         return ParsedSimulatorResponse(
             type=str(parsed.get("type", "ai")),
@@ -334,7 +343,7 @@ class SimulatorClient:
         )
 
     async def _run_validator(self, system_prompt: str) -> dict[str, Any]:
-        raw = await _call_openrouter([{"role": "system", "content": system_prompt}], self._validator_model)
+        raw = await _call_openrouter_with_retry([{"role": "system", "content": system_prompt}], self._validator_model)
         result = _parse_json_response(raw)
         logger.debug(f"Validator result: {result}")
         return result
@@ -606,7 +615,7 @@ class ScorerClient:
         if not transcript.strip():
             raise ValueError("Scoring transcript must be non-empty.")
 
-        raw = await _call_openrouter([{"role": "user", "content": prompt}], self._model)
+        raw = await _call_openrouter_with_retry([{"role": "user", "content": prompt}], self._model)
         stripped = _strip_json_fences(raw)
         result = _normalize_evaluation(_parse_json_response(raw))
         logger.debug(f"ScorerClient result: {result}")

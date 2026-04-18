@@ -16,7 +16,8 @@ pytestmark = pytest.mark.unit
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EXAMPLE_RESULTS_DIR = REPO_ROOT / "tests" / "data" / "example_results"
 SEED_CHARACTERS_PATH = REPO_ROOT / "database_seeds" / "dev" / "characters.json"
-DEFAULT_VALIDATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "default_validator_cases.json"
+PLAYER_VALIDATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "player_validator_cases.json"
+SIMULATOR_VALIDATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "simulator_validator_cases.json"
 GAMES_DIR = REPO_ROOT / "games"
 
 
@@ -98,19 +99,25 @@ def test_example_results_and_validator_cases_stay_in_sync_with_current_codebase(
         if mismatched_fields:
             failures.append(f"example_results character {hid!r} drifted on fields {mismatched_fields}")
 
-    validator_cases = _load_json(DEFAULT_VALIDATOR_CASES_PATH)
+    validator_case_files = {
+        "player": _load_json(PLAYER_VALIDATOR_CASES_PATH),
+        "simulator": _load_json(SIMULATOR_VALIDATOR_CASES_PATH),
+    }
     current_ensembles = {
         "DEFAULT_PLAYER_TURN_VALIDATORS": {_rule_name(template) for template in DEFAULT_PLAYER_TURN_VALIDATORS},
         "DEFAULT_SIMULATOR_TURN_VALIDATORS": {_rule_name(template) for template in DEFAULT_SIMULATOR_TURN_VALIDATORS},
     }
 
-    for section_name in ("player_turn_cases", "simulator_turn_cases"):
-        for case in validator_cases.get(section_name, []):
+    for dataset_name, dataset in validator_case_files.items():
+        dataset_metadata = dataset.get("metadata", {})
+        ensemble_name_from_metadata = dataset_metadata.get("validator_ensemble")
+        if ensemble_name_from_metadata not in current_ensembles:
+            failures.append(f"validator dataset {dataset_name!r} metadata references unknown ensemble {ensemble_name_from_metadata!r}")
+            continue
+
+        for case in dataset.get("cases", []):
             case_id = case.get("id", "<missing-id>")
-            ensemble_name = case.get("ensemble")
-            if ensemble_name not in current_ensembles:
-                failures.append(f"validator case {case_id!r} references unknown ensemble {ensemble_name!r}")
-                continue
+            ensemble_name = ensemble_name_from_metadata
 
             expected_rule_names = current_ensembles[ensemble_name]
             referenced_rule_names = set(case.get("expected_failed_validators", [])) | set(case.get("expected_passed_validators", []))
@@ -126,21 +133,13 @@ def test_example_results_and_validator_cases_stay_in_sync_with_current_codebase(
                     f"referenced={sorted(referenced_rule_names)} expected={sorted(expected_rule_names)}"
                 )
 
-            for role_key in ("pc", "npc"):
-                character_snapshot = case.get(role_key, {})
-                hid = character_snapshot.get("hid")
+            for role_key in ("pc_hid", "npc_hid"):
+                hid = case.get(role_key)
                 if hid not in seed_by_hid:
-                    failures.append(f"validator case {case_id!r} references unknown {role_key} hid {hid!r}")
-                    continue
+                    failures.append(f"validator case {case_id!r} references unknown {role_key} {hid!r}")
 
-                seed_character = seed_by_hid[hid]
-                if character_snapshot.get("short_description") != seed_character.get("short_description"):
-                    failures.append(f"validator case {case_id!r} has stale {role_key}.short_description for hid {hid!r}")
-
-                snapshot_data = character_snapshot.get("data", {})
-                for field in ("long_description", "abilities", "goals"):
-                    if snapshot_data.get(field) != seed_character.get(field):
-                        failures.append(f"validator case {case_id!r} has stale {role_key}.data.{field} for hid {hid!r}")
+            if case.get("pc_hid") in seed_by_hid and not seed_by_hid[case["pc_hid"]].get("pc_eligible", False):
+                failures.append(f"validator case {case_id!r} uses pc_hid {case['pc_hid']!r} that is not pc_eligible in seed characters")
 
     if failures:
         pytest.fail("\n".join(failures))
