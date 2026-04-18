@@ -7,6 +7,10 @@ from dcs_simulation_engine.games.prompts import (
     DEFAULT_SIMULATOR_TURN_VALIDATORS,
     OPENER,
     OPENER_WITH_SHARED_GOAL,
+    SCORER_GOAL_BOUNDS,
+    SCORER_GOAL_INFERENCE,
+    SCORER_NEXT_ACTION,
+    SCORER_SHARED_GOAL,
     UPDATER,
     VALID_GAME_ALIGNMENT,
     VALID_NPC_ACTION,
@@ -14,6 +18,7 @@ from dcs_simulation_engine.games.prompts import (
     VALID_PC_ACTION,
     build_opener_prompt,
     build_player_validator_prompt,
+    build_scorer_prompt,
     build_simulator_validator_prompt,
     build_updater_prompt,
 )
@@ -113,3 +118,115 @@ def test_build_simulator_validator_prompt_renders_simulator_response_context(cha
     assert "RULE: VALID-GAME-ALIGNMENT" in prompt
     assert "NPC steps back." in prompt
     assert "Learn what NPC wants." in prompt
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("builder_name", "prompt"),
+    [
+        (
+            "opener",
+            lambda pc, npc: build_opener_prompt(pc, npc),
+        ),
+        (
+            "updater",
+            lambda pc, npc: build_updater_prompt(
+                pc,
+                npc,
+                game_objective="Keep the room safe.",
+                transcript="Opening scene: The room is quiet.",
+                player_action="I wave",
+            ),
+        ),
+        (
+            "player_validator",
+            lambda pc, npc: build_player_validator_prompt(
+                pc,
+                npc,
+                player_action="I wave",
+                transcript="Opening scene: A hallway.",
+                validator_template=VALID_PC_ABILITY,
+            ),
+        ),
+        (
+            "simulator_validator",
+            lambda pc, npc: build_simulator_validator_prompt(
+                pc,
+                npc,
+                simulator_response="NPC steps back.",
+                transcript="Player (PC): I wave",
+                game_objective="Learn what NPC wants.",
+                validator_template=VALID_GAME_ALIGNMENT,
+            ),
+        ),
+    ],
+)
+def test_prompt_builders_render_without_unresolved_placeholders(character_pair, builder_name, prompt) -> None:
+    """Prompt builders should fully interpolate the required template fields."""
+    pc, npc = character_pair
+    rendered = prompt(pc, npc)
+    placeholder_tokens = (
+        "{pc_hid}",
+        "{pc_short_description}",
+        "{pc_long_description}",
+        "{pc_abilities}",
+        "{pc_goals}",
+        "{pc_scenarios}",
+        "{npc_hid}",
+        "{npc_short_description}",
+        "{npc_long_description}",
+        "{npc_abilities}",
+        "{npc_goals}",
+        "{npc_scenarios}",
+        "{player_action}",
+        "{simulator_response}",
+        "{transcript}",
+        "{game_objective}",
+        "{guess}",
+        "{shared_goal}",
+    )
+
+    assert not any(token in rendered for token in placeholder_tokens), (
+        f"{builder_name} prompt leaked an unresolved placeholder:\n{rendered}"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("template", "kwargs", "expected_strings"),
+    [
+        (
+            SCORER_GOAL_INFERENCE,
+            {"guess": "It wants to get away from the light."},
+            ["Player's Goal Inference Prediction", "It wants to get away from the light.", "Interaction Transcript"],
+        ),
+        (
+            SCORER_GOAL_BOUNDS,
+            {"guess": "It is limited to simple local regulation."},
+            ["Player Guess", "It is limited to simple local regulation.", "Interaction Transcript"],
+        ),
+        (
+            SCORER_NEXT_ACTION,
+            {"guess": "I predict NPC steps back."},
+            ["Per-Turn Accuracy", "Interaction Transcript", "Predictions were mostly absent, implausible, or out of character."],
+        ),
+        (
+            SCORER_SHARED_GOAL,
+            {"shared_goal": "to repair the door", "guess": "Coordination was difficult."},
+            ["Shared Goal", "to repair the door", "Interaction Transcript"],
+        ),
+    ],
+)
+def test_build_scorer_prompt_renders_required_scoring_context(character_pair, template, kwargs, expected_strings) -> None:
+    """Scorer prompts should include transcript plus the game-specific template fields."""
+    pc, npc = character_pair
+    prompt = build_scorer_prompt(
+        scoring_template=template,
+        npc=npc,
+        pc=pc,
+        transcript="Opening scene: The room is quiet.\nPlayer (PC): I wave",
+        **kwargs,
+    )
+
+    for expected in expected_strings:
+        assert expected in prompt

@@ -105,3 +105,139 @@ Transcript: {transcript}
     updater_prompts = [prompt for prompt in captured_system_prompts if "CUSTOM UPDATER" in prompt]
     assert updater_prompts
     assert "I wave and predict they will retreat" in updater_prompts[0]
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_retries_once_then_returns_clean_error_after_double_simulator_validation_failure(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """A simulator validation failure should retry once, then surface the clean retry-exhausted message."""
+    updater_calls = 0
+    simulator_validator_calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal updater_calls, simulator_validator_calls
+        _ = model
+        if len(messages) == 1 and messages[0]["role"] == "system":
+            prompt = messages[0]["content"]
+            if "RULE: VALID-NPC-ACTION" in prompt:
+                simulator_validator_calls += 1
+                return '{"pass": false, "reason": "Simulator response violated the NPC action rule."}'
+            return '{"pass": true, "reason": "ok"}'
+
+        updater_calls += 1
+        return '{"type": "ai", "content": "The flatworm teleports through the wall."}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[VALID_NPC_ACTION],
+    )
+
+    result = await client.step("I wave")
+
+    assert result.ok is False
+    assert result.error_message == "I couldn't produce a valid simulator response. Please retry your action."
+    assert updater_calls == 2
+    assert simulator_validator_calls == 2
+    assert result.updater_result is not None
+    assert result.updater_result.retries_used == 1
+    assert len(result.updater_result.validation_failures) == 1
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_surfaces_clean_error_when_player_validator_runtime_fails(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Validator runtime failures should produce the clean player-validation error contract."""
+
+    async def fake_call(messages, model):
+        _ = model
+        if len(messages) == 1 and messages[0]["role"] == "system":
+            raise RuntimeError("validator offline")
+        return '{"type": "ai", "content": "scene"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[],
+    )
+
+    result = await client.step("I wave")
+
+    assert result.ok is False
+    assert result.error_message == "I couldn't validate your action just now (validator offline). Please try again."
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_surfaces_clean_error_when_updater_runtime_fails_without_retry(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Updater runtime failures should surface the clean simulator-turn error without retrying."""
+    updater_calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal updater_calls
+        _ = model
+        if len(messages) == 1 and messages[0]["role"] == "system":
+            return '{"pass": true, "reason": "ok"}'
+        updater_calls += 1
+        raise RuntimeError("updater offline")
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[],
+    )
+
+    result = await client.step("I wave")
+
+    assert result.ok is False
+    assert result.error_message == "I couldn't produce a simulator response just now (updater offline). Please try again."
+    assert updater_calls == 1
+
+
+@pytest.mark.xfail(strict=False, reason="SimulatorClient retries simulator validation failures, not updater LLM/runtime failures.")
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_retries_once_when_updater_llm_call_fails(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Desired future behavior: retry one updater LLM failure before surfacing the clean error."""
+    updater_calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal updater_calls
+        _ = model
+        if len(messages) == 1 and messages[0]["role"] == "system":
+            return '{"pass": true, "reason": "ok"}'
+        updater_calls += 1
+        if updater_calls == 1:
+            raise RuntimeError("transient updater failure")
+        return '{"type": "ai", "content": "scene"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[],
+    )
+
+    result = await client.step("I wave")
+
+    assert result.ok is True
+    assert updater_calls == 2

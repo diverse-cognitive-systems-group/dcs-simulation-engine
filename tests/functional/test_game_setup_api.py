@@ -7,6 +7,7 @@ no player authentication is required.
 
 import pytest
 from dcs_simulation_engine.api.app import create_app
+from dcs_simulation_engine.core.session_manager import SessionManager
 from fastapi.testclient import TestClient
 
 pytestmark = [pytest.mark.functional]
@@ -70,6 +71,94 @@ def test_setup_pc_options_have_hid(game, setup_client):
 
     for npc in data.get("npcs", []):
         assert npc.get("hid"), f"[{game}] NPC entry missing non-empty hid: {npc}"
+
+
+@pytest.mark.anyio
+async def test_session_manager_rejects_invalid_pc_choice(async_mongo_provider):
+    """Session creation should reject PC choices outside the allowed returned set."""
+    with pytest.raises(ValueError, match="Invalid pc_choice"):
+        await SessionManager.create_async(
+            game="explore",
+            provider=async_mongo_provider,
+            pc_choice="NOT_A_REAL_PC",
+            npc_choice="FW",
+        )
+
+
+@pytest.mark.anyio
+async def test_session_manager_rejects_invalid_npc_choice(async_mongo_provider):
+    """Session creation should reject NPC choices outside the allowed returned set."""
+    with pytest.raises(ValueError, match="Invalid npc_choice"):
+        await SessionManager.create_async(
+            game="explore",
+            provider=async_mongo_provider,
+            pc_choice="NA",
+            npc_choice="NOT_A_REAL_NPC",
+        )
+
+
+def test_create_game_rejects_invalid_pc_choice(setup_client):
+    """POST /api/play/game should fail fast for an invalid PC choice."""
+    response = setup_client.post(
+        "/api/play/game",
+        json={"game": "explore", "pc_choice": "NOT_A_REAL_PC", "npc_choice": "FW", "source": "api"},
+    )
+
+    assert response.status_code == 400
+    assert "Invalid pc_choice" in response.text
+
+
+def test_create_game_rejects_invalid_npc_choice(setup_client):
+    """POST /api/play/game should fail fast for an invalid NPC choice."""
+    response = setup_client.post(
+        "/api/play/game",
+        json={"game": "explore", "pc_choice": "NA", "npc_choice": "NOT_A_REAL_NPC", "source": "api"},
+    )
+
+    assert response.status_code == 400
+    assert "Invalid npc_choice" in response.text
+
+
+@pytest.mark.xfail(strict=False, reason="Game-level DEFAULT_PCS_ALLOWED filters are not enforced by setup/create yet.")
+def test_human_normative_default_pc_filter_is_enforced_in_setup(setup_client):
+    """Human-normative games should eventually hide non-human PCs from setup choices."""
+    response = setup_client.get("/api/play/setup/Infer Intent")
+    assert response.status_code == 200
+
+    pcs = {item["hid"] for item in response.json()["pcs"]}
+    assert "GA" not in pcs
+
+
+@pytest.mark.xfail(strict=False, reason="pc_eligible=false characters are not excluded by setup/create yet.")
+def test_pc_eligible_false_characters_are_excluded_from_setup_choices(setup_client):
+    """PC-ineligible characters should eventually be excluded from PC setup choices."""
+    response = setup_client.get("/api/play/setup/explore")
+    assert response.status_code == 200
+
+    pcs = {item["hid"] for item in response.json()["pcs"]}
+    assert "FW" not in pcs
+
+
+@pytest.mark.xfail(strict=False, reason="Game-level DEFAULT_PCS_ALLOWED filters are not enforced by SessionManager.create_async yet.")
+def test_human_normative_default_pc_filter_is_enforced_at_create(setup_client):
+    """Human-normative games should eventually reject non-human PCs during creation."""
+    response = setup_client.post(
+        "/api/play/game",
+        json={"game": "Infer Intent", "pc_choice": "GA", "npc_choice": "FW", "source": "api"},
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.xfail(strict=False, reason="pc_eligible=false characters are not excluded by SessionManager.create_async yet.")
+def test_pc_eligible_false_characters_are_rejected_at_create(setup_client):
+    """PC-ineligible characters should eventually be rejected during session creation."""
+    response = setup_client.post(
+        "/api/play/game",
+        json={"game": "explore", "pc_choice": "FW", "npc_choice": "NA", "source": "api"},
+    )
+
+    assert response.status_code == 400
 
 
 @pytest.mark.skip(reason="pending fix of dropdown sorting")
