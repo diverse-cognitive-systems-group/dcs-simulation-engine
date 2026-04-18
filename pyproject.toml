@@ -105,6 +105,7 @@ filterwarnings = ["error"]
 markers = [
   "unit: fast, isolated, no I/O",
   "functional: end-to-end flows with mocked LLM/DB",
+  "live: requires external API credentials and network access",
   "compile: game config compilation tests",
   "slow: long-running tests",
   "infra: remote infrastructure tests",

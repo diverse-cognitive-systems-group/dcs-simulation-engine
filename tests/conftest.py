@@ -19,6 +19,7 @@ from dcs_simulation_engine.dal.mongo import AsyncMongoProvider
 from dcs_simulation_engine.dal.mongo.util import (
     ensure_default_indexes,
 )
+from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
 from pymongo.database import Database
@@ -26,6 +27,11 @@ from pymongo.database import Database
 LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"
 
 # TODO: clean up this file (AND ALL TESTS)
+
+# Keep pytest environment loading aligned with the CLI entrypoint so tests can
+# read credentials/config from the repo .env file when shell vars are not
+# explicitly exported.
+load_dotenv()
 
 
 def _setup_logging() -> None:

@@ -1,6 +1,6 @@
 # .PHONY tells make that these aren't real files — they're just task names.
 # Without this, make might skip a task if a file with the same name exists.
-.PHONY: ci docs fmt lint lint-fix test
+.PHONY: ci docs fmt lint lint-fix test test-fast test-live
 
 # Run all linting checks (on the dcs_simulation_engine/ package here).
 lint:
@@ -18,7 +18,13 @@ fmt:
 
 # Run test suite quietly
 test:
-	uv run pytest -r s
+	uv run pytest -m "not live" -rs
+
+test-fast:
+	uv run pytest -m "not live and not slow" --no-cov -r fEsxX
+
+test-live:
+	uv run pytest -m live -rs
 
 # Build documentation (MkDocs in this example).
 docs:
