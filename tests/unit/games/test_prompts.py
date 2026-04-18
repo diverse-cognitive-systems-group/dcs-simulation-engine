@@ -1,20 +1,27 @@
-"""Unit tests for named prompt registries and strict rendering."""
+"""Unit tests for prompt templates and rendering helpers."""
 
 import pytest
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.prompts import (
-    CHARACTER_UPDATER_PROMPTS,
-    PLAYER_VALIDATOR_PROMPTS,
-    SCENE_UPDATER_PROMPTS,
-    SIMULATOR_VALIDATOR_PROMPTS,
-    build_character_updater_prompt,
+    DEFAULT_PLAYER_TURN_VALIDATORS,
+    DEFAULT_SIMULATOR_TURN_VALIDATORS,
+    OPENER,
+    OPENER_WITH_SHARED_GOAL,
+    UPDATER,
+    VALID_GAME_ALIGNMENT,
+    VALID_NPC_ACTION,
+    VALID_PC_ABILITY,
+    VALID_PC_ACTION,
+    build_opener_prompt,
     build_player_validator_prompt,
-    build_scene_setup_prompt,
+    build_simulator_validator_prompt,
+    build_updater_prompt,
 )
 
 
 @pytest.fixture
 def character_pair() -> tuple[CharacterRecord, CharacterRecord]:
+    """Return a PC/NPC pair with enough context to render prompt templates."""
     pc = CharacterRecord(
         hid="PC",
         name="Player",
@@ -39,30 +46,70 @@ def character_pair() -> tuple[CharacterRecord, CharacterRecord]:
 
 
 @pytest.mark.unit
-def test_prompt_registries_expose_named_options() -> None:
-    assert "default" in SCENE_UPDATER_PROMPTS
-    assert "default" in CHARACTER_UPDATER_PROMPTS
-    assert "valid-action" in PLAYER_VALIDATOR_PROMPTS
-    assert "invented-pc-action" in SIMULATOR_VALIDATOR_PROMPTS
+def test_prompt_templates_and_default_validator_sets_exist() -> None:
+    """Default prompt constants and validator lists should stay wired together."""
+    assert "Describe ONLY the initial, observable environment." in OPENER
+    assert "generate a shared goal" in OPENER_WITH_SHARED_GOAL
+    assert "Produce the next immediate simulator update." in UPDATER
+    assert VALID_PC_ACTION in DEFAULT_PLAYER_TURN_VALIDATORS
+    assert VALID_NPC_ACTION in DEFAULT_SIMULATOR_TURN_VALIDATORS
 
 
 @pytest.mark.unit
-def test_build_scene_setup_prompt_raises_for_missing_required_string(character_pair) -> None:
+def test_build_opener_prompt_renders_character_context(character_pair) -> None:
+    """Opener prompt should include both character roles and long descriptions."""
     pc, npc = character_pair
-    broken_pc = pc._replace(data={"abilities": ["can move"], "long_description": "", "scenarios": ["Room"]})
-    with pytest.raises(ValueError, match="pc_long_description"):
-        build_scene_setup_prompt(broken_pc, npc, "default")
+    prompt = build_opener_prompt(pc, npc)
+    assert "PC (Player Character)" in prompt
+    assert "NPC (Simulated Character)" in prompt
+    assert "Player long" in prompt
+    assert "NPC long" in prompt
 
 
 @pytest.mark.unit
-def test_build_player_validator_prompt_raises_for_unknown_name(character_pair) -> None:
+def test_build_updater_prompt_renders_runtime_fields(character_pair) -> None:
+    """Updater prompt should interpolate the live objective, transcript, and action."""
     pc, npc = character_pair
-    with pytest.raises(ValueError, match="Unknown prompt name"):
-        build_player_validator_prompt(pc, npc, "not-a-real-validator", user_input="I wave")
+    prompt = build_updater_prompt(
+        pc,
+        npc,
+        game_objective="Keep the room safe.",
+        transcript="Opening scene: The room is quiet.",
+        player_action="I wave",
+    )
+    assert "Keep the room safe." in prompt
+    assert "Opening scene: The room is quiet." in prompt
+    assert "I wave" in prompt
 
 
 @pytest.mark.unit
-def test_build_character_updater_prompt_includes_named_variant_rules(character_pair) -> None:
+def test_build_player_validator_prompt_renders_validator_template(character_pair) -> None:
+    """Player validator prompt should include the selected rule and current turn context."""
     pc, npc = character_pair
-    prompt = build_character_updater_prompt(pc, npc, "goal-aligned", user_input="I wave")
-    assert "Goal Aligned Response" in prompt
+    prompt = build_player_validator_prompt(
+        pc,
+        npc,
+        player_action="I wave",
+        transcript="Opening scene: A hallway.",
+        validator_template=VALID_PC_ABILITY,
+    )
+    assert "RULE: VALID-PC-ABILITY" in prompt
+    assert "I wave" in prompt
+    assert "Opening scene: A hallway." in prompt
+
+
+@pytest.mark.unit
+def test_build_simulator_validator_prompt_renders_simulator_response_context(character_pair) -> None:
+    """Simulator validator prompt should include the rule, response, and objective."""
+    pc, npc = character_pair
+    prompt = build_simulator_validator_prompt(
+        pc,
+        npc,
+        simulator_response="NPC steps back.",
+        transcript="Player (PC): I wave",
+        game_objective="Learn what NPC wants.",
+        validator_template=VALID_GAME_ALIGNMENT,
+    )
+    assert "RULE: VALID-GAME-ALIGNMENT" in prompt
+    assert "NPC steps back." in prompt
+    assert "Learn what NPC wants." in prompt

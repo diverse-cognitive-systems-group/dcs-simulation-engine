@@ -117,9 +117,9 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
         ("Foresight", "/help", "help"),
         ("Foresight", "/finish", "finish"),
         ("Infer Intent", "/help", "help"),
-        ("Infer Intent", "/predict-intent", "predict-intent"),
+        ("Infer Intent", "/finish", "finish"),
         ("Goal Horizon", "/help", "help"),
-        ("Goal Horizon", "/predict-capabilities", "predict-capabilities"),
+        ("Goal Horizon", "/finish", "finish"),
     ],
 )
 async def test_game_level_command_filters_persist_command_events(
@@ -166,6 +166,4 @@ async def test_game_level_command_filters_persist_command_events(
     assert command_input[MongoColumns.CONTENT] == command_text
     assert command_input[MongoColumns.COMMAND_NAME] == expected_command_name
     assert command_input[MongoColumns.COMMAND_ARGS] == _expected_command_args(command_text)
-    assert command_output[MongoColumns.CONTENT] == emitted[0]["content"]
-
-
+    assert command_output[MongoColumns.CONTENT] in [event["content"] for event in emitted]

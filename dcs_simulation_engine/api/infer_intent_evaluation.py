@@ -87,7 +87,7 @@ async def generate_or_get_infer_intent_evaluation(
             event_id=cached_event.event_id,
             cached=True,
             evaluation=InferIntentEvaluation.model_validate_json(cached_event.content),
-    )
+        )
 
     transcript, prediction = extract_infer_intent_scoring_inputs(events)
     npc = await _load_session_npc(provider=provider, session=session)

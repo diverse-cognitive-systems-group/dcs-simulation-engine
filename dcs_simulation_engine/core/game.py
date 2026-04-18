@@ -198,7 +198,9 @@ class Game(ABC):
         if result.ok:
             self._filtered_transcript_buffer.append(f"Player ({self._pc.hid}): {user_input}")
             self._filtered_transcript_buffer.append(f"Simulator: {result.simulator_response}")
-        yield GameEvent.now(type="ai" if result.ok else "error", content=result.simulator_response if result.ok else (result.error_message or ""))
+        yield GameEvent.now(
+            type="ai" if result.ok else "error", content=result.simulator_response if result.ok else (result.error_message or "")
+        )
         if not result.ok:
             self._player_retry_budget -= 1
             logger.debug(f"Validation failed. Retry budget remaining: {self._player_retry_budget}")

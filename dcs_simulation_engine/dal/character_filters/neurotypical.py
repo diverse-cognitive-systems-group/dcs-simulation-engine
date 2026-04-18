@@ -15,8 +15,5 @@ class NeurotypicalFilter:
     name = "neurotypical"
 
     def get_characters(self, *, provider: Any) -> list[CharacterRecord]:
-        return [
-            r
-            for r in provider.get_characters()
-            if "neurotypical" in r.data.get("common_labels", [])
-        ]
+        """Return characters labelled as neurotypical."""
+        return [r for r in provider.get_characters() if "neurotypical" in r.data.get("common_labels", [])]

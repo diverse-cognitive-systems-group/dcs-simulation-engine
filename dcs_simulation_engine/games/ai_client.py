@@ -198,6 +198,7 @@ class SimulatorClient:
         updater_model: str = DEFAULT_MODEL,
         validator_model: str = DEFAULT_MODEL,
     ) -> None:
+        """Initialize a simulator client with characters, prompts, validators, and models."""
         self._pc = pc
         self._npc = npc
         self._history: list[str] = []

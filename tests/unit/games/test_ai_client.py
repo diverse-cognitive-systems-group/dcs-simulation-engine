@@ -104,6 +104,7 @@ def test_validate_openrouter_configuration_allows_fake_mode(
 
 @pytest.mark.unit
 def test_extract_response_metadata_prefers_metadata_object() -> None:
+    """Metadata payload should win over legacy duplicated top-level keys."""
     payload = {"type": "ai", "content": "scene", "metadata": {"shared_goal": "to repair the door"}, "shared_goal": "legacy"}
 
     assert _extract_response_metadata(payload) == {"shared_goal": "to repair the door"}
@@ -111,6 +112,7 @@ def test_extract_response_metadata_prefers_metadata_object() -> None:
 
 @pytest.mark.unit
 def test_extract_response_metadata_falls_back_to_extra_top_level_keys() -> None:
+    """Extra top-level keys should be treated as metadata when no object is present."""
     payload = {"type": "ai", "content": "scene", "shared_goal": "to repair the door"}
 
     assert _extract_response_metadata(payload) == {"shared_goal": "to repair the door"}

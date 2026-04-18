@@ -80,14 +80,14 @@ def test_fingerprint_changes_when_prompt_bundle_changes():
         character,
         simulator_prompt_bundle={
             **DEFAULT_SIMULATOR_PROMPT_BUNDLE,
-            "scene_updater_name": "default-a",
+            "updater_template": "CUSTOM UPDATER A",
         },
     )
     fp2 = compute_character_evaluation_fingerprint(
         character,
         simulator_prompt_bundle={
             **DEFAULT_SIMULATOR_PROMPT_BUNDLE,
-            "scene_updater_name": "default-b",
+            "updater_template": "CUSTOM UPDATER B",
         },
     )
     assert fp1 != fp2

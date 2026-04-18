@@ -42,9 +42,7 @@ def test_setup_returns_valid_pc_and_npc_options(game, setup_client):
     """
     response = setup_client.get(f"/api/play/setup/{game}")
 
-    assert response.status_code == 200, (
-        f"[{game}] Expected 200 from /api/play/setup, got {response.status_code}: {response.text}"
-    )
+    assert response.status_code == 200, f"[{game}] Expected 200 from /api/play/setup, got {response.status_code}: {response.text}"
 
     data = response.json()
     assert data.get("allowed") is True, f"[{game}] Expected allowed=True, got: {data.get('allowed')}"

@@ -4,10 +4,12 @@ from typing import Any
 
 from dcs_simulation_engine.dal.base import CharacterRecord
 
-_HYPOSENSITIVE_LABELS = frozenset({
-    "ADHD",
-    "attention regulation divergence",
-})
+_HYPOSENSITIVE_LABELS = frozenset(
+    {
+        "ADHD",
+        "attention regulation divergence",
+    }
+)
 
 
 class HyposensitiveFilter:
@@ -20,8 +22,5 @@ class HyposensitiveFilter:
     name = "hyposensitive"
 
     def get_characters(self, *, provider: Any) -> list[CharacterRecord]:
-        return [
-            r
-            for r in provider.get_characters()
-            if _HYPOSENSITIVE_LABELS & set(r.data.get("common_labels", []))
-        ]
+        """Return characters whose labels match the hyposensitive set."""
+        return [r for r in provider.get_characters() if _HYPOSENSITIVE_LABELS & set(r.data.get("common_labels", []))]

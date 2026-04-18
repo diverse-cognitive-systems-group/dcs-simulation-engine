@@ -239,8 +239,11 @@ Rules:
 - Use 1–2 sentences only.
 
 Style:
-- Plain, concrete, minimal language.
-- No flavor, atmosphere, inference, or explanation.
+- ≤25 words unless clarity requires slightly more.
+- Plain, concrete language.
+- Only immediate, observable facts.
+- No flavor, atmosphere, explanation, or inference.
+- Leave gaps; do not elaborate.
 
 Return ONLY valid JSON:
 {{
@@ -284,8 +287,11 @@ Scene Rules:
 - Use exactly 1–2 sentences.
 
 Style:
-- Plain, concrete, minimal language.
-- No flavor, atmosphere, inference, or explanation.
+- ≤25 words unless clarity requires slightly more.
+- Plain, concrete language.
+- Only immediate, observable facts.
+- No flavor, atmosphere, explanation, or inference.
+- Leave gaps; do not elaborate.
 
 Return ONLY valid JSON:
 {{
@@ -335,8 +341,13 @@ Rules:
 - Do not dictate {pc_hid}'s choices, intentions, thoughts, feelings, speech, or voluntary follow-up actions.
 - Do not reveal hidden facts, off-screen events, or private thoughts unless they become directly perceivable in this moment.
 - Refer to {npc_hid} only by the exact token {npc_hid}.
-- Use plain, concrete, minimal language.
-- No flavor, atmosphere, explanation, or meta commentary.
+
+Style:
+- ≤25 words unless clarity requires slightly more.
+- Plain, concrete language.
+- Only immediate, observable facts.
+- No flavor, atmosphere, explanation, or inference.
+- Leave gaps; do not elaborate.
 
 Return ONLY valid JSON:
 {{
@@ -838,6 +849,7 @@ def build_simulator_validator_prompt(
             game_objective=game_objective,
         ),
     )
+
 
 def build_scorer_prompt(
     *,

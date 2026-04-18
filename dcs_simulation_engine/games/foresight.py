@@ -99,9 +99,7 @@ class ForesightGame(Game):
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
-            npc_short_description=(
-                self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*"
-            ),
+            npc_short_description=(self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*"),
             npc_abilities=npc_abilities,
         )
 

@@ -11,4 +11,5 @@ class AllCharactersFilter:
     name = "all"
 
     def get_characters(self, *, provider: Any) -> list[CharacterRecord]:
+        """Return all characters from the provider without filtering."""
         return list(provider.get_characters())
