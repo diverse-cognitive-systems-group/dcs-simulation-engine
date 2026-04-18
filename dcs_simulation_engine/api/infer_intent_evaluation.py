@@ -15,6 +15,7 @@ from dcs_simulation_engine.dal.base import (
 )
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from dcs_simulation_engine.games.ai_client import ScorerClient
+from dcs_simulation_engine.games.prompts import SCORER_GOAL_INFERENCE, build_scorer_prompt
 from dcs_simulation_engine.utils.async_utils import maybe_await
 
 INFER_INTENT_GAME_NAME = "Infer Intent"
@@ -86,11 +87,17 @@ async def generate_or_get_infer_intent_evaluation(
             event_id=cached_event.event_id,
             cached=True,
             evaluation=InferIntentEvaluation.model_validate_json(cached_event.content),
-        )
+    )
 
     transcript, prediction = extract_infer_intent_scoring_inputs(events)
     npc = await _load_session_npc(provider=provider, session=session)
-    scorer_result = await ScorerClient(npc=npc).score(transcript, prediction)
+    prompt = build_scorer_prompt(
+        scoring_template=SCORER_GOAL_INFERENCE,
+        npc=npc,
+        transcript=transcript,
+        guess=prediction,
+    )
+    scorer_result = await ScorerClient().score(prompt=prompt, transcript=transcript)
     evaluation = InferIntentEvaluation.model_validate(scorer_result.evaluation)
 
     append_event = getattr(provider, "append_session_event", None)
@@ -133,7 +140,7 @@ def _is_prediction_command(event: SessionEventRecord) -> bool:
         event.direction == "inbound"
         and event.event_source == "user"
         and event.event_type == "command"
-        and str(event.data.get(MongoColumns.COMMAND_NAME, "")).lower() == "predict-intent"
+        and str(event.data.get(MongoColumns.COMMAND_NAME, "")).lower() == "finish"
     )
 
 

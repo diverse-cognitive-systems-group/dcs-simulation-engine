@@ -12,7 +12,7 @@ from dcs_simulation_engine.games.const import Foresight as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
 from dcs_simulation_engine.games.prompts import (
     SCORER_NEXT_ACTION,
-    build_scoring_prompt,
+    build_scorer_prompt,
 )
 from loguru import logger
 
@@ -99,6 +99,9 @@ class ForesightGame(Game):
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
+            npc_short_description=(
+                self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*"
+            ),
             npc_abilities=npc_abilities,
         )
 
@@ -127,7 +130,7 @@ class ForesightGame(Game):
             if not guess:
                 raise ValueError("Foresight scoring requires a recorded prediction.")
 
-            prompt = build_scoring_prompt(
+            prompt = build_scorer_prompt(
                 scoring_template=SCORER_NEXT_ACTION,
                 npc=self._npc,
                 transcript=transcript,

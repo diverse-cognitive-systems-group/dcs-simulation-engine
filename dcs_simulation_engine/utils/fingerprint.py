@@ -6,13 +6,18 @@ from typing import Any
 
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import DEFAULT_MODEL
-from dcs_simulation_engine.games.prompts import CHARACTER_UPDATER_PROMPTS, SCENE_UPDATER_PROMPTS
+from dcs_simulation_engine.games.prompts import (
+    DEFAULT_PLAYER_TURN_VALIDATORS,
+    DEFAULT_SIMULATOR_TURN_VALIDATORS,
+    OPENER,
+    UPDATER,
+)
 
-DEFAULT_SIMULATOR_PROMPT_BUNDLE: dict[str, str] = {
-    "scene_updater_name": "default",
-    "scene_updater_template": SCENE_UPDATER_PROMPTS["default"],
-    "character_updater_name": "default",
-    "character_updater_template": CHARACTER_UPDATER_PROMPTS["default"],
+DEFAULT_SIMULATOR_PROMPT_BUNDLE: dict[str, str | list[str]] = {
+    "opener_template": OPENER,
+    "updater_template": UPDATER,
+    "player_turn_validators": list(DEFAULT_PLAYER_TURN_VALIDATORS),
+    "simulator_turn_validators": list(DEFAULT_SIMULATOR_TURN_VALIDATORS),
 }
 
 

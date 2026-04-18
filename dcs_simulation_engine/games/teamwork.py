@@ -9,7 +9,7 @@ from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
 from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import Teamwork as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
-from dcs_simulation_engine.games.prompts import OPENER_WITH_SHARED_GOAL, SCORER_SHARED_GOAL, build_scoring_prompt
+from dcs_simulation_engine.games.prompts import OPENER_WITH_SHARED_GOAL, SCORER_SHARED_GOAL, build_scorer_prompt
 from loguru import logger
 
 
@@ -139,7 +139,7 @@ class TeamworkGame(Game):
             if not transcript:
                 raise ValueError("Teamwork scoring requires a non-empty transcript.")
 
-            prompt = build_scoring_prompt(
+            prompt = build_scorer_prompt(
                 scoring_template=SCORER_SHARED_GOAL,
                 npc=self._npc,
                 pc=self._pc,
