@@ -36,9 +36,9 @@ class ExploreGame(Game):
         """Return the /help message content."""
         return C.HELP_CONTENT.format(
             pc_hid=self._pc.hid,
-            pc_short_description=self._pc.short_description,
+            pc_short_description=self._pc.short_description.lower(),
             npc_hid=self._npc.hid,
-            npc_short_description=self._npc.short_description,
+            npc_short_description=self._npc.short_description.lower(),
         )
 
     def get_abilities_content(self) -> str:

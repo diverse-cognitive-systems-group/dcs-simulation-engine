@@ -70,12 +70,12 @@ async def test_foresight_help_and_abilities_hide_npc_details(patch_llm_client, _
 
     assert [event["type"] for event in help_events] == ["info"]
     assert "FW" in help_events[0]["content"]
-    assert "*NPC details are hidden.*" in help_events[0]["content"]
+    assert "*Details hidden.*" in help_events[0]["content"]
 
     assert [event["type"] for event in abilities_events] == ["info"]
     assert "NA" in abilities_events[0]["content"]
     assert "FW" in abilities_events[0]["content"]
-    assert "*NPC details are hidden.*" in abilities_events[0]["content"]
+    assert "*Details hidden.*" in abilities_events[0]["content"]
     assert not session.exited
 
 

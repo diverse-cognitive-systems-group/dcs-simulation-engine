@@ -77,22 +77,20 @@ class GoalHorizonGame(Game):
         """Return the /help message content."""
         return C.HELP_CONTENT.format(
             pc_hid=self._pc.hid,
-            pc_short_description=self._pc.short_description,
+            pc_short_description=self._pc.short_description.lower(),
             npc_hid=self._npc.hid,
-            npc_short_description=self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*",
+            npc_short_description=(self._npc.data.get("short_description", "").lower() if self._show_npc_details else "*Details hidden.*"),
         )
 
     def get_abilities_content(self) -> str:
         """Return the /abilities message content."""
-        npc_abilities = (
-            format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*NPC details are hidden.*"
-        )
+        npc_abilities = format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*Details hidden.*"
         return C.ABILITIES_CONTENT.format(
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
-            npc_short_description=(self._npc.data.get("short_description", "") if self._show_npc_details else "*NPC details are hidden.*"),
+            npc_short_description=(self._npc.data.get("short_description", "") if self._show_npc_details else "*Details hidden.*"),
             npc_abilities=npc_abilities,
         )
 

@@ -79,12 +79,12 @@ async def test_teamwork_help_and_abilities_show_npc_details_by_default(patch_llm
 
     assert [event["type"] for event in help_events] == ["info"]
     assert "FW" in help_events[0]["content"]
-    assert "*NPC details are hidden.*" not in help_events[0]["content"]
+    assert "*Details hidden.*" not in help_events[0]["content"]
 
     assert [event["type"] for event in abilities_events] == ["info"]
     assert "NA" in abilities_events[0]["content"]
     assert "FW" in abilities_events[0]["content"]
-    assert "*NPC details are hidden.*" not in abilities_events[0]["content"]
+    assert "*Details hidden.*" not in abilities_events[0]["content"]
 
 
 async def test_teamwork_finish_flow_routes_follow_up_input(patch_llm_client, _isolate_db_state, async_mongo_provider):
