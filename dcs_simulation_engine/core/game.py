@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, AsyncIterator, Callable, NamedTuple
+from typing import Any, AsyncIterator, Callable, ClassVar, NamedTuple
 
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter
@@ -55,7 +55,13 @@ class Game(ABC):
     Each concrete subclass must also declare an inner ``Overrides`` model
     (subclass of ``BaseGameOverrides``) listing every kwarg a run config
     may supply.
+
+    Each concrete subclass must also define GAME_NAME and GAME_DESCRIPTION
+    class attributes with non-empty string values.
     """
+
+    GAME_NAME: ClassVar[str]
+    GAME_DESCRIPTION: ClassVar[str]
 
     DEFAULT_PLAYER_RETRY_BUDGET = 10
     DEFAULT_MAX_INPUT_LENGTH = 350
@@ -69,6 +75,19 @@ class Game(ABC):
 
         Concrete games replace this with their own typed model.
         """
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Enforce that concrete game subclasses define GAME_NAME and GAME_DESCRIPTION."""
+        super().__init_subclass__(**kwargs)
+
+        # Skip abstract intermediates or the base class itself
+        if getattr(cls, "__abstractmethods__", None):
+            return
+
+        for field in ("GAME_NAME", "GAME_DESCRIPTION"):
+            value = getattr(cls, field, None)
+            if not isinstance(value, str) or not value.strip():
+                raise TypeError(f"{cls.__name__} must define non-empty {field} class attribute. Got: {field}={value!r}")
 
     @classmethod
     def parse_overrides(cls, raw: dict[str, Any]) -> "Game.Overrides":
