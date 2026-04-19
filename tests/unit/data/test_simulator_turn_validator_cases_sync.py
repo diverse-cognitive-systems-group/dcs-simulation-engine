@@ -65,9 +65,6 @@ def test_simulator_turn_validator_dataset_has_required_structure() -> None:
     }
     expected_rules = {_rule_name(template) for template in DEFAULT_SIMULATOR_TURN_VALIDATORS}
 
-    adversarial_case_count = 0
-    extraordinary_case_count = 0
-
     for case in cases:
         assert required_case_fields <= set(case), f"{SIMULATOR_CASES_PATH.name} case {case.get('id')} is missing required fields"
         assert isinstance(case["expected_ensemble_pass"], bool)
