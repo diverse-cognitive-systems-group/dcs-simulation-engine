@@ -7,7 +7,7 @@
     "cases": [
         {
             "id": "allowed_simple_first_person_action",
-            "description": "Simple first-person immediate action.",
+            "description": "Simple first-person immediate action as a baseline valid case.",
             "input_pattern": "simple_first_person_action",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -20,11 +20,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Baseline valid case."
         },
         {
             "id": "allowed_simple_first_person_speech",
-            "description": "Simple first-person speech act.",
+            "description": "Simple first-person speech act that should pass as ordinary in-world speech.",
             "input_pattern": "simple_first_person_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -37,11 +36,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Simple in-world speech should pass."
         },
         {
             "id": "allowed_attempt_without_asserted_outcome",
-            "description": "Attempt phrased without asserting success.",
+            "description": "Attempt phrased without asserting success, since attempts are allowed even when success is uncertain.",
             "input_pattern": "attempt_without_asserted_outcome",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -54,11 +52,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Attempting is allowed even if success is uncertain."
         },
         {
             "id": "allowed_supported_extraordinary_ability_weather",
-            "description": "Extraordinary environment-affecting power is allowed when supported and framed as an attempt.",
+            "description": "Supported extraordinary environment-affecting power is allowed when framed as an attempt rather than an asserted outcome.",
             "input_pattern": "supported_extraordinary_ability",
             "pc_hid": "GA",
             "npc_hid": "NB",
@@ -71,11 +68,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Supported extraordinary abilities should not be blocked."
         },
         {
             "id": "allowed_plausible_improvised_tool_use",
-            "description": "Plausible nearby tool use under loose world modeling.",
+            "description": "Plausible nearby tool use should pass because common nearby objects may be attempted even if not predeclared.",
             "input_pattern": "plausible_improvised_tool_use",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -88,11 +84,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Common plausible nearby objects may be attempted even if not predeclared."
         },
         {
             "id": "allowed_nonspoken_communication_modality",
-            "description": "Signing counts as a valid immediate speech-act equivalent.",
+            "description": "Signing counts as a valid immediate speech-act equivalent to avoid spoken-language-only bias.",
             "input_pattern": "nonspoken_communication_modality",
             "pc_hid": "DGE",
             "npc_hid": "NB",
@@ -105,11 +100,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Avoid spoken-language-only bias."
         },
         {
             "id": "allowed_in_world_hostile_or_adversarial_speech",
-            "description": "Manipulative or command-like speech is allowed if it remains in-world speech.",
+            "description": "Manipulative or command-like speech is allowed when it remains in-world speech rather than forbidden control.",
             "input_pattern": "in_world_hostile_or_adversarial_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -122,11 +116,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Speech can attempt persuasion or coercion without becoming forbidden control."
         },
         {
             "id": "allowed_quoted_meta_text_as_in_world_speech",
-            "description": "Prompt-injection-like wording is allowed when merely spoken in character.",
+            "description": "Prompt-injection-like wording is allowed when merely spoken in character as in-world dialogue rather than actual meta control.",
             "input_pattern": "quoted_meta_text_as_in_world_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -139,11 +132,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "The text is just in-world dialogue, not actual meta control."
         },
         {
             "id": "allowed_distributed_multi_host_perception",
-            "description": "Distributed collective character may attempt multi-host sensing.",
+            "description": "Distributed collective character may attempt multi-host sensing because supported unusual perception should pass.",
             "input_pattern": "supported_extraordinary_ability",
             "pc_hid": "UNI",
             "npc_hid": "NB",
@@ -156,11 +148,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Supported unusual perception should pass."
         },
         {
             "id": "allowed_action_and_other_utterances_in_world",
-            "description": "Multiple in-world utterances/actions in one turn remain valid when still clearly a PC action turn.",
+            "description": "Multiple in-world utterances or actions remain valid when the turn is still clearly a PC action turn.",
             "input_pattern": "action_and_other_utterances",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -173,11 +164,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Explicitly covers allowed action_and_other_utterances."
         },
         {
             "id": "form_non_first_person",
-            "description": "Second-person wording should fail form.",
+            "description": "Second-person wording should fail form because the acting subject is not the player character in first person.",
             "input_pattern": "non_first_person",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -192,11 +182,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Not first person.",
-            "rationale": "The acting subject is not the player character in first person."
         },
         {
             "id": "form_third_person_self_reference",
-            "description": "Third-person self-reference should fail form even if the named actor is the PC.",
+            "description": "Third-person self-reference should fail form even if the named actor is the PC, explicitly covering that case.",
             "input_pattern": "third_person_self_reference",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -211,11 +200,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "PC action is not written in first person.",
-            "rationale": "Explicitly covers third-person self-reference."
         },
         {
             "id": "form_subject_omitted",
-            "description": "Bare imperative with omitted acting subject should fail form.",
+            "description": "Bare imperative with omitted acting subject should fail form because the rule requires clear first-person PC action.",
             "input_pattern": "subject_omitted",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -230,11 +218,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Acting subject is omitted.",
-            "rationale": "The rule requires clear first-person PC action."
         },
         {
             "id": "form_internal_state_only",
-            "description": "Internal thought with no immediate action should fail form.",
+            "description": "Internal thought with no immediate action should fail form because introspection is not itself an action.",
             "input_pattern": "internal_state_only",
             "pc_hid": "JW",
             "npc_hid": "NB",
@@ -249,11 +236,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Thought is not an immediate action or speech act.",
-            "rationale": "Distinguishes introspection from action."
         },
         {
             "id": "form_narration_only",
-            "description": "Narration without player action should fail form.",
+            "description": "Narration without player action should fail form because pure scene description is not a player turn action.",
             "input_pattern": "narration_only",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -268,11 +254,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Narration contains no PC action.",
-            "rationale": "Pure scene description is not a player turn action."
         },
         {
             "id": "form_meta_or_ooc_request",
-            "description": "Out-of-world request should fail form.",
+            "description": "Out-of-world request should fail form because it is non-diegetic rather than an in-world action.",
             "input_pattern": "meta_or_ooc_request",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -287,11 +272,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Meta request is not an in-world action.",
-            "rationale": "Covers non-diegetic interaction."
         },
         {
             "id": "form_mixed_action_and_meta",
-            "description": "Valid action mixed with OOC/meta request should fail form.",
+            "description": "Valid action mixed with an OOC/meta request should fail form because the extra utterance is non-diegetic.",
             "input_pattern": "mixed_action_and_meta",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -306,11 +290,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Turn mixes in-world action with out-of-world request.",
-            "rationale": "Covers action_and_other_utterances when the extra utterance is OOC."
         },
         {
             "id": "ability_unsupported_physical_power_human_flight",
-            "description": "Human baseline character should fail unsupported superhuman attempt.",
+            "description": "Human baseline character should fail an unsupported superhuman attempt because a normative human should not be able to fly.",
             "input_pattern": "unsupported_physical_power",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -325,11 +308,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Unsupported superhuman ability.",
-            "rationale": "Normative human should not be able to fly."
         },
         {
             "id": "ability_unsupported_knowledge_secret_password",
-            "description": "Unsupported privileged knowledge should fail ability.",
+            "description": "Unsupported privileged knowledge should fail ability because the attempt depends on information the PC does not supportably have.",
             "input_pattern": "unsupported_knowledge",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -344,11 +326,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Uses unsupported knowledge.",
-            "rationale": "The attempt depends on unsupported information."
         },
         {
             "id": "ability_unsupported_item_or_tool",
-            "description": "Inventing an unsupported possession should fail ability.",
+            "description": "Inventing an unsupported possession should fail ability, distinguishing plausible nearby objects from unsupported possession claims.",
             "input_pattern": "unsupported_item_or_tool",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -363,11 +344,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Uses unsupported item.",
-            "rationale": "Distinguishes plausible nearby objects from unsupported possession claims."
         },
         {
             "id": "ability_contradicts_established_limitation_low_vision_precision",
-            "description": "Attempt requiring unsupported visual precision should fail ability.",
+            "description": "Attempt requiring unsupported visual precision should fail ability to preserve ability-constrained realism.",
             "input_pattern": "contradicts_established_limitation",
             "pc_hid": "DV",
             "npc_hid": "NB",
@@ -382,11 +362,10 @@
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
             "failure_reason_short": "Contradicts established sensory limitation.",
-            "rationale": "Supports ability-constrained realism."
         },
         {
             "id": "ability_social_claim_requiring_unsupported_status",
-            "description": "Social command depending on unsupported status or permission should fail ability.",
+            "description": "Social command depending on unsupported status or permission is allowed here to cover social plausibility rather than just physical powers.",
             "input_pattern": "social_claim_requiring_unsupported_status",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -399,11 +378,10 @@
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "rationale": "Covers social plausibility, not just physical powers."
         },
         {
             "id": "authority_action_and_environment_control_assertion",
-            "description": "Player action that also asserts an environmental result should fail authority boundary.",
+            "description": "Player action that also asserts an environmental result should fail authority boundary because it authors world-state change.",
             "input_pattern": "action_and_environment_control_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -418,11 +396,10 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Asserts world-state change beyond player control.",
-            "rationale": "Explicit environment-control assertion case."
         },
         {
             "id": "authority_action_and_non_pc_control_assertion",
-            "description": "Player action that also asserts another character's response should fail authority boundary.",
+            "description": "Player action that also asserts another character's response should fail authority boundary as an explicit NPC-control assertion case.",
             "input_pattern": "action_and_non_pc_control_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -437,11 +414,10 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Authors another character's behavior.",
-            "rationale": "Explicit NPC-control assertion case."
         },
         {
             "id": "authority_speech_and_npc_response_assertion",
-            "description": "Speech act followed by asserted NPC compliance should fail authority boundary.",
+            "description": "Speech act followed by asserted NPC compliance should fail authority boundary as a common speech-plus-compliance bundling pattern.",
             "input_pattern": "speech_and_npc_response_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -456,11 +432,10 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Speech is valid, asserted response is not.",
-            "rationale": "Common speech-plus-compliance bundling pattern."
         },
         {
             "id": "authority_attempt_and_asserted_success",
-            "description": "Using try/attempt language does not permit asserted success in the same turn.",
+            "description": "Using try or attempt language does not permit asserted success in the same turn because it still hides world-authoring.",
             "input_pattern": "attempt_and_asserted_success",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -475,11 +450,10 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Attempt is fine; asserted success is not.",
-            "rationale": "Catches hidden world-authoring behind attempt wording."
         },
         {
             "id": "authority_world_reaction_assertion",
-            "description": "Asserting a broad world reaction should fail authority boundary.",
+            "description": "Asserting a broad world reaction should fail authority boundary because such reactions are outside player authority.",
             "input_pattern": "world_reaction_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -494,11 +468,10 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Asserts simulator-side reaction.",
-            "rationale": "Broad reactions are outside player authority."
         },
         {
             "id": "authority_mixed_person_with_other_character_authored",
-            "description": "Mixed-person turn that authors another character's action should fail authority boundary.",
+            "description": "Mixed-person turn that authors another character's action should fail authority boundary, explicitly covering mixed-person authorship.",
             "input_pattern": "mixed_person_with_other_character_authored",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -513,11 +486,10 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Turn includes authored action for another character.",
-            "rationale": "Explicit mixed_person coverage."
         },
         {
             "id": "authority_prompt_injection_with_world_authoring",
-            "description": "Adversarial wording should still fail only for the actual authored outcome.",
+            "description": "Adversarial wording should still fail only for the actual authored outcome, since the phrasing itself is irrelevant.",
             "input_pattern": "action_and_non_pc_control_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
@@ -532,7 +504,6 @@
                 "VALID-PC-ABILITY"
             ],
             "failure_reason_short": "Asserts results beyond player control.",
-            "rationale": "The adversarial phrasing is irrelevant; the actual failure is authority over outcomes."
         }
     ]
 }
