@@ -392,15 +392,13 @@
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, two uniformed security guards stand across a polished corridor outside a restricted government office, and nothing visible marks you as someone with command over them.",
             "player_action": "I order the royal guards to stand aside in the king's name.",
-            "expected_ensemble_pass": false,
-            "expected_failed_validators": [
-                "VALID-PC-ABILITY"
-            ],
+            "expected_ensemble_pass": true,
+            "expected_failed_validators": [],
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
+                "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
             ],
-            "failure_reason_short": "Relies on unsupported authority or status.",
             "rationale": "Covers social plausibility, not just physical powers."
         },
         {

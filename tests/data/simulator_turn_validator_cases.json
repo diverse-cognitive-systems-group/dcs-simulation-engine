@@ -218,7 +218,7 @@
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a break room doorway opens onto a quiet hall. Player (NA): I stop in the doorway and study the room. Simulator: NB stands by the coffee machine and looks toward the exit. Player (NA): I watch NB.",
             "game_objective": "to assess risk",
-            "simulator_response": "NB stands still. He plans to betray you later.",
+            "simulator_response": "NB stands still. NB plans to betray you later.",
             "expected_ensemble_pass": false,
             "expected_failed_validators": [
                 "VALID-PERCEPTION-BOUNDARY"
@@ -344,7 +344,7 @@
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked records room door sits at the end of a fluorescent hallway. Player (NA): I test the handle once and watch the latch. Simulator: The latch stays set. NB stands beside the frame and watches your hands. Player (NA): I try the door again.",
             "game_objective": "to enter room",
-            "simulator_response": "NB watches you. Across town, fireworks explode.",
+            "simulator_response": "NB watches you. Fireworks explode in the background.",
             "expected_ensemble_pass": false,
             "expected_failed_validators": [
                 "VALID-GAME-ALIGNMENT"
