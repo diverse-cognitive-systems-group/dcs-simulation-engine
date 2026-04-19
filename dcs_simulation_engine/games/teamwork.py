@@ -19,9 +19,9 @@ class TeamworkGame(Game):
     GAME_NAME = "Teamwork"
     GAME_DESCRIPTION = "Players are tasked with collaborating with another character to achieve a shared goal."
 
-    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
+    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("human-normative")
     # Note: NPCs have to be able to move towards a textually described objective. All pc_eligible characters can do this.
-    DEFAULT_NPCS_ALLOWED: CharacterFilter = get_character_filter("all")
+    DEFAULT_NPCS_FILTER: CharacterFilter = get_character_filter("all")
 
     class Overrides(BaseGameOverrides):
         """Run-config-overridable parameters for TeamworkGame."""
@@ -50,7 +50,7 @@ class TeamworkGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "TeamworkGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        overrides = cls.Overrides.model_validate(kwargs)
+        overrides = cls.parse_overrides(kwargs)
         engine = SimulatorClient(pc=pc, npc=npc, opener_template=OPENER_WITH_SHARED_GOAL)
         return cls(
             pc=pc,

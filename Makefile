@@ -18,7 +18,7 @@ fmt:
 
 # Run test suite quietly
 test:
-	uv run pytest -m "not live" -rs
+	uv run pytest -m "not live" -ra
 
 test-fast:
 	uv run pytest -m "not live and not slow" --no-cov -ra

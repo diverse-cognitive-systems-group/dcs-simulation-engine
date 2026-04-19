@@ -19,7 +19,7 @@ class InferIntentGame(Game):
     GAME_NAME = "Infer Intent"
     GAME_DESCRIPTION = "Players are tasked with understanding the intention of another character."
 
-    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
+    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("human-normative")
 
     class Overrides(Game.Overrides):
         """Run-config-overridable parameters for InferIntentGame."""
@@ -49,7 +49,7 @@ class InferIntentGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "InferIntentGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        overrides = cls.Overrides.model_validate(kwargs)
+        overrides = cls.parse_overrides(kwargs)
         engine = SimulatorClient(
             pc=pc,
             npc=npc,

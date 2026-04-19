@@ -3,8 +3,13 @@
 import pytest
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.games.foresight import ForesightGame
+from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
 from dcs_simulation_engine.games.ai_client import ParsedSimulatorResponse, SimulatorClient, SimulatorComponentResult, SimulatorTurnResult
 from dcs_simulation_engine.games.explore import ExploreGame
+from dcs_simulation_engine.games.infer_intent import InferIntentGame
+from dcs_simulation_engine.games.teamwork import TeamworkGame
 from pydantic import ValidationError
 
 pytestmark = [pytest.mark.unit, pytest.mark.anyio]
@@ -170,6 +175,101 @@ def test_explore_create_from_context_rejects_unknown_kwargs(pc: CharacterRecord,
     """create_from_context() still validates kwargs through ExploreGame.Overrides."""
     with pytest.raises(ValidationError):
         ExploreGame.create_from_context(pc, npc, not_a_valid_kwarg=True)
+
+
+def test_explore_parse_overrides_rejects_numeric_values_outside_allowed_range() -> None:
+    """Shared numeric override bounds are enforced during parse_overrides()."""
+    with pytest.raises(ValueError, match=r"max_turns"):
+        ExploreGame.parse_overrides({"max_turns": 1_000_000})
+
+
+def test_explore_create_from_context_rejects_invalid_shared_override_values(
+    pc: CharacterRecord,
+    npc: CharacterRecord,
+) -> None:
+    """create_from_context() routes through parse_overrides() for shared bound checks."""
+    with pytest.raises(ValueError, match=r"max_turns"):
+        ExploreGame.create_from_context(pc, npc, max_turns=1_000_000)
+
+
+def test_game_subclass_rejects_widened_numeric_range() -> None:
+    """Child classes cannot widen numeric bounds beyond the parent range."""
+    with pytest.raises(TypeError, match=r"ALLOWED_MAX_TURNS_RANGE"):
+
+        class InvalidWidenedRangeGame(ExploreGame):
+            GAME_NAME = "Invalid Widened Range"
+            GAME_DESCRIPTION = "Should fail during class creation."
+            ALLOWED_MAX_TURNS_RANGE = (0, 500)
+
+
+def test_game_subclass_rejects_widened_filter_set() -> None:
+    """Child classes cannot add filter names that the parent disallows."""
+    class RestrictedExploreGame(ExploreGame):
+        GAME_NAME = "Restricted Explore"
+        GAME_DESCRIPTION = "Narrows the allowed PC filters."
+        ALLOWED_PCS = frozenset({"human-normative"})
+        DEFAULT_PCS_FILTER = get_character_filter("human-normative")
+
+    with pytest.raises(TypeError, match=r"ALLOWED_PCS"):
+
+        class InvalidWidenedFilterGame(RestrictedExploreGame):
+            GAME_NAME = "Invalid Widened Filter"
+            GAME_DESCRIPTION = "Should fail during class creation."
+            ALLOWED_PCS = frozenset({"human-normative", "all"})
+
+
+def test_game_subclass_rejects_default_outside_its_own_range() -> None:
+    """Child defaults must fall inside the child range they declare."""
+    with pytest.raises(TypeError, match=r"DEFAULT_MAX_INPUT_LENGTH"):
+
+        class InvalidDefaultGame(ExploreGame):
+            GAME_NAME = "Invalid Default"
+            GAME_DESCRIPTION = "Should fail during class creation."
+            ALLOWED_MAX_INPUT_LENGTH_RANGE = (1, 100)
+            DEFAULT_MAX_INPUT_LENGTH = 101
+
+
+def test_game_subclass_accepts_narrower_bounds_and_defaults() -> None:
+    """Child classes may narrow allowed values when defaults stay inside them."""
+
+    class NarrowedGame(ExploreGame):
+        GAME_NAME = "Narrowed"
+        GAME_DESCRIPTION = "Valid narrowed bounds."
+        ALLOWED_MAX_TURNS_RANGE = (10, 20)
+        DEFAULT_MAX_TURNS = 12
+        ALLOWED_PCS = frozenset({"human-normative"})
+        DEFAULT_PCS_FILTER = get_character_filter("human-normative")
+
+    overrides = NarrowedGame.parse_overrides({"max_turns": 20, "pcs_allowed": "human-normative"})
+
+    assert overrides.max_turns == 20
+    assert overrides.pcs_allowed == "human-normative"
+
+
+def test_game_parse_overrides_rejects_disallowed_known_filter_name() -> None:
+    """Known registry filters are rejected when the game narrows its allowed set."""
+
+    class RestrictedFilterGame(ExploreGame):
+        GAME_NAME = "Restricted Filter"
+        GAME_DESCRIPTION = "Only allows one PC filter."
+        ALLOWED_PCS = frozenset({"human-normative"})
+        DEFAULT_PCS_FILTER = get_character_filter("human-normative")
+
+    with pytest.raises(ValueError, match=r"pcs_allowed"):
+        RestrictedFilterGame.parse_overrides({"pcs_allowed": "all"})
+
+
+@pytest.mark.parametrize(
+    "game_cls",
+    [ExploreGame, InferIntentGame, ForesightGame, GoalHorizonGame, TeamworkGame],
+)
+def test_shipped_game_classes_load_with_valid_bounds(game_cls: type[Game]) -> None:
+    """Importing each shipped game class should succeed with valid bound metadata."""
+    assert issubclass(game_cls, Game)
+    assert isinstance(game_cls.ALLOWED_PCS, frozenset)
+    assert isinstance(game_cls.ALLOWED_NPCS, frozenset)
+    assert getattr(game_cls.DEFAULT_PCS_FILTER, "name", "")
+    assert getattr(game_cls.DEFAULT_NPCS_FILTER, "name", "")
 
 
 async def test_explore_step_enter_flow_emits_setup_and_opening(pc: CharacterRecord, npc: CharacterRecord) -> None:

@@ -23,7 +23,7 @@ class ExploreGame(Game):
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ExploreGame":
         """Factory called by SessionManager."""
-        overrides = cls.Overrides.model_validate(kwargs)
+        overrides = cls.parse_overrides(kwargs)
         engine = SimulatorClient(pc=pc, npc=npc)
         return cls(
             pc=pc,

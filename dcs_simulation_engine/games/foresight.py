@@ -26,7 +26,7 @@ class ForesightGame(Game):
     # This game required players to describe their PC action but also how they expect the NPC to respond for each turn, so we need to remove the validators that enforce that players only describe their own character's actions. Instead, we use a validator that required the PC action and optional NPC prediction.
     PLAYER_TURN_VALIDATORS = []
 
-    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("human-normative")
+    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("human-normative")
 
     class Overrides(BaseGameOverrides):
         """Run-config-overridable parameters for ForesightGame."""
@@ -54,7 +54,7 @@ class ForesightGame(Game):
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
         """Factory called by SessionManager."""
         scorer = kwargs.pop("scorer", None)
-        overrides = cls.Overrides.model_validate(kwargs)
+        overrides = cls.parse_overrides(kwargs)
         engine = SimulatorClient(
             pc=pc,
             npc=npc,

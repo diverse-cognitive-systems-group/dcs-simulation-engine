@@ -5,11 +5,13 @@ from datetime import datetime
 from typing import Any, AsyncIterator, Callable, ClassVar, NamedTuple
 
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.dal.character_filters import get_character_filter, list_character_filter_names
 from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
 from pydantic import BaseModel, ConfigDict
+
+NumericRange = tuple[int, int]
 
 
 class GameEvent(NamedTuple):
@@ -63,10 +65,18 @@ class Game(ABC):
     GAME_NAME: ClassVar[str]
     GAME_DESCRIPTION: ClassVar[str]
 
+    DEFAULT_MAX_TURNS = 50
+    ALLOWED_MAX_TURNS_RANGE: ClassVar[NumericRange] = (1, 500)
+    DEFAULT_MAX_PLAYTIME = 600
+    ALLOWED_MAX_PLAYTIME_RANGE: ClassVar[NumericRange] = (1, 3600)
     DEFAULT_PLAYER_RETRY_BUDGET = 10
+    ALLOWED_PLAYER_RETRY_BUDGET_RANGE: ClassVar[NumericRange] = (0, 10)
     DEFAULT_MAX_INPUT_LENGTH = 350
-    DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("all")
-    DEFAULT_NPCS_ALLOWED: CharacterFilter = get_character_filter("all")
+    ALLOWED_MAX_INPUT_LENGTH_RANGE: ClassVar[NumericRange] = (1, 350)
+    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("all")
+    DEFAULT_NPCS_FILTER: CharacterFilter = get_character_filter("all")
+    ALLOWED_PCS: ClassVar[frozenset[str]] = frozenset(list_character_filter_names())
+    ALLOWED_NPCS: ClassVar[frozenset[str]] = frozenset(list_character_filter_names())
     OPENING_PREFIX = "Opening scene: "
     SIMULATOR_PREFIX = "Simulator: "
     PLAYER_PREFIX = "Player"
@@ -83,7 +93,13 @@ class Game(ABC):
         """Enforce that concrete game subclasses define GAME_NAME and GAME_DESCRIPTION."""
         super().__init_subclass__(**kwargs)
 
-        # Skip abstract intermediates or the base class itself
+        parent_game_cls = next((base for base in cls.__mro__[1:] if issubclass(base, Game)), None)
+        if parent_game_cls is None:
+            return
+
+        cls._validate_class_bounds(parent_game_cls)
+
+        # Skip abstract intermediates for concrete metadata checks.
         if getattr(cls, "__abstractmethods__", None):
             return
 
@@ -95,13 +111,247 @@ class Game(ABC):
     @classmethod
     def parse_overrides(cls, raw: dict[str, Any]) -> "Game.Overrides":
         """Validate and coerce a raw overrides dict from the run config."""
-        return cls.Overrides.model_validate(raw)
+        overrides = cls.Overrides.model_validate(raw)
+        cls._validate_common_overrides(overrides)
+        return overrides
 
     @classmethod
-    def _resolve_character_filter(cls, override_value: str | None, default_value: CharacterFilter) -> CharacterFilter:
+    def _coerce_numeric_range(cls, value: Any, *, field_name: str) -> NumericRange:
+        """Validate and normalize a numeric bounds tuple."""
+        if not isinstance(value, tuple):
+            value = tuple(value)
+        if len(value) != 2:
+            raise TypeError(f"{cls.__name__}.{field_name} must contain exactly two integers.")
+        lower, upper = value
+        if isinstance(lower, bool) or not isinstance(lower, int) or isinstance(upper, bool) or not isinstance(upper, int):
+            raise TypeError(f"{cls.__name__}.{field_name} must contain only integers.")
+        if lower > upper:
+            raise TypeError(f"{cls.__name__}.{field_name} must be an inclusive range with lower <= upper.")
+        return (lower, upper)
+
+    @classmethod
+    def _coerce_allowed_filter_names(cls, value: Any, *, field_name: str) -> frozenset[str]:
+        """Validate and normalize the allowed filter-name set."""
+        try:
+            names = frozenset(value)
+        except TypeError as exc:
+            raise TypeError(f"{cls.__name__}.{field_name} must be an iterable of filter names.") from exc
+        if not names:
+            raise TypeError(f"{cls.__name__}.{field_name} must not be empty.")
+        invalid_names = sorted(name for name in names if not isinstance(name, str) or not name.strip())
+        if invalid_names:
+            raise TypeError(f"{cls.__name__}.{field_name} must contain non-empty strings. Got: {invalid_names!r}")
+        unknown_names = sorted(name for name in names if name not in set(list_character_filter_names()))
+        if unknown_names:
+            raise TypeError(f"{cls.__name__}.{field_name} contains unknown filters: {unknown_names!r}")
+        return names
+
+    @classmethod
+    def _get_filter_name(cls, value: Any, *, field_name: str) -> str:
+        """Return a validated registry name from a default CharacterFilter."""
+        name = getattr(value, "name", None)
+        if not isinstance(name, str) or not name.strip():
+            raise TypeError(f"{cls.__name__}.{field_name} must define a CharacterFilter with a non-empty name.")
+        try:
+            get_character_filter(name)
+        except ValueError as exc:
+            raise TypeError(f"{cls.__name__}.{field_name} uses unknown character filter {name!r}.") from exc
+        return name
+
+    @classmethod
+    def _validate_default_in_range(cls, *, field_name: str, value: Any, allowed_range: NumericRange) -> None:
+        """Validate that a numeric default falls within its inclusive range."""
+        lower, upper = allowed_range
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"{cls.__name__}.{field_name} must be an integer.")
+        if not lower <= value <= upper:
+            raise TypeError(f"{cls.__name__}.{field_name}={value} is outside allowed range [{lower}, {upper}].")
+
+    @classmethod
+    def _validate_override_number(cls, *, field_name: str, value: int | None, allowed_range: NumericRange) -> None:
+        """Reject numeric override values that fall outside the configured range."""
+        if value is None:
+            return
+        lower, upper = allowed_range
+        if not lower <= value <= upper:
+            raise ValueError(
+                f"{cls.__name__} override {field_name!r}={value} is outside allowed range [{lower}, {upper}]."
+            )
+
+    @classmethod
+    def _validate_override_filter_name(cls, *, field_name: str, value: str | None, allowed_names: frozenset[str]) -> None:
+        """Reject unknown or disallowed filter override values."""
+        if value is None:
+            return
+        get_character_filter(value)
+        if value not in allowed_names:
+            raise ValueError(
+                f"{cls.__name__} override {field_name!r}={value!r} is not allowed. "
+                f"Allowed values: {sorted(allowed_names)!r}"
+            )
+
+    @classmethod
+    def _validate_common_overrides(cls, overrides: BaseGameOverrides) -> None:
+        """Validate shared override values against the class bounds."""
+        cls._validate_override_number(
+            field_name="max_turns",
+            value=overrides.max_turns,
+            allowed_range=cls.ALLOWED_MAX_TURNS_RANGE,
+        )
+        cls._validate_override_number(
+            field_name="max_playtime",
+            value=overrides.max_playtime,
+            allowed_range=cls.ALLOWED_MAX_PLAYTIME_RANGE,
+        )
+        cls._validate_override_number(
+            field_name="player_retry_budget",
+            value=overrides.player_retry_budget,
+            allowed_range=cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
+        )
+        cls._validate_override_number(
+            field_name="max_input_length",
+            value=overrides.max_input_length,
+            allowed_range=cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
+        )
+        cls._validate_override_filter_name(
+            field_name="pcs_allowed",
+            value=overrides.pcs_allowed,
+            allowed_names=cls.ALLOWED_PCS,
+        )
+        cls._validate_override_filter_name(
+            field_name="npcs_allowed",
+            value=overrides.npcs_allowed,
+            allowed_names=cls.ALLOWED_NPCS,
+        )
+
+    @classmethod
+    def _validate_narrowed_range(
+        cls,
+        *,
+        field_name: str,
+        child_range: NumericRange,
+        parent_range: NumericRange,
+    ) -> None:
+        """Ensure a child inclusive range is not wider than its parent."""
+        child_lower, child_upper = child_range
+        parent_lower, parent_upper = parent_range
+        if child_lower < parent_lower or child_upper > parent_upper:
+            raise TypeError(
+                f"{cls.__name__}.{field_name}={child_range} widens parent range {parent_range}. "
+                "Child ranges must be equal to or narrower than the parent."
+            )
+
+    @classmethod
+    def _validate_subset(
+        cls,
+        *,
+        field_name: str,
+        child_values: frozenset[str],
+        parent_values: frozenset[str],
+    ) -> None:
+        """Ensure a child allowed-set is not wider than its parent."""
+        if not child_values.issubset(parent_values):
+            extras = sorted(child_values - parent_values)
+            raise TypeError(
+                f"{cls.__name__}.{field_name} contains values not allowed by the parent: {extras!r}. "
+                "Child allowed sets must be subsets of the parent."
+            )
+
+    @classmethod
+    def _validate_class_bounds(cls, parent_game_cls: type["Game"]) -> None:
+        """Validate subclass defaults and allowed bounds against the parent Game class."""
+        cls.ALLOWED_MAX_TURNS_RANGE = cls._coerce_numeric_range(cls.ALLOWED_MAX_TURNS_RANGE, field_name="ALLOWED_MAX_TURNS_RANGE")
+        cls.ALLOWED_MAX_PLAYTIME_RANGE = cls._coerce_numeric_range(
+            cls.ALLOWED_MAX_PLAYTIME_RANGE,
+            field_name="ALLOWED_MAX_PLAYTIME_RANGE",
+        )
+        cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE = cls._coerce_numeric_range(
+            cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
+            field_name="ALLOWED_PLAYER_RETRY_BUDGET_RANGE",
+        )
+        cls.ALLOWED_MAX_INPUT_LENGTH_RANGE = cls._coerce_numeric_range(
+            cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
+            field_name="ALLOWED_MAX_INPUT_LENGTH_RANGE",
+        )
+        cls.ALLOWED_PCS = cls._coerce_allowed_filter_names(cls.ALLOWED_PCS, field_name="ALLOWED_PCS")
+        cls.ALLOWED_NPCS = cls._coerce_allowed_filter_names(cls.ALLOWED_NPCS, field_name="ALLOWED_NPCS")
+
+        cls._validate_narrowed_range(
+            field_name="ALLOWED_MAX_TURNS_RANGE",
+            child_range=cls.ALLOWED_MAX_TURNS_RANGE,
+            parent_range=parent_game_cls.ALLOWED_MAX_TURNS_RANGE,
+        )
+        cls._validate_narrowed_range(
+            field_name="ALLOWED_MAX_PLAYTIME_RANGE",
+            child_range=cls.ALLOWED_MAX_PLAYTIME_RANGE,
+            parent_range=parent_game_cls.ALLOWED_MAX_PLAYTIME_RANGE,
+        )
+        cls._validate_narrowed_range(
+            field_name="ALLOWED_PLAYER_RETRY_BUDGET_RANGE",
+            child_range=cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
+            parent_range=parent_game_cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
+        )
+        cls._validate_narrowed_range(
+            field_name="ALLOWED_MAX_INPUT_LENGTH_RANGE",
+            child_range=cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
+            parent_range=parent_game_cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
+        )
+        cls._validate_subset(
+            field_name="ALLOWED_PCS",
+            child_values=cls.ALLOWED_PCS,
+            parent_values=parent_game_cls.ALLOWED_PCS,
+        )
+        cls._validate_subset(
+            field_name="ALLOWED_NPCS",
+            child_values=cls.ALLOWED_NPCS,
+            parent_values=parent_game_cls.ALLOWED_NPCS,
+        )
+
+        cls._validate_default_in_range(
+            field_name="DEFAULT_MAX_TURNS",
+            value=cls.DEFAULT_MAX_TURNS,
+            allowed_range=cls.ALLOWED_MAX_TURNS_RANGE,
+        )
+        cls._validate_default_in_range(
+            field_name="DEFAULT_MAX_PLAYTIME",
+            value=cls.DEFAULT_MAX_PLAYTIME,
+            allowed_range=cls.ALLOWED_MAX_PLAYTIME_RANGE,
+        )
+        cls._validate_default_in_range(
+            field_name="DEFAULT_PLAYER_RETRY_BUDGET",
+            value=cls.DEFAULT_PLAYER_RETRY_BUDGET,
+            allowed_range=cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
+        )
+        cls._validate_default_in_range(
+            field_name="DEFAULT_MAX_INPUT_LENGTH",
+            value=cls.DEFAULT_MAX_INPUT_LENGTH,
+            allowed_range=cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
+        )
+
+        pcs_filter_name = cls._get_filter_name(cls.DEFAULT_PCS_FILTER, field_name="DEFAULT_PCS_FILTER")
+        npcs_filter_name = cls._get_filter_name(cls.DEFAULT_NPCS_FILTER, field_name="DEFAULT_NPCS_FILTER")
+        if pcs_filter_name not in cls.ALLOWED_PCS:
+            raise TypeError(
+                f"{cls.__name__}.DEFAULT_PCS_FILTER={pcs_filter_name!r} is not included in {cls.__name__}.ALLOWED_PCS."
+            )
+        if npcs_filter_name not in cls.ALLOWED_NPCS:
+            raise TypeError(
+                f"{cls.__name__}.DEFAULT_NPCS_FILTER={npcs_filter_name!r} is not included in {cls.__name__}.ALLOWED_NPCS."
+            )
+
+    @classmethod
+    def _resolve_character_filter(
+        cls,
+        *,
+        override_value: str | None,
+        default_value: CharacterFilter,
+        field_name: str,
+        allowed_names: frozenset[str],
+    ) -> CharacterFilter:
         """Resolve an optional filter override string into a CharacterFilter."""
         if override_value is None:
             return default_value
+        cls._validate_override_filter_name(field_name=field_name, value=override_value, allowed_names=allowed_names)
         return get_character_filter(override_value)
 
     @classmethod
@@ -116,8 +366,18 @@ class Game(ABC):
                 overrides.player_retry_budget if overrides.player_retry_budget is not None else cls.DEFAULT_PLAYER_RETRY_BUDGET
             ),
             "max_input_length": (overrides.max_input_length if overrides.max_input_length is not None else cls.DEFAULT_MAX_INPUT_LENGTH),
-            "pcs_allowed": cls._resolve_character_filter(overrides.pcs_allowed, cls.DEFAULT_PCS_ALLOWED),
-            "npcs_allowed": cls._resolve_character_filter(overrides.npcs_allowed, cls.DEFAULT_NPCS_ALLOWED),
+            "pcs_allowed": cls._resolve_character_filter(
+                override_value=overrides.pcs_allowed,
+                default_value=cls.DEFAULT_PCS_FILTER,
+                field_name="pcs_allowed",
+                allowed_names=cls.ALLOWED_PCS,
+            ),
+            "npcs_allowed": cls._resolve_character_filter(
+                override_value=overrides.npcs_allowed,
+                default_value=cls.DEFAULT_NPCS_FILTER,
+                field_name="npcs_allowed",
+                allowed_names=cls.ALLOWED_NPCS,
+            ),
         }
 
     # ---- Constructor (common state) --------------------------------------
@@ -139,8 +399,8 @@ class Game(ABC):
         self._engine = engine
         self._player_retry_budget = player_retry_budget if player_retry_budget is not None else type(self).DEFAULT_PLAYER_RETRY_BUDGET
         self._max_input_length = max_input_length if max_input_length is not None else type(self).DEFAULT_MAX_INPUT_LENGTH
-        self._pcs_allowed = pcs_allowed if pcs_allowed is not None else type(self).DEFAULT_PCS_ALLOWED
-        self._npcs_allowed = npcs_allowed if npcs_allowed is not None else type(self).DEFAULT_NPCS_ALLOWED
+        self._pcs_allowed = pcs_allowed if pcs_allowed is not None else type(self).DEFAULT_PCS_FILTER
+        self._npcs_allowed = npcs_allowed if npcs_allowed is not None else type(self).DEFAULT_NPCS_FILTER
         self._entered = False
         self._exited = False
         self._exit_reason = ""

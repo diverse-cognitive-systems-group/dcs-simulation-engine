@@ -25,3 +25,8 @@ def get_character_filter(name: str) -> CharacterFilter:
         return _FILTERS[name]
     except KeyError as exc:
         raise ValueError(f"Unknown character filter: {name!r}. Valid: {sorted(_FILTERS)}") from exc
+
+
+def list_character_filter_names() -> tuple[str, ...]:
+    """Return all registered character filter names in a stable order."""
+    return tuple(sorted(_FILTERS))
