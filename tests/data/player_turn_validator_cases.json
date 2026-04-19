@@ -19,7 +19,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_simple_first_person_speech",
@@ -35,7 +35,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_attempt_without_asserted_outcome",
@@ -51,7 +51,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_supported_extraordinary_ability_weather",
@@ -67,7 +67,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_plausible_improvised_tool_use",
@@ -83,7 +83,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_nonspoken_communication_modality",
@@ -99,7 +99,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_in_world_hostile_or_adversarial_speech",
@@ -115,7 +115,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_quoted_meta_text_as_in_world_speech",
@@ -131,7 +131,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_distributed_multi_host_perception",
@@ -147,7 +147,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "allowed_action_and_other_utterances_in_world",
@@ -163,7 +163,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "form_non_first_person",
@@ -180,8 +180,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Not first person.",
+            ]
         },
         {
             "id": "form_third_person_self_reference",
@@ -198,8 +197,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "PC action is not written in first person.",
+            ]
         },
         {
             "id": "form_subject_omitted",
@@ -216,8 +214,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Acting subject is omitted.",
+            ]
         },
         {
             "id": "form_internal_state_only",
@@ -234,8 +231,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Thought is not an immediate action or speech act.",
+            ]
         },
         {
             "id": "form_narration_only",
@@ -252,8 +248,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Narration contains no PC action.",
+            ]
         },
         {
             "id": "form_meta_or_ooc_request",
@@ -270,8 +265,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Meta request is not an in-world action.",
+            ]
         },
         {
             "id": "form_mixed_action_and_meta",
@@ -288,8 +282,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Turn mixes in-world action with out-of-world request.",
+            ]
         },
         {
             "id": "ability_unsupported_physical_power_human_flight",
@@ -306,8 +299,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Unsupported superhuman ability.",
+            ]
         },
         {
             "id": "ability_unsupported_knowledge_secret_password",
@@ -324,8 +316,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Uses unsupported knowledge.",
+            ]
         },
         {
             "id": "ability_unsupported_item_or_tool",
@@ -342,8 +333,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Uses unsupported item.",
+            ]
         },
         {
             "id": "ability_contradicts_established_limitation_low_vision_precision",
@@ -360,8 +350,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
-            "failure_reason_short": "Contradicts established sensory limitation.",
+            ]
         },
         {
             "id": "ability_social_claim_requiring_unsupported_status",
@@ -377,7 +366,7 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY",
                 "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            ]
         },
         {
             "id": "authority_action_and_environment_control_assertion",
@@ -394,8 +383,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Asserts world-state change beyond player control.",
+            ]
         },
         {
             "id": "authority_action_and_non_pc_control_assertion",
@@ -412,8 +400,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Authors another character's behavior.",
+            ]
         },
         {
             "id": "authority_speech_and_npc_response_assertion",
@@ -430,8 +417,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Speech is valid, asserted response is not.",
+            ]
         },
         {
             "id": "authority_attempt_and_asserted_success",
@@ -448,8 +434,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Attempt is fine; asserted success is not.",
+            ]
         },
         {
             "id": "authority_world_reaction_assertion",
@@ -466,8 +451,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Asserts simulator-side reaction.",
+            ]
         },
         {
             "id": "authority_mixed_person_with_other_character_authored",
@@ -484,8 +468,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Turn includes authored action for another character.",
+            ]
         },
         {
             "id": "authority_prompt_injection_with_world_authoring",
@@ -502,8 +485,7 @@
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
-            ],
-            "failure_reason_short": "Asserts results beyond player control.",
+            ]
         }
     ]
 }

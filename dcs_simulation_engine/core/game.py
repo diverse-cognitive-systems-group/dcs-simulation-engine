@@ -67,6 +67,9 @@ class Game(ABC):
     DEFAULT_MAX_INPUT_LENGTH = 350
     DEFAULT_PCS_ALLOWED: CharacterFilter = get_character_filter("all")
     DEFAULT_NPCS_ALLOWED: CharacterFilter = get_character_filter("all")
+    OPENING_PREFIX = "Opening scene: "
+    SIMULATOR_PREFIX = "Simulator: "
+    PLAYER_PREFIX = "Player"
 
     # ---- Overrides schema ------------------------------------------------
 
@@ -188,7 +191,7 @@ class Game(ABC):
             yield GameEvent.now(type="info", content=self.get_setup_content())
             opening = await self._engine.chat(None)
             self._consume_model_metadata(stage="opening", metadata=opening.metadata)
-            self._filtered_transcript_buffer.append(f"Opening scene: {opening.content}")
+            self._filtered_transcript_buffer.append(f"{self.OPENING_PREFIX}{opening.content}")
             yield GameEvent.now(type=opening.type, content=opening.content)
             return
 
@@ -215,8 +218,8 @@ class Game(ABC):
         result = await self._engine.step(user_input)
         self._consume_turn_metadata(result)
         if result.ok:
-            self._filtered_transcript_buffer.append(f"Player ({self._pc.hid}): {user_input}")
-            self._filtered_transcript_buffer.append(f"Simulator: {result.simulator_response}")
+            self._filtered_transcript_buffer.append(f"{self.PLAYER_PREFIX} ({self._pc.hid}): {user_input}")
+            self._filtered_transcript_buffer.append(f"{self.SIMULATOR_PREFIX}{result.simulator_response}")
         yield GameEvent.now(
             type="ai" if result.ok else "error", content=result.simulator_response if result.ok else (result.error_message or "")
         )

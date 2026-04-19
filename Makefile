@@ -21,10 +21,10 @@ test:
 	uv run pytest -m "not live" -rs
 
 test-fast:
-	uv run pytest -m "not live and not slow" --no-cov -r fEsxX
+	uv run pytest -m "not live and not slow" --no-cov -ra
 
 test-live:
-	uv run pytest -m live -rs
+	uv run pytest -m live -ra --no-cov
 
 # Build documentation (MkDocs in this example).
 docs:

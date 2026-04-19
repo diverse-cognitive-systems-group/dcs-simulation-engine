@@ -1,4 +1,4 @@
-"""Drift checks for example fixture data versus current codebase definitions."""
+"""Drift checks for example results data versus current codebase definitions."""
 
 import json
 from pathlib import Path

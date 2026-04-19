@@ -203,10 +203,11 @@ def test_hitl_create(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="hitl update is not yet implemented — requires a live DCS server")
+@pytest.mark.xfail(reason="hitl implementation blocked by resume functionality")
 @pytest.mark.functional
 def test_hitl_update():
     """dcs-utils hitl update — skipped until implementation is complete."""
+    assert False
 
 
 # ---------------------------------------------------------------------------

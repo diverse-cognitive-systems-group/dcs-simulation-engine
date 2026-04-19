@@ -215,29 +215,29 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
             )
 
 
-@pytest.mark.skip(reason="pending run config per-game overrides")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_max_turns_override_stops_game(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should stop when max_turns run config override is reached."""
-    ...
+    assert False
 
 
-@pytest.mark.skip(reason="pending run config per-game overrides")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_max_runtime_override_stops_game(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should stop when max_runtime_seconds run config override is reached."""
-    ...
+    assert False
 
 
-@pytest.mark.skip(reason="pending evaluation + run config fixes")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_player_triggered_evals_configurable(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Player-triggered evaluations should be enabled/disabled per run config."""
-    ...
+    assert False
 
 
-@pytest.mark.skip(reason="pending run config refactoring")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_expose_overrides_available(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should expose all documented overrides via the run config interface."""
-    ...
+    assert False

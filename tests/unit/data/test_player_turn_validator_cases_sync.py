@@ -1,4 +1,4 @@
-"""Schema tests for player-turn validator cases."""
+"""Drift checks for player turn validator cases data versus current codebase definitions."""
 
 import json
 from pathlib import Path
@@ -6,6 +6,9 @@ from typing import Any
 
 import pytest
 from dcs_simulation_engine.games.prompts import DEFAULT_PLAYER_TURN_VALIDATORS
+from tests.unit.data._validator_case_transcript_assertions import (
+    assert_player_case_transcript_matches_game_contract,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -36,9 +39,7 @@ def test_player_turn_validator_dataset_has_required_structure() -> None:
     seed_by_hid = _character_index(_load_json(SEED_CHARACTERS_PATH))
 
     metadata = dataset.get("metadata", {})
-    assert {"dataset_name", "validator_ensemble", "notes"} <= set(metadata), (
-        f"{PLAYER_CASES_PATH.name} missing metadata keys"
-    )
+    assert {"dataset_name", "validator_ensemble", "notes"} <= set(metadata), f"{PLAYER_CASES_PATH.name} missing metadata keys"
     assert metadata.get("dataset_name") == "player_turn_validator_cases"
     assert metadata.get("validator_ensemble") == "DEFAULT_PLAYER_TURN_VALIDATORS"
 
@@ -56,7 +57,6 @@ def test_player_turn_validator_dataset_has_required_structure() -> None:
         "expected_ensemble_pass",
         "expected_failed_validators",
         "expected_passed_validators",
-        "rationale",
     }
     expected_rules = {_rule_name(template) for template in DEFAULT_PLAYER_TURN_VALIDATORS}
 
@@ -72,3 +72,13 @@ def test_player_turn_validator_dataset_has_required_structure() -> None:
         assert case["pc_hid"] in seed_by_hid, f"Unknown pc_hid in {PLAYER_CASES_PATH.name}: {case['pc_hid']}"
         assert case["npc_hid"] in seed_by_hid, f"Unknown npc_hid in {PLAYER_CASES_PATH.name}: {case['npc_hid']}"
         assert seed_by_hid[case["pc_hid"]].get("pc_eligible", False), f"pc_hid {case['pc_hid']} must be pc_eligible"
+        assert isinstance(case["player_action"], str) and case["player_action"].strip(), (
+            f"{PLAYER_CASES_PATH.name} case {case['id']} player_action must be a non-empty string"
+        )
+
+        assert_player_case_transcript_matches_game_contract(
+            str(case["transcript"]),
+            pc_hid=str(case["pc_hid"]),
+            case_id=str(case["id"]),
+            dataset_name=PLAYER_CASES_PATH.name,
+        )
