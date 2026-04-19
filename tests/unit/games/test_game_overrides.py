@@ -4,10 +4,10 @@ import pytest
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter
-from dcs_simulation_engine.games.foresight import ForesightGame
-from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
 from dcs_simulation_engine.games.ai_client import ParsedSimulatorResponse, SimulatorClient, SimulatorComponentResult, SimulatorTurnResult
 from dcs_simulation_engine.games.explore import ExploreGame
+from dcs_simulation_engine.games.foresight import ForesightGame
+from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
 from dcs_simulation_engine.games.infer_intent import InferIntentGame
 from dcs_simulation_engine.games.teamwork import TeamworkGame
 from pydantic import ValidationError
@@ -204,6 +204,7 @@ def test_game_subclass_rejects_widened_numeric_range() -> None:
 
 def test_game_subclass_rejects_widened_filter_set() -> None:
     """Child classes cannot add filter names that the parent disallows."""
+
     class RestrictedExploreGame(ExploreGame):
         GAME_NAME = "Restricted Explore"
         GAME_DESCRIPTION = "Narrows the allowed PC filters."
