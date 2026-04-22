@@ -28,6 +28,10 @@ from dcs_simulation_engine.api.models import (
     WSCloseRequest,
     WSClosedFrame,
     WSEventFrame,
+    WSReplayEndFrame,
+    WSReplayEventFrame,
+    WSReplayStartFrame,
+    WSSessionMetaFrame,
     WSStatusFrame,
     WSStatusRequest,
     WSTurnEndFrame,
@@ -54,6 +58,7 @@ class SimulationRun:
         self._api_key = api_key
         self._opened = False
         self._events: list[WSEventFrame] = []
+        self._session_meta: WSSessionMetaFrame | None = None
         self._turn_end: WSTurnEndFrame | None = None
 
     def __enter__(self) -> Self:
@@ -71,7 +76,7 @@ class SimulationRun:
         """Advance the simulation by one step."""
         if not self._opened:
             first_text: str | None = user_input if user_input != "" else None
-            events, turn_end = self._client._ws_open_and_advance(
+            session_meta, events, turn_end = self._client._ws_open_and_advance(
                 session_id=self.session_id,
                 api_key=self._api_key,
                 text=first_text,
@@ -79,25 +84,27 @@ class SimulationRun:
             )
             self._opened = True
         else:
-            events, turn_end = self._client._ws_open_and_advance(
+            session_meta, events, turn_end = self._client._ws_open_and_advance(
                 session_id=self.session_id,
                 api_key=self._api_key,
                 text=user_input,
                 include_opening=False,
             )
 
+        self._session_meta = session_meta
         self._events.extend(events)
         self._turn_end = turn_end
         return self
 
     def get_state(self) -> Self:
         """Fetch current session status without advancing a turn."""
-        status_frame = self._client._ws_status(
+        session_meta, status_frame = self._client._ws_status(
             session_id=self.session_id,
             api_key=self._api_key,
             include_opening=not self._opened,
         )
         self._opened = True
+        self._session_meta = session_meta
         # Mirror turn_end shape from status frame for consistent meta access.
         self._turn_end = WSTurnEndFrame(
             session_id=status_frame.session_id,
@@ -108,7 +115,7 @@ class SimulationRun:
 
     def close(self) -> None:
         """Close the server-side session."""
-        self._client._ws_close(
+        self._session_meta = self._client._ws_close(
             session_id=self.session_id,
             api_key=self._api_key,
             include_opening=not self._opened,
@@ -132,6 +139,11 @@ class SimulationRun:
     def history(self) -> list[WSEventFrame]:
         """All WSEventFrames received so far, in order."""
         return list(self._events)
+
+    @property
+    def session_meta(self) -> WSSessionMetaFrame | None:
+        """Most recent session metadata frame received from the server."""
+        return self._session_meta
 
     @property
     def turns(self) -> int:
@@ -290,7 +302,19 @@ class APIClient:
         scheme = "wss" if parsed.scheme == "https" else "ws"
         return f"{scheme}://{parsed.netloc}/api/play/game/{session_id}/ws"
 
-    def _recv_frame(self, ws: Any) -> WSEventFrame | WSTurnEndFrame | WSStatusFrame | WSClosedFrame:
+    def _recv_frame(
+        self,
+        ws: Any,
+    ) -> (
+        WSEventFrame
+        | WSSessionMetaFrame
+        | WSReplayStartFrame
+        | WSReplayEventFrame
+        | WSReplayEndFrame
+        | WSTurnEndFrame
+        | WSStatusFrame
+        | WSClosedFrame
+    ):
         """Receive one WebSocket frame and parse it into a typed model.
 
         Raises APIRequestError on non-text frames, non-object JSON, or
@@ -309,8 +333,16 @@ class APIClient:
             raise APIRequestError(str(data.get("detail") or data.get("message") or "Unknown websocket error"))
 
         frame_type = data.get("type")
+        if frame_type == "session_meta":
+            return WSSessionMetaFrame.model_validate(data)
         if frame_type == "event":
             return WSEventFrame.model_validate(data)
+        if frame_type == "replay_start":
+            return WSReplayStartFrame.model_validate(data)
+        if frame_type == "replay_event":
+            return WSReplayEventFrame.model_validate(data)
+        if frame_type == "replay_end":
+            return WSReplayEndFrame.model_validate(data)
         if frame_type == "turn_end":
             return WSTurnEndFrame.model_validate(data)
         if frame_type == "status":
@@ -319,6 +351,23 @@ class APIClient:
             return WSClosedFrame.model_validate(data)
 
         raise APIRequestError(f"Unexpected websocket frame type: {frame_type!r}")
+
+    def _recv_session_meta(self, ws: Any) -> WSSessionMetaFrame:
+        """Receive the required session metadata frame sent at the start of each WS connection."""
+        frame = self._recv_frame(ws)
+        if not isinstance(frame, WSSessionMetaFrame):
+            raise APIRequestError("Expected session_meta websocket frame")
+        return frame
+
+    def _drain_replay(self, ws: Any) -> None:
+        """Discard the replay burst the server sends when resuming a paused session."""
+        while True:
+            frame = self._recv_frame(ws)
+            if isinstance(frame, WSReplayEventFrame):
+                continue
+            if isinstance(frame, WSReplayEndFrame):
+                return
+            raise APIRequestError("Expected replay_event or replay_end websocket frame")
 
     def _recv_until_turn_end(self, ws: Any) -> tuple[list[WSEventFrame], WSTurnEndFrame]:
         """Drain frames until the server signals the end of a turn.
@@ -333,6 +382,9 @@ class APIClient:
         events: list[WSEventFrame] = []
         while True:
             frame = self._recv_frame(ws)
+            if isinstance(frame, WSReplayStartFrame):
+                self._drain_replay(ws)
+                continue
             if isinstance(frame, WSEventFrame):
                 # Accumulate content frames; event_type distinguishes ai/info/warning/error.
                 events.append(frame)
@@ -350,7 +402,7 @@ class APIClient:
         api_key: str | None,
         text: Optional[str],
         include_opening: bool,
-    ) -> tuple[list[WSEventFrame], WSTurnEndFrame]:
+    ) -> tuple[WSSessionMetaFrame, list[WSEventFrame], WSTurnEndFrame]:
         """Open a WebSocket connection, optionally consume the opening turn, then advance.
 
         The server always sends an unsolicited opening turn the first time a
@@ -369,6 +421,7 @@ class APIClient:
         if api_key:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
+            session_meta = self._recv_session_meta(ws)
             if include_opening:
                 # Consume the server-initiated opening turn before sending anything.
                 opening_events, opening_turn_end = self._recv_until_turn_end(ws)
@@ -382,9 +435,15 @@ class APIClient:
                 events.extend(step_events)
                 turn_end = step_turn_end
 
-        return events, turn_end
+        return session_meta, events, turn_end
 
-    def _ws_status(self, *, session_id: str, api_key: str | None, include_opening: bool) -> WSStatusFrame:
+    def _ws_status(
+        self,
+        *,
+        session_id: str,
+        api_key: str | None,
+        include_opening: bool,
+    ) -> tuple[WSSessionMetaFrame, WSStatusFrame]:
         """Fetch session status via WebSocket without advancing a turn.
 
         If include_opening=True, the unsolicited opening turn is consumed first
@@ -396,18 +455,30 @@ class APIClient:
         if api_key:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
+            session_meta = self._recv_session_meta(ws)
             if include_opening:
                 # Must drain the opening turn before the server will accept requests.
                 self._recv_until_turn_end(ws)
             ws.send(WSStatusRequest(type="status").model_dump_json())
-            frame = self._recv_frame(ws)
+            while True:
+                frame = self._recv_frame(ws)
+                if isinstance(frame, WSReplayStartFrame):
+                    self._drain_replay(ws)
+                    continue
+                break
 
         if not isinstance(frame, WSStatusFrame):
             raise APIRequestError("Expected status websocket frame")
 
-        return frame
+        return session_meta, frame
 
-    def _ws_close(self, *, session_id: str, api_key: str | None, include_opening: bool) -> None:
+    def _ws_close(
+        self,
+        *,
+        session_id: str,
+        api_key: str | None,
+        include_opening: bool,
+    ) -> WSSessionMetaFrame:
         """Close a session via WebSocket.
 
         Sends a WSCloseRequest and waits for the server's WSClosedFrame confirmation.
@@ -419,9 +490,16 @@ class APIClient:
         if api_key:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
+            session_meta = self._recv_session_meta(ws)
             if include_opening:
                 self._recv_until_turn_end(ws)
             ws.send(WSCloseRequest(type="close").model_dump_json())
-            frame = self._recv_frame(ws)
+            while True:
+                frame = self._recv_frame(ws)
+                if isinstance(frame, WSReplayStartFrame):
+                    self._drain_replay(ws)
+                    continue
+                break
             if not isinstance(frame, WSClosedFrame):
                 raise APIRequestError("Expected closed websocket frame")
+        return session_meta
