@@ -73,9 +73,20 @@ class Game(ABC):
     ALLOWED_PLAYER_RETRY_BUDGET_RANGE: ClassVar[NumericRange] = (0, 10)
     DEFAULT_MAX_INPUT_LENGTH = 350
     ALLOWED_MAX_INPUT_LENGTH_RANGE: ClassVar[NumericRange] = (1, 350)
-    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("all")
+    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("pc-eligible")
     DEFAULT_NPCS_FILTER: CharacterFilter = get_character_filter("all")
-    ALLOWED_PCS: ClassVar[frozenset[str]] = frozenset(list_character_filter_names())
+    ALLOWED_PCS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "pc-eligible",
+            "human-normative",
+            "divergent",
+            "hypersensitive",
+            "hyposensitive",
+            "neurotypical",
+            "neurodivergent",
+            "physical-divergence",
+        }
+    )
     ALLOWED_NPCS: ClassVar[frozenset[str]] = frozenset(list_character_filter_names())
     OPENING_PREFIX = "Opening scene: "
     SIMULATOR_PREFIX = "Simulator: "
@@ -174,9 +185,7 @@ class Game(ABC):
             return
         lower, upper = allowed_range
         if not lower <= value <= upper:
-            raise ValueError(
-                f"{cls.__name__} override {field_name!r}={value} is outside allowed range [{lower}, {upper}]."
-            )
+            raise ValueError(f"{cls.__name__} override {field_name!r}={value} is outside allowed range [{lower}, {upper}].")
 
     @classmethod
     def _validate_override_filter_name(cls, *, field_name: str, value: str | None, allowed_names: frozenset[str]) -> None:
@@ -185,10 +194,7 @@ class Game(ABC):
             return
         get_character_filter(value)
         if value not in allowed_names:
-            raise ValueError(
-                f"{cls.__name__} override {field_name!r}={value!r} is not allowed. "
-                f"Allowed values: {sorted(allowed_names)!r}"
-            )
+            raise ValueError(f"{cls.__name__} override {field_name!r}={value!r} is not allowed. Allowed values: {sorted(allowed_names)!r}")
 
     @classmethod
     def _validate_common_overrides(cls, overrides: BaseGameOverrides) -> None:
@@ -331,13 +337,9 @@ class Game(ABC):
         pcs_filter_name = cls._get_filter_name(cls.DEFAULT_PCS_FILTER, field_name="DEFAULT_PCS_FILTER")
         npcs_filter_name = cls._get_filter_name(cls.DEFAULT_NPCS_FILTER, field_name="DEFAULT_NPCS_FILTER")
         if pcs_filter_name not in cls.ALLOWED_PCS:
-            raise TypeError(
-                f"{cls.__name__}.DEFAULT_PCS_FILTER={pcs_filter_name!r} is not included in {cls.__name__}.ALLOWED_PCS."
-            )
+            raise TypeError(f"{cls.__name__}.DEFAULT_PCS_FILTER={pcs_filter_name!r} is not included in {cls.__name__}.ALLOWED_PCS.")
         if npcs_filter_name not in cls.ALLOWED_NPCS:
-            raise TypeError(
-                f"{cls.__name__}.DEFAULT_NPCS_FILTER={npcs_filter_name!r} is not included in {cls.__name__}.ALLOWED_NPCS."
-            )
+            raise TypeError(f"{cls.__name__}.DEFAULT_NPCS_FILTER={npcs_filter_name!r} is not included in {cls.__name__}.ALLOWED_NPCS.")
 
     @classmethod
     def _resolve_character_filter(

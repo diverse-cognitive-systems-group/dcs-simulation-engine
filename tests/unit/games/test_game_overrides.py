@@ -147,7 +147,7 @@ def test_explore_create_from_context_uses_default_base_configuration(pc: Charact
     assert isinstance(game._engine, SimulatorClient)
     assert game._player_retry_budget == ExploreGame.DEFAULT_PLAYER_RETRY_BUDGET
     assert game._max_input_length == ExploreGame.DEFAULT_MAX_INPUT_LENGTH
-    assert game._pcs_allowed.name == "all"
+    assert game._pcs_allowed.name == "pc-eligible"
     assert game._npcs_allowed.name == "all"
     assert game.exited is False
     assert game.exit_reason == ""
