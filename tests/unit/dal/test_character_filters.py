@@ -4,10 +4,16 @@ import pytest
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter
 from dcs_simulation_engine.dal.character_filters.all import AllCharactersFilter
+from dcs_simulation_engine.dal.character_filters.divergent import DivergentFilter
+from dcs_simulation_engine.dal.character_filters.human import HumanFilter
 from dcs_simulation_engine.dal.character_filters.human_normative import HumanNormativeFilter
 from dcs_simulation_engine.dal.character_filters.hypersensitive import HypersensitiveFilter
 from dcs_simulation_engine.dal.character_filters.hyposensitive import HyposensitiveFilter
+from dcs_simulation_engine.dal.character_filters.neurodivergent import NeurodivergentFilter
 from dcs_simulation_engine.dal.character_filters.neurotypical import NeurotypicalFilter
+from dcs_simulation_engine.dal.character_filters.non_human import NonHumanFilter
+from dcs_simulation_engine.dal.character_filters.pc_eligible import PcEligibleFilter
+from dcs_simulation_engine.dal.character_filters.physical_divergence import PhysicalDivergenceFilter
 
 
 class StubProvider:
@@ -27,6 +33,8 @@ def _character(
     *,
     is_human: bool,
     common_labels: list[str],
+    pc_eligible: bool = False,
+    hsn_divergence: dict | None = None,
 ) -> CharacterRecord:
     return CharacterRecord(
         hid=hid,
@@ -34,9 +42,69 @@ def _character(
         short_description=f"{hid} short description",
         data={
             "is_human": is_human,
+            "pc_eligible": pc_eligible,
             "common_labels": common_labels,
+            "hsn_divergence": hsn_divergence,
         },
     )
+
+
+def _normative_hsn() -> dict:
+    return {
+        "physical_ability_assumptions": {
+            "vision": {"value": "normative"},
+            "hearing": {"value": "normative"},
+        },
+        "cognitive_and_perceptual_assumptions": {
+            "attention_control": {"value": "normative"},
+            "processing_speed": {"value": "normative"},
+        },
+        "social_and_communicative_assumptions": {
+            "neurotypical_communication": {"value": "normative"},
+        },
+    }
+
+
+def _cognitive_divergent_hsn() -> dict:
+    return {
+        "physical_ability_assumptions": {
+            "vision": {"value": "normative"},
+        },
+        "cognitive_and_perceptual_assumptions": {
+            "attention_control": {"value": "divergent"},
+        },
+        "social_and_communicative_assumptions": {
+            "neurotypical_communication": {"value": "normative"},
+        },
+    }
+
+
+def _communication_divergent_hsn() -> dict:
+    return {
+        "physical_ability_assumptions": {
+            "speech": {"value": "normative"},
+        },
+        "cognitive_and_perceptual_assumptions": {
+            "attention_control": {"value": "normative"},
+        },
+        "social_and_communicative_assumptions": {
+            "neurotypical_communication": {"value": "divergent"},
+        },
+    }
+
+
+def _physical_divergent_hsn() -> dict:
+    return {
+        "physical_ability_assumptions": {
+            "ambulation": {"value": "divergent"},
+        },
+        "cognitive_and_perceptual_assumptions": {
+            "attention_control": {"value": "normative"},
+        },
+        "social_and_communicative_assumptions": {
+            "neurotypical_communication": {"value": "normative"},
+        },
+    }
 
 
 @pytest.fixture
@@ -44,11 +112,44 @@ def provider() -> StubProvider:
     """Return a mixed character set that exercises each concrete filter."""
     return StubProvider(
         [
-            _character("NA", is_human=True, common_labels=["neurotypical"]),
-            _character("BC", is_human=False, common_labels=["neurotypical"]),
-            _character("WS", is_human=True, common_labels=["anxiety", "hypervigilance"]),
-            _character("KAT", is_human=True, common_labels=["ADHD"]),
-            _character("GEN", is_human=True, common_labels=["other"]),
+            _character(
+                "NA",
+                is_human=True,
+                pc_eligible=True,
+                common_labels=["neurotypical"],
+                hsn_divergence=_normative_hsn(),
+            ),
+            _character(
+                "BC",
+                is_human=False,
+                pc_eligible=False,
+                common_labels=["neurotypical"],
+                hsn_divergence=None,
+            ),
+            _character(
+                "COG",
+                is_human=True,
+                pc_eligible=True,
+                common_labels=["other"],
+                hsn_divergence=_cognitive_divergent_hsn(),
+            ),
+            _character(
+                "COM",
+                is_human=True,
+                pc_eligible=False,
+                common_labels=["other"],
+                hsn_divergence=_communication_divergent_hsn(),
+            ),
+            _character(
+                "PHY",
+                is_human=False,
+                pc_eligible=False,
+                common_labels=["other"],
+                hsn_divergence=_physical_divergent_hsn(),
+            ),
+            _character("WS", is_human=True, pc_eligible=True, common_labels=["anxiety", "hypervigilance"]),
+            _character("KAT", is_human=True, pc_eligible=True, common_labels=["ADHD"]),
+            _character("GEN", is_human=True, pc_eligible=False, common_labels=["other"]),
         ]
     )
 
@@ -57,7 +158,28 @@ def provider() -> StubProvider:
 def test_all_characters_filter_returns_every_character(provider: StubProvider) -> None:
     """The all filter should return every character in provider order."""
     result = AllCharactersFilter().get_characters(provider=provider)
-    assert [character.hid for character in result] == ["NA", "BC", "WS", "KAT", "GEN"]
+    assert [character.hid for character in result] == ["NA", "BC", "COG", "COM", "PHY", "WS", "KAT", "GEN"]
+
+
+@pytest.mark.unit
+def test_pc_eligible_filter_returns_only_pc_eligible_characters(provider: StubProvider) -> None:
+    """pc-eligible should include only characters with a truthy pc_eligible flag."""
+    result = PcEligibleFilter().get_characters(provider=provider)
+    assert [character.hid for character in result] == ["NA", "COG", "WS", "KAT"]
+
+
+@pytest.mark.unit
+def test_human_filter_returns_only_humans(provider: StubProvider) -> None:
+    """human should require is_human to be truthy."""
+    result = HumanFilter().get_characters(provider=provider)
+    assert [character.hid for character in result] == ["NA", "COG", "COM", "WS", "KAT", "GEN"]
+
+
+@pytest.mark.unit
+def test_non_human_filter_returns_only_non_humans(provider: StubProvider) -> None:
+    """non-human should include only characters with a falsy is_human flag."""
+    result = NonHumanFilter().get_characters(provider=provider)
+    assert [character.hid for character in result] == ["BC", "PHY"]
 
 
 @pytest.mark.unit
@@ -72,6 +194,27 @@ def test_neurotypical_filter_returns_any_neurotypical_character(provider: StubPr
     """Neurotypical should include both human and non-human neurotypical characters."""
     result = NeurotypicalFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["NA", "BC"]
+
+
+@pytest.mark.unit
+def test_divergent_filter_matches_any_non_normative_hsn_profile(provider: StubProvider) -> None:
+    """divergent should include any character with at least one non-normative HSN value."""
+    result = DivergentFilter().get_characters(provider=provider)
+    assert [character.hid for character in result] == ["COG", "COM", "PHY"]
+
+
+@pytest.mark.unit
+def test_neurodivergent_filter_matches_cognitive_and_communication_divergence(provider: StubProvider) -> None:
+    """neurodivergent should include cognitive and neurotypical-communication divergence."""
+    result = NeurodivergentFilter().get_characters(provider=provider)
+    assert [character.hid for character in result] == ["COG", "COM"]
+
+
+@pytest.mark.unit
+def test_physical_divergence_filter_matches_physical_only_divergence(provider: StubProvider) -> None:
+    """physical-divergence should include physical divergence but exclude cognitive-only divergence."""
+    result = PhysicalDivergenceFilter().get_characters(provider=provider)
+    assert [character.hid for character in result] == ["PHY"]
 
 
 @pytest.mark.unit
@@ -93,8 +236,14 @@ def test_hyposensitive_filter_matches_any_configured_hyposensitive_label(provide
     ("name", "expected_type"),
     [
         ("all", AllCharactersFilter),
+        ("pc-eligible", PcEligibleFilter),
+        ("human", HumanFilter),
+        ("non-human", NonHumanFilter),
         ("human-normative", HumanNormativeFilter),
         ("neurotypical", NeurotypicalFilter),
+        ("divergent", DivergentFilter),
+        ("neurodivergent", NeurodivergentFilter),
+        ("physical-divergence", PhysicalDivergenceFilter),
         ("hypersensitive", HypersensitiveFilter),
         ("hyposensitive", HyposensitiveFilter),
     ],
