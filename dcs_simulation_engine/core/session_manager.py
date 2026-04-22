@@ -10,7 +10,10 @@ from typing import Any, Dict, List, Optional
 import yaml
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.core.game_config import GameConfig
-from dcs_simulation_engine.core.session_event_recorder import SessionEventRecorder
+from dcs_simulation_engine.core.session_event_recorder import (
+    SessionEventRecorder,
+    ValidationEventRecorder,
+)
 from dcs_simulation_engine.dal.base import CharacterRecord, DataProvider
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from dcs_simulation_engine.helpers.game_helpers import get_game_config
@@ -86,6 +89,7 @@ class SessionManager:
         self._saved: bool = False
         self._session_id: str | None = None
         self._recorder: SessionEventRecorder | None = None
+        self._validation_recorder: ValidationEventRecorder | None = None
         self._recorder_open = False
         self._finalized = False
         self.stopping_conditions: Dict[str, List[str]] = stopping_conditions or {
@@ -271,8 +275,8 @@ class SessionManager:
             MongoColumns.STATUS: "active",
             MongoColumns.TURNS_COMPLETED: 0,
             MongoColumns.MODEL_PROFILE: {
-                "updater_model": getattr(getattr(self.game, "_updater", None), "_model", None),
-                "validator_model": getattr(getattr(self.game, "_validator", None), "_model", None),
+                "updater_model": getattr(getattr(self.game, "_engine", None), "updater_model", None),
+                "validator_model": getattr(getattr(self.game, "_engine", None), "validator_model", None),
                 "scorer_model": getattr(getattr(self.game, "_scorer", None), "_model", None),
             },
             MongoColumns.GAME_CONFIG_SNAPSHOT: self.game_config.model_dump(mode="json"),
@@ -283,7 +287,19 @@ class SessionManager:
 
         self._recorder = SessionEventRecorder(db=db, session_doc=session_doc)
         await self._recorder.__aenter__()
+        self._validation_recorder = ValidationEventRecorder(
+            db=db,
+            session_doc=session_doc,
+            primary=self._recorder,
+        )
+        await self._validation_recorder.__aenter__()
         self._recorder_open = True
+        engine = getattr(self.game, "_engine", None)
+        if engine is not None and hasattr(engine, "attach_recorder"):
+            engine.attach_recorder(
+                self._validation_recorder,
+                turn_index_provider=lambda: self._turn_count + 1,
+            )
         await self._recorder.record_internal(event_type="session_start", detail="created", turn_index=0)
 
     def _begin_exit(self, reason: str) -> None:
@@ -305,11 +321,16 @@ class SessionManager:
         if self._recorder_open and self._recorder is not None:
             normalized = self._normalize_termination_reason(reason)
             status = "error" if normalized == "server_error" else "closed"
+            if self._validation_recorder is not None:
+                await self._validation_recorder.flush_pending()
             await self._recorder.finalize(
                 termination_reason=normalized,
                 status=status,
                 turns_completed=self.turns,
             )
+            if self._validation_recorder is not None:
+                await self._validation_recorder.__aexit__(None, None, None)
+                self._validation_recorder = None
             await self._recorder.__aexit__(None, None, None)
             self._recorder_open = False
         self._finalized = True
@@ -319,6 +340,8 @@ class SessionManager:
         """Flush any queued transcript events so follow-on writes can target them safely."""
         if self._recorder_open and self._recorder is not None:
             await self._recorder.flush_pending()
+        if self._validation_recorder is not None:
+            await self._validation_recorder.flush_pending()
 
     def save(self) -> None:
         """Compatibility no-op; session transcript writes now use session_events."""

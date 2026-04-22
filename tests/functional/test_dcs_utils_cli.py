@@ -203,10 +203,11 @@ def test_hitl_create(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="hitl update is not yet implemented — requires a live DCS server")
+@pytest.mark.xfail(reason="hitl implementation blocked by resume functionality")
 @pytest.mark.functional
 def test_hitl_update():
     """dcs-utils hitl update — skipped until implementation is complete."""
+    assert False
 
 
 # ---------------------------------------------------------------------------
@@ -326,9 +327,7 @@ def test_admin_publish_characters(tmp_path, monkeypatch):
 
     # --- Change [2]: prod/characters.json — NA already present, so no save ---
     prod_chars_saves = [(p, d) for p, d in saved_calls if p.name == "characters.json"]
-    assert len(prod_chars_saves) == 0, (
-        "prod/characters.json should not be written when character is already present"
-    )
+    assert len(prod_chars_saves) == 0, "prod/characters.json should not be written when character is already present"
 
     # --- Change [3]: release_manifest.json recomputed via write_manifest ---
     assert len(manifest_calls) == 1, "Expected write_manifest to be called exactly once"

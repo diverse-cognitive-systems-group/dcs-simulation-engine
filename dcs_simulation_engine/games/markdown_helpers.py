@@ -27,3 +27,25 @@ def format_abilities_markdown(abilities: Any, *, section_heading_level: int = 3)
         return "\n\n".join(section for section in sections if section.strip())
 
     return str(abilities)
+
+
+def format_score_markdown(score: dict[str, Any], *, title: str = "Final Score") -> str:
+    """Render a scorer payload as readable markdown."""
+    if not score:
+        return ""
+
+    lines = [f"## {title}"]
+
+    tier = score.get("tier")
+    if tier is not None:
+        lines.append(f"- Tier: {tier}")
+
+    numeric_score = score.get("score")
+    if numeric_score is not None:
+        lines.append(f"- Score: {numeric_score}")
+
+    reasoning = str(score.get("reasoning", "")).strip()
+    if reasoning:
+        lines.extend(["", "### Reasoning", reasoning])
+
+    return "\n".join(lines)
