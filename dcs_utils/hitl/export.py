@@ -124,7 +124,6 @@ def export_results(
                     "game_config_snapshot": {
                         "pressure_category": group.pressure_category,
                         "expected_failure_mode": group.expected_failure_mode,
-                        "expected_pc_behavior": scenario.expected_pc_behavior,
                     },
                     "last_seq": turns_completed * 2,
                     "created_at": started_at,

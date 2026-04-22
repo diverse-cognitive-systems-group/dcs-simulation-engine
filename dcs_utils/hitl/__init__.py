@@ -35,7 +35,6 @@ class Scenario(BaseModel):
     pc_hid: str
     conversation_history: list[dict] = Field(default_factory=list)
     attempts: list[Attempt] = Field(default_factory=list)
-    expected_pc_behavior: str
 
 
 class ScenarioGroup(BaseModel):

@@ -119,9 +119,6 @@ def build_scaffold(character: dict, game: str) -> ScenarioFile:
             pc_hid="NA",
             conversation_history=[],
             attempts=attempts,
-            expected_pc_behavior=(
-                f"[TODO: describe the correct behavior for {hid} under '{cat_id}' pressure]"
-            ),
         )
 
         group = ScenarioGroup(
@@ -160,9 +157,6 @@ def build_scaffold(character: dict, game: str) -> ScenarioFile:
             pc_hid="NA",
             conversation_history=[],
             attempts=attempts,
-            expected_pc_behavior=(
-                f"[TODO: describe correct behavior for {hid} in '{scenario_name}' context]"
-            ),
         )
         group = ScenarioGroup(
             group_id=f"context-{idx + 1:02d}",

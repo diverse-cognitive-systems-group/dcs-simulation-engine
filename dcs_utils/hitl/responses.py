@@ -1,16 +1,16 @@
 """Async simulator response generation for HITL scenarios.
 
 For each scenario attempt that lacks a simulator_response, calls the DCS
-engine via APIClient, captures the NPC output, and writes back to the
-scenarios file after every response so that `dcs-utils generate feedback`
-can start reviewing completed attempts immediately.
+engine via APIClient, captures the simulator output, and writes back to the
+scenarios file. For fresh scenarios, the saved conversation history begins
+with the simulator's opening scene, followed by alternating player/simulator
+turns.
 
 Current implementation status
 ------------------------------
 Only scenarios with an **empty** conversation_history are fully supported.
 For these, the engine starts a fresh session and generates an opening scene
-automatically.  When ``include_empty=True``, the command processes those
-scenarios.
+automatically.
 
 Scenarios with a non-empty conversation_history (mid-conversation resumes)
 are not yet implemented: the DCS server does not currently support injecting
@@ -38,7 +38,6 @@ from dcs_utils.hitl.generate import load_scenario_file, save_scenario_file
 def _pending_work(
     scenario_file: ScenarioFile,
     *,
-    include_empty: bool,
     only: list[str] | None,
     include_ids: list[str] | None,
     exclude: list[str] | None,
@@ -48,7 +47,7 @@ def _pending_work(
     An attempt is *pending* when ``simulator_response`` is ``None``.
     Eligibility also depends on the scenario's conversation_history state:
 
-    * Empty history → eligible only if ``include_empty`` is True
+    * Empty history → eligible
     * Non-empty history → NOT YET IMPLEMENTED (skipped with a warning printed
       by the caller)
 
@@ -81,9 +80,7 @@ def _pending_work(
                     continue  # already generated
 
                 if not has_content:
-                    if include_empty:
-                        pending.append((g_idx, s_idx, a_idx))
-                    # else: silently skip — caller prints summary
+                    pending.append((g_idx, s_idx, a_idx))
                 else:
                     # Non-empty history: not yet implemented.  Caller warns.
                     pass
@@ -107,16 +104,17 @@ async def _run_scenario_async(
     a thread via ``asyncio.to_thread`` to allow concurrency.
     """
 
-    def _sync_run() -> list[str]:
+    def _sync_run() -> tuple[list[dict[str, str]], list[str]]:
         scenario = scenario_file.scenario_groups[group_idx].scenarios[scenario_idx]
+        generated_history: list[dict[str, str]] = []
         responses: list[str] = []
 
         with APIClient(url=server_url, api_key=api_key) as client:
             run = client.start_game(
                 CreateGameRequest(
                     game=scenario.game,
-                    pc_hid=scenario.pc_hid,
-                    npc_hid=scenario_file.npc_hid,
+                    pc_choice=scenario.pc_hid,
+                    npc_choice=scenario_file.npc_hid,
                     api_key=api_key or None,
                     # TODO: Once the server supports context injection, pass
                     # scenario.conversation_history here so the session starts
@@ -133,29 +131,36 @@ async def _run_scenario_async(
                 # so we can store it in conversation_history later.
                 run.step("")
                 opening_content = run.simulator_output or ""
+                if opening_content:
+                    generated_history.append(
+                        {"role": "assistant", "content": opening_content}
+                    )
 
                 for a_idx in attempt_indices:
                     attempt: Attempt = scenario.attempts[a_idx]
                     run.step(attempt.player_message)
-                    responses.append(run.simulator_output or "")
+                    response_text = run.simulator_output or ""
+                    generated_history.extend(
+                        [
+                            {"role": "user", "content": attempt.player_message},
+                            {"role": "assistant", "content": response_text},
+                        ]
+                    )
+                    responses.append(response_text)
 
-        # Prepend the opening scene as a system-role message if history was empty.
-        return [opening_content] + responses
+        return generated_history, responses
 
-    results = await asyncio.to_thread(_sync_run)
-    opening_content = results[0]
-    attempt_responses = results[1:]
+    generated_history, attempt_responses = await asyncio.to_thread(_sync_run)
 
     # Write results back under the lock so concurrent tasks don't clobber each other.
     async with lock:
         sf = load_scenario_file(path)  # reload latest state
         scenario = sf.scenario_groups[group_idx].scenarios[scenario_idx]
 
-        # Populate conversation_history with the opening scene if it was empty
-        if not scenario.conversation_history and opening_content:
-            scenario.conversation_history.append(
-                {"role": "assistant", "content": opening_content}
-            )
+        # Populate conversation_history with the generated transcript when the
+        # scenario started empty.
+        if not scenario.conversation_history and generated_history:
+            scenario.conversation_history.extend(generated_history)
 
         for resp, a_idx in zip(attempt_responses, attempt_indices):
             scenario.attempts[a_idx].simulator_response = resp
@@ -175,7 +180,6 @@ async def generate_responses(
     *,
     server_url: str = "http://localhost:8080",
     api_key: str = "",
-    include_empty: bool = False,
     only: list[str] | None = None,
     include_ids: list[str] | None = None,
     exclude: list[str] | None = None,
@@ -188,8 +192,6 @@ async def generate_responses(
         path: Path to the ``<hid>-scenarios.json`` file.
         server_url: Base URL of the running DCS server.
         api_key: API key for the DCS server.
-        include_empty: When ``True``, also process scenarios whose
-            ``conversation_history`` is empty (engine generates opening scene).
         only: If set, process ONLY scenarios with these IDs.
         include_ids: Force-include these scenario IDs even when ``only`` is set.
         exclude: Skip scenarios with these IDs.
@@ -201,7 +203,6 @@ async def generate_responses(
     # Collect pending work
     pending = _pending_work(
         scenario_file,
-        include_empty=include_empty,
         only=only,
         include_ids=include_ids,
         exclude=exclude,
@@ -221,19 +222,9 @@ async def generate_responses(
             f"[warning]⚠ Skipping {len(skipped_resume)} scenario(s) with existing "
             f"conversation history — resuming mid-game is not yet implemented.[/warning]"
         )
-        console.print(
-            "  Run with --include-empty to process fresh (empty history) scenarios.",
-            style="dim",
-        )
 
     if not pending:
-        if not include_empty:
-            console.print(
-                "No pending attempts found. Run with [bold]--include-empty[/bold] to "
-                "process scenarios that need an engine-generated opening scene."
-            )
-        else:
-            console.print("[success]All responses already generated.[/success]")
+        console.print("[success]All responses already generated.[/success]")
         return
 
     # Group pending triples by (group_idx, scenario_idx) so we process all

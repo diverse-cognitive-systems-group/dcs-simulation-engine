@@ -593,9 +593,8 @@ def _hitl_create_cmd(
     _console.print(
         f"\nNext steps:\n"
         f"  1. Review and edit player messages in the scenarios file.\n"
-        f"  2. dcs-utils hitl update {hid} --skip-feedback\n"
-        f"  3. dcs-utils hitl update {hid} --skip-engine-responses\n"
-        f"  4. dcs-utils hitl export {hid}",
+        f"  2. dcs-utils hitl update {hid}\n"
+        f"  3. dcs-utils hitl export {hid}",
         style="dim",
     )
 
@@ -621,7 +620,7 @@ def _hitl_update_cmd(
     ),
     # engine_responses options
     server_url: str = typer.Option(
-        "http://localhost:8080",
+        "http://localhost:8000",
         "--server-url",
         envvar="DCS_SERVER_URL",
         help="(engine_responses) DCS server URL.",
@@ -631,11 +630,6 @@ def _hitl_update_cmd(
         "--api-key",
         envvar="DCS_API_KEY",
         help="(engine_responses) DCS API key.",
-    ),
-    include_empty: bool = typer.Option(
-        True,
-        "--include-empty/--no-include-empty",
-        help="(engine_responses) Process scenarios with empty conversation_history.",
     ),
     concurrency: int = typer.Option(
         4,
@@ -703,7 +697,6 @@ def _hitl_update_cmd(
                 path=scenarios_path,
                 server_url=server_url,
                 api_key=api_key,
-                include_empty=include_empty,
                 only=scenario_ids,
                 include_ids=None,
                 exclude=exclude_ids,

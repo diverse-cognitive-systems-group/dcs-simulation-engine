@@ -6,8 +6,6 @@ Prerequisites:
 Runs every dcs-utils command and asserts:
   - exit code 0
   - all HTML reports are parseable (contain <html>, no Python Traceback)
-
-hitl update is skipped — it requires a live DCS server and is not yet implemented.
 """
 
 import json
@@ -16,6 +14,8 @@ from pathlib import Path
 
 import pytest
 from dcs_utils.cli.__main__ import app
+from dcs_utils.hitl import Attempt, Scenario, ScenarioFile, ScenarioGroup
+from dcs_utils.hitl.generate import save_scenario_file
 from typer.testing import CliRunner
 
 # ---------------------------------------------------------------------------
@@ -199,14 +199,124 @@ def test_hitl_create(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# hitl update — SKIP (not yet implemented)
+# hitl update
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="hitl update is not yet implemented — requires a live DCS server")
 @pytest.mark.functional
-def test_hitl_update():
-    """dcs-utils hitl update — skipped until implementation is complete."""
+def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypatch):
+    """dcs-utils hitl update seeds opening history, then fills attempt responses."""
+
+    class _FakeRun:
+        def __init__(self, responses_by_message: dict[str, str], step_calls: list[str]) -> None:
+            self._responses_by_message = responses_by_message
+            self._step_calls = step_calls
+            self._simulator_output = ""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def step(self, user_input: str = ""):
+            self._step_calls.append(user_input)
+            if user_input == "":
+                self._simulator_output = "You enter a new space. In this space, a quiet machine waits."
+            else:
+                self._simulator_output = self._responses_by_message[user_input]
+            return self
+
+        @property
+        def simulator_output(self) -> str:
+            return self._simulator_output
+
+    class _FakeAPIClient:
+        def __init__(self, *, url: str, api_key: str) -> None:
+            _ = (url, api_key)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def start_game(self, body):
+            assert body.game == "Explore"
+            assert body.pc_choice == "NA"
+            assert body.npc_choice == "NA"
+            return _FakeRun(_responses_by_message, _step_calls)
+
+    scenarios_file = tmp_path / "NA-scenarios.json"
+    scenario_file = ScenarioFile(
+        npc_hid="NA",
+        generated_at="2026-04-22T00:00:00+00:00",
+        scenario_groups=[
+            ScenarioGroup(
+                group_id="test-group",
+                label="Test Group",
+                expected_failure_mode="Test failure mode",
+                pressure_category="test-pressure",
+                scenarios=[
+                    Scenario(
+                        id="NA-test-001",
+                        description="Test scenario",
+                        game="Explore",
+                        pc_hid="NA",
+                        conversation_history=[],
+                        attempts=[
+                            Attempt(player_message="I look around"),
+                            Attempt(player_message="I touch the wall"),
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+    save_scenario_file(scenarios_file, scenario_file)
+
+    _responses_by_message = {
+        "I look around": "The machine gives a low mechanical hum.",
+        "I touch the wall": "A cold vibration travels through the wall.",
+    }
+    _step_calls: list[str] = []
+
+    monkeypatch.setattr(
+        "dcs_utils.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-scenarios.json",
+    )
+    monkeypatch.setattr("dcs_utils.hitl.responses.APIClient", _FakeAPIClient)
+
+    help_result = _RUNNER.invoke(app, ["hitl", "update", "--help"])
+    assert help_result.exit_code == 0, help_result.output
+    assert "--include-empty" not in help_result.output
+
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-feedback"])
+
+    assert result.exit_code == 0, result.output
+    assert _step_calls == ["", "I look around", "I touch the wall"]
+
+    data = json.loads(scenarios_file.read_text(encoding="utf-8"))
+    scenario = data["scenario_groups"][0]["scenarios"][0]
+
+    assert scenario["conversation_history"] == [
+        {
+            "role": "assistant",
+            "content": "You enter a new space. In this space, a quiet machine waits.",
+        },
+        {"role": "user", "content": "I look around"},
+        {
+            "role": "assistant",
+            "content": "The machine gives a low mechanical hum.",
+        },
+        {"role": "user", "content": "I touch the wall"},
+        {
+            "role": "assistant",
+            "content": "A cold vibration travels through the wall.",
+        },
+    ]
+    assert scenario["attempts"][0]["simulator_response"] == "The machine gives a low mechanical hum."
+    assert scenario["attempts"][1]["simulator_response"] == "A cold vibration travels through the wall."
 
 
 # ---------------------------------------------------------------------------

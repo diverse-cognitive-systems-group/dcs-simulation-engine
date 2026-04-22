@@ -87,9 +87,6 @@ def _prompt_feedback(
         f"  [bold]{scenario.id}[/bold] · {attempt_label}"
     )
     console.print(f"  [dim]{scenario.description}[/dim]")
-    console.print(
-        f"  [dim]Expected behavior:[/dim] {scenario.expected_pc_behavior}"
-    )
     console.print()
     console.print(f"  [bold]Player:[/bold] {attempt.player_message}")
     console.print()
