@@ -1,177 +1,187 @@
 """Foresight game."""
 
-from enum import StrEnum
+import re
 from typing import Any, AsyncIterator
 
-from dcs_simulation_engine.core.game import Game, GameEvent
+from dcs_simulation_engine.core.game import BaseGameOverrides, Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.games.ai_client import (
-    UpdaterClient,
-    ValidatorClient,
-)
-from dcs_simulation_engine.games.const import (
-    Foresight as C,
-)
-from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown
+from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
+from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
+from dcs_simulation_engine.games.const import Foresight as C
+from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
 from dcs_simulation_engine.games.prompts import (
-    build_updater_prompt,
-    build_validator_prompt,
+    SCORER_NEXT_ACTION,
+    build_scorer_prompt,
 )
 from loguru import logger
-
-
-class Command(StrEnum):
-    """Game-level slash commands recognized by ForesightGame."""
-
-    HELP = "help"
-    ABILITIES = "abilities"
-    FINISH = "finish"
 
 
 class ForesightGame(Game):
     """Foresight game: player interacts with NPC and makes predictions embedded in their actions."""
 
-    DEFAULT_RETRY_BUDGET = 10
-    DEFAULT_MAX_INPUT_LENGTH = 350
+    GAME_NAME = "Foresight"
+    GAME_DESCRIPTION = "Players are tasked with predicting the next action of a character."
+
+    # This game required players to describe their PC action but also how they expect the NPC to respond for each turn, so we need to remove the validators that enforce that players only describe their own character's actions. Instead, we use a validator that required the PC action and optional NPC prediction.
+    PLAYER_TURN_VALIDATORS = []
+
+    DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("human-normative")
+
+    class Overrides(BaseGameOverrides):
+        """Run-config-overridable parameters for ForesightGame."""
+
+        show_npc_details: bool = False
+        show_final_score: bool = True
 
     def __init__(
         self,
-        pc: CharacterRecord,
-        npc: CharacterRecord,
-        updater: UpdaterClient,
-        validator: ValidatorClient,
-        retry_budget: int = DEFAULT_RETRY_BUDGET,
-        max_input_length: int = DEFAULT_MAX_INPUT_LENGTH,
+        *,
+        show_npc_details: bool,
+        show_final_score: bool,
+        scorer: ScorerClient | None = None,
+        **kwargs: Any,  # kwargs for base args
     ) -> None:
-        """Initialise the game. Use create_from_context() as the public entry point."""
-        self._pc = pc
-        self._npc = npc
-        self._updater = updater
-        self._validator = validator
-        self._retry_budget = retry_budget
-        self._max_input_length = max_input_length
-        self._entered = False
-        self._exited = False
-        self._exit_reason = ""
+        """Initialise with game-specific prediction state."""
+        super().__init__(**kwargs)
+        self._show_npc_details = show_npc_details
+        self._show_final_score = show_final_score
+        self._scorer = scorer or ScorerClient()
+        self._predictions: dict[str, Any] = {}
+        self._score: dict[str, Any] = {}
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "ForesightGame":
-        """Factory called by SessionManager. Builds clients from character dicts.
-
-        Accepted kwargs:
-            retry_budget (int): overrides DEFAULT_RETRY_BUDGET
-            max_input_length (int): overrides DEFAULT_MAX_INPUT_LENGTH
-        """
-        updater = UpdaterClient(system_prompt=build_updater_prompt(pc, npc, additional_rules=C.ADDITIONAL_UPDATER_RULES))
-        validator = ValidatorClient(system_prompt_template=build_validator_prompt(pc, npc, additional_rules=C.ADDITIONAL_VALIDATOR_RULES))
+        """Factory called by SessionManager."""
+        scorer = kwargs.pop("scorer", None)
+        overrides = cls.parse_overrides(kwargs)
+        engine = SimulatorClient(
+            pc=pc,
+            npc=npc,
+            player_turn_validators=cls.PLAYER_TURN_VALIDATORS,
+        )
         return cls(
             pc=pc,
             npc=npc,
-            updater=updater,
-            validator=validator,
-            retry_budget=kwargs.get("retry_budget", cls.DEFAULT_RETRY_BUDGET),
-            max_input_length=kwargs.get("max_input_length", cls.DEFAULT_MAX_INPUT_LENGTH),
+            engine=engine,
+            scorer=scorer,
+            **cls.build_base_init_kwargs(overrides),
+            show_npc_details=overrides.show_npc_details,
+            show_final_score=overrides.show_final_score,
         )
 
-    def exit(self, reason: str) -> None:
-        """Mark the game as ended."""
-        if self._exited:
-            return
-        self._exited = True
-        self._exit_reason = reason
-        logger.info(f"ForesightGame exited: {reason}")
+    @property
+    def predictions(self) -> dict[str, Any]:
+        """Return the current predictions."""
+        return self._predictions
 
     @property
-    def exited(self) -> bool:
-        """True if the game has ended."""
-        return self._exited
+    def score(self) -> dict[str, Any]:
+        """Return the current score."""
+        return self._score
 
-    @property
-    def exit_reason(self) -> str:
-        """Reason the game ended, or empty string."""
-        return self._exit_reason
-
-    def _help_content(self) -> str:
+    def get_help_content(self) -> str:
+        """Return the /help message content."""
         return C.HELP_CONTENT.format(
             pc_hid=self._pc.hid,
-            pc_short_description=self._pc.short_description,
+            pc_short_description=self._pc.short_description.lower(),
             npc_hid=self._npc.hid,
+            npc_short_description=(self._npc.data.get("short_description", "").lower() if self._show_npc_details else "*Details hidden.*"),
         )
 
-    async def step(self, user_input: str | None = None) -> AsyncIterator[GameEvent]:
-        """Advance the game one turn, yielding one or more GameEvents."""
-        if self._exited:
-            return
+    def get_abilities_content(self) -> str:
+        """Return the /abilities message content."""
+        npc_abilities = format_abilities_markdown(self._npc.data.get("abilities", "")) if self._show_npc_details else "*Details hidden.*"
+        return C.ABILITIES_CONTENT.format(
+            pc_hid=self._pc.hid,
+            pc_short_description=self._pc.short_description,
+            pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
+            npc_hid=self._npc.hid,
+            npc_short_description=(self._npc.data.get("short_description", "") if self._show_npc_details else "*Details hidden.*"),
+            npc_abilities=npc_abilities,
+        )
 
-        if not self._entered:
-            self._entered = True
-            yield GameEvent.now(type="info", content=self._help_content())
-            opening = await self._updater.chat(None)
-            yield GameEvent.now(type="ai", content=opening)
-            return
+    async def on_finish(self) -> AsyncIterator[GameEvent]:
+        """Score the final prediction, then exit."""
+        await self._score_prediction()
 
-        if not user_input:
-            return
+        if self._show_final_score:
+            yield GameEvent.now(type="info", content=format_score_markdown(self._score))
 
-        command_event = self._handle_command(user_input)
-        if command_event is not None:
-            yield command_event
-            return
+        self.exit("player finished")
+        yield GameEvent.now(
+            type="info",
+            content=C.FINISH_CONTENT.format(finish_reason="player finished"),
+            command_response=True,
+        )
 
-        if len(user_input) > self._max_input_length:
-            yield GameEvent.now(
-                type="error",
-                content=f"Input exceeds maximum length of {self._max_input_length} characters.",
-            )
-            return
+    async def _score_prediction(self) -> None:
+        """Score the player's latest next-action prediction."""
+        try:
+            transcript = self.get_transcript().strip()
+            if not transcript:
+                raise ValueError("Foresight scoring requires a non-empty transcript.")
 
-        validation = await self._validator.validate(user_input)
-        if validation.get("type") == "error":
-            self._retry_budget -= 1
-            logger.debug(f"Validation failed. Retry budget remaining: {self._retry_budget}")
-            if self._retry_budget <= 0:
-                self.exit("retry budget exhausted")
-                yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
-                yield GameEvent.now(type="info", content="You have used all your allowed retries. The game is ending.")
-                return
-            yield GameEvent.now(type="error", content=validation.get("content", "Invalid action."))
-            return
+            guess = self._get_latest_prediction_guess(transcript)
+            if not guess:
+                raise ValueError("Foresight scoring requires a recorded prediction.")
 
-        reply = await self._updater.chat(user_input)
-        yield GameEvent.now(type="ai", content=reply)
-
-    def _handle_command(self, user_input: str) -> GameEvent | None:
-        """Return a GameEvent for recognised game-level commands, or None to continue."""
-        stripped = user_input.strip()
-        if not stripped.startswith("/"):
-            return None
-
-        command_body = stripped[1:].strip()
-        if not command_body:
-            return None
-        cmd = command_body.split()[0].lower()
-
-        if cmd == Command.HELP:
-            return GameEvent.now(type="info", content=self._help_content(), command_response=True)
-
-        if cmd == Command.ABILITIES:
-            return GameEvent.now(
-                type="info",
-                content=C.ABILITIES_CONTENT.format(
-                    pc_hid=self._pc.hid,
-                    pc_short_description=self._pc.short_description,
-                    pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
-                    npc_hid=self._npc.hid,
-                ),
-                command_response=True,
+            prompt = build_scorer_prompt(
+                scoring_template=SCORER_NEXT_ACTION,
+                npc=self._npc,
+                transcript=transcript,
+                guess=guess,
             )
 
-        if cmd == Command.FINISH:
-            self.exit("player finished")
-            return GameEvent.now(
-                type="info",
-                content=C.FINISH_CONTENT.format(finish_reason="player finished"),
-                command_response=True,
-            )
+            result = await self._scorer.score(prompt=prompt, transcript=transcript)
+            self._score = result.evaluation or {}
 
-        return None
+            if not isinstance(self._score, dict):
+                raise ValueError("Invalid scorer output format.")
+
+        except Exception:
+            logger.exception("Failed to compute final score.")
+            self._score = {
+                "tier": None,
+                "score": None,
+                "reasoning": "Final score could not be computed.",
+            }
+
+    def _get_latest_prediction_guess(self, transcript: str) -> str:
+        """Return the latest prediction from stored state or transcript."""
+        if self._predictions:
+            latest_prediction = next(reversed(self._predictions.values()))
+            guess = self._coerce_prediction_guess(latest_prediction)
+            if guess:
+                return guess
+
+        for line in reversed(transcript.splitlines()):
+            stripped_line = line.strip()
+            if not stripped_line:
+                continue
+
+            _, _, content = stripped_line.partition(":")
+            candidate = content.strip() if content else stripped_line
+            if not candidate:
+                continue
+
+            if candidate.lower().startswith("/predict-next"):
+                return candidate[len("/predict-next") :].strip()
+
+            if re.search(r"\bpredict(?:ion|ed|s)?\b", candidate, flags=re.IGNORECASE):
+                return candidate
+
+        return ""
+
+    def _coerce_prediction_guess(self, prediction: Any) -> str:
+        """Extract a string prediction from common payload shapes."""
+        if isinstance(prediction, str):
+            return prediction.strip()
+
+        if isinstance(prediction, dict):
+            for key in ("guess", "prediction", "content", "text", "value"):
+                value = prediction.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+
+        return ""

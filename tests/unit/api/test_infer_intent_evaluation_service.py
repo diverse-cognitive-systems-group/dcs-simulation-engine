@@ -65,7 +65,7 @@ def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_predictio
             event_type="command",
             event_source="system",
             content="What do you think the character's goal or intention was?",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "finish"},
         ),
         _event(
             seq=3,
@@ -87,8 +87,8 @@ def test_extract_infer_intent_scoring_inputs_uses_only_gameplay_before_predictio
             direction="inbound",
             event_type="command",
             event_source="user",
-            content="/predict-intent",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
+            content="/finish",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "finish"},
         ),
         _event(
             seq=7,

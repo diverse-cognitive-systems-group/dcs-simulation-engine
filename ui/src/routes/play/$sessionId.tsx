@@ -40,7 +40,7 @@ const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
     { command: '/help', description: 'Show instructions.' },
     { command: '/abilities', description: 'Show character abilities.' },
     {
-      command: '/predict-capabilities',
+      command: '/finish',
       description: "Submit your prediction about the NPC's capabilities and finish the game.",
     },
   ],
@@ -48,7 +48,7 @@ const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
     { command: '/help', description: 'Show instructions.' },
     { command: '/abilities', description: 'Show character abilities.' },
     {
-      command: '/predict-intent',
+      command: '/finish',
       description: "Submit your prediction about the character's intent and finish the game.",
     },
   ],

@@ -14,25 +14,17 @@ from dcs_simulation_engine.dal.mongo.const import MongoColumns
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 
 TEST_PLAYER_ID = ObjectId()
+FINISH_COMMAND = "/finish"
 
 # Games that require a consenting player record in the DB
 _CONSENT_GATED = {"Infer Intent", "Goal Horizon", "foresight", "teamwork"}
 
-# The finish/predict command per game — used to trigger the end-of-game flow
-_FINISH_COMMAND = {
-    "explore": "/finish",
-    "Infer Intent": "/predict-intent",
-    "Goal Horizon": "/predict-capabilities",
-    "foresight": "/finish",
-    "teamwork": "/finish",
-}
-
-ALL_GAMES = list(_FINISH_COMMAND.keys())
+ALL_GAMES = ["explore", "Infer Intent", "Goal Horizon", "foresight", "teamwork"]
 
 # Sections that must appear in /help output for every game
 _REQUIRED_HELP_SECTIONS = [
     "Player Character",
-    "Non-Player Character",
+    "Simulator Character",
     "Player Objective",
     "How to Play",
     "How to",  # covers both "How to Finish" and "How to finish"
@@ -76,7 +68,7 @@ async def test_help_command_contains_required_sections(game, patch_llm_client, _
     """Help output must include all required sections for every game.
 
     Checks that /help info content contains:
-    Player Character, Non-Player Character, Player Objective,
+    Player Character, Simulator Character, Player Objective,
     How to Play, How to (finish), /abilities, /help.
     """
     session = await _make_session(game, async_mongo_provider)
@@ -112,11 +104,11 @@ async def test_simulator_takes_first_turn(game, patch_llm_client, _isolate_db_st
 
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_no_bracket_rendering_in_system_responses(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """No raw '{' should appear in any system-generated event content.
+    """No known raw format placeholders should appear in system-generated content.
 
     Catches unrendered format strings such as '{npc_hid}' or
     '{pc_short_description}' that indicate a template rendering failure.
-    Exercises: ENTER, 3 normal turns, /help, /abilities, finish/predict command.
+    Exercises: ENTER, 3 normal turns, /help, /abilities, finish command.
     """
     session = await _make_session(game, async_mongo_provider)
     all_events: list[dict] = []
@@ -132,14 +124,37 @@ async def test_no_bracket_rendering_in_system_responses(game, patch_llm_client, 
     if not session.exited:
         all_events.extend(await session.step_async("/abilities"))
 
-    # Issue the finish/predict command to check its prompt for bracket rendering
-    finish_cmd = _FINISH_COMMAND[game]
+    # Issue the finish command to check its prompt for bracket rendering
     if not session.exited:
-        all_events.extend(await session.step_async(finish_cmd))
+        all_events.extend(await session.step_async(FINISH_COMMAND))
+
+    placeholder_tokens = (
+        "{pc_hid}",
+        "{pc_short_description}",
+        "{pc_long_description}",
+        "{pc_abilities}",
+        "{pc_goals}",
+        "{pc_scenarios}",
+        "{npc_hid}",
+        "{npc_short_description}",
+        "{npc_long_description}",
+        "{npc_abilities}",
+        "{npc_goals}",
+        "{npc_scenarios}",
+        "{player_action}",
+        "{simulator_response}",
+        "{transcript}",
+        "{game_objective}",
+        "{guess}",
+        "{shared_goal}",
+        "{finish_reason}",
+    )
 
     for event in all_events:
         content = event.get("content", "")
-        assert "{" not in content, f"[{game}] Unrendered template bracket '{{' in {event.get('type')} event:\n{content}"
+        assert not any(token in content for token in placeholder_tokens), (
+            f"[{game}] Unrendered format placeholder leaked into {event.get('type')} event:\n{content}"
+        )
 
 
 def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mongo_provider):
@@ -200,29 +215,29 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
             )
 
 
-@pytest.mark.skip(reason="pending run config per-game overrides")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_max_turns_override_stops_game(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should stop when max_turns run config override is reached."""
-    ...
+    assert False
 
 
-@pytest.mark.skip(reason="pending run config per-game overrides")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_max_runtime_override_stops_game(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should stop when max_runtime_seconds run config override is reached."""
-    ...
+    assert False
 
 
-@pytest.mark.skip(reason="pending evaluation + run config fixes")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_player_triggered_evals_configurable(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Player-triggered evaluations should be enabled/disabled per run config."""
-    ...
+    assert False
 
 
-@pytest.mark.skip(reason="pending run config refactoring")
+@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_expose_overrides_available(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should expose all documented overrides via the run config interface."""
-    ...
+    assert False

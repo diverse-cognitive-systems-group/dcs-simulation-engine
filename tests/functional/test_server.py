@@ -682,8 +682,8 @@ def test_infer_intent_evaluation_endpoint_generates_then_returns_cached_result(
             direction="inbound",
             event_type="command",
             event_source="user",
-            content="/predict-intent",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
+            content="/finish",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "finish"},
         ),
         _session_event(
             seq=5,
@@ -691,7 +691,7 @@ def test_infer_intent_evaluation_endpoint_generates_then_returns_cached_result(
             event_type="command",
             event_source="system",
             content="What do you think the NPC's goal or intention was?",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "finish"},
         ),
         _session_event(
             seq=6,
@@ -832,8 +832,8 @@ def test_infer_intent_evaluation_endpoint_supports_free_play_sessions(
             direction="inbound",
             event_type="command",
             event_source="user",
-            content="/predict-intent",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
+            content="/finish",
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "finish"},
         ),
         _session_event(
             seq=5,
@@ -841,7 +841,7 @@ def test_infer_intent_evaluation_endpoint_supports_free_play_sessions(
             event_type="command",
             event_source="system",
             content="What do you think the NPC's goal or intention was?",
-            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "predict-intent"},
+            data={MongoColumns.VISIBLE_TO_USER: True, MongoColumns.COMMAND_NAME: "finish"},
         ),
         _session_event(
             seq=6,
