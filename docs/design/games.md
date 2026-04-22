@@ -1,28 +1,95 @@
 # Games
 
-*Games* are python files that implement the `Game` interface. They define any rules or objectives for the interaction.
+*Games* define how a player interacts with simulated characters including rules, objectives, evaluation criteria, and the flow of interaction.
 
 ## Core Games
 
-We maintain a curated set of games that are used internally called "core games" that are included with the simulation engine.
+Core games are designed to support DCS group research on understanding and engagement across diverse cognitive systems.
 
-The simulation engine contains a set of core games that demonstrate different experimental paradigms for studying interactions between diverse cognitive systems. Each game is designed to explore specific aspects of cognition, communication, collaboration, and understanding among various types of agents. 
+Each game—except Explore, which serves as an open-ended playground—evaluates a player’s understanding of a simulated character through a distinct lens. All games enforce that characters act consistently with their sensory, perceptual, regulatory, and motor capabilities (e.g., a low-vision character cannot take the action “I look around for the brown door” if they cannot perceive it).
 
-New experimental designs can be created by modifying existing games or configuring new ones, but the core games provide a foundational set of scenarios that are useful to our research.
+All games (except Explore) support learning in autotelic and open-ended systems (human and AI) and include evaluation (e.g., scores and/or NPC feedback) at the end of the game and, in some cases, during gameplay. Evaluation visibility may be enabled or hidden depending on the run configuration. Games also support other configurable options like PC/NPC filters.
 
-### Explore - open-ended play
-Explore is an open-ended, non-objective sandbox game that allows players to interact freely with different types of characters in various scenarios. This game is useful for observing naturalistic interactions and behaviors without predefined goals. Also, for demonstrating the simulation engine's capacity to handle diverse character interactions. Some have found it useful to play around and come up with interesting scenarios/questions and later design games around those.
+Games differ in player objectives, rules, evaluation methods, presentation, and interaction flow.
 
-### Foresight - predict next action
-Foresight is a game that tests a player's ability to predict the next behavior of another character based on their understanding of that character. It offers insights into how thoroughly/completely a player understands another cognitive system in a vrariety of scenarios and also allows us to measure how many interactions it takes to build that understanding.
+### Explore - Open-Ended Playground
+Explore is a game that *allows players to engage with simulated characters without predefined objectives or tasks.* It is designed as an open-ended playground.
 
-### Infer Intent - infer next goal
-Infer Intent is a game that tests a player's ability to infer the specific goals or intents of another character during a single interaction. This game is useful for evaluating how well a player can pick up on limited cues and information to understand what another cognitive system is trying to achieve in the moment.
+This game is used to support character development by enabling interaction with role-playing ensembles without additional game-layer constraints.
 
-### Goal Horizon - infer goalspace bounds
-Goal Horizon is a game designed to test a player’s ability to model another character’s capabilities in imagination space. Specifically, it evaluates how accurately a player can infer the largest-scale goals—across space and time—that a character is capable of pursuing, based on prior interactions. This game helps assess how well a player understands what another character is capable of thinking about.
+The default configuration includes:
 
-### Teamwork - collaborate towards shared goals
-Teamwork is a game that focuses on the collaborative efforts of multiple characters working together to achieve a common objective. This game is useful for studying how different cognitive systems can align their goals and strategies in a shared context.
+- **Any Scenario:** The simulator may generate any interaction scenario between characters.
+- **Full character access:** Players may use any valid PC/NPC combination. (Characters not flagged as PC-eligible are excluded.)
+- **Transparent NPCs:** NPC type, abilities, and descriptions are fully visible to players.
+- **No default evaluations:** Players are not evaluated. However, they may request feedback from NPCs (e.g., valence, preferences).
+
+> *Note: User-specified run configurations may override some of these defaults (e.g., limiting character sets).*
+
+### Foresight - Predicting Next Actions
+Foresight is a game that *measures a player’s understanding of a simulated character through next-action prediction*. On each turn, the player provides their character’s (PC’s) next action and predicts how the simulated character (NPC) will respond.
+
+The default configuration includes:
+
+- **Any Scenario:** The simulator may generate any interaction scenario between characters.
+- **Normative PCs only:** Players may use only PCs with standard human sensory, perceptual, regulatory, and motor capabilities.
+- **Any NPC:** NPCs may be any character from the core character database.
+- **Black-box NPCs:** NPC type, abilities, and descriptions are hidden. Players must infer them through interaction.
+- **Final score and turn-based evaluation:** Predictions are evaluated each turn for in-character consistency. A final score is assigned based on overall prediction accuracy.
+
+> *Note: User-specified run configurations may override some of these defaults (e.g., restricting NPC types, hiding evaluations, or enabling full NPC transparency).*
+
+### Infer Intent - Inferring Next Goals
+Infer Intent is a game that *evaluates a player’s ability to infer another character’s immediate goals or intentions within a single interaction.*  Players interact with a simulated character pursuing a goal and must infer that goal based on observed behavior and interactions.
+
+The default configuration includes:
+
+- **Scenario + NPC goal:** The simulator generates an interaction scenario and an in-character NPC goal.
+- **Normative PCs only:** Players may use only PCs with standard human sensory, perceptual, regulatory, and motor capabilities.
+- **Any NPC:** NPCs may be any character from the core character database.
+- **Black-box NPCs:** NPC type, abilities, and descriptions are hidden. Players must infer them through interaction.
+- **Final score:** Players submit an inferred intent when they are ready to end the game. A final score is assigned based on inference accuracy.
+
+> *Note: User-specified run configurations may override some of these defaults (e.g., restricting NPC types, hiding evaluations, or enabling full NPC transparency).*
+
+### Goal Horizon - Inferring Goalspace Bounds
+Goal Horizon is a game that *evaluates a player’s ability to model the bounds of another character’s capabilities and limitations.* Players interact with simulated a character over across multiple scenarios and must infer the bounds of that character’s goalspace.
+
+The default configuration includes:
+
+- **Any scenario:** The simulator may generate any interaction scenario between characters.
+- **Normative PCs only:** Players may use only PCs with standard human sensory, perceptual, regulatory, and motor capabilities.
+- **Any NPC:** NPCs may be any character from the core character database.
+- **Black-box NPCs:** NPC type, abilities, and descriptions are hidden. Players must infer them through interaction.
+- **Final score:** Players submit inferred goalspace bounds when they are ready to end the game. A final score is assigned based on inference accuracy.
+
+> *Note: User-specified run configurations may override these defaults (e.g., restricting NPC types, hiding evaluations, or enabling full NPC transparency).*
+
+### Teamwork - Collaborating Toward Shared Goals
+Teamwork is a game that *evaluates player's ability to collaborate with another character to achieve a shared goal.* Players interact with a simulated character across multiple scenarios to try and achieve the goal.
+
+The default configuration includes:
+
+- **Scenario + shared goal:** The simulator generates an interaction scenario and a shared goal for the PC and NPC.
+- **Normative PCs only:** Players may use only PCs with standard human sensory, perceptual, regulatory, and motor capabilities.
+- **Any NPC:** NPCs may be any character from the core character database.
+- **Black-box NPCs:** NPC type, abilities, and descriptions are hidden. Players must infer them through interaction.
+- **Final score:** Players receive a final score based on collaborative performance toward the shared goal.
+
+> *Note: User-specified run configurations may override these defaults (e.g., restricting NPC types, hiding evaluations, or enabling full NPC transparency).*
+
+## Modeling Understanding using Core Games
+
+Cognitive systems may differ across a range of dimensions, including internal representations, conceptual structures, perceptual organization, and action constraints. An external agent attempting to understand another system does not have privileged access to these internal states and must instead rely on its own interpretive framework. Accordingly, *our operationalization of understanding is grounded in observable competence rather than direct access to internal representations.* 
+
+From the perspective of an external observer, understanding is expressed through reliable expectations about another system’s behavior across time. One facet of this is anticipating what the system will do next, corresponding to next-action prediction and closely aligned with active inference models of behavior. A complementary facet is anticipating when the system will cease its current behavior or change course, corresponding to goal inference over intent, termination conditions, and goal-space constraints. 
+
+**The DCS-SE core games explicitly instantiate these two perspectives.** Foresight models understanding as next-action prediction, while goal-inference tasks model understanding as inferring the objectives and stopping conditions that give rise to observed behavior. 
+
+Together, they operationalize understanding as the ability to predict behavior trajectories and infer the conditions under which those trajectories are sustained or altered, under conditions of cognitive divergence. 
+
+Evaluating understanding of diverse cognitive systems therefore requires assessing both competence at specific points in time and the processes by which such competence is acquired. DCS-SE supports this dual evaluation by enabling static probing of understanding at a given time point, alongside open-ended interaction that captures understanding as a learning process unfolding through modeling, interaction, and adaptation. 
 
 ## Custom Games
+
+> See the [Custom Games](../user_guide/advanced.md#custom-games) section in the User Guide for instructions on how to build your own games.
