@@ -170,21 +170,21 @@ def test_pc_eligible_filter_returns_only_pc_eligible_characters(provider: StubPr
 
 @pytest.mark.unit
 def test_human_filter_returns_only_humans(provider: StubProvider) -> None:
-    """human should require is_human to be truthy."""
+    """Human should require is_human to be truthy."""
     result = HumanFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["NA", "COG", "COM", "WS", "KAT", "GEN"]
 
 
 @pytest.mark.unit
 def test_non_human_filter_returns_only_non_humans(provider: StubProvider) -> None:
-    """non-human should include only characters with a falsy is_human flag."""
+    """Non-human should include only characters with a falsy is_human flag."""
     result = NonHumanFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["BC", "PHY"]
 
 
 @pytest.mark.unit
 def test_human_normative_filter_returns_only_human_neurotypical_characters(provider: StubProvider) -> None:
-    """human-normative should require both is_human and neurotypical labeling."""
+    """Human-normative should require both is_human and neurotypical labeling."""
     result = HumanNormativeFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["NA"]
 
@@ -198,21 +198,21 @@ def test_neurotypical_filter_returns_any_neurotypical_character(provider: StubPr
 
 @pytest.mark.unit
 def test_divergent_filter_matches_any_non_normative_hsn_profile(provider: StubProvider) -> None:
-    """divergent should include any character with at least one non-normative HSN value."""
+    """Divergent should include any character with at least one non-normative HSN value."""
     result = DivergentFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["COG", "COM", "PHY"]
 
 
 @pytest.mark.unit
 def test_neurodivergent_filter_matches_cognitive_and_communication_divergence(provider: StubProvider) -> None:
-    """neurodivergent should include cognitive and neurotypical-communication divergence."""
+    """Neurodivergent should include cognitive and neurotypical-communication divergence."""
     result = NeurodivergentFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["COG", "COM"]
 
 
 @pytest.mark.unit
 def test_physical_divergence_filter_matches_physical_only_divergence(provider: StubProvider) -> None:
-    """physical-divergence should include physical divergence but exclude cognitive-only divergence."""
+    """Physical-divergence should include physical divergence but exclude cognitive-only divergence."""
     result = PhysicalDivergenceFilter().get_characters(provider=provider)
     assert [character.hid for character in result] == ["PHY"]
 
