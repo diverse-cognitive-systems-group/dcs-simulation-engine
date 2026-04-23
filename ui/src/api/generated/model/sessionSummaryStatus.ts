@@ -10,5 +10,6 @@ export type SessionSummaryStatus = typeof SessionSummaryStatus[keyof typeof Sess
 
 export const SessionSummaryStatus = {
   active: 'active',
+  paused: 'paused',
   closed: 'closed',
 } as const;

@@ -20,4 +20,6 @@ export interface ExperimentSetupResponse {
   current_assignment?: ExperimentAssignmentSummary | null;
   pending_post_play?: boolean;
   assignment_completed?: boolean;
+  assignment_mode?: string;
+  assignments?: ExperimentAssignmentSummary[];
 }
