@@ -1,6 +1,7 @@
 """Async MongoDB implementation for runtime server paths."""
 # ruff: noqa: D102,D107
 
+from copy import deepcopy
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -380,12 +381,12 @@ class AsyncMongoProvider:
 
     async def get_session(self, *, session_id: str, player_id: str | None) -> SessionRecord | None:
         """Return a single persisted session record for the player."""
+        query: dict[str, Any] = {MongoColumns.SESSION_ID: session_id}
+        if player_id is not None:
+            query[MongoColumns.PLAYER_ID] = player_id
         doc = await maybe_await(
             self._db[MongoColumns.SESSIONS].find_one(
-                {
-                    MongoColumns.SESSION_ID: session_id,
-                    MongoColumns.PLAYER_ID: player_id,
-                }
+                query
             )
         )
         if not doc:
@@ -405,6 +406,68 @@ class AsyncMongoProvider:
                 },
             )
         )
+
+    async def branch_session(
+        self,
+        *,
+        session_id: str,
+        player_id: str | None,
+        branched_at: Any,
+    ) -> SessionRecord:
+        """Clone a persisted session into a new paused child session."""
+        query: dict[str, Any] = {MongoColumns.SESSION_ID: session_id}
+        if player_id is not None:
+            query[MongoColumns.PLAYER_ID] = player_id
+
+        root_doc = await maybe_await(self._db[MongoColumns.SESSIONS].find_one(query))
+        if not root_doc:
+            raise ValueError(f"Session {session_id!r} not found")
+
+        runtime_state = root_doc.get(MongoColumns.RUNTIME_STATE)
+        if not runtime_state:
+            raise ValueError(f"Session {session_id!r} has no runtime_state snapshot")
+
+        root_status = str(root_doc.get(MongoColumns.STATUS, ""))
+        if root_status not in {"active", "paused"}:
+            raise ValueError(f"Session {session_id!r} with status={root_status!r} is not branchable")
+
+        child_session_id = str(uuid4())
+        child_doc = deepcopy(root_doc)
+        child_doc.pop(MongoColumns.ID, None)
+        child_doc[MongoColumns.SESSION_ID] = child_session_id
+        child_doc[MongoColumns.STATUS] = "paused"
+        child_doc[MongoColumns.BRANCH_FROM_SESSION_ID] = str(root_doc.get(MongoColumns.SESSION_ID, session_id))
+        child_doc[MongoColumns.SESSION_STARTED_AT] = branched_at
+        child_doc[MongoColumns.SESSION_ENDED_AT] = None
+        child_doc[MongoColumns.TERMINATION_REASON] = None
+        child_doc[MongoColumns.CREATED_AT] = branched_at
+        child_doc[MongoColumns.UPDATED_AT] = branched_at
+        child_doc["paused_at"] = branched_at
+        child_doc.pop("resumed_at", None)
+
+        await maybe_await(self._db[MongoColumns.SESSIONS].insert_one(child_doc))
+
+        cursor = self._db[MongoColumns.SESSION_EVENTS].find({MongoColumns.SESSION_ID: session_id})
+        sorter = getattr(cursor, "sort", None)
+        if callable(sorter):
+            cursor = sorter(MongoColumns.SEQ, 1)
+        root_events = await _cursor_to_docs(cursor)
+        if root_events:
+            copied_events: list[dict[str, Any]] = []
+            for event_doc in root_events:
+                copied = deepcopy(event_doc)
+                copied.pop(MongoColumns.ID, None)
+                copied[MongoColumns.SESSION_ID] = child_session_id
+                copied[MongoColumns.EVENT_ID] = str(uuid4())
+                copied_events.append(copied)
+            await maybe_await(self._db[MongoColumns.SESSION_EVENTS].insert_many(copied_events))
+
+        child = await maybe_await(
+            self._db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: child_session_id})
+        )
+        if child is None:
+            raise ValueError(f"Failed to create branched child for session {session_id!r}")
+        return _to_session_record(child)
 
     async def get_resumable_session(
         self,

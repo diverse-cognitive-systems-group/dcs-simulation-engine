@@ -34,6 +34,7 @@ class MongoColumns:
     EXPERIMENT_NAME = "experiment_name"
     CHARACTER_HID = "character_hid"
     ACTIVE_SESSION_ID = "active_session_id"
+    BRANCH_FROM_SESSION_ID = "branch_from_session_id"
     FORM_RESPONSES = "form_responses"
     CONFIG_SNAPSHOT = "config_snapshot"
     PROGRESS = "progress"

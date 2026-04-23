@@ -101,6 +101,16 @@ class CreateGameResponse(BaseModel):
     ws_path: str
 
 
+class BranchSessionResponse(BaseModel):
+    """Response payload for a branched paused child session."""
+
+    session_id: str
+    branch_from_session_id: str
+    game_name: str
+    status: SessionStatus
+    ws_path: str
+
+
 class CharacterChoice(BaseModel):
     """A selectable character option for setup screens."""
 

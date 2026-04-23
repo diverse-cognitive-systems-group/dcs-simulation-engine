@@ -11,6 +11,7 @@ import httpx
 from dcs_simulation_engine.api.models import (
     AuthRequest,
     AuthResponse,
+    BranchSessionResponse,
     CharactersListResponse,
     CreateGameRequest,
     CreateGameResponse,
@@ -49,12 +50,15 @@ class SimulationRun:
         session_id: str,
         game_name: str,
         api_key: str | None,
+        *,
+        resume_on_first_connect: bool = False,
     ) -> None:
         """Initialize a SimulationRun bound to an existing server-side session."""
         self._client = client
         self.session_id = session_id
         self.game_name = game_name
         self._api_key = api_key
+        self._resume_on_first_connect = resume_on_first_connect
         self._opened = False
         self._events: list[WSEventFrame] = []
         self._session_meta: WSSessionMetaFrame | None = None
@@ -79,7 +83,8 @@ class SimulationRun:
                 session_id=self.session_id,
                 api_key=self._api_key,
                 text=first_text,
-                include_opening=True,
+                include_opening=not self._resume_on_first_connect,
+                expect_replay=self._resume_on_first_connect,
             )
             self._opened = True
         else:
@@ -88,6 +93,7 @@ class SimulationRun:
                 api_key=self._api_key,
                 text=user_input,
                 include_opening=False,
+                expect_replay=True,
             )
 
         self._session_meta = session_meta
@@ -100,7 +106,8 @@ class SimulationRun:
         session_meta, status_frame = self._client._ws_status(
             session_id=self.session_id,
             api_key=self._api_key,
-            include_opening=not self._opened,
+            include_opening=(not self._opened) and (not self._resume_on_first_connect),
+            expect_replay=self._resume_on_first_connect or self._opened,
         )
         self._opened = True
         self._session_meta = session_meta
@@ -117,7 +124,8 @@ class SimulationRun:
         self._session_meta = self._client._ws_close(
             session_id=self.session_id,
             api_key=self._api_key,
-            include_opening=not self._opened,
+            include_opening=(not self._opened) and (not self._resume_on_first_connect),
+            expect_replay=self._resume_on_first_connect or self._opened,
         )
         self._opened = True
 
@@ -222,6 +230,27 @@ class APIClient:
         key = self._resolve_api_key(body.api_key, required=False)
         response = self._request("POST", "/api/play/game", body, CreateGameResponse)
         return SimulationRun(client=self, session_id=response.session_id, game_name=body.game, api_key=key)
+
+    def branch_session(self, session_id: str, *, api_key: Optional[str] = None) -> SimulationRun:
+        """Create a paused child branch session and return a resumed-style SimulationRun."""
+        key = self._resolve_api_key(api_key, required=False)
+        headers: dict[str, str] = {}
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        response = self._request(
+            "POST",
+            f"/api/sessions/{session_id}/branch",
+            None,
+            BranchSessionResponse,
+            headers=headers,
+        )
+        return SimulationRun(
+            client=self,
+            session_id=response.session_id,
+            game_name=response.game_name,
+            api_key=key,
+            resume_on_first_connect=True,
+        )
 
     def setup_options(self, *, game_name: str, api_key: Optional[str] = None) -> GameSetupOptionsResponse:
         """Fetch setup authorization and valid character choices for a game."""
@@ -339,8 +368,12 @@ class APIClient:
             raise APIRequestError("Expected session_meta websocket frame")
         return frame
 
-    def _drain_replay(self, ws: Any) -> None:
+    def _drain_replay(self, ws: Any, *, replay_start_consumed: bool = False) -> None:
         """Discard the replay burst the server sends when resuming a paused session."""
+        if not replay_start_consumed:
+            frame = self._recv_frame(ws)
+            if not isinstance(frame, WSReplayStartFrame):
+                raise APIRequestError("Expected replay_start websocket frame")
         while True:
             frame = self._recv_frame(ws)
             if isinstance(frame, WSReplayEventFrame):
@@ -363,7 +396,7 @@ class APIClient:
         while True:
             frame = self._recv_frame(ws)
             if isinstance(frame, WSReplayStartFrame):
-                self._drain_replay(ws)
+                self._drain_replay(ws, replay_start_consumed=True)
                 continue
             if isinstance(frame, WSEventFrame):
                 # Accumulate content frames; event_type distinguishes ai/info/warning/error.
@@ -382,6 +415,7 @@ class APIClient:
         api_key: str | None,
         text: Optional[str],
         include_opening: bool,
+        expect_replay: bool = False,
     ) -> tuple[WSSessionMetaFrame, list[WSEventFrame], WSTurnEndFrame]:
         """Open a WebSocket connection, optionally consume the opening turn, then advance.
 
@@ -402,6 +436,8 @@ class APIClient:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
             session_meta = self._recv_session_meta(ws)
+            if expect_replay:
+                self._drain_replay(ws)
             if include_opening:
                 # Consume the server-initiated opening turn before sending anything.
                 opening_events, opening_turn_end = self._recv_until_turn_end(ws)
@@ -423,6 +459,7 @@ class APIClient:
         session_id: str,
         api_key: str | None,
         include_opening: bool,
+        expect_replay: bool = False,
     ) -> tuple[WSSessionMetaFrame, WSStatusFrame]:
         """Fetch session status via WebSocket without advancing a turn.
 
@@ -436,6 +473,8 @@ class APIClient:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
             session_meta = self._recv_session_meta(ws)
+            if expect_replay:
+                self._drain_replay(ws)
             if include_opening:
                 # Must drain the opening turn before the server will accept requests.
                 self._recv_until_turn_end(ws)
@@ -443,7 +482,7 @@ class APIClient:
             while True:
                 frame = self._recv_frame(ws)
                 if isinstance(frame, WSReplayStartFrame):
-                    self._drain_replay(ws)
+                    self._drain_replay(ws, replay_start_consumed=True)
                     continue
                 break
 
@@ -458,6 +497,7 @@ class APIClient:
         session_id: str,
         api_key: str | None,
         include_opening: bool,
+        expect_replay: bool = False,
     ) -> WSSessionMetaFrame:
         """Close a session via WebSocket.
 
@@ -471,13 +511,15 @@ class APIClient:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
             session_meta = self._recv_session_meta(ws)
+            if expect_replay:
+                self._drain_replay(ws)
             if include_opening:
                 self._recv_until_turn_end(ws)
             ws.send(WSCloseRequest(type="close").model_dump_json())
             while True:
                 frame = self._recv_frame(ws)
                 if isinstance(frame, WSReplayStartFrame):
-                    self._drain_replay(ws)
+                    self._drain_replay(ws, replay_start_consumed=True)
                     continue
                 break
             if not isinstance(frame, WSClosedFrame):
