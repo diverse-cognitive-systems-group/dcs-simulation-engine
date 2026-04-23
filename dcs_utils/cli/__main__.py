@@ -556,6 +556,7 @@ def _hitl_create_cmd(
         save_scaffold,
         scenarios_path_for,
     )
+    from dcs_utils.hitl.responses import compute_status_summary, render_status_summary
 
     if db not in _VALID_DB:
         _console.print(f"ERROR: --db must be 'dev' or 'prod', got {db!r}.", style="error")
@@ -580,23 +581,9 @@ def _hitl_create_cmd(
         scaffold = build_scaffold(character, game)
 
     save_scaffold(scaffold, out_path)
-
-    total_groups = len(scaffold.scenario_groups)
-    total_attempts = sum(
-        len(s.attempts) for g in scaffold.scenario_groups for s in g.scenarios
-    )
     _console.print(f"[green]✔[/green] Scaffold written to: {out_path}", style="dim")
-    _console.print(
-        f"  {total_groups} scenario group(s), {total_attempts} attempt(s) to review.",
-        style="dim",
-    )
-    _console.print(
-        f"\nNext steps:\n"
-        f"  1. Review and edit player messages in the scenarios file.\n"
-        f"  2. Then run dcs-utils hitl update {hid}\n"
-        f"  3. dcs-utils hitl export {hid}",
-        style="dim",
-    )
+    summary = compute_status_summary(out_path)
+    _console.print("\n" + render_status_summary(summary), style="dim")
 
 
 # ---------------------------------------------------------------------------
@@ -681,7 +668,7 @@ def _hitl_update_cmd(
     from dcs_simulation_engine.api.client import APIClient
     from dcs_utils.hitl.feedback import collect_feedback
     from dcs_utils.hitl.generate import scenarios_path_for
-    from dcs_utils.hitl.responses import compute_status_counts, generate_responses
+    from dcs_utils.hitl.responses import compute_status_summary, generate_responses, render_status_summary
 
     if only_history and (skip_simulator_responses or skip_player_feedback):
         _console.print(
@@ -740,20 +727,13 @@ def _hitl_update_cmd(
             console=_console,
         )
 
-    counts = compute_status_counts(
+    summary = compute_status_summary(
         scenarios_path,
         only=scenario_ids,
         include_ids=None,
         exclude=exclude_ids,
     )
-    _console.print(
-        "\n[bold]Remaining work[/bold]\n"
-        f"  {counts['attempts_missing_simulator_responses']} attempt(s) without simulator responses\n"
-        f"  {counts['attempts_missing_player_feedback']} attempt(s) without player feedback\n"
-        f"  {counts['empty_conversation_histories']} empty conversation history/histories\n"
-        f"  {counts['conversation_histories_missing_simulator_reply']} conversation history/histories missing a simulator reply",
-        style="dim",
-    )
+    _console.print("\n" + render_status_summary(summary), style="dim")
 
 
 # ---------------------------------------------------------------------------
@@ -785,6 +765,7 @@ def _hitl_export_cmd(
     """
     from dcs_utils.hitl.export import export_results
     from dcs_utils.hitl.generate import scenarios_path_for
+    from dcs_utils.hitl.responses import compute_status_summary, render_status_summary
 
     scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
@@ -806,6 +787,18 @@ def _hitl_export_cmd(
             output_dir=output_dir.resolve(),
         )
 
+    summary = compute_status_summary(scenarios_path)
+    _console.print("\n" + render_status_summary(summary), style="dim")
+    if any(
+        summary[key] > 0
+        for key in (
+            "attempts_without_simulator_responses",
+            "attempts_without_player_feedback",
+            "empty_conversation_histories",
+            "conversation_histories_missing_simulator_reply",
+        )
+    ):
+        _console.print("Export is proceeding with the current scenario file state.", style="dim")
     _console.print(f"[green]✔[/green] Results written to: {out}", style="dim")
     _console.print(
         f"\nGenerate a report:\n"

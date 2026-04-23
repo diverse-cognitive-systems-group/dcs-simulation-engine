@@ -187,6 +187,11 @@ def test_hitl_create(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert scenarios_file.exists(), f"Expected scenarios file at {scenarios_file}"
+    assert "Scenario File Summary" in result.output
+    assert "scenario group(s)" in result.output
+    assert "attempt(s) without simulator responses" in result.output
+    assert "attempt(s) without player feedback" in result.output
+    assert "Next steps:" not in result.output
 
     data = json.loads(scenarios_file.read_text())
     assert data["npc_hid"] == "NA"
@@ -347,8 +352,9 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
         },
     ]
     assert scenario["parent_session_id"] == "root-session"
-    assert "0 attempt(s) without simulator responses" in result.output
-    assert "2 attempt(s) without player feedback" in result.output
+    assert "Scenario File Summary" in result.output
+    assert "0/2 attempt(s) without simulator responses" in result.output
+    assert "2/2 attempt(s) without player feedback" in result.output
     assert scenario["attempts"][0]["simulator_response"] == "The machine gives a low mechanical hum."
     assert scenario["attempts"][1]["simulator_response"] == "A cold vibration travels through the wall."
 
@@ -442,8 +448,9 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
     result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--only-history"])
 
     assert result.exit_code == 0, result.output
-    assert "1 attempt(s) without simulator responses" in result.output
-    assert "0 conversation history/histories missing a simulator reply" in result.output
+    assert "Scenario File Summary" in result.output
+    assert "1/1 attempt(s) without simulator responses" in result.output
+    assert "0/1 conversation history/histories missing a simulator reply" in result.output
 
     data = json.loads(scenarios_file.read_text(encoding="utf-8"))
     scenario = data["scenario_groups"][0]["scenarios"][0]
@@ -696,7 +703,8 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
     result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
 
     assert result.exit_code == 0, result.output
-    assert "0 attempt(s) without simulator responses" in result.output
+    assert "Scenario File Summary" in result.output
+    assert "0/1 attempt(s) without simulator responses" in result.output
 
     data = json.loads(scenarios_file.read_text(encoding="utf-8"))
     attempt = data["scenario_groups"][0]["scenarios"][0]["attempts"][0]
@@ -705,6 +713,61 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
     assert attempt["simulator_extra_events"] == [
         {"event_type": "info", "content": "Try a grounded physical action instead."}
     ]
+
+
+@pytest.mark.functional
+def test_hitl_status_summary_respects_selected_subset(tmp_path):
+    """Shared HITL summary counts only the selected scenarios when filtered."""
+    from dcs_utils.hitl.responses import compute_status_summary
+
+    scenarios_file = tmp_path / "NA-scenarios.json"
+    scenario_file = ScenarioFile(
+        npc_hid="NA",
+        generated_at="2026-04-23T00:00:00+00:00",
+        scenario_groups=[
+            ScenarioGroup(
+                group_id="test-group",
+                label="Test Group",
+                expected_failure_mode="Test failure mode",
+                pressure_category="test-pressure",
+                scenarios=[
+                    Scenario(
+                        id="NA-test-001",
+                        description="Selected scenario",
+                        game="Explore",
+                        pc_hid="NA",
+                        conversation_history=[],
+                        attempts=[Attempt(player_message="One"), Attempt(player_message="Two")],
+                    ),
+                    Scenario(
+                        id="NA-test-002",
+                        description="Excluded scenario",
+                        game="Explore",
+                        pc_hid="NA",
+                        conversation_history=[{"role": "assistant", "content": "Ready."}],
+                        attempts=[
+                            Attempt(
+                                player_message="Done",
+                                simulator_response="Complete",
+                                simulator_response_type="ai",
+                            )
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+    save_scenario_file(scenarios_file, scenario_file)
+
+    summary = compute_status_summary(scenarios_file, only=["NA-test-001"])
+
+    assert summary["scenario_groups_total"] == 1
+    assert summary["scenarios_total"] == 1
+    assert summary["attempts_total"] == 2
+    assert summary["attempts_without_simulator_responses"] == 2
+    assert summary["attempts_without_player_feedback"] == 0
+    assert summary["empty_conversation_histories"] == 1
+    assert summary["conversation_histories_missing_simulator_reply"] == 0
 
 
 @pytest.mark.functional
@@ -799,6 +862,8 @@ def test_hitl_export(tmp_path, monkeypatch):
     )
 
     assert result.exit_code == 0, result.output
+    assert "Scenario File Summary" in result.output
+    assert "Export is proceeding with the current scenario file state." in result.output
     assert out_dir.exists(), f"Expected output directory at {out_dir}"
     assert (out_dir / "__manifest__.json").exists()
     assert (out_dir / "sessions.json").exists()

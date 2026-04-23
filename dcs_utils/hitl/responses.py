@@ -51,6 +51,49 @@ def _selected_scenarios(
     return selected
 
 
+def compute_status_summary(
+    path: Path,
+    *,
+    only: list[str] | None = None,
+    include_ids: list[str] | None = None,
+    exclude: list[str] | None = None,
+) -> dict[str, int]:
+    """Return totals plus incomplete-work counts for the selected scenarios."""
+    scenario_file = load_scenario_file(path)
+    selected = _selected_scenarios(
+        scenario_file,
+        only=only,
+        include_ids=include_ids,
+        exclude=exclude,
+    )
+
+    summary = {
+        "scenario_groups_total": len({g_idx for g_idx, _s_idx in selected}),
+        "scenarios_total": len(selected),
+        "attempts_total": 0,
+        "attempts_without_simulator_responses": 0,
+        "attempts_without_player_feedback": 0,
+        "empty_conversation_histories": 0,
+        "conversation_histories_missing_simulator_reply": 0,
+    }
+
+    for g_idx, s_idx in selected:
+        scenario = scenario_file.scenario_groups[g_idx].scenarios[s_idx]
+        summary["attempts_total"] += len(scenario.attempts)
+        if not scenario.conversation_history:
+            summary["empty_conversation_histories"] += 1
+        elif _history_last_role(scenario.conversation_history) == "user":
+            summary["conversation_histories_missing_simulator_reply"] += 1
+
+        for attempt in scenario.attempts:
+            if attempt.simulator_response is None:
+                summary["attempts_without_simulator_responses"] += 1
+            elif attempt.evaluator_feedback is None:
+                summary["attempts_without_player_feedback"] += 1
+
+    return summary
+
+
 def compute_status_counts(
     path: Path,
     *,
@@ -59,33 +102,51 @@ def compute_status_counts(
     exclude: list[str] | None = None,
 ) -> dict[str, int]:
     """Return post-update counts for the selected scenarios."""
-    scenario_file = load_scenario_file(path)
-    counts = {
-        "attempts_missing_simulator_responses": 0,
-        "attempts_missing_player_feedback": 0,
-        "empty_conversation_histories": 0,
-        "conversation_histories_missing_simulator_reply": 0,
-    }
-
-    for g_idx, s_idx in _selected_scenarios(
-        scenario_file,
+    summary = compute_status_summary(
+        path,
         only=only,
         include_ids=include_ids,
         exclude=exclude,
-    ):
-        scenario = scenario_file.scenario_groups[g_idx].scenarios[s_idx]
-        if not scenario.conversation_history:
-            counts["empty_conversation_histories"] += 1
-        elif _history_last_role(scenario.conversation_history) == "user":
-            counts["conversation_histories_missing_simulator_reply"] += 1
+    )
+    return {
+        "attempts_missing_simulator_responses": summary["attempts_without_simulator_responses"],
+        "attempts_missing_player_feedback": summary["attempts_without_player_feedback"],
+        "empty_conversation_histories": summary["empty_conversation_histories"],
+        "conversation_histories_missing_simulator_reply": summary["conversation_histories_missing_simulator_reply"],
+    }
 
-        for attempt in scenario.attempts:
-            if attempt.simulator_response is None:
-                counts["attempts_missing_simulator_responses"] += 1
-            elif attempt.evaluator_feedback is None:
-                counts["attempts_missing_player_feedback"] += 1
 
-    return counts
+def render_status_summary(
+    summary: dict[str, int],
+    *,
+    title: str = "Scenario File Summary",
+) -> str:
+    """Render a stable human-readable summary block."""
+    scenarios_total = summary["scenarios_total"]
+    attempts_total = summary["attempts_total"]
+    lines = [
+        f"[bold]{title}[/bold]",
+        f"  {summary['scenario_groups_total']} scenario group(s)",
+        f"  {scenarios_total} scenario(s)",
+        f"  {attempts_total} attempt(s)",
+        (
+            f"  {summary['attempts_without_simulator_responses']}/{attempts_total} attempt(s) "
+            "without simulator responses"
+        ),
+        (
+            f"  {summary['attempts_without_player_feedback']}/{attempts_total} attempt(s) "
+            "without player feedback"
+        ),
+        (
+            f"  {summary['empty_conversation_histories']}/{scenarios_total} empty "
+            "conversation history/histories"
+        ),
+        (
+            f"  {summary['conversation_histories_missing_simulator_reply']}/{scenarios_total} "
+            "conversation history/histories missing a simulator reply"
+        ),
+    ]
+    return "\n".join(lines)
 
 
 def _latest_ai_content(events: list) -> str | None:
