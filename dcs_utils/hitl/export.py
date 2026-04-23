@@ -4,8 +4,8 @@ The output directory has the same structure that ``dcs-utils generate report``
 expects: sessions.json, session_events.json, characters.json, players.json,
 assignments.json, experiments.json, and __manifest__.json.
 
-Each Scenario becomes one session; each Attempt within a scenario becomes two
-session events (inbound player message + outbound NPC response with feedback).
+Each Scenario becomes one session; each Attempt within a scenario becomes an
+inbound player message plus one or more outbound simulator/system events.
 The EvaluatorFeedback fields map 1-to-1 onto the session_events feedback
 object so the existing analysis pipeline can process them without any changes.
 """
@@ -57,6 +57,30 @@ def _feedback_to_event_feedback(fb: EvaluatorFeedback | None) -> dict | None:
     }
 
 
+def _attempt_response_events(attempt) -> list[tuple[str, str]]:
+    events: list[tuple[str, str]] = []
+    if attempt.simulator_response is not None:
+        events.append((str(attempt.simulator_response_type or "ai"), attempt.simulator_response))
+
+    for event in attempt.simulator_extra_events:
+        events.append(
+            (
+                str(event.get("event_type") or "info"),
+                str(event.get("content") or ""),
+            )
+        )
+    return events
+
+
+def _export_event_shape(event_type: str) -> tuple[str, str, str]:
+    lowered = event_type.lower()
+    if lowered == "ai":
+        return "message", "npc", "markdown"
+    if lowered not in {"info", "error", "warning"}:
+        lowered = "info"
+    return lowered, "system", "plain_text"
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -98,9 +122,7 @@ def export_results(
         for scenario in group.scenarios:
             session_id = str(uuid.uuid4())
             started_at = generated_at
-            turns_completed = sum(
-                1 for a in scenario.attempts if a.simulator_response is not None
-            )
+            turns_completed = sum(1 for a in scenario.attempts if a.simulator_response is not None)
 
             sessions.append(
                 {
@@ -125,7 +147,7 @@ def export_results(
                         "pressure_category": group.pressure_category,
                         "expected_failure_mode": group.expected_failure_mode,
                     },
-                    "last_seq": turns_completed * 2,
+                    "last_seq": 0,
                     "created_at": started_at,
                     "updated_at": _now_iso(),
                 }
@@ -156,24 +178,29 @@ def export_results(
                     }
                 )
 
-                # Outbound NPC response (with feedback)
-                seq += 1
-                session_events.append(
-                    {
+                # Outbound simulator/system response(s)
+                response_events = _attempt_response_events(attempt)
+                for response_idx, (response_type, content) in enumerate(response_events):
+                    event_type, event_source, content_format = _export_event_shape(response_type)
+                    seq += 1
+                    event_doc = {
                         "session_id": session_id,
                         "seq": seq,
                         "event_id": str(uuid.uuid4()),
                         "event_ts": ts,
                         "direction": "outbound",
-                        "event_type": "message",
-                        "event_source": "npc",
-                        "content": attempt.simulator_response,
-                        "content_format": "markdown",
+                        "event_type": event_type,
+                        "event_source": event_source,
+                        "content": content,
+                        "content_format": content_format,
                         "turn_index": turn_index,
                         "visible_to_user": True,
-                        "feedback": _feedback_to_event_feedback(attempt.evaluator_feedback),
                     }
-                )
+                    if response_idx == 0:
+                        event_doc["feedback"] = _feedback_to_event_feedback(attempt.evaluator_feedback)
+                    session_events.append(event_doc)
+
+            sessions[-1]["last_seq"] = seq
 
     # characters.json — include the NPC character document
     char_doc = _load_character_doc(npc_hid)

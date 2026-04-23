@@ -88,18 +88,41 @@ def _prompt_feedback(
     )
     console.print(f"  [dim]{scenario.description}[/dim]")
     console.print()
+
+    if scenario.conversation_history:
+        console.print("  [bold]Conversation History:[/bold]")
+        for turn in scenario.conversation_history:
+            role = str(turn.get("role", "")).strip().lower()
+            if role in {"assistant", "simulator"}:
+                speaker = "Simulator"
+            elif role in {"user", "player"}:
+                speaker = "Player"
+            else:
+                speaker = role.title() or "Unknown"
+            content = str(turn.get("content", "")).strip() or "[no content]"
+            console.print(f"    [bold]{speaker}:[/bold] {content}")
+        console.print()
+
     console.print(f"  [bold]Player:[/bold] {attempt.player_message}")
     console.print()
 
     response_text = attempt.simulator_response or "[no response]"
+    response_type = (attempt.simulator_response_type or "ai").upper()
+    panel_title = "Simulator Response" if response_type == "AI" else f"Simulator Response ({response_type})"
     console.print(
         Panel(
             Text(response_text),
-            title="NPC Response",
+            title=panel_title,
             border_style="dim",
             expand=False,
         )
     )
+    if attempt.simulator_extra_events:
+        console.print("[dim]Additional emitted events:[/dim]")
+        for event in attempt.simulator_extra_events:
+            event_type = str(event.get("event_type", "info")).upper()
+            content = str(event.get("content", "")).strip() or "[no content]"
+            console.print(f"  [dim]- {event_type}: {content}[/dim]")
     console.print()
 
     # --- Thumbs ---
@@ -120,15 +143,27 @@ def _prompt_feedback(
 
     if not liked:
         console.print(
-            "Flags (press letter to toggle, Enter to confirm):\n"
-            "  [o] out of character   [s] doesn't make sense   [x] other\n"
-            "  Enter a string like 'os' to set multiple, or just Enter to skip.",
+            "Flags (required for thumbs down):\n"
+            "  o = out of character\n"
+            "  s = doesn't make sense\n"
+            "  x = other\n"
+            "  Enter one or more letters, for example: os",
             style="dim",
         )
-        raw_flags = typer.prompt("Flags", default="").strip().lower()
-        out_of_character = "o" in raw_flags
-        doesnt_make_sense = "s" in raw_flags
-        other_flag = "x" in raw_flags
+        while True:
+            raw_flags = typer.prompt("Flags", default="").strip().lower()
+            selected = set(raw_flags)
+            valid = {"o", "s", "x"}
+            if not selected:
+                console.print("[warning]Select at least one flag for a thumbs-down response.[/warning]")
+                continue
+            if not selected.issubset(valid):
+                console.print("[warning]Use only 'o', 's', and/or 'x'.[/warning]")
+                continue
+            out_of_character = "o" in selected
+            doesnt_make_sense = "s" in selected
+            other_flag = "x" in selected
+            break
 
     # --- Comment ---
     comment = typer.prompt("Comment (Enter to skip)", default="").strip()
@@ -182,7 +217,10 @@ def collect_feedback(
         )
 
     if not pending:
-        console.print("[success]All feedback recorded.[/success]")
+        if awaiting:
+            console.print("[success]All currently available feedback recorded.[/success]")
+        else:
+            console.print("[success]All feedback recorded.[/success]")
         return
 
     console.print(
@@ -232,7 +270,13 @@ def collect_feedback(
         )
         return
 
-    console.print(
-        f"\n[success]Done — {completed} feedback entr"
-        f"{'y' if completed == 1 else 'ies'} recorded.[/success]"
-    )
+    if awaiting:
+        console.print(
+            f"\n[success]Feedback pass complete — {completed} feedback entr"
+            f"{'y' if completed == 1 else 'ies'} recorded for available responses.[/success]"
+        )
+    else:
+        console.print(
+            f"\n[success]All feedback recorded — {completed} feedback entr"
+            f"{'y' if completed == 1 else 'ies'} recorded.[/success]"
+        )

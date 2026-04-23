@@ -1,6 +1,10 @@
 """Data models for the human-in-the-loop (HITL) scenario testing pipeline."""
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import AliasChoices, BaseModel, Field
+
+SimulatorResponseType = Literal["ai", "info", "error", "warning"]
 
 
 class EvaluatorFeedback(BaseModel):
@@ -23,6 +27,8 @@ class Attempt(BaseModel):
 
     player_message: str
     simulator_response: str | None = None
+    simulator_response_type: SimulatorResponseType | None = None
+    simulator_extra_events: list[dict[str, str]] = Field(default_factory=list)
     evaluator_feedback: EvaluatorFeedback | None = None
 
 
@@ -33,6 +39,10 @@ class Scenario(BaseModel):
     description: str
     game: str
     pc_hid: str
+    parent_session_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("parent_session_id", "context_session_id"),
+    )
     conversation_history: list[dict] = Field(default_factory=list)
     attempts: list[Attempt] = Field(default_factory=list)
 
