@@ -14,6 +14,7 @@ from dcs_simulation_engine.api.infer_intent_evaluation import (
     generate_or_get_infer_intent_evaluation,
 )
 from dcs_simulation_engine.api.models import (
+    BranchSessionResponse,
     ClearSessionEventFeedbackResponse,
     InferIntentEvaluationResponse,
     SessionEventFeedback,
@@ -56,6 +57,27 @@ async def _flush_live_session_feedback_target(
         await maybe_await(flush_hook())
 
 
+async def _flush_live_session_branch_source(
+    *,
+    request: Request,
+    session_id: str,
+    player_id: str | None,
+) -> None:
+    """Persist the latest in-memory transcript and runtime snapshot before branching."""
+    registry = get_registry_from_request(request)
+    entry = registry.get(session_id)
+    if entry is None or entry.player_id != player_id:
+        return
+
+    flush_hook = getattr(entry.manager, "flush_persistence_async", None)
+    if callable(flush_hook):
+        await maybe_await(flush_hook())
+
+    snapshot_hook = getattr(entry.manager, "persist_runtime_snapshot_async", None)
+    if callable(snapshot_hook):
+        await maybe_await(snapshot_hook())
+
+
 async def _resolve_session_player_id(*, request: Request, session_id: str) -> str | None:
     """Resolve the session owner for standard or anonymous free-play sessions."""
     provider = get_provider_from_request(request)
@@ -65,9 +87,13 @@ async def _resolve_session_player_id(*, request: Request, session_id: str) -> st
 
     registry = get_registry_from_request(request)
     entry = registry.get(session_id)
-    if entry is None:
+    if entry is not None:
+        return entry.player_id
+
+    session_record = await maybe_await(provider.get_session(session_id=session_id, player_id=None))
+    if session_record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    return entry.player_id
+    return session_record.player_id
 
 
 @router.get("/{session_id}/status")
@@ -82,6 +108,46 @@ async def get_session_status(session_id: str, request: Request) -> dict:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     computed = _session_status(entry.status, entry.manager.exited)
     return {"status": computed, "game_name": entry.game_name, "turns": entry.manager.turns}
+
+
+@router.post("/{session_id}/branch", response_model=BranchSessionResponse)
+async def branch_session(session_id: str, request: Request) -> BranchSessionResponse:
+    """Clone a persisted paused child session from an existing root session."""
+    provider = get_provider_from_request(request)
+    player_id = await _resolve_session_player_id(request=request, session_id=session_id)
+
+    await _flush_live_session_branch_source(
+        request=request,
+        session_id=session_id,
+        player_id=player_id,
+    )
+
+    brancher = getattr(provider, "branch_session", None)
+    if brancher is None:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Session branching is unavailable for this provider.",
+        )
+
+    try:
+        session_record = await maybe_await(
+            brancher(
+                session_id=session_id,
+                player_id=player_id,
+                branched_at=utc_now(),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    branch_from_session_id = str(session_record.data.get("branch_from_session_id") or "")
+    return BranchSessionResponse(
+        session_id=session_record.session_id,
+        branch_from_session_id=branch_from_session_id,
+        game_name=session_record.game_name,
+        status="paused",
+        ws_path=f"/api/play/game/{session_record.session_id}/ws",
+    )
 
 
 @router.get("/list", response_model=SessionsListResponse)

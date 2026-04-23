@@ -130,6 +130,84 @@ async def test_get_session_returns_session_record(async_mongo_provider):
     assert session.data["source"] == "test"
 
 
+async def test_branch_session_clones_snapshot_and_events(async_mongo_provider):
+    """branch_session creates a paused child with copied snapshot and transcript rows."""
+    db = async_mongo_provider.get_db()
+    created_at = datetime.now(timezone.utc)
+    db[MongoColumns.SESSIONS].insert_one(
+        {
+            MongoColumns.SESSION_ID: "root-1",
+            MongoColumns.PLAYER_ID: "player-1",
+            MongoColumns.GAME_NAME: "Explore",
+            MongoColumns.STATUS: "paused",
+            MongoColumns.CREATED_AT: created_at,
+            MongoColumns.UPDATED_AT: created_at,
+            MongoColumns.SESSION_STARTED_AT: created_at,
+            MongoColumns.TURNS_COMPLETED: 2,
+            MongoColumns.LAST_SEQ: 3,
+            MongoColumns.SOURCE: "hitl",
+            MongoColumns.RUNTIME_STATE: {"snapshot_version": 1, "turns": 2},
+        }
+    )
+    db[MongoColumns.SESSION_EVENTS].insert_many(
+        [
+            {
+                MongoColumns.SESSION_ID: "root-1",
+                MongoColumns.SEQ: 1,
+                MongoColumns.EVENT_ID: "evt-root-1",
+                MongoColumns.EVENT_TS: created_at,
+                MongoColumns.DIRECTION: "outbound",
+                MongoColumns.EVENT_TYPE: "ai",
+                MongoColumns.EVENT_SOURCE: "npc",
+                MongoColumns.CONTENT: "opening",
+            },
+            {
+                MongoColumns.SESSION_ID: "root-1",
+                MongoColumns.SEQ: 2,
+                MongoColumns.EVENT_ID: "evt-root-2",
+                MongoColumns.EVENT_TS: created_at,
+                MongoColumns.DIRECTION: "inbound",
+                MongoColumns.EVENT_TYPE: "message",
+                MongoColumns.EVENT_SOURCE: "user",
+                MongoColumns.CONTENT: "hello",
+            },
+        ]
+    )
+
+    child = await async_mongo_provider.branch_session(
+        session_id="root-1",
+        player_id="player-1",
+        branched_at=created_at,
+    )
+
+    assert isinstance(child, SessionRecord)
+    assert child.session_id != "root-1"
+    assert child.player_id == "player-1"
+    assert child.status == "paused"
+    assert child.data[MongoColumns.BRANCH_FROM_SESSION_ID] == "root-1"
+    assert child.data[MongoColumns.RUNTIME_STATE] == {"snapshot_version": 1, "turns": 2}
+    assert child.data[MongoColumns.LAST_SEQ] == 3
+    assert child.data[MongoColumns.TURNS_COMPLETED] == 2
+
+    child_doc = db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: child.session_id})
+    assert child_doc is not None
+    assert child_doc[MongoColumns.BRANCH_FROM_SESSION_ID] == "root-1"
+    assert child_doc[MongoColumns.STATUS] == "paused"
+
+    copied_events = list(
+        db[MongoColumns.SESSION_EVENTS]
+        .find({MongoColumns.SESSION_ID: child.session_id})
+        .sort(MongoColumns.SEQ, 1)
+    )
+    assert [event[MongoColumns.SEQ] for event in copied_events] == [1, 2]
+    assert [event[MongoColumns.CONTENT] for event in copied_events] == ["opening", "hello"]
+    assert {event[MongoColumns.EVENT_ID] for event in copied_events}.isdisjoint({"evt-root-1", "evt-root-2"})
+
+    root_doc = db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: "root-1"})
+    assert root_doc is not None
+    assert MongoColumns.BRANCH_FROM_SESSION_ID not in root_doc
+
+
 async def test_list_session_events_returns_session_event_records(async_mongo_provider):
     """list_session_events returns ordered SessionEventRecord rows."""
     db = async_mongo_provider.get_db()

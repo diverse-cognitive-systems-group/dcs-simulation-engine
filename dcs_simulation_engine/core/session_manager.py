@@ -127,7 +127,12 @@ class SessionManager:
 
         pc: CharacterRecord = await maybe_await(provider.get_character(hid=pc_hid))
         npc: CharacterRecord = await maybe_await(provider.get_character(hid=npc_hid))
-        game_instance = cls._build_game_instance(game_config=game_config, pc=pc, npc=npc)
+        game_instance = cls._build_game_instance(
+            game_config=game_config,
+            pc=pc,
+            npc=npc,
+            source=source,
+        )
         session = cls._build_session(
             game_config=game_config,
             game_instance=game_instance,
@@ -169,11 +174,18 @@ class SessionManager:
         return loaded
 
     @classmethod
-    def _build_game_instance(cls, *, game_config: GameConfig, pc: CharacterRecord, npc: CharacterRecord) -> Game:
+    def _build_game_instance(
+        cls,
+        *,
+        game_config: GameConfig,
+        pc: CharacterRecord,
+        npc: CharacterRecord,
+        source: str = "unknown",
+    ) -> Game:
         module_path, class_name = game_config.game_class.rsplit(".", 1)
         module = importlib.import_module(module_path)
         game_cls = getattr(module, class_name)
-        return game_cls.create_from_context(pc=pc, npc=npc)
+        return game_cls.create_from_context(pc=pc, npc=npc, source=source)
 
     @classmethod
     def _build_session(
@@ -320,6 +332,10 @@ class SessionManager:
         if self._recorder_open and self._recorder is not None:
             await self._recorder.flush_pending()
 
+    async def persist_runtime_snapshot_async(self) -> None:
+        """Persist the current runtime snapshot for resume/branch consumers."""
+        await self._persist_runtime_snapshot()
+
     def save(self) -> None:
         """Compatibility no-op; session transcript writes now use session_events."""
         self._saved = True
@@ -373,7 +389,12 @@ class SessionManager:
         pc: CharacterRecord = await maybe_await(provider.get_character(hid=pc_hid))
         npc: CharacterRecord = await maybe_await(provider.get_character(hid=npc_hid))
 
-        game_instance = cls._build_game_instance(game_config=game_config, pc=pc, npc=npc)
+        game_instance = cls._build_game_instance(
+            game_config=game_config,
+            pc=pc,
+            npc=npc,
+            source=session_record.data.get(MongoColumns.SOURCE, "unknown"),
+        )
         game_state = snapshot.get("game_state", {})
         game_instance.import_state(game_state)
 

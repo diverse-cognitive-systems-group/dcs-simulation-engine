@@ -34,6 +34,7 @@ class DummySessionManager:
         self._exited = False
         self._exit_reason = ""
         self.flush_calls = 0
+        self.snapshot_calls = 0
         self.game_config = SimpleNamespace(name="Explore")
         self.game = SimpleNamespace(_pc=None, _npc=None)
 
@@ -80,6 +81,10 @@ class DummySessionManager:
     async def flush_persistence_async(self) -> None:
         """Track explicit feedback flushes for live sessions."""
         self.flush_calls += 1
+
+    async def persist_runtime_snapshot_async(self) -> None:
+        """Track explicit branch-source snapshot writes for live sessions."""
+        self.snapshot_calls += 1
 
 
 def _player(player_id: str) -> PlayerRecord:
@@ -410,6 +415,50 @@ def test_create_game_and_list_sessions(client: TestClient) -> None:
     assert len(sessions) == 1
     assert sessions[0]["session_id"] == session_id
     assert sessions[0]["status"] == "active"
+
+
+@pytest.mark.unit
+def test_branch_session_flushes_live_root_and_returns_paused_child(
+    client: TestClient,
+    mock_provider: MagicMock,
+) -> None:
+    """Branching a live session should flush/snapshot the root and return child metadata."""
+    manager = DummySessionManager()
+    entry = client.app.state.registry.add(
+        player_id="player-owner",
+        game_name="Explore",
+        manager=manager,
+    )
+    mock_provider.branch_session = AsyncMock(
+        return_value=SessionRecord(
+            session_id="child-1",
+            player_id="player-owner",
+            game_name="Explore",
+            status="paused",
+            created_at=datetime.now(timezone.utc),
+            data={MongoColumns.BRANCH_FROM_SESSION_ID: entry.session_id},
+        )
+    )
+
+    response = client.post(
+        f"/api/sessions/{entry.session_id}/branch",
+        headers={"Authorization": "Bearer valid-key"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "session_id": "child-1",
+        "branch_from_session_id": entry.session_id,
+        "game_name": "Explore",
+        "status": "paused",
+        "ws_path": "/api/play/game/child-1/ws",
+    }
+    assert manager.flush_calls == 1
+    assert manager.snapshot_calls == 1
+
+    kwargs = mock_provider.branch_session.await_args.kwargs
+    assert kwargs["session_id"] == entry.session_id
+    assert kwargs["player_id"] == "player-owner"
 
 
 @pytest.mark.unit
