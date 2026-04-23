@@ -1,5 +1,6 @@
 """CLI entry point for dcs-utils."""
 
+import json
 import re
 import webbrowser
 from pathlib import Path
@@ -787,6 +788,8 @@ def _hitl_export_cmd(
             output_dir=output_dir.resolve(),
         )
 
+    manifest = json.loads((out / "__manifest__.json").read_text(encoding="utf-8"))
+
     summary = compute_status_summary(scenarios_path)
     _console.print("\n" + render_status_summary(summary), style="dim")
     if any(
@@ -799,6 +802,14 @@ def _hitl_export_cmd(
         )
     ):
         _console.print("Export is proceeding with the current scenario file state.", style="dim")
+    _console.print(
+        "\nExported results\n"
+        f"  {manifest['total_scenarios']}/{manifest['source_total_scenarios']} scenario(s) exported\n"
+        f"  {manifest['total_attempts']}/{manifest['source_total_attempts']} attempt(s) exported\n"
+        f"  {manifest['skipped_attempts']} incomplete attempt(s) skipped\n"
+        f"  {manifest['skipped_scenarios']} scenario(s) with zero completed attempts skipped",
+        style="dim",
+    )
     _console.print(f"[green]✔[/green] Results written to: {out}", style="dim")
     _console.print(
         f"\nGenerate a report:\n"

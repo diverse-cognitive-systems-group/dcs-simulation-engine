@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 from dcs_utils.cli.__main__ import app
-from dcs_utils.hitl import Attempt, Scenario, ScenarioFile, ScenarioGroup
+from dcs_utils.hitl import Attempt, EvaluatorFeedback, Scenario, ScenarioFile, ScenarioGroup
 from dcs_utils.hitl.generate import save_scenario_file
 from typer.testing import CliRunner
 
@@ -864,10 +864,22 @@ def test_hitl_export(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert "Scenario File Summary" in result.output
     assert "Export is proceeding with the current scenario file state." in result.output
+    assert "Exported results" in result.output
+    assert "0/" in result.output
     assert out_dir.exists(), f"Expected output directory at {out_dir}"
     assert (out_dir / "__manifest__.json").exists()
     assert (out_dir / "sessions.json").exists()
     assert (out_dir / "session_events.json").exists()
+
+    manifest = json.loads((out_dir / "__manifest__.json").read_text(encoding="utf-8"))
+    sessions = json.loads((out_dir / "sessions.json").read_text(encoding="utf-8"))
+    assert manifest["total_scenarios"] == 0
+    assert manifest["total_attempts"] == 0
+    assert manifest["source_total_scenarios"] > 0
+    assert manifest["source_total_attempts"] > 0
+    assert manifest["skipped_scenarios"] == manifest["source_total_scenarios"]
+    assert manifest["skipped_attempts"] == manifest["source_total_attempts"]
+    assert sessions == []
 
 
 @pytest.mark.functional
@@ -899,6 +911,14 @@ def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
                                 simulator_extra_events=[
                                     {"event_type": "info", "content": "Try a grounded physical action instead."}
                                 ],
+                                evaluator_feedback=EvaluatorFeedback(
+                                    liked=False,
+                                    comment="Validator caught it correctly.",
+                                    doesnt_make_sense=False,
+                                    out_of_character=False,
+                                    other=True,
+                                    submitted_at="2026-04-23T00:05:00+00:00",
+                                ),
                             )
                         ],
                     )
@@ -916,9 +936,95 @@ def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
     assert outbound[0]["event_type"] == "error"
     assert outbound[0]["event_source"] == "system"
     assert outbound[0]["content"] == "Validation blocked that action."
+    assert outbound[0]["feedback"]["liked"] is False
     assert outbound[1]["event_type"] == "info"
     assert outbound[1]["event_source"] == "system"
     assert outbound[1]["content"] == "Try a grounded physical action instead."
+
+
+@pytest.mark.functional
+def test_hitl_export_skips_incomplete_attempts_and_zero_complete_scenarios(tmp_path):
+    """Only attempts with both response and feedback are exported."""
+    from dcs_utils.hitl.export import export_results
+
+    scenarios_file = tmp_path / "NA-scenarios.json"
+    scenario_file = ScenarioFile(
+        npc_hid="NA",
+        generated_at="2026-04-23T00:00:00+00:00",
+        scenario_groups=[
+            ScenarioGroup(
+                group_id="test-group",
+                label="Test Group",
+                expected_failure_mode="Test failure mode",
+                pressure_category="test-pressure",
+                scenarios=[
+                    Scenario(
+                        id="NA-mixed-001",
+                        description="Mixed completion scenario",
+                        game="Explore",
+                        pc_hid="NA",
+                        attempts=[
+                            Attempt(player_message="Missing response"),
+                            Attempt(
+                                player_message="Missing feedback",
+                                simulator_response="She looks up briefly.",
+                                simulator_response_type="ai",
+                            ),
+                            Attempt(
+                                player_message="Completed attempt",
+                                simulator_response="She nods and says hello.",
+                                simulator_response_type="ai",
+                                evaluator_feedback=EvaluatorFeedback(
+                                    liked=True,
+                                    comment="Works.",
+                                    submitted_at="2026-04-23T00:10:00+00:00",
+                                ),
+                            ),
+                        ],
+                    ),
+                    Scenario(
+                        id="NA-incomplete-001",
+                        description="No completed attempts",
+                        game="Explore",
+                        pc_hid="NA",
+                        attempts=[
+                            Attempt(player_message="No response"),
+                            Attempt(
+                                player_message="Response only",
+                                simulator_response="Blocked.",
+                                simulator_response_type="error",
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+    save_scenario_file(scenarios_file, scenario_file)
+
+    out_dir = export_results(scenarios_file, output_dir=tmp_path / "hitl_export")
+    manifest = json.loads((out_dir / "__manifest__.json").read_text(encoding="utf-8"))
+    sessions = json.loads((out_dir / "sessions.json").read_text(encoding="utf-8"))
+    session_events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
+
+    assert manifest["total_scenarios"] == 1
+    assert manifest["total_attempts"] == 1
+    assert manifest["source_total_scenarios"] == 2
+    assert manifest["source_total_attempts"] == 5
+    assert manifest["skipped_scenarios"] == 1
+    assert manifest["skipped_attempts"] == 4
+
+    assert len(sessions) == 1
+    assert sessions[0]["name"] == "hitl-NA-NA-mixed-001"
+    assert sessions[0]["turns_completed"] == 1
+    assert sessions[0]["last_seq"] == 2
+
+    assert len(session_events) == 2
+    assert session_events[0]["direction"] == "inbound"
+    assert session_events[0]["content"] == "Completed attempt"
+    assert session_events[1]["direction"] == "outbound"
+    assert session_events[1]["content"] == "She nods and says hello."
+    assert session_events[1]["feedback"]["liked"] is True
 
 
 # ---------------------------------------------------------------------------

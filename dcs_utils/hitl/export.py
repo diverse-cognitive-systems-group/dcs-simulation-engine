@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dcs_utils.hitl import EvaluatorFeedback, ScenarioFile
+from dcs_utils.hitl import Attempt, EvaluatorFeedback, ScenarioFile
 from dcs_utils.hitl.generate import load_scenario_file
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -72,6 +72,10 @@ def _attempt_response_events(attempt) -> list[tuple[str, str]]:
     return events
 
 
+def _is_completed_attempt(attempt: Attempt) -> bool:
+    return attempt.simulator_response is not None and attempt.evaluator_feedback is not None
+
+
 def _export_event_shape(event_type: str) -> tuple[str, str, str]:
     lowered = event_type.lower()
     if lowered == "ai":
@@ -117,12 +121,28 @@ def export_results(
 
     sessions: list[dict] = []
     session_events: list[dict] = []
+    total_source_scenarios = 0
+    total_source_attempts = 0
+    exported_scenarios = 0
+    exported_attempts = 0
 
     for group in scenario_file.scenario_groups:
         for scenario in group.scenarios:
+            total_source_scenarios += 1
+            total_source_attempts += len(scenario.attempts)
+            completed_attempts = [
+                (turn_index, attempt)
+                for turn_index, attempt in enumerate(scenario.attempts)
+                if _is_completed_attempt(attempt)
+            ]
+            if not completed_attempts:
+                continue
+
             session_id = str(uuid.uuid4())
             started_at = generated_at
-            turns_completed = sum(1 for a in scenario.attempts if a.simulator_response is not None)
+            turns_completed = len(completed_attempts)
+            exported_scenarios += 1
+            exported_attempts += turns_completed
 
             sessions.append(
                 {
@@ -154,11 +174,8 @@ def export_results(
             )
 
             seq = 0
-            for turn_index, attempt in enumerate(scenario.attempts):
-                if attempt.simulator_response is None:
-                    continue  # skip attempts without a response
-
-                ts = attempt.evaluator_feedback.submitted_at if attempt.evaluator_feedback else _now_iso()
+            for turn_index, attempt in completed_attempts:
+                ts = attempt.evaluator_feedback.submitted_at
 
                 # Inbound player message
                 seq += 1
@@ -232,12 +249,12 @@ def export_results(
         "npc_hid": npc_hid,
         "generated_at": generated_at,
         "scenarios_path": str(scenarios_path),
-        "total_scenarios": sum(len(g.scenarios) for g in scenario_file.scenario_groups),
-        "total_attempts": sum(
-            len(s.attempts)
-            for g in scenario_file.scenario_groups
-            for s in g.scenarios
-        ),
+        "total_scenarios": exported_scenarios,
+        "total_attempts": exported_attempts,
+        "source_total_scenarios": total_source_scenarios,
+        "source_total_attempts": total_source_attempts,
+        "skipped_scenarios": total_source_scenarios - exported_scenarios,
+        "skipped_attempts": total_source_attempts - exported_attempts,
     }
 
     # Write all files
