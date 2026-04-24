@@ -1,241 +1,177 @@
-"""Functional tests for explore game simulation flow with mocked LLMs.
+"""Functional tests for ExploreGame's end-to-end session flow."""
 
-This test suite validates the explore game's mechanics:
-1. Standard 10-turn simulation flow
-2. /help includes PC and NPC hid
-3. /abilities shows PC and NPC details
-4. /finish exits the game; /help and /abilities do not
-5. Default characters available in seeded DB
-6. API and GUI source players can both play
-
-Tests use mocked LLMs to avoid external API dependencies.
-"""
+from typing import Any
 
 import pytest
-from dcs_simulation_engine.core.session_manager import (
-    SessionManager,
-)
+from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.games.ai_client import SimulatorComponentResult, SimulatorTurnResult
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 
 
-async def test_explore_simulation_10_turns(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test complete simulation flow: init -> 10 turns -> save.
-
-    This test validates:
-    1. SessionManager initializes correctly from explore game config
-    2. ENTER step returns an info event (welcome message)
-    3. Multiple user inputs each produce an AI response event
-    4. Event history accumulates correctly
-    5. Turn counting works correctly
-    6. Exit marks the session as exited
-    7. Session saves successfully to database
-
-    Flow:
-        Create SessionManager -> Execute ENTER step -> Execute 10 user input steps
-        -> Verify events at each step -> Exit -> Verify exited -> Save
-    """
-    session = await SessionManager.create_async(
+async def _make_session(async_mongo_provider: Any, *, source: str = "unknown") -> SessionManager:
+    return await SessionManager.create_async(
         game="explore",
         provider=async_mongo_provider,
+        source=source,
         pc_choice="NA",
         npc_choice="FW",
     )
 
-    assert not session.exited, "Session should not be exited initially"
-    assert session._events == [], "Initial events should be empty"
 
-    # Run the ENTER step (empty input)
+def _failed_turn(message: str) -> SimulatorTurnResult:
+    return SimulatorTurnResult(
+        ok=False,
+        error_message=message,
+        updater_result=SimulatorComponentResult(
+            name="updater",
+            content="",
+            ok=False,
+            metadata={},
+            raw_response='{"type":"error","content":"invalid"}',
+        ),
+    )
+
+
+async def test_explore_full_session_flow(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """ExploreGame should remain playable from enter through finish."""
+    session = await _make_session(async_mongo_provider)
+
+    assert session is not None
+    assert not session.exited
+    assert session._events == []
+
     enter_events = await session.step_async("")
+    assert [event["type"] for event in enter_events] == ["info", "ai"]
+    assert session.turns == 1
+    assert len(session._events) == 2
 
-    # Verify there was an info message (welcome)
-    info_events = [e for e in enter_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected welcome message with type 'info'"
-
-    # Verify at least one AI event came through
-    ai_events = [e for e in enter_events if e.get("type") == "ai"]
-    assert len(ai_events) > 0, "Expected AI response event in ENTER step"
-    assert session.turns == 1, "After ENTER, turns should be 1"
-
-    enter_event_count = len(session._events)
-    assert enter_event_count >= 2, "After ENTER, at least 2 events should be recorded"
-
-    user_inputs = [
-        "I wave my hand",
-        "I look around",
-        "I move closer",
-        "I observe the FW",
-        "I stay still",
-        "I make a sound",
-        "I touch the surface",
-        "I step back",
-        "I wait",
-        "I examine the environment",
-    ]
-
-    for idx, user_input in enumerate(user_inputs):
-        turn_num = idx + 1
-        prev_event_count = len(session._events)
-
-        events = await session.step_async(user_input)
-
-        # Verify AI response event
-        ai_events = [e for e in events if e.get("type") == "ai"]
-        assert len(ai_events) > 0, f"Turn {turn_num}: Expected AI response event"
-        assert ai_events[0]["content"] == "The flatworm moves slowly across the surface."
-
-        # Events should accumulate
-        assert len(session._events) > prev_event_count, f"Turn {turn_num}: _events should grow after each step"
-
-        # Turn count should increment
-        assert session.turns == turn_num + 1, f"Turn {turn_num}: session.turns should be {turn_num + 1} (got {session.turns})"
-
-    # Verify final turn count: 1 (ENTER) + 10 user turns
-    assert session.turns == 11, f"Should have completed 11 turns (got {session.turns})"
-    assert not session.exited, "Session should not be exited before explicit exit()"
-
-    # Exit the session
-    await session.exit_async("test complete")
-    assert session.exited, "Session should be exited after exit()"
-    assert session.exit_reason == "test complete"
-
-    # Save remains a compatibility no-op; persistence is event-sourced elsewhere.
-    session.save()
-
-
-async def test_help_command_includes_pc_and_npc_hid(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /help response contains both PC and NPC hids."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        pc_choice="NA",
-        npc_choice="FW",
-    )
-    await session.step_async("")
+    first_turn = await session.step_async("I look around")
+    assert [event["type"] for event in first_turn] == ["ai"]
+    assert first_turn[0]["content"] == "The flatworm moves slowly across the surface."
+    assert session.turns == 2
 
     help_events = await session.step_async("/help")
-
-    info_events = [e for e in help_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected info event from /help"
-
-    content = " ".join(e["content"] for e in info_events)
-    assert "NA" in content, "PC hid 'NA' should appear in /help"
-    assert "FW" in content, "NPC hid 'FW' should appear in /help"
-
-
-async def test_abilities_command_shows_pc_and_npc_details(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /abilities response shows both PC and NPC hid and ability sections."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        pc_choice="NA",
-        npc_choice="FW",
-    )
-    await session.step_async("")
+    assert [event["type"] for event in help_events] == ["info"]
+    assert "NA" in help_events[0]["content"]
+    assert "FW" in help_events[0]["content"]
+    assert session.turns == 2
+    assert not session.exited
 
     abilities_events = await session.step_async("/abilities")
+    assert [event["type"] for event in abilities_events] == ["info"]
+    assert "Abilities" in abilities_events[0]["content"]
+    assert "NA" in abilities_events[0]["content"]
+    assert "FW" in abilities_events[0]["content"]
+    assert session.turns == 2
+    assert not session.exited
 
-    info_events = [e for e in abilities_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected info event from /abilities"
-
-    content = " ".join(e["content"] for e in info_events)
-    assert "NA" in content, "PC hid should appear in /abilities"
-    assert "FW" in content, "NPC hid should appear in /abilities"
-    assert "Abilities" in content, "Abilities section header should appear"
-
-
-async def test_finish_command_exits_game(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test /finish exits the session."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        pc_choice="NA",
-        npc_choice="FW",
-    )
-    await session.step_async("")
-    await session.step_async("I look around")
+    unknown_command_turn = await session.step_async("/unknown gesture")
+    assert unknown_command_turn == []
+    assert session.turns == 2
+    assert not session.exited
 
     finish_events = await session.step_async("/finish")
+    assert [event["type"] for event in finish_events] == ["info"]
+    assert session.exited
+    assert session.exit_reason == "player finished"
 
-    info_events = [e for e in finish_events if e.get("type") == "info"]
-    assert len(info_events) > 0, "Expected info event from /finish"
-    assert session.exited, "Session should be exited after /finish"
 
-
-async def test_only_finish_command_ends_game(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test that /help and /abilities do not exit the session."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        pc_choice="NA",
-        npc_choice="FW",
-    )
+async def test_explore_incorrect_input_flow(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """ExploreGame should reject overlong input and exit once retries are exhausted."""
+    session = await _make_session(async_mongo_provider)
     await session.step_async("")
 
+    session.game._max_input_length = 5
+    overlong_events = await session.step_async("too long")
+
+    assert [event["type"] for event in overlong_events] == ["error"]
+    assert "maximum length of 5" in overlong_events[0]["content"]
+    assert session.turns == 1
+    assert not session.exited
+
+    session.game._max_input_length = 350
+    session.game._player_retry_budget = 2
+
+    async def _always_fail(user_input: str) -> SimulatorTurnResult:
+        return _failed_turn(f"Invalid action: {user_input}")
+
+    session.game._engine.step = _always_fail  # type: ignore[method-assign]
+
+    first_invalid = await session.step_async("bad move")
+
+    assert [event["type"] for event in first_invalid] == ["error"]
+    assert "Invalid action: bad move" == first_invalid[0]["content"]
+    assert not session.exited
+    assert session.turns == 1
+
+    second_invalid = await session.step_async("bad move again")
+
+    assert [event["type"] for event in second_invalid] == ["error", "info"]
+    assert second_invalid[0]["content"] == "Invalid action: bad move again"
+    assert "allowed retries" in second_invalid[1]["content"]
+    assert session.exited
+    assert session.exit_reason == "retry budget exhausted"
+    assert session.turns == 1
+
+
+async def test_explore_post_exit_behavior(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """After finishing, SessionManager should return the ended-session message on later input."""
+    session = await _make_session(async_mongo_provider)
+    await session.step_async("")
+    await session.step_async("I move closer")
+    await session.step_async("/finish")
+
+    ended_events = await session.step_async("I keep exploring")
+
+    assert session.exited
+    assert ended_events == [{"type": "info", "content": "Session has ended. (player finished)"}]
+
+
+async def test_explore_transcript_filtering_end_to_end(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Filtered transcript should include only opening and successful gameplay turns."""
+    session = await _make_session(async_mongo_provider)
+
+    await session.step_async("")
     await session.step_async("/help")
-    assert not session.exited, "Session should remain active after /help"
 
+    session.game._max_input_length = 5
+    await session.step_async("too long")
+    session.game._max_input_length = 350
+
+    original_step = session.game._engine.step
+
+    async def _fail_once(_user_input: str) -> SimulatorTurnResult:
+        return _failed_turn("That action is invalid.")
+
+    session.game._engine.step = _fail_once  # type: ignore[method-assign]
+    await session.step_async("bad")
+    session.game._engine.step = original_step  # type: ignore[method-assign]
+
+    await session.step_async("I wait")
     await session.step_async("/abilities")
-    assert not session.exited, "Session should remain active after /abilities"
+    await session.step_async("/finish")
+
+    transcript = session.game.get_transcript()
+
+    assert "Opening scene:" in transcript
+    assert "Player (NA): I wait" in transcript
+    assert "Simulator: The flatworm moves slowly across the surface." in transcript
+    assert "/help" not in transcript
+    assert "/abilities" not in transcript
+    assert "too long" not in transcript
+    assert "bad" not in transcript
+    assert "That action is invalid." not in transcript
 
 
-async def test_default_characters_available(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test session creation succeeds with default characters from seeded DB."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        pc_choice="NA",
-        npc_choice="FW",
-    )
-    assert session is not None, "Session should be created successfully"
-    assert not session.exited, "New session should not be exited"
-
-
-async def test_api_player_can_play(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test that a session created with source='api' starts and produces events."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        source="api",
-        pc_choice="NA",
-        npc_choice="FW",
-    )
+@pytest.mark.parametrize("source", ["api", "gui"])
+async def test_explore_source_players_can_play(source, patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Explore remains playable for both API and GUI sourced sessions."""
+    session = await _make_session(async_mongo_provider, source=source)
 
     enter_events = await session.step_async("")
-    ai_events = [e for e in enter_events if e.get("type") == "ai"]
-    assert len(ai_events) > 0, "API player: expected AI event in ENTER step"
-
     turn_events = await session.step_async("I look around")
-    ai_events = [e for e in turn_events if e.get("type") == "ai"]
-    assert len(ai_events) > 0, "API player: expected AI response on first turn"
 
-
-async def test_gui_player_can_play(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Test that a session created with source='gui' starts and produces events."""
-    session = await SessionManager.create_async(
-        game="explore",
-        provider=async_mongo_provider,
-        source="gui",
-        pc_choice="NA",
-        npc_choice="FW",
-    )
-
-    enter_events = await session.step_async("")
-    ai_events = [e for e in enter_events if e.get("type") == "ai"]
-    assert len(ai_events) > 0, "GUI player: expected AI event in ENTER step"
-
-    turn_events = await session.step_async("I look around")
-    ai_events = [e for e in turn_events if e.get("type") == "ai"]
-    assert len(ai_events) > 0, "GUI player: expected AI response on first turn"
-
-
-@pytest.mark.skip(reason="pending resume functionality implementation")
-async def test_resume_after_leaving(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Game should resume from the same state after the player reconnects."""
-    ...
-
-
-@pytest.mark.skip(reason="pending run config refactoring")
-async def test_overrides_work(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """All documented run config overrides should apply to the explore game."""
-    ...
+    assert [event["type"] for event in enter_events] == ["info", "ai"]
+    assert [event["type"] for event in turn_events] == ["ai"]
+    assert session.turns == 2

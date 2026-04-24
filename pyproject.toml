@@ -71,7 +71,7 @@ dev = [
   "mongomock>=4.3.0,<5.0.0",
   "mypy>=1.17.1,<2.0.0",
   "pytest-cov>=7.0.0",
-  "pytest>=8.4.1,<9.0.0",
+  "pytest>=9.0.3,<10.0.0",
   "ruff>=0.12.10,<0.13.0",
   "types-pyyaml>=6.0.12.20250822",
   "yamale>=6.0.0,<7.0.0",
@@ -105,6 +105,7 @@ filterwarnings = ["error"]
 markers = [
   "unit: fast, isolated, no I/O",
   "functional: end-to-end flows with mocked LLM/DB",
+  "live: requires external API credentials and network access",
   "compile: game config compilation tests",
   "slow: long-running tests",
   "infra: remote infrastructure tests",

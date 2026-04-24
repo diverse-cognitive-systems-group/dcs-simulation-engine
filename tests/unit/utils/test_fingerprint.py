@@ -3,8 +3,10 @@
 import pytest
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.ai_client import DEFAULT_MODEL
-from dcs_simulation_engine.games.prompts import UPDATER_SYSTEM_TEMPLATE
-from dcs_simulation_engine.utils.fingerprint import compute_character_evaluation_fingerprint
+from dcs_simulation_engine.utils.fingerprint import (
+    DEFAULT_SIMULATOR_PROMPT_BUNDLE,
+    compute_character_evaluation_fingerprint,
+)
 
 
 def _make_character(**overrides) -> CharacterRecord:
@@ -12,7 +14,7 @@ def _make_character(**overrides) -> CharacterRecord:
         hid="TEST",
         name="Test Character",
         short_description="A test character.",
-        data={"abilities": ["can walk"], "long_description": "A plain test character."},
+        data={"abilities": ["can walk"], "long_description": "A plain test character.", "scenarios": ["Lab"]},
     )
     defaults.update(overrides)
     return CharacterRecord(**defaults)
@@ -37,10 +39,10 @@ def test_fingerprint_is_deterministic():
 
 @pytest.mark.unit
 def test_fingerprint_uses_current_defaults():
-    """Calling with defaults matches explicit current model and template."""
+    """Calling with defaults matches explicit current model and prompt bundle."""
     character = _make_character()
     implicit = compute_character_evaluation_fingerprint(character)
-    explicit = compute_character_evaluation_fingerprint(character, DEFAULT_MODEL, UPDATER_SYSTEM_TEMPLATE)
+    explicit = compute_character_evaluation_fingerprint(character, DEFAULT_MODEL, DEFAULT_SIMULATOR_PROMPT_BUNDLE)
     assert implicit == explicit
 
 
@@ -51,7 +53,7 @@ def test_fingerprint_uses_current_defaults():
         ("hid", "OTHER"),
         ("name", "Different Name"),
         ("short_description", "A different short description."),
-        ("data", {"abilities": ["can fly"], "long_description": "Completely different."}),
+        ("data", {"abilities": ["can fly"], "long_description": "Completely different.", "scenarios": ["Sky"]}),
     ],
 )
 def test_fingerprint_changes_when_character_field_changes(field: str, value):
@@ -71,9 +73,56 @@ def test_fingerprint_changes_when_model_changes():
 
 
 @pytest.mark.unit
-def test_fingerprint_changes_when_template_changes():
-    """A different updater system prompt template produces a different fingerprint."""
+def test_fingerprint_changes_when_prompt_bundle_changes():
+    """A different simulator prompt bundle produces a different fingerprint."""
     character = _make_character()
-    fp1 = compute_character_evaluation_fingerprint(character, updater_system_prompt_template="Template A.")
-    fp2 = compute_character_evaluation_fingerprint(character, updater_system_prompt_template="Template B.")
+    fp1 = compute_character_evaluation_fingerprint(
+        character,
+        simulator_prompt_bundle={
+            **DEFAULT_SIMULATOR_PROMPT_BUNDLE,
+            "updater_template": "CUSTOM UPDATER A",
+        },
+    )
+    fp2 = compute_character_evaluation_fingerprint(
+        character,
+        simulator_prompt_bundle={
+            **DEFAULT_SIMULATOR_PROMPT_BUNDLE,
+            "updater_template": "CUSTOM UPDATER B",
+        },
+    )
     assert fp1 != fp2
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("field", "value_a", "value_b"),
+    [
+        ("opener_template", "OPENING A", "OPENING B"),
+        ("updater_template", "UPDATER A", "UPDATER B"),
+        ("player_turn_validators", ["RULE A"], ["RULE B"]),
+        ("simulator_turn_validators", ["RULE X"], ["RULE Y"]),
+    ],
+)
+def test_fingerprint_changes_when_any_prompt_bundle_field_changes(field: str, value_a, value_b):
+    """Every prompt-bundle field that feeds the fingerprint should affect the digest."""
+    character = _make_character()
+    fp1 = compute_character_evaluation_fingerprint(
+        character,
+        simulator_prompt_bundle={**DEFAULT_SIMULATOR_PROMPT_BUNDLE, field: value_a},
+    )
+    fp2 = compute_character_evaluation_fingerprint(
+        character,
+        simulator_prompt_bundle={**DEFAULT_SIMULATOR_PROMPT_BUNDLE, field: value_b},
+    )
+
+    assert fp1 != fp2
+
+
+@pytest.mark.unit
+def test_fingerprint_changes_when_default_model_string_changes():
+    """The default model identifier participates directly in the fingerprint input contract."""
+    character = _make_character()
+    implicit = compute_character_evaluation_fingerprint(character, model=DEFAULT_MODEL)
+    modified = compute_character_evaluation_fingerprint(character, model=f"{DEFAULT_MODEL}-alt")
+
+    assert implicit != modified
