@@ -64,6 +64,27 @@ class InferIntentGame(Game):
             show_final_score=overrides.show_final_score,
         )
 
+    def _export_additional_state(self) -> dict[str, Any]:
+        """Return infer-intent-specific mutable state."""
+        return {
+            "awaiting_confidence": self._awaiting_confidence,
+            "goal_inference": self._goal_inference,
+            "goal_inference_confidence": self._goal_inference_confidence,
+            "score": dict(self._score),
+        }
+
+    def _import_additional_state(self, state: dict[str, Any]) -> None:
+        """Restore infer-intent-specific mutable state."""
+        legacy_awaiting_inference = bool(state.get("awaiting_goal_inference", False))
+        legacy_awaiting_confidence = bool(state.get("awaiting_goal_inference_confidence", False))
+        if "in_finish_flow" not in state:
+            self._in_finish_flow = legacy_awaiting_inference or legacy_awaiting_confidence
+        self._awaiting_confidence = bool(state.get("awaiting_confidence", legacy_awaiting_confidence))
+        self._goal_inference = str(state.get("goal_inference", ""))
+        self._goal_inference_confidence = str(state.get("goal_inference_confidence", ""))
+        score = state.get("score", state.get("evaluation", {}))
+        self._score = dict(score) if isinstance(score, dict) else {}
+
     @property
     def goal_inference(self) -> str:
         """Player's inferred goal, or empty string."""

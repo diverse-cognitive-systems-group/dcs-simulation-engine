@@ -75,6 +75,20 @@ class ForesightGame(Game):
         """Return the current predictions."""
         return self._predictions
 
+    def _export_additional_state(self) -> dict[str, Any]:
+        """Return foresight-specific mutable state."""
+        return {
+            "predictions": dict(self._predictions),
+            "score": dict(self._score),
+        }
+
+    def _import_additional_state(self, state: dict[str, Any]) -> None:
+        """Restore foresight-specific mutable state."""
+        predictions = state.get("predictions", {})
+        score = state.get("score", {})
+        self._predictions = dict(predictions) if isinstance(predictions, dict) else {}
+        self._score = dict(score) if isinstance(score, dict) else {}
+
     @property
     def score(self) -> dict[str, Any]:
         """Return the current score."""

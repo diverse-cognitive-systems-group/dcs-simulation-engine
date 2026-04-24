@@ -575,6 +575,88 @@ class Game(ABC):
         """
         return None
 
+    def _export_engine_state(self) -> dict[str, Any]:
+        """Return a serialisable snapshot of the engine state when supported."""
+        export_state = getattr(self._engine, "export_state", None)
+        if callable(export_state):
+            state = export_state()
+            if isinstance(state, dict):
+                return state
+
+        export_history = getattr(self._engine, "export_history", None)
+        if callable(export_history):
+            return {"history": list(export_history())}
+
+        return {}
+
+    def _import_engine_state(self, state: dict[str, Any]) -> None:
+        """Restore engine state, including legacy history-only snapshots."""
+        import_state = getattr(self._engine, "import_state", None)
+        engine_state = state.get("engine_state")
+        legacy_history = state.get("updater_history", [])
+
+        if callable(import_state):
+            if isinstance(engine_state, dict):
+                import_state(engine_state)
+                return
+            import_state({"history": legacy_history, "transcript_events": legacy_history})
+            return
+
+        import_history = getattr(self._engine, "import_history", None)
+        if callable(import_history):
+            import_history(legacy_history)
+
+    def _export_additional_state(self) -> dict[str, Any]:
+        """Return subclass-specific mutable state."""
+        return {}
+
+    def _import_additional_state(self, state: dict[str, Any]) -> None:
+        """Restore subclass-specific mutable state."""
+        return
+
+    def export_state(self) -> dict[str, Any]:
+        """Return a JSON-serialisable snapshot of this game's mutable state.
+
+        Must include every field needed to restore behaviour exactly — lifecycle
+        flags, retry budgets, state-machine booleans, collected player inputs,
+        and evaluation payloads.  The returned dict is stored under the
+        ``game_state`` key of the session ``runtime_state`` document.
+        """
+        state = {
+            "entered": self._entered,
+            "exited": self._exited,
+            "exit_reason": self._exit_reason,
+            "player_retry_budget": self._player_retry_budget,
+            "in_finish_flow": self._in_finish_flow,
+            "filtered_transcript_buffer": list(self._filtered_transcript_buffer),
+            "engine_state": self._export_engine_state(),
+        }
+        state.update(self._export_additional_state())
+        return state
+
+    def import_state(self, state: dict[str, Any]) -> None:
+        """Restore mutable state from a snapshot produced by ``export_state``.
+
+        Called by ``SessionManager.create_from_snapshot`` immediately after the
+        game instance is constructed via ``create_from_context``.
+        """
+        legacy_retry_budget = state.get("retry_budget", type(self).DEFAULT_PLAYER_RETRY_BUDGET)
+        self._entered = bool(state.get("entered", False))
+        self._exited = bool(state.get("exited", False))
+        self._exit_reason = str(state.get("exit_reason", ""))
+        self._player_retry_budget = int(state.get("player_retry_budget", legacy_retry_budget))
+        self._in_finish_flow = bool(state.get("in_finish_flow", False))
+
+        transcript_buffer = state.get("filtered_transcript_buffer")
+        if isinstance(transcript_buffer, list):
+            self._filtered_transcript_buffer = [str(entry) for entry in transcript_buffer]
+        else:
+            legacy_history = state.get("updater_history", [])
+            self._filtered_transcript_buffer = [str(entry) for entry in legacy_history] if isinstance(legacy_history, list) else []
+
+        self._import_engine_state(state)
+        self._import_additional_state(state)
+
     @classmethod
     @abstractmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "Game":

@@ -15,6 +15,7 @@ def _load_strategy_config(
     games: list[str],
     quota_per_game: int = 1,
     max_assignments_per_player: int = 1,
+    assignment_mode: str = "auto",
 ) -> ExperimentConfig:
     games_yaml = "\n".join(f"    - {game}" for game in games)
     path = write_yaml(
@@ -30,6 +31,7 @@ def _load_strategy_config(
                 f"  quota_per_game: {quota_per_game}",
                 f"  max_assignments_per_player: {max_assignments_per_player}",
                 f"  seed: {name}-seed",
+                f"  assignment_mode: {assignment_mode}",
             ]
         )
         + "\n",
@@ -215,3 +217,39 @@ async def test_random_unique_interrupted_rows_release_quota(async_mongo_provider
 
     assert assignment is not None
     assert assignment.game_name == "Explore"
+
+
+async def test_random_unique_player_choice_options_remain_available_with_existing_assignment(async_mongo_provider, write_yaml) -> None:
+    """Player-choice mode should still offer another assignment while one is already assigned."""
+    config = _load_strategy_config(
+        write_yaml,
+        name="player-choice-multi",
+        games=["Explore", "foresight"],
+        max_assignments_per_player=2,
+        assignment_mode="player_choice",
+    )
+    strategy = get_assignment_strategy("random_unique")
+    player, _ = await async_mongo_provider.create_player(
+        player_data={
+            "full_name": {"answer": "Chooser"},
+            "email": "chooser@example.com",
+            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
+        }
+    )
+
+    await _create_assignment(
+        async_mongo_provider,
+        experiment_name=config.name,
+        player_id=player.id,
+        game_name="Explore",
+        character_hid="test-char-a",
+    )
+
+    options = await strategy.get_eligible_options_async(
+        provider=async_mongo_provider,
+        config=config,
+        player=player,
+    )
+
+    assert options, "Expected at least one remaining option after the first assignment"
+    assert all(option["game_name"] != "Explore" for option in options)

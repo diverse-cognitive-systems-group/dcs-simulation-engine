@@ -1,0 +1,882 @@
+diff --git a/dcs_simulation_engine/api/models.py b/dcs_simulation_engine/api/models.py
+index d520457..d83e31a 100644
+--- a/dcs_simulation_engine/api/models.py
++++ b/dcs_simulation_engine/api/models.py
+@@ -169,6 +169,7 @@ class ExperimentSetupResponse(BaseModel):
+     # True only when the participant has exhausted all assignments available to them.
+     assignment_completed: bool = False
+     assignment_mode: str = "auto"
++    assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
+ 
+ 
+ class EligibleAssignmentOption(BaseModel):
+@@ -323,6 +324,7 @@ class WSSessionMetaFrame(BaseModel):
+     session_id: str
+     pc_hid: str | None = None
+     npc_hid: str | None = None
++    has_game_feedback: bool = False
+ 
+ 
+ class WSEventFrame(BaseModel):
+diff --git a/dcs_simulation_engine/api/routers/experiments.py b/dcs_simulation_engine/api/routers/experiments.py
+index fbb96dc..e3be500 100644
+--- a/dcs_simulation_engine/api/routers/experiments.py
++++ b/dcs_simulation_engine/api/routers/experiments.py
+@@ -114,6 +114,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
+         pending_post_play=pending_post_play,
+         assignment_completed=assignment_completed,
+         assignment_mode=config.assignment_strategy.assignment_mode,
++        assignments=[_assignment_summary(a) for a in player_state.get("assignments", [])],
+     )
+ 
+ 
+diff --git a/dcs_simulation_engine/api/routers/play.py b/dcs_simulation_engine/api/routers/play.py
+index 42c79f9..6050158 100644
+--- a/dcs_simulation_engine/api/routers/play.py
++++ b/dcs_simulation_engine/api/routers/play.py
+@@ -295,10 +295,13 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
+         game = entry.manager.game
+         pc = getattr(game, "_pc", None)
+         npc = getattr(game, "_npc", None)
++        game_config = SessionManager.get_game_config_cached(entry.game_name)
++        has_game_feedback = any(f.before_or_after == "after" for f in game_config.forms)
+         meta_frame = WSSessionMetaFrame(
+             session_id=session_id,
+             pc_hid=getattr(pc, "hid", None),
+             npc_hid=getattr(npc, "hid", None),
++            has_game_feedback=has_game_feedback,
+         )
+         await websocket.send_json(meta_frame.model_dump(mode="json"))
+ 
+diff --git a/dcs_simulation_engine/core/assignment_strategies/random_unique.py b/dcs_simulation_engine/core/assignment_strategies/random_unique.py
+index dcf7363..b58034b 100644
+--- a/dcs_simulation_engine/core/assignment_strategies/random_unique.py
++++ b/dcs_simulation_engine/core/assignment_strategies/random_unique.py
+@@ -208,6 +208,75 @@ class RandomUniqueAssignmentStrategy:
+ 
+         return None
+ 
++    async def generate_remaining_assignments_async(
++        self,
++        *,
++        provider: Any,
++        config: "ExperimentConfig",
++        player: "PlayerRecord",
++    ) -> "list[AssignmentRecord]":
++        """Pre-generate all remaining assignments up to max_assignments_per_player."""
++        max_n = self.max_assignments_per_player(config=config)
++        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
++        if len(player_assignments) >= max_n:
++            return []
++
++        assigned_games = {item.game_name for item in player_assignments}
++        counted_players_by_game = await self._players_by_game(
++            provider=provider,
++            experiment_name=config.name,
++            statuses=["in_progress", "completed"],
++        )
++        quota = int(config.assignment_strategy.quota_per_game or 0)
++        eligible_games = [
++            game_name
++            for game_name in config.games
++            if game_name not in assigned_games and len(counted_players_by_game.get(game_name, set())) < quota
++        ]
++        if not eligible_games:
++            return []
++
++        game_rng = self._rng_for(config=config, player_id=player.id, salt="game")
++        game_candidates = list(eligible_games)
++        game_rng.shuffle(game_candidates)
++
++        needed = max_n - len(player_assignments)
++        pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
++        created: list[AssignmentRecord] = []
++        for game_name in game_candidates:
++            if len(created) >= needed:
++                break
++            game_config = SessionManager.get_game_config_cached(game_name)
++            get_valid = getattr(game_config, "get_valid_characters_async", None)
++            if get_valid is None:
++                valid_pcs, _ = await maybe_await(
++                    game_config.get_valid_characters(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only)
++                )
++            else:
++                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only))
++            valid_pc_hids = [hid for _, hid in valid_pcs]
++            if not valid_pc_hids:
++                continue
++            pc_rng = self._rng_for(config=config, player_id=player.id, salt=f"pc:{game_name}")
++            character_hid = pc_rng.choice(valid_pc_hids)
++            assignment = await maybe_await(
++                provider.create_assignment(
++                    assignment_doc={
++                        MongoColumns.EXPERIMENT_NAME: config.name,
++                        MongoColumns.PLAYER_ID: player.id,
++                        MongoColumns.GAME_NAME: game_name,
++                        MongoColumns.CHARACTER_HID: character_hid,
++                        MongoColumns.STATUS: "assigned",
++                        MongoColumns.FORM_RESPONSES: {},
++                    },
++                    allow_concurrent=True,
++                )
++            )
++            if assignment is not None:
++                created.append(assignment)
++
++        return created
++
+     async def _players_by_game(
+         self,
+         *,
+diff --git a/dcs_simulation_engine/core/experiment_manager.py b/dcs_simulation_engine/core/experiment_manager.py
+index f8c88ae..cf13bbf 100644
+--- a/dcs_simulation_engine/core/experiment_manager.py
++++ b/dcs_simulation_engine/core/experiment_manager.py
+@@ -132,9 +132,9 @@ class ExperimentManager:
+         completed_assignments = [item for item in player_assignments if item.status == "completed"]
+         before_form_names = {form.name for form in config.forms_for_phase(before_or_after="before")}
+         after_form_names = {form.name for form in config.forms_for_phase(before_or_after="after")}
+-        has_submitted_before_forms = not before_form_names or any(
+-            before_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys())) for item in player_assignments
+-        )
++        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, experiment_name=experiment_name))
++        submitted_before_keys = set((player_forms.data if player_forms else {}).keys())
++        has_submitted_before_forms = not before_form_names or before_form_names.issubset(submitted_before_keys)
+         pending_post_play = next(
+             (
+                 item
+@@ -198,12 +198,20 @@ class ExperimentManager:
+             experiment_name=config.name,
+             player=player_record,
+         )
+-        if assignment is not None:
+-            assignment = await cls.store_form_payloads_async(
+-                provider=provider,
+-                assignment_id=assignment.assignment_id,
+-                forms_payload=normalized_before_forms,
+-            )
++        if assignment is not None and config.assignment_strategy.assignment_mode == "auto":
++            strategy = cls._strategy_for(config=config)
++            if hasattr(strategy, "generate_remaining_assignments_async"):
++                await strategy.generate_remaining_assignments_async(
++                    provider=provider,
++                    config=config,
++                    player=player_record,
++                )
++        await cls.store_player_form_payloads_async(
++            provider=provider,
++            player_id=player_id,
++            experiment_name=config.name,
++            forms_payload=normalized_before_forms,
++        )
+         return assignment
+ 
+     @classmethod
+@@ -329,6 +337,26 @@ class ExperimentManager:
+             )
+         return updated
+ 
++    @classmethod
++    async def store_player_form_payloads_async(
++        cls,
++        *,
++        provider: Any,
++        player_id: str,
++        experiment_name: str,
++        forms_payload: dict[str, dict[str, Any]],
++    ) -> None:
++        """Store one or more named before-play form payloads on the player forms record."""
++        for form_key, payload in forms_payload.items():
++            await maybe_await(
++                provider.set_player_form_response(
++                    player_id=player_id,
++                    experiment_name=experiment_name,
++                    form_key=form_key,
++                    response=payload,
++                )
++            )
++
+     @classmethod
+     async def get_latest_assignment_for_player_async(cls, *, provider: Any, player_id: str) -> AssignmentRecord | None:
+         """Return the latest experiment assignment for a player across all experiments."""
+@@ -503,4 +531,10 @@ class ExperimentManager:
+     @classmethod
+     def _is_completion_reason(cls, reason: str) -> bool:
+         normalized = reason.strip().lower().replace(" ", "_")
+-        return normalized in {"game_completed", "game_complete"} or normalized.startswith("stopping_condition_met:")
++        completion_reasons = {
++            "game_completed",
++            "game_complete",
++            "max_predictions_reached",
++            "player_exited",
++        }
++        return normalized in completion_reasons or normalized.startswith("stopping_condition_met:")
+diff --git a/dcs_simulation_engine/core/game_config.py b/dcs_simulation_engine/core/game_config.py
+index 3bc2c14..a9cb5f0 100644
+--- a/dcs_simulation_engine/core/game_config.py
++++ b/dcs_simulation_engine/core/game_config.py
+@@ -3,6 +3,7 @@
+ import importlib
+ from typing import Annotated, Any, Dict, List, Optional, Tuple
+ 
++from dcs_simulation_engine.core.forms import ExperimentForm
+ from dcs_simulation_engine.dal.base import CharacterRecord, DataProvider
+ from dcs_simulation_engine.utils.async_utils import maybe_await
+ from dcs_simulation_engine.utils.serde import SerdeMixin
+@@ -32,6 +33,7 @@ class GameConfig(SerdeMixin, BaseModel):
+     version: VersionStr
+     authors: Optional[List[str]] = Field(default_factory=lambda: ["DCS"])
+     stopping_conditions: Dict[str, Any] = Field(default_factory=dict)
++    forms: List[ExperimentForm] = Field(default_factory=list)
+ 
+     # Dotted import path to the game engine class, e.g.
+     # "dcs_simulation_engine.games.explore.ExploreGame"
+diff --git a/dcs_simulation_engine/dal/base.py b/dcs_simulation_engine/dal/base.py
+index 468a6d9..0f3655b 100644
+--- a/dcs_simulation_engine/dal/base.py
++++ b/dcs_simulation_engine/dal/base.py
+@@ -55,6 +55,16 @@ class ExperimentRecord(NamedTuple):
+     data: dict[str, Any]
+ 
+ 
++class PlayerFormsRecord(NamedTuple):
++    """Before-play form responses for a player in a specific experiment."""
++
++    player_id: str
++    experiment_name: str
++    data: dict[str, Any]
++    created_at: Any
++    updated_at: Any
++
++
+ class AssignmentRecord(NamedTuple):
+     """A persisted experiment assignment row."""
+ 
+@@ -195,7 +205,7 @@ class DataProvider:
+         """Persist the latest experiment progress snapshot."""
+         raise NotImplementedError
+ 
+-    def create_assignment(self, *, assignment_doc: dict[str, Any]) -> AssignmentRecord:
++    def create_assignment(self, *, assignment_doc: dict[str, Any], allow_concurrent: bool = False) -> AssignmentRecord:
+         """Persist a new experiment assignment row."""
+         raise NotImplementedError
+ 
+@@ -241,3 +251,23 @@ class DataProvider:
+     ) -> AssignmentRecord | None:
+         """Store one experiment form response payload on an assignment row."""
+         raise NotImplementedError
++
++    def set_player_form_response(
++        self,
++        *,
++        player_id: str,
++        experiment_name: str,
++        form_key: str,
++        response: dict[str, Any],
++    ) -> PlayerFormsRecord | None:
++        """Store one before-play form response in the forms collection."""
++        raise NotImplementedError
++
++    def get_player_forms(
++        self,
++        *,
++        player_id: str,
++        experiment_name: str,
++    ) -> PlayerFormsRecord | None:
++        """Return the before-play form responses for a player in an experiment."""
++        raise NotImplementedError
+diff --git a/dcs_simulation_engine/dal/mongo/async_provider.py b/dcs_simulation_engine/dal/mongo/async_provider.py
+index ad679cf..40a57d7 100644
+--- a/dcs_simulation_engine/dal/mongo/async_provider.py
++++ b/dcs_simulation_engine/dal/mongo/async_provider.py
+@@ -9,6 +9,7 @@ from dcs_simulation_engine.dal.base import (
+     AssignmentRecord,
+     CharacterRecord,
+     ExperimentRecord,
++    PlayerFormsRecord,
+     PlayerRecord,
+     SessionEventRecord,
+     SessionRecord,
+@@ -591,16 +592,17 @@ class AsyncMongoProvider:
+         )
+         return await self.get_experiment(experiment_name=experiment_name)
+ 
+-    async def create_assignment(self, *, assignment_doc: dict[str, Any]) -> AssignmentRecord:
++    async def create_assignment(self, *, assignment_doc: dict[str, Any], allow_concurrent: bool = False) -> AssignmentRecord:
+         """Persist a new experiment assignment row."""
+         experiment_name = str(assignment_doc.get(MongoColumns.EXPERIMENT_NAME) or "")
+         player_id = str(assignment_doc.get(MongoColumns.PLAYER_ID) or "")
+         if not experiment_name or not player_id:
+             raise ValueError("assignment_doc must include experiment_name and player_id")
+ 
+-        existing = await self.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
+-        if existing is not None:
+-            raise ValueError("Player already has an active assignment for this experiment")
++        if not allow_concurrent:
++            existing = await self.get_active_assignment(experiment_name=experiment_name, player_id=player_id)
++            if existing is not None:
++                raise ValueError("Player already has an active assignment for this experiment")
+ 
+         now = utc_now()
+         doc = dict(assignment_doc)
+@@ -736,6 +738,54 @@ class AsyncMongoProvider:
+         )
+         return await self.get_assignment(assignment_id=assignment_id)
+ 
++    async def set_player_form_response(
++        self,
++        *,
++        player_id: str,
++        experiment_name: str,
++        form_key: str,
++        response: dict[str, Any],
++    ) -> PlayerFormsRecord | None:
++        """Upsert one before-play form response into the forms collection."""
++        now = utc_now()
++        await maybe_await(
++            self._db[MongoColumns.FORMS].update_one(
++                {MongoColumns.PLAYER_ID: player_id, MongoColumns.EXPERIMENT_NAME: experiment_name},
++                {
++                    "$set": {f"data.{form_key}": response, MongoColumns.UPDATED_AT: now},
++                    "$setOnInsert": {
++                        MongoColumns.PLAYER_ID: player_id,
++                        MongoColumns.EXPERIMENT_NAME: experiment_name,
++                        MongoColumns.CREATED_AT: now,
++                    },
++                },
++                upsert=True,
++            )
++        )
++        return await self.get_player_forms(player_id=player_id, experiment_name=experiment_name)
++
++    async def get_player_forms(
++        self,
++        *,
++        player_id: str,
++        experiment_name: str,
++    ) -> PlayerFormsRecord | None:
++        """Return the before-play form responses for a player in an experiment."""
++        doc = await maybe_await(
++            self._db[MongoColumns.FORMS].find_one(
++                {MongoColumns.PLAYER_ID: player_id, MongoColumns.EXPERIMENT_NAME: experiment_name}
++            )
++        )
++        if not doc:
++            return None
++        return PlayerFormsRecord(
++            player_id=doc[MongoColumns.PLAYER_ID],
++            experiment_name=doc[MongoColumns.EXPERIMENT_NAME],
++            data=doc.get("data", {}),
++            created_at=doc.get(MongoColumns.CREATED_AT),
++            updated_at=doc.get(MongoColumns.UPDATED_AT),
++        )
++
+     async def get_session_reconstruction(
+         self,
+         *,
+diff --git a/dcs_simulation_engine/dal/mongo/const.py b/dcs_simulation_engine/dal/mongo/const.py
+index 8c7c148..d01b303 100644
+--- a/dcs_simulation_engine/dal/mongo/const.py
++++ b/dcs_simulation_engine/dal/mongo/const.py
+@@ -23,6 +23,7 @@ class MongoColumns:
+     SESSION_EVENTS = "session_events"
+     EXPERIMENTS = "experiments"
+     ASSIGNMENTS = "assignments"
++    FORMS = "forms"
+ 
+     ID = "_id"
+     ASSIGNMENT_ID = "assignment_id"
+diff --git a/dcs_simulation_engine/dal/mongo/util.py b/dcs_simulation_engine/dal/mongo/util.py
+index 98341af..a7271dd 100644
+--- a/dcs_simulation_engine/dal/mongo/util.py
++++ b/dcs_simulation_engine/dal/mongo/util.py
+@@ -81,6 +81,10 @@ def ensure_default_indexes(db: Database[Any]) -> None:
+         ]
+     )
+     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
++    db[MongoColumns.FORMS].create_index(
++        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
++        unique=True,
++    )
+ 
+     for collection_name, defs in INDEX_DEFS.items():
+         coll = db[collection_name]
+@@ -125,6 +129,10 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
+         ]
+     )
+     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
++    await db[MongoColumns.FORMS].create_index(
++        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
++        unique=True,
++    )
+ 
+     for collection_name, defs in INDEX_DEFS.items():
+         coll = db[collection_name]
+diff --git a/experiments/usability-ca.yml b/experiments/usability-ca.yml
+index b787a80..9bc52bf 100644
+--- a/experiments/usability-ca.yml
++++ b/experiments/usability-ca.yml
+@@ -11,7 +11,7 @@ assignment_strategy:
+     - foresight
+     - goal_horizon
+   quota_per_game: 5
+-  max_assignments_per_player: 1
++  max_assignments_per_player: 3
+   seed: usability-ca-v1
+   pc_eligible_only: true
+ 
+diff --git a/tests/core/conftest.py b/tests/core/conftest.py
+index 45aaeac..7adbe52 100644
+--- a/tests/core/conftest.py
++++ b/tests/core/conftest.py
+@@ -115,3 +115,66 @@ def cached_usability_experiment(usability_experiment_config: ExperimentConfig) -
+         yield usability_experiment_config
+     finally:
+         ExperimentManager._experiment_config_cache = original_cache
++
++
++@pytest.fixture
++def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> Path:
++    """Experiment config fixture with max_assignments_per_player: 3."""
++    return write_yaml(
++        "test-multi-assignment-experiment.yaml",
++        """
++        name: test-multi-assignment-exp
++        description: Fixture for multi-assignment progress tests.
++        assignment_strategy:
++          strategy: random_unique
++          games:
++            - Explore
++            - Infer Intent
++            - Foresight
++          quota_per_game: 10
++          max_assignments_per_player: 3
++          seed: test-multi-seed
++        forms:
++          - name: intake
++            before_or_after: before
++            questions:
++              - key: age
++                prompt: Age
++                answer_type: number
++                required: true
++          - name: usability_feedback
++            before_or_after: after
++            questions:
++              - key: usability_issues
++                prompt: Any issues?
++                answer_type: string
++              - key: positive_usability
++                prompt: What worked well?
++                answer_type: string
++              - key: bugs_or_issues
++                prompt: Bugs?
++                answer_type: string
++              - key: experience_preferences
++                prompt: Experience?
++                answer_type: string
++              - key: additional_feedback
++                prompt: Other feedback?
++                answer_type: string
++        """,
++    )
++
++
++@pytest.fixture
++def cached_multi_assignment_experiment(
++    multi_assignment_experiment_config_path: Path,
++) -> Iterator[ExperimentConfig]:
++    """Register the multi-assignment experiment config in the ExperimentManager cache."""
++    config = ExperimentConfig.load(multi_assignment_experiment_config_path)
++    original_cache = ExperimentManager._experiment_config_cache.copy()
++    ExperimentManager._experiment_config_cache = {
++        ExperimentManager._cache_key(config.name): config
++    }
++    try:
++        yield config
++    finally:
++        ExperimentManager._experiment_config_cache = original_cache
+diff --git a/tests/core/test_experiment_manager.py b/tests/core/test_experiment_manager.py
+index 7efcb4d..7f3c422 100644
+--- a/tests/core/test_experiment_manager.py
++++ b/tests/core/test_experiment_manager.py
+@@ -20,8 +20,8 @@ def _entry_form_payload() -> dict[str, dict[str, object]]:
+     }
+ 
+ 
+-async def test_submit_before_play_stores_entry_form_on_assignment(async_mongo_provider, cached_usability_experiment) -> None:
+-    """Submitting before-play answers should persist the form on the player's assignment."""
++async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
++    """Submitting before-play answers should persist the form in the forms collection, not on the assignment."""
+     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Ada Lovelace"}})
+     assignment = await ExperimentManager.submit_before_play_async(
+         provider=async_mongo_provider,
+@@ -31,7 +31,38 @@ async def test_submit_before_play_stores_entry_form_on_assignment(async_mongo_pr
+     )
+ 
+     assert assignment is not None
+-    assert assignment.data[MongoColumns.FORM_RESPONSES]["intake"]["answers"]["age"]["answer"] == 28
++    # Before-play forms now live in the forms collection, not on the assignment.
++    assert assignment.data.get(MongoColumns.FORM_RESPONSES, {}).get("intake") is None
++    player_forms = await async_mongo_provider.get_player_forms(
++        player_id=player.id,
++        experiment_name=cached_usability_experiment.name,
++    )
++    assert player_forms is not None
++    assert player_forms.data["intake"]["answers"]["age"]["answer"] == 28
++
++
++@pytest.mark.parametrize(
++    "reason,expected",
++    [
++        ("game_completed", True),
++        ("game_complete", True),
++        ("game completed", True),
++        ("Game Completed", True),
++        ("max predictions reached", True),
++        ("max_predictions_reached", True),
++        ("player exited", True),
++        ("player_exited", True),
++        ("stopping_condition_met:max_turns", True),
++        ("stopping_condition_met:anything", True),
++        ("retry budget exhausted", False),
++        ("websocket_disconnect", False),
++        ("server_error", False),
++        ("received close request", False),
++        ("", False),
++    ],
++)
++def test_is_completion_reason(reason: str, expected: bool) -> None:
++    assert ExperimentManager._is_completion_reason(reason) is expected
+ 
+ 
+ async def test_interrupted_assignment_is_reused(async_mongo_provider, cached_usability_experiment) -> None:
+@@ -368,3 +399,64 @@ async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
+ 
+     assert result is assignment
+     strategy.get_or_create_assignment_async.assert_awaited_once()
++
++
++async def test_completed_assignment_reflected_in_player_state_after_multi_assignment_game(
++    async_mongo_provider, cached_multi_assignment_experiment
++) -> None:
++    """After completing one game in a 3-assignment experiment, get_player_state_async must
++    return one completed assignment and two assigned ones — confirming that progress (1 of 3)
++    is correctly reflected for the player."""
++    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Progress Tester"}})
++
++    # Register: creates assignment 1 and pre-generates assignments 2 & 3.
++    await ExperimentManager.submit_before_play_async(
++        provider=async_mongo_provider,
++        experiment_name=cached_multi_assignment_experiment.name,
++        player_id=player.id,
++        responses={"intake": {"age": 30}},
++    )
++
++    # Retrieve the active assignment (whichever was selected) and mark it completed.
++    state_before = await ExperimentManager.get_player_state_async(
++        provider=async_mongo_provider,
++        experiment_name=cached_multi_assignment_experiment.name,
++        player_id=player.id,
++    )
++    active = state_before["active_assignment"]
++    assert active is not None
++    assert len(state_before["assignments"]) == 3, "All 3 assignments should be pre-generated"
++
++    await async_mongo_provider.update_assignment_status(
++        assignment_id=active.assignment_id,
++        status="completed",
++    )
++
++    # Submit post-play so pending_post_play is cleared.
++    await ExperimentManager.store_post_play_async(
++        provider=async_mongo_provider,
++        experiment_name=cached_multi_assignment_experiment.name,
++        player_id=player.id,
++        responses={
++            "usability_feedback": {
++                "usability_issues": "",
++                "positive_usability": "Good",
++                "bugs_or_issues": "",
++                "experience_preferences": "Fine",
++                "additional_feedback": "",
++            }
++        },
++    )
++
++    state_after = await ExperimentManager.get_player_state_async(
++        provider=async_mongo_provider,
++        experiment_name=cached_multi_assignment_experiment.name,
++        player_id=player.id,
++    )
++
++    statuses = [a.status for a in state_after["assignments"]]
++    completed_count = statuses.count("completed")
++    assert len(state_after["assignments"]) == 3, "All 3 assignments must still be present"
++    assert completed_count == 1, f"Expected 1 completed assignment, got {completed_count} — statuses: {statuses}"
++    assert state_after["has_finished_experiment"] is False
++    assert state_after["active_assignment"] is not None
+diff --git a/ui/src/hooks/use-session-websocket.ts b/ui/src/hooks/use-session-websocket.ts
+index f790110..73b3fed 100644
+--- a/ui/src/hooks/use-session-websocket.ts
++++ b/ui/src/hooks/use-session-websocket.ts
+@@ -38,6 +38,7 @@ export function useSessionWebSocket(sessionId: string) {
+   const [exited, setExited] = useState(false)
+   const [pcHid, setPcHid] = useState<string | null>(null)
+   const [npcHid, setNpcHid] = useState<string | null>(null)
++  const [hasGameFeedback, setHasGameFeedback] = useState(false)
+   // waiting is true between sendTurn() and the server's turn_end frame.
+   const [waiting, setWaiting] = useState(false)
+   // useRef holds a mutable value that does NOT trigger re-renders — used for the socket
+@@ -103,6 +104,7 @@ export function useSessionWebSocket(sessionId: string) {
+       if (frame.type === 'session_meta') {
+         if (typeof frame.pc_hid === 'string') setPcHid(frame.pc_hid)
+         if (typeof frame.npc_hid === 'string') setNpcHid(frame.npc_hid)
++        if (typeof frame.has_game_feedback === 'boolean') setHasGameFeedback(frame.has_game_feedback)
+       }
+ 
+       if (frame.type === 'event') {
+@@ -190,6 +192,7 @@ export function useSessionWebSocket(sessionId: string) {
+     waiting,
+     pcHid,
+     npcHid,
++    hasGameFeedback,
+     sendTurn,
+     closeSession,
+     setMessageFeedback,
+diff --git a/ui/src/routes/experiments/$experimentName.tsx b/ui/src/routes/experiments/$experimentName.tsx
+index 1805367..1de099c 100644
+--- a/ui/src/routes/experiments/$experimentName.tsx
++++ b/ui/src/routes/experiments/$experimentName.tsx
+@@ -78,6 +78,7 @@ interface ExperimentSetupResponse {
+   pending_post_play: boolean
+   assignment_completed: boolean
+   assignment_mode: string
++  assignments: ExperimentAssignmentSummary[]
+ }
+ 
+ interface ExperimentPlayerResponse {
+@@ -396,6 +397,8 @@ function ExperimentPage() {
+   const [postErrors, setPostErrors] = useState<Record<string, Record<string, string>>>({})
+   const [submitError, setSubmitError] = useState<string | null>(null)
+   const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | 'select' | null>(null)
++  const [selectedGame, setSelectedGame] = useState<string | null>(null)
++  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
+ 
+   useEffect(() => {
+     setActiveExperimentName(experimentName)
+@@ -404,6 +407,7 @@ function ExperimentPage() {
+   const { data, isLoading, isError, error, refetch } = useQuery({
+     queryKey: ['experiment-setup', experimentName, authenticated],
+     enabled: authenticated,
++    refetchOnMount: 'always',
+     queryFn: () =>
+       httpClient<ExperimentSetupResponse>(
+         `/api/experiments/${encodeURIComponent(experimentName)}/setup`,
+@@ -649,29 +653,32 @@ function ExperimentPage() {
+           </div>
+         </div>
+ 
+-        <div>
++        {(data.assignments ?? []).length > 0 && (
+           <Card className="border-border/70 shadow-sm">
+             <CardHeader>
+-              <CardTitle>Study Progress</CardTitle>
++              <CardTitle>Your Progress</CardTitle>
+               <CardDescription>
+-                {data.progress.completed} of {data.progress.total} target assignments completed
++                {(data.assignments ?? []).filter((a) => a.status === 'completed').length} of{' '}
++                {(data.assignments ?? []).length} assignments completed
+               </CardDescription>
+             </CardHeader>
+-            <CardContent className="space-y-4">
+-              <div className="h-3 overflow-hidden rounded-full bg-muted">
+-                <div
+-                  className="h-full rounded-full bg-primary transition-all"
+-                  style={{
+-                    width: `${Math.min(
+-                      100,
+-                      (data.progress.completed / Math.max(data.progress.total, 1)) * 100,
+-                    )}%`,
+-                  }}
+-                />
+-              </div>
++            <CardContent>
++              {(() => {
++                const total = (data.assignments ?? []).length
++                const completed = (data.assignments ?? []).filter((a) => a.status === 'completed').length
++                const pct = total > 0 ? Math.round((completed / total) * 100) : 0
++                return (
++                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
++                    <div
++                      className="h-full rounded-full bg-primary transition-all duration-300"
++                      style={{ width: `${pct}%` }}
++                    />
++                  </div>
++                )
++              })()}
+             </CardContent>
+           </Card>
+-        </div>
++        )}
+ 
+         <Card className="border-border/70 shadow-sm">
+           <CardHeader>
+@@ -679,7 +686,7 @@ function ExperimentPage() {
+               {data.pending_post_play
+                 ? 'Post-Play Feedback'
+                 : data.current_assignment
+-                  ? 'Your Assignment'
++                  ? 'Current Assignment'
+                   : data.assignment_completed
+                     ? 'Study Status'
+                     : needsSelection
+@@ -749,26 +756,75 @@ function ExperimentPage() {
+                     </AlertDescription>
+                   </Alert>
+                 )}
+-                <div className="grid gap-3 sm:grid-cols-2">
+-                  {(eligibleOptions?.options ?? []).map((option) => (
+-                    <button
+-                      key={`${option.game_name}:${option.character_hid}`}
+-                      type="button"
+-                      disabled={submitting === 'select'}
+-                      onClick={() => handleSelectAssignment(option.game_name, option.character_hid)}
+-                      className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4 text-left transition-colors hover:bg-muted/40 disabled:opacity-50"
+-                    >
+-                      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+-                        Game
+-                      </div>
+-                      <div className="mt-1 text-lg font-semibold">{option.game_name}</div>
+-                      <div className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+-                        Character
++                {(eligibleOptions?.options ?? []).length > 0 &&
++                  (() => {
++                    const gameOptions = [
++                      ...new Set((eligibleOptions?.options ?? []).map((o) => o.game_name)),
++                    ]
++                    const characterOptions = (eligibleOptions?.options ?? [])
++                      .filter((o) => o.game_name === selectedGame)
++                      .map((o) => o.character_hid)
++                    return (
++                      <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
++                        <div className="space-y-1.5">
++                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
++                            Game
++                          </Label>
++                          <Select
++                            value={selectedGame ?? ''}
++                            onValueChange={(val) => {
++                              setSelectedGame(val)
++                              setSelectedCharacter(null)
++                            }}
++                            disabled={submitting === 'select'}
++                          >
++                            <SelectTrigger>
++                              <SelectValue placeholder="Select a game…" />
++                            </SelectTrigger>
++                            <SelectContent>
++                              {gameOptions.map((game) => (
++                                <SelectItem key={game} value={game}>
++                                  {game}
++                                </SelectItem>
++                              ))}
++                            </SelectContent>
++                          </Select>
++                        </div>
++                        <div className="space-y-1.5">
++                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
++                            Character
++                          </Label>
++                          <Select
++                            value={selectedCharacter ?? ''}
++                            onValueChange={setSelectedCharacter}
++                            disabled={!selectedGame || submitting === 'select'}
++                          >
++                            <SelectTrigger>
++                              <SelectValue
++                                placeholder={
++                                  selectedGame ? 'Select a character…' : 'Select a game first'
++                                }
++                              />
++                            </SelectTrigger>
++                            <SelectContent>
++                              {characterOptions.map((char) => (
++                                <SelectItem key={char} value={char}>
++                                  {char}
++                                </SelectItem>
++                              ))}
++                            </SelectContent>
++                          </Select>
++                        </div>
++                        <Button
++                          type="button"
++                          disabled={!selectedGame || !selectedCharacter || submitting === 'select'}
++                          onClick={() => selectedGame && selectedCharacter && handleSelectAssignment(selectedGame, selectedCharacter)}
++                        >
++                          {submitting === 'select' ? 'Selecting…' : 'Select Assignment'}
++                        </Button>
+                       </div>
+-                      <div className="mt-1 text-sm font-medium">{option.character_hid}</div>
+-                    </button>
+-                  ))}
+-                </div>
++                    )
++                  })()}
+               </div>
+             )}
+ 
+diff --git a/ui/src/routes/play/$sessionId.tsx b/ui/src/routes/play/$sessionId.tsx
+index 9fe2d92..dc79c4c 100644
+--- a/ui/src/routes/play/$sessionId.tsx
++++ b/ui/src/routes/play/$sessionId.tsx
+@@ -88,6 +88,7 @@ function PlayPage() {
+     waiting,
+     pcHid,
+     npcHid,
++    hasGameFeedback,
+     sendTurn,
+     closeSession,
+     setMessageFeedback,
+@@ -284,8 +285,10 @@ function PlayPage() {
+   const isClosed = wsState === 'closed' || exited
+   // Allow drafting at all times except terminal states (closed/error).
+   const inputDisabled = isClosed || isError
++
+   // Send is blocked while the simulation is loading or awaiting the next turn response.
+-  const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting
++  // turns === 0 means the initial NPC message hasn't arrived yet (game not started).
++  const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting || turns === 0
+ 
+   return (
+     <div className="h-screen flex flex-col bg-background">
+@@ -334,7 +337,7 @@ function PlayPage() {
+ 
+       <div className="flex-1 overflow-y-auto px-4 py-4">
+         <div className="mx-auto w-full max-w-[96vw] sm:max-w-[92vw] lg:max-w-[86vw] xl:max-w-[80vw] space-y-3">
+-          {isConnecting && (
++          {(isConnecting || (turns === 0 && wsState === 'ready')) && (
+             <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+               {/* CSS-only spinner: a bordered circle with one colored arc, rotated by animation */}
+               <div className="w-6 h-6 rounded-full border-2 border-muted/70 border-t-primary animate-spin" />
+@@ -375,18 +378,8 @@ function PlayPage() {
+               <div>
+                 <Badge variant="secondary">Simulation ended</Badge>
+               </div>
+-              {experimentName && (
+-                <Button
+-                  className="mx-auto"
+-                  onClick={() =>
+-                    navigate({
+-                      to: '/experiments/$experimentName',
+-                      params: { experimentName },
+-                    })
+-                  }
+-                >
+-                  Continue to Post Game Feedback
+-                </Button>
++              {hasGameFeedback && (
++                <Button className="mx-auto">Continue to Post Game Feedback</Button>
+               )}
+             </div>
+           )}

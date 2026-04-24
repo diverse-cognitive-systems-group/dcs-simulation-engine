@@ -11,4 +11,5 @@
 export interface ExperimentSessionRequest {
   /** @minLength 1 */
   source?: string;
+  assignment_id?: string | null;
 }

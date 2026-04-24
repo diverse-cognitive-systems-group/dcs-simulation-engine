@@ -140,6 +140,21 @@ class DataProvider:
         """Return one persisted session header for a player."""
         raise NotImplementedError
 
+    def save_runtime_state(self, *, session_id: str, runtime_state: dict[str, Any]) -> None:
+        """Upsert the resumable runtime snapshot on a session document."""
+        raise NotImplementedError
+
+    def get_resumable_session(
+        self,
+        *,
+        player_id: str,
+        game_name: str,
+        pc_hid: str,
+        npc_hid: str,
+    ) -> SessionRecord | None:
+        """Return the most recent paused session for this player/game/character combo, or None."""
+        raise NotImplementedError
+
     def list_session_events(self, *, session_id: str) -> list[SessionEventRecord]:
         """Return ordered persisted events for a session."""
         raise NotImplementedError

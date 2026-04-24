@@ -57,6 +57,7 @@ def create_app(
         if app.state.provider is None:
             app.state.provider = await create_async_provider(mongo_uri=mongo_uri)
         app.state.started_at = utc_now()
+        registry.set_provider(app.state.provider)
         SessionManager.preload_game_configs()
         ExperimentManager.preload_experiment_configs()
         await registry.start()

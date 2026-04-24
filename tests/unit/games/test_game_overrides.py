@@ -154,6 +154,29 @@ def test_explore_create_from_context_uses_default_base_configuration(pc: Charact
     assert game.get_transcript() == ""
 
 
+def test_explore_state_round_trip_restores_shared_game_fields(pc: CharacterRecord, npc: CharacterRecord) -> None:
+    """ExploreGame should round-trip the base Game snapshot state through resume."""
+    engine = SimulatorClient(pc=pc, npc=npc)
+    game = ExploreGame(pc=pc, npc=npc, engine=engine, player_retry_budget=4)
+    game._entered = True
+    game._exit_reason = "paused"
+    game._player_retry_budget = 2
+    game._in_finish_flow = True
+    game._filtered_transcript_buffer = ["Opening scene: The room hums quietly."]
+    engine._history = ["Opening scene: The room hums quietly."]
+    engine._transcript_events = ["Opening scene: The room hums quietly.", "Player (NA): I listen closely."]
+
+    snapshot = game.export_state()
+
+    restored = ExploreGame(pc=pc, npc=npc, engine=SimulatorClient(pc=pc, npc=npc))
+    restored.import_state(snapshot)
+
+    assert restored.export_state() == snapshot
+    assert restored._player_retry_budget == 2
+    assert restored._in_finish_flow is True
+    assert restored.get_transcript() == "Opening scene: The room hums quietly."
+
+
 def test_explore_create_from_context_applies_each_supported_base_override(pc: CharacterRecord, npc: CharacterRecord) -> None:
     """ExploreGame applies all current base-level override values it customizes."""
     game = ExploreGame.create_from_context(
@@ -169,6 +192,71 @@ def test_explore_create_from_context_applies_each_supported_base_override(pc: Ch
     assert game._max_input_length == 80
     assert game._pcs_allowed.name == "human-normative"
     assert game._npcs_allowed.name == "hypersensitive"
+
+
+def test_teamwork_state_round_trip_restores_shared_goal_context(pc: CharacterRecord, npc: CharacterRecord) -> None:
+    """TeamworkGame should restore both game state and engine shared-goal context."""
+    engine = SimulatorClient(pc=pc, npc=npc)
+    game = TeamworkGame(
+        pc=pc,
+        npc=npc,
+        engine=engine,
+        show_npc_details=True,
+        show_final_score=True,
+    )
+    game._entered = True
+    game._in_finish_flow = True
+    game._shared_goal = "Work together to stabilize the lab."
+    game._challenges = "Coordinating quickly."
+    game._score = {"tier": 2, "score": 70, "reasoning": "Solid collaboration."}
+    engine._opening_metadata = {"shared_goal": game._shared_goal}
+    engine._history = ["Opening scene: The lab alarms begin to sound."]
+    engine._transcript_events = list(engine._history)
+
+    snapshot = game.export_state()
+
+    restored_engine = SimulatorClient(pc=pc, npc=npc)
+    restored = TeamworkGame(
+        pc=pc,
+        npc=npc,
+        engine=restored_engine,
+        show_npc_details=True,
+        show_final_score=True,
+    )
+    restored.import_state(snapshot)
+
+    assert restored.shared_goal == "Work together to stabilize the lab."
+    assert restored.challenges == "Coordinating quickly."
+    assert restored.score["score"] == 70
+    assert restored._in_finish_flow is True
+    assert restored_engine._opening_metadata["shared_goal"] == "Work together to stabilize the lab."
+
+
+def test_teamwork_import_state_accepts_legacy_snapshot_keys(pc: CharacterRecord, npc: CharacterRecord) -> None:
+    """TeamworkGame should still hydrate older history-only snapshots."""
+    game = TeamworkGame(
+        pc=pc,
+        npc=npc,
+        engine=SimulatorClient(pc=pc, npc=npc),
+        show_npc_details=True,
+        show_final_score=True,
+    )
+
+    game.import_state(
+        {
+            "entered": True,
+            "retry_budget": 3,
+            "awaiting_challenges": True,
+            "challenges": "Talking over each other.",
+            "updater_history": ["Opening scene: The briefing begins."],
+        }
+    )
+
+    assert game._player_retry_budget == 3
+    assert game._in_finish_flow is True
+    assert game.challenges == "Talking over each other."
+    assert game.get_transcript() == "Opening scene: The briefing begins."
+    assert game._engine._history == ["Opening scene: The briefing begins."]
 
 
 def test_explore_create_from_context_rejects_unknown_kwargs(pc: CharacterRecord, npc: CharacterRecord) -> None:
