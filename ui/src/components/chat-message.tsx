@@ -88,7 +88,7 @@ export function ChatMessageBubble({
       <div className="flex flex-col items-end gap-0.5">
         <div className="max-w-[min(78vw,70ch)] rounded-2xl rounded-br-sm border border-primary/35 bg-primary text-primary-foreground px-4 py-2 text-sm shadow-sm">
           {/* User messages are plain text — no markdown needed. */}
-          <p className="whitespace-pre-wrap">{message.content}</p>
+          <p className="whitespace-pre-wrap break-all">{message.content}</p>
         </div>
         <span className="text-[10px] text-muted-foreground pr-1">{time}</span>
       </div>

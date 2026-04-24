@@ -38,6 +38,7 @@ from dcs_simulation_engine.api.models import (
     parse_ws_auth,
     parse_ws_request,
 )
+from dcs_simulation_engine.api.registry import hydrate_session_async
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
@@ -316,6 +317,17 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
     try:
         entry = registry.get(session_id)
+        if entry is None:
+            # Session may be dormant after a process restart — attempt to
+            # hydrate it from the persisted runtime snapshot before giving up.
+            # Auth hasn't run yet, so pass player_id=None; the ownership check
+            # below will still enforce it once we have the player record.
+            entry = await hydrate_session_async(
+                session_id=session_id,
+                player_id=None,
+                provider=provider,
+                registry=registry,
+            )
         if entry is None:
             await _send_error(websocket, f"Session {session_id} not found")
             await websocket.close()

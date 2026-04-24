@@ -62,6 +62,7 @@ class MongoColumns:
     COMMAND_ARGS = "command_args"
     VISIBLE_TO_USER = "visible_to_user"
     METADATA = "metadata"
+    RUNTIME_STATE = "runtime_state"
     PERSISTED_AT = "persisted_at"
     FIELDS = "fields"
     CREATED_AT = "created_at"

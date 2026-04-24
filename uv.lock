@@ -689,6 +689,7 @@ dev = [
     { name = "mkdocstrings", extra = ["python"] },
     { name = "mongomock" },
     { name = "mypy" },
+    { name = "plotly" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -699,6 +700,7 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "matplotlib" },
+    { name = "plotly" },
     { name = "py-spy" },
     { name = "pytest-xdist" },
     { name = "seaborn" },
@@ -729,6 +731,7 @@ requires-dist = [
     { name = "packaging", specifier = ">=26.0" },
     { name = "pandas", marker = "extra == 'analysis'", specifier = ">=3.0.1" },
     { name = "plotly", marker = "extra == 'analysis'", specifier = ">=6.6.0" },
+    { name = "plotly", marker = "extra == 'dev'", specifier = ">=6.6.0" },
     { name = "pydantic", specifier = ">=2.11.9,<3.0.0" },
     { name = "pymongo", specifier = ">=4.15.3,<5.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3,<10.0.0" },
@@ -751,6 +754,7 @@ provides-extras = ["analysis", "dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "plotly", specifier = ">=6.6.0" },
     { name = "py-spy", specifier = ">=0.4.1" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },

@@ -348,6 +348,112 @@ class SessionManager:
         self._saved = True
         logger.debug("SessionManager.save() is a no-op; persistence is event-sourced.")
 
+    def export_snapshot(self) -> dict[str, Any]:
+        """Return a JSON-serialisable runtime snapshot for durable resume.
+
+        The snapshot captures everything needed to reconstruct this session
+        after a process restart: turn count, session lifecycle flags, and the
+        full game state including UpdaterClient conversation history.
+        """
+        return {
+            "schema_version": 1,
+            "turn_count": self._turn_count,
+            "exited": self._exited,
+            "exit_reason": self._exit_reason,
+            "game_state": self.game.export_state(),
+        }
+
+    @classmethod
+    async def create_from_snapshot(
+        cls,
+        *,
+        snapshot: dict[str, Any],
+        session_record: Any,
+        provider: Any,
+    ) -> "SessionManager":
+        """Reconstruct a SessionManager from a persisted runtime snapshot.
+
+        ``session_record`` is a ``SessionRecord`` from the DB.  The game
+        instance is built fresh via ``create_from_context`` and then hydrated
+        from the snapshot so its state machine, retry budget, and LLM history
+        are fully restored.
+
+        Raises ``ValueError`` if the snapshot ``schema_version`` is unknown;
+        the caller should catch this and fall back to starting a new session.
+        """
+        schema_version = snapshot.get("schema_version", 0)
+        if schema_version != 1:
+            raise ValueError(f"Unsupported snapshot schema_version={schema_version!r}; cannot restore session — start a new one instead.")
+
+        game_name = session_record.game_name
+        game_config = cls.get_game_config_cached(game_name)
+
+        pc_hid = session_record.data.get(MongoColumns.PC_HID)
+        npc_hid = session_record.data.get(MongoColumns.NPC_HID)
+        pc: CharacterRecord = await maybe_await(provider.get_character(hid=pc_hid))
+        npc: CharacterRecord = await maybe_await(provider.get_character(hid=npc_hid))
+
+        game_instance = cls._build_game_instance(game_config=game_config, pc=pc, npc=npc)
+        game_state = snapshot.get("game_state", {})
+        game_instance.import_state(game_state)
+
+        source = session_record.data.get(MongoColumns.SOURCE, "unknown")
+        session = cls._build_session(
+            game_config=game_config,
+            game_instance=game_instance,
+            provider=provider,
+            source=source,
+            player_id=session_record.player_id,
+        )
+
+        # Restore manager-level counters and flags.
+        session._turn_count = int(snapshot.get("turn_count", 0))
+        session._exited = bool(snapshot.get("exited", False))
+        session._exit_reason = str(snapshot.get("exit_reason", ""))
+        # Re-attach the known session_id so persistence writes target the right doc.
+        session._session_id = session_record.session_id
+
+        # Re-open a lightweight recorder tied to the existing session doc so
+        # subsequent turns append events correctly.  We skip the insert_one
+        # guard here because the document was already created in start_persistence.
+        get_db = getattr(provider, "get_db", None)
+        if get_db is not None:
+            db = get_db()
+            insert_one = getattr(db[MongoColumns.SESSIONS], "insert_one", None)
+            if insert_one is not None and inspect.iscoroutinefunction(insert_one):
+                last_seq = int(session_record.data.get(MongoColumns.LAST_SEQ, 0))
+                session._recorder = SessionEventRecorder(
+                    db=db,
+                    session_doc={
+                        MongoColumns.SESSION_ID: session_record.session_id,
+                        MongoColumns.PLAYER_ID: session_record.player_id,
+                        MongoColumns.LAST_SEQ: last_seq,
+                    },
+                    resume=True,
+                )
+                await session._recorder.__aenter__()
+                session._recorder_open = True
+
+        logger.info(
+            "SessionManager restored from snapshot: session_id={}, turns={}, game={}",
+            session_record.session_id,
+            session._turn_count,
+            game_name,
+        )
+        return session
+
+    async def _persist_runtime_snapshot(self) -> None:
+        """Write the current runtime snapshot to the session document."""
+        if self._session_id is None:
+            return
+        save_fn = getattr(self._provider, "save_runtime_state", None)
+        if save_fn is None:
+            return
+        try:
+            await maybe_await(save_fn(session_id=self._session_id, runtime_state=self.export_snapshot()))
+        except Exception:
+            logger.exception("Failed to persist runtime snapshot for session {}", self._session_id)
+
     async def step_async(self, user_input: Optional[str] = None) -> List[Dict[str, Any]]:
         """Advance one turn asynchronously and return normalized event dicts."""
         if self.exited:
@@ -400,6 +506,7 @@ class SessionManager:
 
         if yielded_ai:
             self._turn_count += 1
+            await self._persist_runtime_snapshot()
 
         if self.game.exited and not self._exited:
             await self.exit_async(self.game.exit_reason or "game_completed")

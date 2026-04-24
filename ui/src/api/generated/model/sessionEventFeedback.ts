@@ -10,9 +10,9 @@
  */
 export interface SessionEventFeedback {
   liked: boolean;
-  comment: string;
+  comment?: string;
   doesnt_make_sense: boolean;
   out_of_character: boolean;
-  other: boolean;
+  other?: boolean;
   submitted_at: string;
 }

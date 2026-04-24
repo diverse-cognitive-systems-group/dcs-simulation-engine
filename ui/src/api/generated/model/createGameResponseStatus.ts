@@ -10,5 +10,6 @@ export type CreateGameResponseStatus = typeof CreateGameResponseStatus[keyof typ
 
 export const CreateGameResponseStatus = {
   active: 'active',
+  paused: 'paused',
   closed: 'closed',
 } as const;

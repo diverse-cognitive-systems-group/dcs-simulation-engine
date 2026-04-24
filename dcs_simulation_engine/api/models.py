@@ -129,6 +129,8 @@ class ExperimentAssignmentSummary(BaseModel):
     game_name: str
     character_hid: str
     status: AssignmentStatus
+    active_session_id: str | None = None
+    needs_post_play: bool = False
 
 
 class ExperimentProgressResponse(BaseModel):
@@ -166,10 +168,13 @@ class ExperimentSetupResponse(BaseModel):
     progress: ExperimentProgressResponse
     current_assignment: ExperimentAssignmentSummary | None = None
     pending_post_play: bool = False
+    before_play_complete: bool = False
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
     assignment_mode: str = "auto"
     assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
+    # Set when the current assignment has a paused session the player can resume.
+    resumable_session_id: str | None = None
 
 
 class EligibleAssignmentOption(BaseModel):
@@ -208,12 +213,14 @@ class ExperimentSessionRequest(BaseModel):
     """Payload for creating a session from the current assignment."""
 
     source: str = Field(default="experiment", min_length=1)
+    assignment_id: str | None = None
 
 
 class ExperimentPostPlayRequest(BaseModel):
     """Payload for storing experiment post-play form answers."""
 
     responses: dict[str, dict]
+    assignment_id: str | None = None
 
 
 class SessionSummary(BaseModel):

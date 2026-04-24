@@ -25,6 +25,7 @@ from dcs_simulation_engine.api.models import (
     SelectAssignmentRequest,
 )
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from fastapi import APIRouter, HTTPException, Request, status
 
 router = APIRouter(prefix="/api/experiments", tags=["experiments"])
@@ -44,14 +45,21 @@ def _require_allowed_experiment(*, experiment_name: str, request: Request) -> No
         )
 
 
-def _assignment_summary(assignment) -> ExperimentAssignmentSummary | None:
+def _assignment_summary(
+    assignment,
+    *,
+    pending_post_play_ids: set[str] | None = None,
+) -> ExperimentAssignmentSummary | None:
     if assignment is None:
         return None
+    assignment_data = getattr(assignment, "data", {}) or {}
     return ExperimentAssignmentSummary(
         assignment_id=assignment.assignment_id,
         game_name=assignment.game_name,
         character_hid=assignment.character_hid,
         status=assignment.status,
+        active_session_id=assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None,
+        needs_post_play=assignment.assignment_id in (pending_post_play_ids or set()),
     )
 
 
@@ -91,17 +99,21 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
     config = ExperimentManager.get_experiment_config_cached(experiment_name)
     await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=config.name)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    current_assignment = None
-    pending_post_play = False
-    assignment_completed = False
     player_state = await ExperimentManager.get_player_state_async(
         provider=provider,
         experiment_name=config.name,
         player_id=player.id,
     )
     current_assignment = player_state["active_assignment"]
-    pending_post_play = player_state["pending_post_play"] is not None
+    pending_post_play_ids = set(player_state.get("pending_post_play_ids", []))
+    pending_post_play = bool(pending_post_play_ids)
     assignment_completed = bool(player_state["has_finished_experiment"])
+
+    # Surface resumable_session_id so the frontend can show a Resume CTA.
+    resumable_session_id: str | None = None
+    if current_assignment is not None and current_assignment.status == "in_progress":
+        current_assignment_data = getattr(current_assignment, "data", {}) or {}
+        resumable_session_id = current_assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None
 
     progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=config.name)
     return ExperimentSetupResponse(
@@ -110,11 +122,13 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         is_open=not progress["is_complete"],
         forms=[form.model_dump(mode="json") for form in config.forms],
         progress=_progress_response(progress),
-        current_assignment=_assignment_summary(current_assignment),
+        current_assignment=_assignment_summary(current_assignment, pending_post_play_ids=pending_post_play_ids),
         pending_post_play=pending_post_play,
+        before_play_complete=bool(player_state["has_submitted_before_forms"]),
         assignment_completed=assignment_completed,
         assignment_mode=config.assignment_strategy.assignment_mode,
-        assignments=[_assignment_summary(a) for a in player_state.get("assignments", [])],
+        assignments=[_assignment_summary(a, pending_post_play_ids=pending_post_play_ids) for a in player_state.get("assignments", [])],
+        resumable_session_id=resumable_session_id,
     )
 
 
@@ -151,7 +165,7 @@ async def create_experiment_session(
     body: ExperimentSessionRequest,
     request: Request,
 ) -> CreateGameResponse:
-    """Create a session for the authenticated player's current experiment assignment."""
+    """Create or resume a session for one experiment assignment."""
     require_standard_mode_from_request(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
@@ -168,6 +182,7 @@ async def create_experiment_session(
             experiment_name=experiment_name,
             player=player,
             source=body.source,
+            assignment_id=body.assignment_id,
         )
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
@@ -187,7 +202,7 @@ async def submit_experiment_post_play(
     body: ExperimentPostPlayRequest,
     request: Request,
 ) -> ExperimentAssignmentSummary:
-    """Store the experiment post-play form on the latest completed assignment."""
+    """Store the experiment post-play form on one completed assignment."""
     require_standard_mode_from_request(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
@@ -202,6 +217,7 @@ async def submit_experiment_post_play(
             experiment_name=experiment_name,
             player_id=player.id,
             responses=body.responses,
+            assignment_id=body.assignment_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

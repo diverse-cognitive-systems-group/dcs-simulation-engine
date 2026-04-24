@@ -127,33 +127,26 @@ class ExperimentManager:
     ) -> dict[str, Any]:
         """Return the assignment state visible to one authenticated player."""
         config = cls.get_experiment_config_cached(experiment_name)
-        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id))
-        player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
-        completed_assignments = [item for item in player_assignments if item.status == "completed"]
         before_form_names = {form.name for form in config.forms_for_phase(before_or_after="before")}
         after_form_names = {form.name for form in config.forms_for_phase(before_or_after="after")}
         player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, experiment_name=experiment_name))
         submitted_before_keys = set((player_forms.data if player_forms else {}).keys())
         has_submitted_before_forms = not before_form_names or before_form_names.issubset(submitted_before_keys)
-        pending_post_play = next(
-            (
-                item
-                for item in reversed(completed_assignments)
-                if not after_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys()))
-            ),
-            None,
-        )
+
+        def _pending_post_play_items(assignments: list[AssignmentRecord]) -> list[AssignmentRecord]:
+            completed = [item for item in assignments if item.status == "completed"]
+            return [item for item in completed if not after_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys()))]
+
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
+        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id))
+        pending_post_play_items = _pending_post_play_items(player_assignments)
+        pending_post_play = pending_post_play_items[-1] if pending_post_play_items else None
+        completed_assignments = [item for item in player_assignments if item.status == "completed"]
         strategy = cls._strategy_for(config=config)
         has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
 
         is_player_choice = config.assignment_strategy.assignment_mode == "player_choice"
-        if (
-            active_assignment is None
-            and pending_post_play is None
-            and has_submitted_before_forms
-            and not has_finished_experiment
-            and not is_player_choice
-        ):
+        if active_assignment is None and has_submitted_before_forms and not has_finished_experiment and not is_player_choice:
             player_record = await maybe_await(provider.get_player(player_id=player_id))
             if player_record is not None:
                 active_assignment = await cls.get_or_create_assignment_async(
@@ -161,10 +154,14 @@ class ExperimentManager:
                     experiment_name=config.name,
                     player=player_record,
                 )
+                player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
+                pending_post_play_items = _pending_post_play_items(player_assignments)
+                pending_post_play = pending_post_play_items[-1] if pending_post_play_items else None
 
         return {
             "active_assignment": active_assignment,
             "pending_post_play": pending_post_play,
+            "pending_post_play_ids": [item.assignment_id for item in pending_post_play_items],
             "has_finished_experiment": has_finished_experiment,
             "has_submitted_before_forms": has_submitted_before_forms,
             "assignments": player_assignments,
@@ -236,12 +233,42 @@ class ExperimentManager:
         experiment_name: str,
         player: PlayerRecord,
         source: str = "experiment",
+        assignment_id: str | None = None,
     ) -> tuple["SessionEntry", AssignmentRecord]:
-        """Start a gameplay session for the current assignment."""
-        assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id))
+        """Start or resume gameplay for the requested assignment."""
+        from dcs_simulation_engine.api.registry import hydrate_session_async
+
+        assignment: AssignmentRecord | None
+        if assignment_id is not None:
+            assignment = await cls.get_assignment_for_player_async(
+                provider=provider,
+                experiment_name=experiment_name,
+                player_id=player.id,
+                assignment_id=assignment_id,
+            )
+        else:
+            assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id))
         if assignment is None:
-            raise ValueError("No active assignment is available for this player.")
+            raise ValueError("No matching assignment is available for this player.")
+        if assignment.status == "completed":
+            raise ValueError("Completed assignments cannot be resumed.")
+
         if assignment.status == "in_progress":
+            # Check whether the existing session is still resumable before
+            # refusing to start.  If it is paused (in registry or in DB),
+            # return it instead of creating a duplicate session.
+            existing_session_id = assignment.data.get(MongoColumns.ACTIVE_SESSION_ID)
+            if existing_session_id:
+                existing_entry = registry.get(existing_session_id)
+                if existing_entry is None:
+                    existing_entry = await hydrate_session_async(
+                        session_id=existing_session_id,
+                        player_id=player.id,
+                        provider=provider,
+                        registry=registry,
+                    )
+                if existing_entry is not None and not existing_entry.manager.exited:
+                    return existing_entry, assignment
             raise ValueError("This assignment is already in progress.")
 
         manager = await SessionManager.create_async(
@@ -275,6 +302,23 @@ class ExperimentManager:
         return entry, updated_assignment
 
     @classmethod
+    async def get_assignment_for_player_async(
+        cls,
+        *,
+        provider: Any,
+        experiment_name: str,
+        player_id: str,
+        assignment_id: str,
+    ) -> AssignmentRecord | None:
+        """Return one assignment if it belongs to the requested player+experiment."""
+        assignment = await maybe_await(provider.get_assignment(assignment_id=assignment_id))
+        if assignment is None:
+            return None
+        if assignment.player_id != player_id or assignment.experiment_name != experiment_name:
+            return None
+        return assignment
+
+    @classmethod
     async def handle_session_terminal_state_async(
         cls,
         *,
@@ -298,12 +342,28 @@ class ExperimentManager:
         experiment_name: str,
         player_id: str,
         responses: dict[str, Any],
+        assignment_id: str | None = None,
     ) -> AssignmentRecord:
-        """Store all after-play forms on the latest completed assignment."""
+        """Store all after-play forms on one completed assignment."""
         config = cls.get_experiment_config_cached(experiment_name)
         after_forms = config.forms_for_phase(before_or_after="after")
-        state = await cls.get_player_state_async(provider=provider, experiment_name=config.name, player_id=player_id)
-        assignment = state["pending_post_play"]
+        if assignment_id is not None:
+            assignment = await cls.get_assignment_for_player_async(
+                provider=provider,
+                experiment_name=config.name,
+                player_id=player_id,
+                assignment_id=assignment_id,
+            )
+            if assignment is not None and assignment.status != "completed":
+                raise ValueError("Post-play feedback can only be submitted for completed assignments.")
+            if assignment is not None:
+                after_form_keys = set(assignment.data.get(MongoColumns.FORM_RESPONSES, {}).keys())
+                required_after_form_names = {form.name for form in after_forms}
+                if required_after_form_names.issubset(after_form_keys):
+                    raise ValueError("Post-play feedback has already been submitted for this assignment.")
+        else:
+            state = await cls.get_player_state_async(provider=provider, experiment_name=config.name, player_id=player_id)
+            assignment = state["pending_post_play"]
         if assignment is None:
             raise ValueError("No completed assignment is waiting for a post-play response.")
 
@@ -516,7 +576,8 @@ class ExperimentManager:
                     MongoColumns.CHARACTER_HID: character_hid,
                     MongoColumns.STATUS: "assigned",
                     MongoColumns.FORM_RESPONSES: {},
-                }
+                },
+                allow_concurrent=True,
             )
         )
         if assignment is None:
