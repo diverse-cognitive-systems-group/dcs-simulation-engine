@@ -53,66 +53,87 @@ Experimental Setup:
 ## Results
 TODO: Example initial and final prompts with corresponding setups + final fitness scores
 
-### Game: Infer-Intent (normative characters)
 
-**Initial Prompt**
-```markdown
-You are an expert communicator with a high level of empathy.
+## Resource Costs
 
-Your task is to provide an answer to the engagement game using the engagement strategy.
+The dominant unit of spend is one full Stage-3 game evaluation, not the mutation call. Every candidate that survives Stage 1 (static prompt checks) and Stage 2 (smoke run with a tiny turn budget) drives a complete turn-based game against the engine, which means N PC-LLM calls plus the engine's own per-turn NPC and scorer LLM calls. Stage 1 is effectively free; Stage 2's only job is to prevent obviously broken candidates from reaching Stage 3, and at the chosen pass threshold (≥1 accepted PC turn) it screens out very little. As a result, total cost and total wall time both scale roughly linearly with the number of iterations × parallelism⁻¹, with each evaluation costing a small but non-trivial fixed amount.
 
-Engagement Strategy:
-- Always ask questions about what the opposing entity's cognitive system
-```
+PC-LLM cost is usually the smallest line item — the per-turn cost is small if a cheap model is used for the PC. The expensive components are (a) the mutation model, which is called once per iteration and reads the full prompt-plus-artifact context, and (b) the engine's own NPC and scorer calls, which run on whatever model the engine is configured with and are paid per turn of every game. Scaling the iteration budget up multiplies all three. 
 
-**Final Prompt**
-```markdown
-You are an expert communicator with a high level of empathy.
+Expected costs are $0.10 - $0.20 per 10 mins of evolution. General OpenEvolve configuration best practices are to run 50-100 iterations where each iteration ranges from 5-10 minutes. These variables imply a a range of $2.50 - $20.00 per complete evolution.
 
-Your task is to provide an answer to the engagement game using the engagement strategy.
+Latency is dominated by three factors, in order of magnitude:
 
-Engagement Strategy:
-- Always ask questions about the opposing entity's cognitive system to understand their perspective and motivations.
-- Acknowledge and validate their points before introducing your own.
-- Use open-ended questions to encourage detailed responses.
-- Maintain a curious and collaborative tone.
-- Aim to build rapport and find common ground.
-- Focus on understanding rather than winning.
-- Adapt your communication style based on the entity's responses.
-- Seek clarification when necessary.
-- Summarize their key points to ensure understanding.
-- Express genuine interest in their thoughts and feelings.
-- Avoid making assumptions about their intentions.
-- Offer constructive suggestions that align with their stated goals.
-- End the interaction on a positive and open note, leaving room for future engagement.
-```
+1. **Game length per evaluation** — completed games take several minutes each because each turn round-trips to multiple LLMs.
+2. **Server-side serialization** — the engine's WebSocket + scorer pipeline is the per-turn bottleneck, which caps how much `parallel_evaluations` actually buys you.
+3. **Validator-rejection retry loops** — when a candidate produces PC output the engine's in-character validator rejects, the engine retries internally up to its per-turn cap before declaring `retry_exhausted`, which both wastes minutes per failed candidate and zeros that candidate's fitness.
 
+Throughput is best modeled as "one completed evaluation per several minutes per parallel slot," not as "one mutation per second."
 
-**Resource Costs**
-TODO: Cost per simulation run, latency and factors of latency
-Cost-per-generation is non-trivial. Every candidate = a 12-turn game = ≥12 PC-LLM calls + engine's own internal LLM calls (NPC + scorer). Stages 1/2 exist specifically to short-circuit obvious losers.
+## Observations
 
-**Observations**
-TODO: What patterns can be extracted from the simulations at both the per step level and overall? Behaviors, convergence speed, paths taken, ideas generated, pitfalls, mistakes, blockers, etc. 
+### Per-step behaviors
 
+- **Validator-rejection cascade is the most common silent failure mode.** Mutations that cause the PC-LLM to narrate meta-level reasoning (scene analyses, capability inferences, planning paragraphs) get rejected on every turn for not being first-person immediate in-world action. Once the per-turn retry cap is exhausted, the game ends without a score and the candidate collapses to zero fitness — regardless of how semantically correct the meta-reasoning was.
+- **Smoke-test passage does not predict full-run passage.** The cheap Stage 2 gate only requires one accepted PC turn, so prompts that work for two turns can still collapse the full game. The cascade therefore filters out only the most obviously broken candidates.
+- **Single-evaluation fitness is stochastic.** The scorer + validator stack introduces enough between-run variance that re-evaluating the same prompt produces a wide spread, especially near the fitness ceiling. A single run is not a reliable ranking signal for prompts that are clustered.
+- **Stage-3 timeouts are a real failure class with a misleading surface.** If `eval_timeout_s` is too tight relative to game length, every Stage-3 zeros out, but the metadata's "best program" inherits the cached parent fitness — making the run look successful in summary even though no mutation ever completed.
+
+### Overall patterns
+
+- **Convergence depends on starting fitness.** From a weak seed the first improving mutation tends to land quickly and produce a large jump in fitness. From a strong seed the search has to thread a much narrower needle: most mutations regress, and you need substantially more iterations before a non-regressive step is found. The relationship between iteration budget and realistic improvement is therefore non-linear — diminishing returns set in well below the saturation point.
+- **Mutations are biased toward adding structure.** The evolver tends to add scaffolds (numbered headings, multi-stage procedures, "first analyze, then act" framings) rather than removing them. This helps in scenarios where the seed is too terse and hurts in scenarios where added structure causes meta-narration. There is no observed pressure toward simplification once structure is present.
+- **The strategies that win are short, directive, and scenario-shaped.** Across runs, the best-performing prompts tended to be either tight procedural scaffolds (when the scenario rewards explicit role-decomposition) or stripped behavioral directives (when the scenario penalizes any prose that isn't an immediate action). The mid-iteration bloated drafts almost always lose to one of these two shapes.
+- **The biggest blocker is the gap between "good prompt engineering" and the engine's ground-truth validator.** General prompt-engineering wisdom (plan, then act; reason explicitly; decompose) actively destroys fitness here, because the validator rejects narrated reasoning. The evolver cannot easily learn this from feedback because collapsed / failed games produce no scorer reasoning to mutate against.
+- **Persona capability ceilings cap achievable fitness.** When the PC's character sheet restricts what the persona can do, the scorer rewards staying inside that substrate and the validator rejects attempts to step outside it. No amount of textual optimization on the strategy can lift fitness above what the persona is structurally allowed to achieve in the scenario.
 
 ## Takeaways
 
-**Limitations**
-TODO: Scenarios where OE performed poorly
+### Limitations
 
-**Advantages**
-TODO: Scenarios where OE shined
+OpenEvolve performs poorly under three conditions that recur across scenarios:
 
-**Considerations**
-TODO: What would a researcher who wants to use the DCS-SE need to know by inferring the considerations from OE results?
+1. **Strong-seed regression traps.** When the initial strategy is already close to the achievable ceiling, most mutations regress. Short iteration budgets simply do not contain enough samples to find a non-regressive step, and net deltas across the run can be negative. Increasing the iteration count helps, but the noise floor of the fitness signal limits how much it helps; at some point the search is being judged on signal smaller than the scorer's run-to-run variance.
+2. **Validator-induced collapse.** Mutations that introduce meta-narration, planning prose, or scene analysis cause the per-turn validator to reject every PC utterance, ending the game in a retry-exhausted state with zero fitness. The evolver has no mechanism to learn this dynamic from end-of-game feedback because the collapsed game generates no scorer reasoning to feed back into the next mutation. This is a structural blind spot, not a tunable.
+3. **Persona capability ceilings.** For non-normative or restricted personas, the validator rejects capability violations and the scorer penalizes anthropomorphic attribution. OE's mutations are textual and persona-agnostic, so they repeatedly propose capabilities the PC doesn't have — capping achievable fitness at a ceiling defined by the character sheet rather than the strategy. Iteration count is hard-pressed to lift this ceiling.
 
-**Expected Model Learnings from playing the DCS-SE**
-TODO: 
+A separate operational pitfall: when stage-level timeouts are too tight relative to game length, all Stage-3 evaluations fail but the "best program" silently reports the cached seed fitness.
 
-**Other**
+### Advantages
 
-TODO: Cross-scenario patterns: where OpenEvolve consistently outperformed, where it didn't, what kinds of strategies emerged, any reward hacking or degenerate solutions observed, and surprises worth flagging.
+OpenEvolve shines under three conditions:
+
+1. **Cold-start seeds.** When the seed is essentially empty, the first useful mutation produces a large jump and the rest of the run consolidates. This is the regime where evolution most clearly outperforms hand-authoring, because the search is finding structure the human didn't bother to specify.
+2. **Targeted late-stage refinement.** When the seed is already reasonable but not at ceiling, evolution can find a small, inspectable edit (a single behavioral constraint, a tightened final-answer format, a single new heuristic) that closes the gap. The improvement is small in absolute terms but diff-readable and rubric-aligned.
+3. **Inspectable natural-language artifacts.** Every winning strategy is a short plain-text prompt that a researcher can diff against the seed and compare across scenarios. Comparing winners across runs surfaces structural facts about what "engagement" means for different persona pairs — itself a research finding the platform can produce that opaque weight-update methods cannot.
+
+### Considerations
+
+A researcher planning to use the platform should know:
+
+1. **Choose iteration count by wall-clock budget, not by intuition.** Each evaluation costs several minutes regardless of model choice, because game length and server serialization dominate. Plan for a fixed number of evaluation-minutes per run and pick iterations accordingly. More iterations help most when the starting fitness is low; they help less when starting fitness is high because the noise floor limits resolution.
+2. **Treat any single scored evaluation as noisy.** Above the middle of the fitness range, run-to-run variance can exceed real improvement. Decisions about whether candidate B beat candidate A should rest on multiple replays per candidate, not one. Budget accordingly.
+3. **The validator, not the scorer, is the first-order constraint.** Before launching a run, manually confirm that the seed produces accepted turns under the chosen persona pairing and game. A run whose seed already triggers validator rejections will spend most of its budget on collapsed evaluations.
+4. **Encode persona constraints in the seed.** For restricted or non-normative personas, do not expect evolution to discover the capability boundary from end-of-game feedback. Bake the constraints into the seed so mutations explore *within* the allowed substrate rather than burning iterations bouncing off it.
+5. **Hand-authored seeds can beat short evolution.** A thoughtful baseline prompt can outperform a short evolutionary search on the same scenario. Use evolution where the seed is genuinely underspecified or where you want to discover small, rubric-aligned refinements; don't reach for it as a default.
+6. **Audit timeouts before trusting summary metrics.** Whenever a run looks suspiciously clean — every iteration "passed," every "best program" matches the seed — verify that Stage 3 actually completed. Stage timeouts that fire before any game finishes cause the run to silently report the cached parent score as the result.
+
+### Expected model learnings from playing the DCS-SE
+
+From the PC-LLM's side, repeated play surfaces several lessons that generalize across scenarios:
+
+- **In-character fidelity is a hard gate.** Engagement quality depends on inhabiting the persona rather than narrating about it. Output that resembles "good reasoning" by general prompt-engineering standards is penalized when it reads as meta-commentary rather than action.
+- **Capability-bounded reasoning is rewarded.** A "good" engagement acts only within the persona's actual substrate, even when the narrative invites stepping outside it. The scorer reliably identifies and penalizes capability overreach.
+- **Asymmetric coordination requires channel adaptation.** Coordination with a non-normative counterpart requires the PC to adapt its modality (chemical, visual, procedural) rather than insisting on its default modality. The scorer rewards this adaptation and penalizes its absence.
+- **Format discipline is scored separately from inference quality.** A well-reasoned final answer can still lose points for being truncated, overlong, or decorated with preamble. Treating format as part of the strategy, not an afterthought, is required to reach ceiling.
+
+### Cross-scenario patterns
+
+- **Where evolution outperforms hand-authoring:** the two tails of the fitness landscape — very low seeds (where any structure helps) and near-ceiling seeds with a single missing piece (where a targeted edit closes the gap). Both regimes produce inspectable, rubric-aligned diffs.
+- **Reward hacking / degenerate solutions:** none observed in the direction of exploiting the scorer. The dominant pressure is the opposite — mutations frequently *lose* fitness by decorating the prompt with scaffolding the validator rejects. The only near-degenerate pattern is the Stage-3-timeout regime, in which zero iterations actually complete but the reported best score is inherited from the seed. That is an evaluator-configuration artifact rather than an OE-emergent exploit, but worth flagging because it can masquerade as success.
+- **Surprises worth flagging:**
+    - A thoughtful hand-written seed can beat a short evolutionary search on the same scenario. Evolution is not free; whether it pays off depends on seed quality, iteration count, and where the scenario sits in the fitness landscape.
+    - The scorer's reasoning text is genuinely high-signal, naming domain-specific quantities and concrete capability violations. Using scorer reasoning as a secondary fitness channel — beyond the scalar — is viable and currently untapped by the evolutionary loop.
 
 ---
 
