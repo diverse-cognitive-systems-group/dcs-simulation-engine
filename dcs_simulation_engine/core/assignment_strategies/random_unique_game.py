@@ -1,4 +1,4 @@
-"""Random unique game assignment strategy implementation."""
+"""Random unique game assignment strategy module."""
 
 import random
 from typing import Any
@@ -9,7 +9,7 @@ from dcs_simulation_engine.utils.async_utils import maybe_await
 
 
 class RandomUniqueGameAssignmentStrategy(CandidateAssignmentStrategy):
-    """Assign each player a deterministic random game without repeats."""
+    """Candidate assignments include allowed triplets from games the player has not already been assigned."""
 
     name = "random_unique_game"
 
@@ -29,7 +29,7 @@ class RandomUniqueGameAssignmentStrategy(CandidateAssignmentStrategy):
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return candidates grouped by unassigned games in deterministic random order."""
+        """Return allowed triplets from unassigned games in deterministic random game order."""
         player_assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
         assigned_games = {assignment.game_name for assignment in player_assignments}
         pool = await self._build_candidate_pool(provider=provider, config=config, player=player)

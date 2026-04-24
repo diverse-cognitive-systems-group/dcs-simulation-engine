@@ -7,7 +7,7 @@ from dcs_simulation_engine.core.assignment_strategies.common import CandidateAss
 
 
 class UnplayedCombinationChoiceAssignmentStrategy(CandidateAssignmentStrategy):
-    """Prioritize combinations the player has not completed yet."""
+    """Candidate assignments include allowed triplets ordered with never-played triplets first."""
 
     name = "unplayed_combination_choice"
 
@@ -18,7 +18,7 @@ class UnplayedCombinationChoiceAssignmentStrategy(CandidateAssignmentStrategy):
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Order candidates by how often the player has completed the exact triple."""
+        """Return allowed triplets ordered by ascending player completion count for the exact triplet."""
         game_order = {game_name: index for index, game_name in enumerate(config.games)}
         assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
         triple_counts = self._completed_triple_counts(assignments=assignments)

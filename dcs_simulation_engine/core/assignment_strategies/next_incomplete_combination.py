@@ -8,7 +8,7 @@ from dcs_simulation_engine.core.assignment_strategies.common import CandidateAss
 
 
 class NextIncompleteCombinationAssignmentStrategy(CandidateAssignmentStrategy):
-    """Choose the first incomplete game/NPC group in config order."""
+    """Candidate assignments include triplets for the first incomplete game + npc group in config order."""
 
     name = "next_incomplete_combination"
 
@@ -19,7 +19,7 @@ class NextIncompleteCombinationAssignmentStrategy(CandidateAssignmentStrategy):
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return the first incomplete game/NPC group in config order."""
+        """Return triplets for the first incomplete game + npc group in config order."""
         assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
         completed_groups = self._completed_group_keys(assignments=assignments)
         candidates = await self._build_candidate_pool(provider=provider, config=config, player=player)

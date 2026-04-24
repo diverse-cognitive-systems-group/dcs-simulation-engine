@@ -7,7 +7,7 @@ from dcs_simulation_engine.core.assignment_strategies.common import CandidateAss
 
 
 class ExpertiseMatchedCharacterChoiceAssignmentStrategy(CandidateAssignmentStrategy):
-    """Prioritize NPCs whose labels match the player's expertise."""
+    """Candidate assignments include allowed triplets ordered with expertise-matching NPCs first."""
 
     name = "expertise_matched_character_choice"
 
@@ -18,7 +18,7 @@ class ExpertiseMatchedCharacterChoiceAssignmentStrategy(CandidateAssignmentStrat
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return candidates ordered so expertise-matching NPCs appear first."""
+        """Return allowed triplets ordered with expertise-matching NPCs first."""
         candidates = await self._build_candidate_pool(provider=provider, config=config, player=player)
         characters_by_hid = await self._character_map(provider=provider)
         matched_npc_hids = self._expertise_match_hids(player=player, characters_by_hid=characters_by_hid)

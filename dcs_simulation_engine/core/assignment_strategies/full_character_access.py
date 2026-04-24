@@ -7,7 +7,7 @@ from dcs_simulation_engine.core.assignment_strategies.common import CandidateAss
 
 
 class FullCharacterAccessAssignmentStrategy(CandidateAssignmentStrategy):
-    """Allow the player to choose from any permitted PC/NPC combination."""
+    """Candidate assignments include every allowed game + pc + npc triplet."""
 
     name = "full_character_access"
 
@@ -18,5 +18,5 @@ class FullCharacterAccessAssignmentStrategy(CandidateAssignmentStrategy):
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return every allowed game, PC, and NPC combination for the player."""
+        """Return every allowed game + pc + npc triplet."""
         return await self._build_candidate_pool(provider=provider, config=config, player=player)

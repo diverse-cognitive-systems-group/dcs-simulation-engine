@@ -18,7 +18,8 @@ forms:
     before_or_after: before # "before" | "after"
     questions:
       - key: professional_background
-        prompt: Describe your professional background (e.g., industry, role, years of experience).
+        prompt: Describe your professional background (e.g., industry, role, years of
+          experience).
         required: true
         answer_type: string
 
@@ -31,14 +32,16 @@ forms:
           - On the higher end
 
       - key: technical_savviness_explanation
-        prompt: Explain why you consider yourself on the lower or higher end of technical savviness (professional experience, hobbies, etc.).
+        prompt: Explain why you consider yourself on the lower or higher end of
+          technical savviness (professional experience, hobbies, etc.).
         answer_type: string
         required: true
   - name: outtake
     before_or_after: after
     questions:
       - key: usability_difficulty
-        prompt: What parts were confusing or difficult? (e.g., understanding what to do, how to do it, or interpreting results)
+        prompt: What parts were confusing or difficult? (e.g., understanding what to do,
+          how to do it, or interpreting results)
         answer_type: string
         required: true
 
@@ -48,7 +51,8 @@ forms:
         required: true
 
       - key: other_errors_or_issues
-        prompt: Any errors, bugs, or unexpected behavior not described above that we should know about?
+        prompt: Any errors, bugs, or unexpected behavior not described above that we
+          should know about?
         answer_type: string
 
       - key: overall_usability

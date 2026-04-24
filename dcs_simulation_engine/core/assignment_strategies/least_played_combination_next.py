@@ -8,7 +8,7 @@ from dcs_simulation_engine.core.assignment_strategies.common import CandidateAss
 
 
 class LeastPlayedCombinationNextAssignmentStrategy(CandidateAssignmentStrategy):
-    """Prefer the globally least-played game/NPC group."""
+    """Candidate assignments include triplets for the globally least-played game + npc group."""
 
     name = "least_played_combination_next"
 
@@ -19,7 +19,7 @@ class LeastPlayedCombinationNextAssignmentStrategy(CandidateAssignmentStrategy):
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return candidates for the globally least-played game/NPC group."""
+        """Return triplets for the globally least-played game + npc group."""
         candidates = await self._build_candidate_pool(provider=provider, config=config, player=player)
         if not candidates:
             return []

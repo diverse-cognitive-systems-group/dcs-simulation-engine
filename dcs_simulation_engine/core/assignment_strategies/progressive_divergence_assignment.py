@@ -11,7 +11,7 @@ from dcs_simulation_engine.core.assignment_strategies.least_played_combination_n
 
 
 class ProgressiveDivergenceAssignmentStrategy(CandidateAssignmentStrategy):
-    """Rank remaining NPCs by divergence from the player's last completed NPC."""
+    """Candidate assignments include triplets ordered by descending divergence from the last completed NPC."""
 
     name = "progressive_divergence_assignment"
 
@@ -22,7 +22,7 @@ class ProgressiveDivergenceAssignmentStrategy(CandidateAssignmentStrategy):
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return candidates ranked by divergence from the player's last completed NPC."""
+        """Return triplets ordered by descending divergence from the player's last completed NPC."""
         assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
         latest_completed = self._latest_completed_assignment(assignments=assignments)
         if latest_completed is None:

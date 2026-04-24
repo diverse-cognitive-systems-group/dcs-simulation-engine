@@ -21,7 +21,7 @@ from dcs_simulation_engine.core.assignment_strategies.next_incomplete_combinatio
 from dcs_simulation_engine.core.assignment_strategies.progressive_divergence_assignment import (
     ProgressiveDivergenceAssignmentStrategy,
 )
-from dcs_simulation_engine.core.assignment_strategies.random_unique import RandomUniqueGameAssignmentStrategy
+from dcs_simulation_engine.core.assignment_strategies.random_unique_game import RandomUniqueGameAssignmentStrategy
 from dcs_simulation_engine.core.assignment_strategies.unplayed_combination_choice import (
     UnplayedCombinationChoiceAssignmentStrategy,
 )
@@ -37,7 +37,6 @@ _STRATEGIES: dict[str, AssignmentStrategy] = {
     "expertise_matched_character_next": ExpertiseMatchedCharacterNextAssignmentStrategy(),
     "expertise_matched_character_batch": ExpertiseMatchedCharacterBatchAssignmentStrategy(),
     "random_unique_game": RandomUniqueGameAssignmentStrategy(),
-    "random_unique": RandomUniqueGameAssignmentStrategy(),
 }
 
 

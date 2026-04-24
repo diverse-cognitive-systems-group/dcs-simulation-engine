@@ -7,7 +7,7 @@ from dcs_simulation_engine.core.assignment_strategies.common import CandidateAss
 
 
 class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrategy):
-    """Keep the player on one NPC batch across games before switching."""
+    """Candidate assignments include triplets for the current NPC batch until its games are completed."""
 
     name = "expertise_matched_character_batch"
 
@@ -18,7 +18,7 @@ class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrate
         config,
         player,
     ) -> list[AssignmentCandidate]:
-        """Return candidates that keep the player within one NPC batch across games."""
+        """Return triplets for the current NPC batch until its configured games are completed."""
         candidates = await self._build_candidate_pool(provider=provider, config=config, player=player)
         if not candidates:
             return []
