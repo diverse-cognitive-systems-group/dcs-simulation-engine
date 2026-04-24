@@ -125,7 +125,8 @@ class ExperimentAssignmentSummary(BaseModel):
 
     assignment_id: str
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
     status: AssignmentStatus
     active_session_id: str | None = None
     needs_post_play: bool = False
@@ -179,7 +180,8 @@ class EligibleAssignmentOption(BaseModel):
     """One eligible game+character option returned in player_choice mode."""
 
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
 
 
 class EligibleAssignmentOptionsResponse(BaseModel):
@@ -192,7 +194,8 @@ class SelectAssignmentRequest(BaseModel):
     """Payload for player-directed assignment selection."""
 
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
 
 
 class ExperimentPlayerRequest(BaseModel):

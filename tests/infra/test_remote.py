@@ -110,7 +110,7 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
             [
                 "name: usability-ca",
                 "assignment_strategy:",
-                "  strategy: random_unique",
+                "  strategy: random_unique_game",
                 "  games:",
                 "    - explore",
                 "  quota_per_game: 1",
@@ -253,7 +253,7 @@ def test_deploy_remote_experiment_can_target_one_app(
             [
                 "name: usability-ca",
                 "assignment_strategy:",
-                "  strategy: random_unique",
+                "  strategy: random_unique_game",
                 "  games:",
                 "    - explore",
                 "  quota_per_game: 1",
@@ -324,7 +324,7 @@ def test_deploy_remote_experiment_api_only_does_not_redeploy_ui(
             [
                 "name: usability-ca",
                 "assignment_strategy:",
-                "  strategy: random_unique",
+                "  strategy: random_unique_game",
                 "  games:",
                 "    - explore",
                 "  quota_per_game: 1",

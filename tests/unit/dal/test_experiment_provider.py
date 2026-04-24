@@ -34,7 +34,8 @@ async def test_create_assignment_and_store_form_responses(async_mongo_provider) 
             MongoColumns.EXPERIMENT_NAME: "usability-ca",
             MongoColumns.PLAYER_ID: "player-1",
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char",
+            MongoColumns.PC_HID: "test-pc",
+            MongoColumns.NPC_HID: "test-npc",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -58,7 +59,8 @@ async def test_active_assignment_reuses_interrupted_and_clears_on_completion(asy
             MongoColumns.EXPERIMENT_NAME: "usability-ca",
             MongoColumns.PLAYER_ID: "player-2",
             MongoColumns.GAME_NAME: "Foresight",
-            MongoColumns.CHARACTER_HID: "test-char",
+            MongoColumns.PC_HID: "test-pc",
+            MongoColumns.NPC_HID: "test-npc",
             MongoColumns.FORM_RESPONSES: {},
         }
     )

@@ -18,7 +18,7 @@ def test_remote_deploy_command_outputs_json(monkeypatch: pytest.MonkeyPatch, tmp
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
     config_path.write_text(
-        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique\n  games: [explore]\n  quota_per_game: 1\n"),
+        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique_game\n  games: [explore]\n  quota_per_game: 1\n"),
         encoding="utf-8",
     )
     seed_path.write_text("[]", encoding="utf-8")
@@ -69,7 +69,7 @@ def test_remote_deploy_command_passes_targeted_apps(monkeypatch: pytest.MonkeyPa
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
     config_path.write_text(
-        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique\n  games: [explore]\n  quota_per_game: 1\n"),
+        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique_game\n  games: [explore]\n  quota_per_game: 1\n"),
         encoding="utf-8",
     )
     seed_path.write_text("[]", encoding="utf-8")
@@ -163,7 +163,7 @@ def test_remote_deploy_command_prints_admin_key_once(monkeypatch: pytest.MonkeyP
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
     config_path.write_text(
-        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique\n  games: [explore]\n  quota_per_game: 1\n"),
+        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique_game\n  games: [explore]\n  quota_per_game: 1\n"),
         encoding="utf-8",
     )
     seed_path.write_text("[]", encoding="utf-8")
@@ -210,7 +210,7 @@ def test_remote_deploy_command_passes_explicit_admin_key(monkeypatch: pytest.Mon
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
     config_path.write_text(
-        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique\n  games: [explore]\n  quota_per_game: 1\n"),
+        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique_game\n  games: [explore]\n  quota_per_game: 1\n"),
         encoding="utf-8",
     )
     seed_path.write_text("[]", encoding="utf-8")
@@ -259,7 +259,7 @@ def test_remote_deploy_command_retries_regions_on_capacity_errors(monkeypatch: p
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
     config_path.write_text(
-        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique\n  games: [explore]\n  quota_per_game: 1\n"),
+        ("name: usability-ca\nassignment_strategy:\n  strategy: random_unique_game\n  games: [explore]\n  quota_per_game: 1\n"),
         encoding="utf-8",
     )
     seed_path.write_text("[]", encoding="utf-8")

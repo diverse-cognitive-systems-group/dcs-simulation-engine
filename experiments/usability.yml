@@ -4,8 +4,8 @@ description: |
 condition: learning
 assignment_strategy:
   seed: 43 # for reproducibility of random assignment
-  # use default random_unique strategy
-  strategy: random_unique
+  # use default random_unique_game strategy
+  strategy: random_unique_game
   games:
     - Infer Intent
     - Goal Horizon

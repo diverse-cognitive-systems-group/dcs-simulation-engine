@@ -11,7 +11,7 @@ async def test_load_valid_usability_experiment_config(usability_experiment_confi
     config = usability_experiment_config
 
     assert config.name == "test-usability-exp"
-    assert config.assignment_strategy.strategy == "random_unique"
+    assert config.assignment_strategy.strategy == "random_unique_game"
     assert config.assignment_strategy.quota_per_game == 5
     assert config.assignment_strategy.max_assignments_per_player == 1
     assert len(config.games) == 4
@@ -26,7 +26,7 @@ async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
         name: legacy-exp
         description: Broken
         assignment_protocol:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
           quota_per_game: 1
@@ -46,7 +46,7 @@ async def test_invalid_game_name_fails(write_yaml) -> None:
         name: bad-exp
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Not A Real Game
           quota_per_game: 1
@@ -66,7 +66,7 @@ async def test_invalid_quota_fails(write_yaml) -> None:
         name: bad-quota
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
           quota_per_game: 0
@@ -79,14 +79,14 @@ async def test_invalid_quota_fails(write_yaml) -> None:
 
 
 async def test_max_assignments_cannot_exceed_game_count(write_yaml) -> None:
-    """random_unique cannot promise more assignments than available games."""
+    """random_unique_game cannot promise more assignments than available games."""
     path = write_yaml(
         "bad-max-assignments.yaml",
         """
         name: bad-max
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
             - Foresight
@@ -107,7 +107,7 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
         name: bad-form
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
           quota_per_game: 1

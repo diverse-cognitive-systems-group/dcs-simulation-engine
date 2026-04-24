@@ -56,6 +56,7 @@ class AssignmentStrategyConfig(BaseModel):
     seed: str | int | None = None
     pc_eligible_only: bool = False
     assignment_mode: Literal["auto", "player_choice"] = "auto"
+    require_assignment_completion: bool = True
 
     @field_validator("games")
     @classmethod

@@ -190,11 +190,13 @@ class ExperimentManager:
         before_forms = config.forms_for_phase(before_or_after="before")
         normalized_before_forms = cls.normalize_form_submissions(forms=before_forms, responses=responses)
         await cls.ensure_experiment_async(provider=provider, experiment_name=config.name)
-        assignment = await cls.get_or_create_assignment_async(
-            provider=provider,
-            experiment_name=config.name,
-            player=player_record,
-        )
+        assignment = None
+        if config.assignment_strategy.assignment_mode == "auto":
+            assignment = await cls.get_or_create_assignment_async(
+                provider=provider,
+                experiment_name=config.name,
+                player=player_record,
+            )
         if assignment is not None and config.assignment_strategy.assignment_mode == "auto":
             strategy = cls._strategy_for(config=config)
             if hasattr(strategy, "generate_remaining_assignments_async"):
@@ -275,8 +277,8 @@ class ExperimentManager:
             game=assignment.game_name,
             provider=provider,
             source=source,
-            pc_choice=assignment.character_hid,
-            npc_choice=None,
+            pc_choice=assignment.pc_hid,
+            npc_choice=assignment.npc_hid,
             player_id=player.id,
         )
         entry = registry.add(
@@ -539,7 +541,7 @@ class ExperimentManager:
         experiment_name: str,
         player: PlayerRecord,
     ) -> list[dict[str, str]]:
-        """Return eligible {game_name, character_hid} options for a player in player_choice mode."""
+        """Return eligible {game_name, pc_hid, npc_hid} options for a player in player_choice mode."""
         config = cls.get_experiment_config_cached(experiment_name)
         strategy = cls._strategy_for(config=config)
         get_eligible = getattr(strategy, "get_eligible_options_async", None)
@@ -555,25 +557,27 @@ class ExperimentManager:
         experiment_name: str,
         player: PlayerRecord,
         game_name: str,
-        character_hid: str,
+        pc_hid: str,
+        npc_hid: str,
     ) -> AssignmentRecord:
-        """Create a specific assignment for a player who selected game+character manually."""
+        """Create a specific assignment for a player who selected one explicit candidate."""
         config = cls.get_experiment_config_cached(experiment_name)
         eligible = await cls.get_eligible_options_async(
             provider=provider,
             experiment_name=experiment_name,
             player=player,
         )
-        eligible_set = {(opt["game_name"], opt["character_hid"]) for opt in eligible}
-        if (game_name, character_hid) not in eligible_set:
-            raise ValueError("The selected game and character are not available for assignment.")
+        eligible_set = {(opt["game_name"], opt["pc_hid"], opt["npc_hid"]) for opt in eligible}
+        if (game_name, pc_hid, npc_hid) not in eligible_set:
+            raise ValueError("The selected game, PC, and NPC are not available for assignment.")
         assignment = await maybe_await(
             provider.create_assignment(
                 assignment_doc={
                     MongoColumns.EXPERIMENT_NAME: config.name,
                     MongoColumns.PLAYER_ID: player.id,
                     MongoColumns.GAME_NAME: game_name,
-                    MongoColumns.CHARACTER_HID: character_hid,
+                    MongoColumns.PC_HID: pc_hid,
+                    MongoColumns.NPC_HID: npc_hid,
                     MongoColumns.STATUS: "assigned",
                     MongoColumns.FORM_RESPONSES: {},
                 },

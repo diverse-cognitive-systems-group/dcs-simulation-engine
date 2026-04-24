@@ -32,7 +32,6 @@ class MongoColumns:
     EVENT_ID = "event_id"
     GAME_NAME = "game_name"
     EXPERIMENT_NAME = "experiment_name"
-    CHARACTER_HID = "character_hid"
     ACTIVE_SESSION_ID = "active_session_id"
     FORM_RESPONSES = "form_responses"
     CONFIG_SNAPSHOT = "config_snapshot"

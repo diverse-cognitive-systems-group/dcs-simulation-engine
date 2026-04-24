@@ -1,8 +1,10 @@
 """Tests for ExperimentManager."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 
@@ -18,6 +20,12 @@ def _entry_form_payload() -> dict[str, dict[str, object]]:
             "technical_experience_details": "Research computing background",
         }
     }
+
+
+def _cache_config(config: ExperimentConfig):
+    original_cache = ExperimentManager._experiment_config_cache.copy()
+    ExperimentManager._experiment_config_cache = {ExperimentManager._cache_key(config.name): config}
+    return original_cache
 
 
 async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
@@ -165,7 +173,8 @@ async def test_progress_counts_completed_assignments_and_unique_players(async_mo
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_a.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -179,7 +188,8 @@ async def test_progress_counts_completed_assignments_and_unique_players(async_mo
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_b.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-b",
+            MongoColumns.PC_HID: "test-char-b",
+            MongoColumns.NPC_HID: "test-npc-b",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -225,7 +235,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_a.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -239,7 +250,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_b.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-b",
+            MongoColumns.PC_HID: "test-char-b",
+            MongoColumns.NPC_HID: "test-npc-b",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -254,7 +266,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_c.id,
             MongoColumns.GAME_NAME: "Foresight",
-            MongoColumns.CHARACTER_HID: "test-char-c",
+            MongoColumns.PC_HID: "test-char-c",
+            MongoColumns.NPC_HID: "test-npc-c",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -284,7 +297,8 @@ async def test_status_deduplicates_completed_players_per_game(async_mongo_provid
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -298,7 +312,8 @@ async def test_status_deduplicates_completed_players_per_game(async_mongo_provid
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-b",
+            MongoColumns.PC_HID: "test-char-b",
+            MongoColumns.NPC_HID: "test-npc-b",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -324,7 +339,8 @@ async def test_stopping_condition_reason_marks_assignment_completed(async_mongo_
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: "Goal Horizon",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -400,6 +416,76 @@ async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
 
     assert result is assignment
     strategy.get_or_create_assignment_async.assert_awaited_once()
+
+
+async def test_create_player_choice_assignment_persists_pc_and_npc(
+    monkeypatch: pytest.MonkeyPatch, async_mongo_provider, cached_usability_experiment
+) -> None:
+    """Player-choice assignment creation should persist the selected PC/NPC triple."""
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
+    monkeypatch.setattr(
+        ExperimentManager,
+        "get_eligible_options_async",
+        AsyncMock(return_value=[{"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-beta"}]),
+    )
+
+    assignment = await ExperimentManager.create_player_choice_assignment_async(
+        provider=async_mongo_provider,
+        experiment_name=cached_usability_experiment.name,
+        player=player,
+        game_name="Explore",
+        pc_hid="pc-alpha",
+        npc_hid="npc-beta",
+    )
+
+    assert assignment.pc_hid == "pc-alpha"
+    assert assignment.npc_hid == "npc-beta"
+
+
+async def test_require_assignment_completion_false_allows_new_assignment_after_interruption(
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """Interrupted assignments should stop blocking new work when completion gating is disabled."""
+    path = write_yaml(
+        "no-completion-gate.yaml",
+        """
+        name: no-completion-gate
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          assignment_mode: auto
+          require_assignment_completion: false
+          seed: no-completion-gate
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Gate"}})
+
+    try:
+        first = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assert first is not None
+        await async_mongo_provider.update_assignment_status(assignment_id=first.assignment_id, status="interrupted")
+
+        second = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert second is not None
+    assert second.assignment_id != first.assignment_id
 
 
 async def test_completed_assignment_reflected_in_player_state_after_multi_assignment_game(

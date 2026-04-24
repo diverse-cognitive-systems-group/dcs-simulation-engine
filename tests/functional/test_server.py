@@ -879,7 +879,8 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     assignment = SimpleNamespace(
         assignment_id="asg-1",
         game_name="Explore",
-        character_hid="pc-1",
+        pc_hid="pc-1",
+        npc_hid="npc-1",
         status="assigned",
     )
 
@@ -942,7 +943,8 @@ def test_experiment_before_play_submission_returns_assignment(
     assignment = SimpleNamespace(
         assignment_id="asg-2",
         game_name="Foresight",
-        character_hid="pc-2",
+        pc_hid="pc-2",
+        npc_hid="npc-2",
         status="assigned",
     )
 
@@ -960,7 +962,8 @@ def test_experiment_before_play_submission_returns_assignment(
     assert response.json()["assignment"] == {
         "assignment_id": "asg-2",
         "game_name": "Foresight",
-        "character_hid": "pc-2",
+        "pc_hid": "pc-2",
+        "npc_hid": "npc-2",
         "status": "assigned",
         "active_session_id": None,
         "needs_post_play": False,
@@ -1180,7 +1183,8 @@ def test_experiment_post_play_submission_persists_response(client: TestClient) -
     assignment = SimpleNamespace(
         assignment_id="asg-complete-1",
         game_name="Explore",
-        character_hid="pc-1",
+        pc_hid="pc-1",
+        npc_hid="npc-1",
         status="completed",
     )
 
@@ -1198,7 +1202,8 @@ def test_experiment_post_play_submission_persists_response(client: TestClient) -
     assert response.json() == {
         "assignment_id": "asg-complete-1",
         "game_name": "Explore",
-        "character_hid": "pc-1",
+        "pc_hid": "pc-1",
+        "npc_hid": "npc-1",
         "status": "completed",
         "active_session_id": None,
         "needs_post_play": False,

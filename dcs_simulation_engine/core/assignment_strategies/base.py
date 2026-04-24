@@ -1,12 +1,19 @@
 """Assignment strategy protocol for experiment workflows."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
 if TYPE_CHECKING:
     from dcs_simulation_engine.core.experiment_config import ExperimentConfig
     from dcs_simulation_engine.dal.base import AssignmentRecord, PlayerRecord
+
+
+class AssignmentCandidate(NamedTuple):
+    """One candidate assignment returned by a strategy."""
+
+    game_name: str
+    pc_hid: str
+    npc_hid: str
+    metadata: dict[str, Any] | None = None
 
 
 class AssignmentStrategy(Protocol):
@@ -25,6 +32,15 @@ class AssignmentStrategy(Protocol):
 
     async def compute_status_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
         """Return experiment status payload for the public API."""
+
+    async def list_candidate_assignments_async(
+        self,
+        *,
+        provider: Any,
+        config: "ExperimentConfig",
+        player: "PlayerRecord",
+    ) -> list[AssignmentCandidate]:
+        """Return candidate assignments for the player under the current strategy."""
 
     async def get_or_create_assignment_async(
         self,

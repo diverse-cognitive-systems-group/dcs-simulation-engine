@@ -56,7 +56,8 @@ def _assignment_summary(
     return ExperimentAssignmentSummary(
         assignment_id=assignment.assignment_id,
         game_name=assignment.game_name,
-        character_hid=assignment.character_hid,
+        pc_hid=assignment.pc_hid,
+        npc_hid=assignment.npc_hid,
         status=assignment.status,
         active_session_id=assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None,
         needs_post_play=assignment.assignment_id in (pending_post_play_ids or set()),
@@ -256,7 +257,10 @@ async def get_eligible_options(experiment_name: str, request: Request) -> Eligib
         player=player,
     )
     return EligibleAssignmentOptionsResponse(
-        options=[EligibleAssignmentOption(game_name=opt["game_name"], character_hid=opt["character_hid"]) for opt in options]
+        options=[
+            EligibleAssignmentOption(game_name=opt["game_name"], pc_hid=opt["pc_hid"], npc_hid=opt["npc_hid"])
+            for opt in options
+        ]
     )
 
 
@@ -280,7 +284,8 @@ async def select_assignment(
             experiment_name=experiment_name,
             player=player,
             game_name=body.game_name,
-            character_hid=body.character_hid,
+            pc_hid=body.pc_hid,
+            npc_hid=body.npc_hid,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

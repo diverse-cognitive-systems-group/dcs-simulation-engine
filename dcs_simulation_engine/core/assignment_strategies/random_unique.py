@@ -1,293 +1,91 @@
-"""Random unique assignment strategy implementation."""
-
-from __future__ import annotations
+"""Random unique game assignment strategy implementation."""
 
 import random
-from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from dcs_simulation_engine.core.session_manager import SessionManager
-from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.core.assignment_strategies.base import AssignmentCandidate
+from dcs_simulation_engine.core.assignment_strategies.common import CandidateAssignmentStrategy
 from dcs_simulation_engine.utils.async_utils import maybe_await
 
-if TYPE_CHECKING:
-    from dcs_simulation_engine.core.experiment_config import ExperimentConfig
-    from dcs_simulation_engine.dal.base import AssignmentRecord, PlayerRecord
 
-
-class RandomUniqueAssignmentStrategy:
+class RandomUniqueGameAssignmentStrategy(CandidateAssignmentStrategy):
     """Assign each player a deterministic random game without repeats."""
 
-    name = "random_unique"
+    name = "random_unique_game"
 
-    def validate_config(self, *, config: "ExperimentConfig") -> None:
-        """Validate the required knobs for the random-unique strategy."""
-        if not config.assignment_strategy.games:
-            raise ValueError("random_unique requires assignment_strategy.games")
-        if config.assignment_strategy.quota_per_game is None or config.assignment_strategy.quota_per_game <= 0:
-            raise ValueError("random_unique requires a positive quota_per_game")
-
+    def validate_config(self, *, config) -> None:
+        """Validate the legacy unique-game constraint for this strategy."""
+        super().validate_config(config=config)
         max_assignments = config.assignment_strategy.max_assignments_per_player
-        if max_assignments is not None and max_assignments <= 0:
-            raise ValueError("random_unique requires max_assignments_per_player to be positive")
         if max_assignments is not None and max_assignments > len(config.games):
-            raise ValueError("random_unique cannot assign more games per player than are listed in assignment_strategy.games")
-
-    def max_assignments_per_player(self, *, config: "ExperimentConfig") -> int:
-        """Return the configured max assignments, capped by the game list."""
-        configured = config.assignment_strategy.max_assignments_per_player
-        if configured is None:
-            return len(config.games)
-        return min(int(configured), len(config.games))
-
-    async def compute_progress_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
-        """Compute progress while closing the study on counted quota saturation."""
-        quota = int(config.assignment_strategy.quota_per_game or 0)
-        completed_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["completed"],
-        )
-        counted_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["in_progress", "completed"],
-        )
-
-        completed_total = sum(len(players) for players in completed_players_by_game.values())
-        return {
-            "total": quota * len(config.games),
-            "completed": completed_total,
-            "is_complete": all(len(counted_players_by_game.get(game_name, set())) >= quota for game_name in config.games),
-        }
-
-    async def compute_status_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
-        """Compute per-game counts with quota openness based on active plus finished players."""
-        quota = int(config.assignment_strategy.quota_per_game or 0)
-        completed_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["completed"],
-        )
-        in_progress_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["in_progress"],
-        )
-        counted_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["in_progress", "completed"],
-        )
-
-        per_game: dict[str, dict[str, int]] = {}
-        for game_name in config.games:
-            per_game[game_name] = {
-                "total": quota,
-                "completed": len(completed_players_by_game.get(game_name, set())),
-                "in_progress": len(in_progress_players_by_game.get(game_name, set())),
-            }
-
-        completed_total = sum(item["completed"] for item in per_game.values())
-        return {
-            "is_open": any(len(counted_players_by_game.get(game_name, set())) < quota for game_name in config.games),
-            "total": quota * len(config.games),
-            "completed": completed_total,
-            "per_game": per_game,
-        }
-
-    async def get_eligible_options_async(
-        self,
-        *,
-        provider: Any,
-        config: "ExperimentConfig",
-        player: "PlayerRecord",
-    ) -> list[dict[str, str]]:
-        """Return all eligible {game_name, character_hid} options for the player to choose from."""
-        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
-        completed_count = sum(1 for item in player_assignments if item.status == "completed")
-        if completed_count >= self.max_assignments_per_player(config=config):
-            return []
-
-        counted_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["in_progress", "completed"],
-        )
-        quota = int(config.assignment_strategy.quota_per_game or 0)
-        assigned_games = {item.game_name for item in player_assignments}
-        pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
-
-        options: list[dict[str, str]] = []
-        for game_name in config.games:
-            if game_name in assigned_games:
-                continue
-            if len(counted_players_by_game.get(game_name, set())) >= quota:
-                continue
-            game_config = SessionManager.get_game_config_cached(game_name)
-            get_valid = getattr(game_config, "get_valid_characters_async", None)
-            if get_valid is None:
-                valid_pcs, _ = await maybe_await(
-                    game_config.get_valid_characters(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only)
-                )
-            else:
-                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only))
-            for _, hid in valid_pcs:
-                options.append({"game_name": game_name, "character_hid": hid})
-        return options
-
-    async def get_or_create_assignment_async(
-        self,
-        *,
-        provider: Any,
-        config: "ExperimentConfig",
-        player: "PlayerRecord",
-    ) -> "AssignmentRecord | None":
-        """Reuse active work or create a new random unique assignment for a player."""
-        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
-        if active_assignment is not None:
-            return active_assignment
-
-        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
-        completed_count = sum(1 for item in player_assignments if item.status == "completed")
-        if completed_count >= self.max_assignments_per_player(config=config):
-            return None
-
-        counted_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["in_progress", "completed"],
-        )
-        quota = int(config.assignment_strategy.quota_per_game or 0)
-        assigned_games = {item.game_name for item in player_assignments}
-        eligible_games = [
-            game_name
-            for game_name in config.games
-            if game_name not in assigned_games and len(counted_players_by_game.get(game_name, set())) < quota
-        ]
-        if not eligible_games:
-            return None
-
-        game_rng = self._rng_for(config=config, player_id=player.id, salt="game")
-        game_candidates = list(eligible_games)
-        game_rng.shuffle(game_candidates)
-
-        for game_name in game_candidates:
-            game_config = SessionManager.get_game_config_cached(game_name)
-            pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
-            get_valid = getattr(game_config, "get_valid_characters_async", None)
-            if get_valid is None:
-                valid_pcs, _ = await maybe_await(
-                    game_config.get_valid_characters(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only)
-                )
-            else:
-                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only))
-
-            valid_pc_hids = [hid for _, hid in valid_pcs]
-            if not valid_pc_hids:
-                continue
-
-            pc_rng = self._rng_for(config=config, player_id=player.id, salt=f"pc:{game_name}")
-            character_hid = pc_rng.choice(valid_pc_hids)
-            return await maybe_await(
-                provider.create_assignment(
-                    assignment_doc={
-                        MongoColumns.EXPERIMENT_NAME: config.name,
-                        MongoColumns.PLAYER_ID: player.id,
-                        MongoColumns.GAME_NAME: game_name,
-                        MongoColumns.CHARACTER_HID: character_hid,
-                        MongoColumns.STATUS: "assigned",
-                        MongoColumns.FORM_RESPONSES: {},
-                    }
-                )
+            raise ValueError(
+                "random_unique_game cannot assign more games per player than are listed in assignment_strategy.games"
             )
 
-        return None
+    async def list_candidate_assignments_async(
+        self,
+        *,
+        provider: Any,
+        config,
+        player,
+    ) -> list[AssignmentCandidate]:
+        """Return candidates grouped by unassigned games in deterministic random order."""
+        player_assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
+        assigned_games = {assignment.game_name for assignment in player_assignments}
+        pool = await self._build_candidate_pool(provider=provider, config=config, player=player)
+        eligible = [candidate for candidate in pool if candidate.game_name not in assigned_games]
+        if not eligible:
+            return []
+
+        game_rng = self._rng_for(config=config, player_id=player.id, salt="game")
+        grouped: dict[str, list[AssignmentCandidate]] = {}
+        for candidate in eligible:
+            grouped.setdefault(candidate.game_name, []).append(candidate)
+
+        game_names = list(grouped)
+        game_rng.shuffle(game_names)
+        ordered: list[AssignmentCandidate] = []
+        for game_name in game_names:
+            candidates = list(grouped[game_name])
+            selection_rng = self._rng_for(config=config, player_id=player.id, salt=f"combo:{game_name}")
+            selection_rng.shuffle(candidates)
+            ordered.extend(candidates)
+        return ordered
 
     async def generate_remaining_assignments_async(
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
-        player: "PlayerRecord",
-    ) -> "list[AssignmentRecord]":
-        """Pre-generate all remaining assignments up to max_assignments_per_player."""
-        max_n = self.max_assignments_per_player(config=config)
-        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
-        if len(player_assignments) >= max_n:
+        config,
+        player,
+    ) -> list:
+        """Pre-generate remaining unique-game assignments for legacy tests."""
+        if config.assignment_strategy.assignment_mode != "auto":
             return []
 
-        assigned_games = {item.game_name for item in player_assignments}
-        counted_players_by_game = await self._players_by_game(
-            provider=provider,
-            experiment_name=config.name,
-            statuses=["in_progress", "completed"],
-        )
-        quota = int(config.assignment_strategy.quota_per_game or 0)
-        eligible_games = [
-            game_name
-            for game_name in config.games
-            if game_name not in assigned_games and len(counted_players_by_game.get(game_name, set())) < quota
-        ]
-        if not eligible_games:
+        existing_assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
+        if len(existing_assignments) >= self.max_assignments_per_player(config=config):
             return []
 
-        game_rng = self._rng_for(config=config, player_id=player.id, salt="game")
-        game_candidates = list(eligible_games)
-        game_rng.shuffle(game_candidates)
-
-        needed = max_n - len(player_assignments)
-        pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
-        created: list[AssignmentRecord] = []
-        for game_name in game_candidates:
-            if len(created) >= needed:
+        created = []
+        assigned_games = {assignment.game_name for assignment in existing_assignments}
+        candidates = await self.list_candidate_assignments_async(provider=provider, config=config, player=player)
+        for candidate in candidates:
+            if len(existing_assignments) + len(created) >= self.max_assignments_per_player(config=config):
                 break
-            game_config = SessionManager.get_game_config_cached(game_name)
-            get_valid = getattr(game_config, "get_valid_characters_async", None)
-            if get_valid is None:
-                valid_pcs, _ = await maybe_await(
-                    game_config.get_valid_characters(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only)
-                )
-            else:
-                valid_pcs, _ = await maybe_await(get_valid(player_id=player.id, provider=provider, pc_eligible_only=pc_eligible_only))
-            valid_pc_hids = [hid for _, hid in valid_pcs]
-            if not valid_pc_hids:
+            if candidate.game_name in assigned_games:
                 continue
-            pc_rng = self._rng_for(config=config, player_id=player.id, salt=f"pc:{game_name}")
-            character_hid = pc_rng.choice(valid_pc_hids)
             assignment = await maybe_await(
                 provider.create_assignment(
-                    assignment_doc={
-                        MongoColumns.EXPERIMENT_NAME: config.name,
-                        MongoColumns.PLAYER_ID: player.id,
-                        MongoColumns.GAME_NAME: game_name,
-                        MongoColumns.CHARACTER_HID: character_hid,
-                        MongoColumns.STATUS: "assigned",
-                        MongoColumns.FORM_RESPONSES: {},
-                    },
+                    assignment_doc=self._assignment_doc_for_candidate(config=config, player=player, candidate=candidate),
                     allow_concurrent=True,
                 )
             )
             if assignment is not None:
+                assigned_games.add(candidate.game_name)
                 created.append(assignment)
-
         return created
 
-    async def _players_by_game(
-        self,
-        *,
-        provider: Any,
-        experiment_name: str,
-        statuses: list[str],
-    ) -> dict[str, set[str]]:
-        """Group unique player ids by game for the requested assignment states."""
-        assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, statuses=statuses))
-        players_by_game: dict[str, set[str]] = defaultdict(set)
-        for assignment in assignments:
-            players_by_game[assignment.game_name].add(assignment.player_id)
-        return players_by_game
-
-    def _rng_for(self, *, config: "ExperimentConfig", player_id: str, salt: str) -> random.Random:
-        """Derive a deterministic RNG for one player and selection phase."""
+    def _rng_for(self, *, config, player_id: str, salt: str) -> random.Random:
         seed_value = config.assignment_strategy.seed or config.name
         return random.Random(f"{seed_value}:{player_id}:{salt}")
