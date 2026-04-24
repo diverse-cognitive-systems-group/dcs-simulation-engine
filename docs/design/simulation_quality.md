@@ -160,15 +160,15 @@ Items worth flagging for supervisory review:
 
 ## 9. File reference
 
-- Core classes: [`dcs_simulation_engine/games/ai_client.py`](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/blob/main/dcs_simulation_engine/games/ai_client.py)
+- Core classes: `dcs_simulation_engine/games/ai_client.py`
     - `SimulatorValidationFailure`, `SimulatorComponentResult`, `SimulatorTurnResult`, `ParsedSimulatorResponse` — result types
     - `SimulatorClient` — single integration point (opener, step, player-input + simulator-response validation, updater retry, recorder wiring)
     - `ScorerClient` — one-shot stateless scorer for post-session evaluation
-- Prompt templates and validator lists: [`dcs_simulation_engine/games/prompts.py`](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/blob/main/dcs_simulation_engine/games/prompts.py)
-    - Symmetric rule templates (PC-side / NPC-side pairs, §5):
+- Prompt templates and validator lists: `dcs_simulation_engine/games/prompts.py`
+    - Symmetric rule templates:
         - Action form: `VALID_PC_ACTION`, `VALID_NPC_ACTION`
         - Ability plausibility: `VALID_PC_ABILITY`, `VALID_NPC_ABILITY`
         - Authority boundary: `VALID_PLAYER_AUTHORITY_BOUNDARY`, `VALID_AUTHORITY_BOUNDARY_SIMULATOR`
-    - Simulator-only rule templates (§6): `VALID_PERCEPTION_BOUNDARY`, `VALID_ADJUDICATION`, `VALID_GAME_ALIGNMENT`
-    - Default sets: `DEFAULT_PLAYER_TURN_VALIDATORS` (PC-side of §5), `DEFAULT_SIMULATOR_TURN_VALIDATORS` (NPC-side of §5 plus §6)
+    - Simulator-only rule templates: `VALID_PERCEPTION_BOUNDARY`, `VALID_ADJUDICATION`, `VALID_GAME_ALIGNMENT`
+    - Default sets: `DEFAULT_PLAYER_TURN_VALIDATORS`, `DEFAULT_SIMULATOR_TURN_VALIDATORS`
     - Prompt builders: `build_player_validator_prompt`, `build_simulator_validator_prompt`, `build_updater_prompt`, `build_opener_prompt`, `build_scorer_prompt`
