@@ -16,6 +16,8 @@ class RandomUniqueGameAssignmentStrategy(CandidateAssignmentStrategy):
     def validate_config(self, *, config) -> None:
         """Validate the legacy unique-game constraint for this strategy."""
         super().validate_config(config=config)
+        if config.assignment_strategy.quota_per_game is None or config.assignment_strategy.quota_per_game <= 0:
+            raise ValueError("random_unique_game requires a positive quota_per_game")
         max_assignments = config.assignment_strategy.max_assignments_per_player
         if max_assignments is not None and max_assignments > len(config.games):
             raise ValueError(
@@ -60,9 +62,6 @@ class RandomUniqueGameAssignmentStrategy(CandidateAssignmentStrategy):
         player,
     ) -> list:
         """Pre-generate remaining unique-game assignments for legacy tests."""
-        if config.assignment_strategy.assignment_mode != "auto":
-            return []
-
         existing_assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
         if len(existing_assignments) >= self.max_assignments_per_player(config=config):
             return []

@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from dcs_simulation_engine.core.assignment_strategies.base import AssignmentCandidate
 from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
@@ -397,14 +398,19 @@ async def test_compute_status_dispatches_to_assignment_strategy(
     strategy.compute_status_async.assert_awaited_once()
 
 
-async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
+async def test_get_or_create_assignment_uses_first_strategy_candidate(
     monkeypatch: pytest.MonkeyPatch, async_mongo_provider, cached_usability_experiment
 ) -> None:
-    """ExperimentManager should delegate assignment creation to the configured strategy."""
+    """ExperimentManager should create the first ordered strategy candidate when choice is disabled."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Delegated"}})
-    assignment = object()
     strategy = MagicMock()
-    strategy.get_or_create_assignment_async = AsyncMock(return_value=assignment)
+    strategy.max_assignments_per_player.return_value = 1
+    strategy.list_candidate_assignments_async = AsyncMock(
+        return_value=[
+            AssignmentCandidate("Explore", "pc-alpha", "npc-beta"),
+            AssignmentCandidate("Foresight", "pc-gamma", "npc-delta"),
+        ]
+    )
 
     monkeypatch.setattr("dcs_simulation_engine.core.experiment_manager.get_assignment_strategy", lambda _name: strategy)
 
@@ -414,14 +420,34 @@ async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
         player=player,
     )
 
-    assert result is assignment
-    strategy.get_or_create_assignment_async.assert_awaited_once()
+    assert result is not None
+    assert result.game_name == "Explore"
+    assert result.pc_hid == "pc-alpha"
+    assert result.npc_hid == "npc-beta"
+    strategy.list_candidate_assignments_async.assert_awaited_once()
 
 
 async def test_create_player_choice_assignment_persists_pc_and_npc(
-    monkeypatch: pytest.MonkeyPatch, async_mongo_provider, cached_usability_experiment
+    monkeypatch: pytest.MonkeyPatch, async_mongo_provider, write_yaml
 ) -> None:
     """Player-choice assignment creation should persist the selected PC/NPC triple."""
+    path = write_yaml(
+        "choice-enabled.yaml",
+        """
+        name: choice-enabled
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          allow_choice_if_multiple: true
+          seed: choice-enabled
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
     monkeypatch.setattr(
         ExperimentManager,
@@ -429,20 +455,168 @@ async def test_create_player_choice_assignment_persists_pc_and_npc(
         AsyncMock(return_value=[{"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-beta"}]),
     )
 
-    assignment = await ExperimentManager.create_player_choice_assignment_async(
-        provider=async_mongo_provider,
-        experiment_name=cached_usability_experiment.name,
-        player=player,
-        game_name="Explore",
-        pc_hid="pc-alpha",
-        npc_hid="npc-beta",
-    )
+    try:
+        assignment = await ExperimentManager.create_player_choice_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+            game_name="Explore",
+            pc_hid="pc-alpha",
+            npc_hid="npc-beta",
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
 
     assert assignment.pc_hid == "pc-alpha"
     assert assignment.npc_hid == "npc-beta"
 
 
-async def test_require_assignment_completion_false_allows_new_assignment_after_interruption(
+async def test_allow_choice_if_multiple_returns_options_without_creating_assignment(
+    monkeypatch: pytest.MonkeyPatch,
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """When multiple choice is enabled, multiple candidates should be exposed but not persisted."""
+    path = write_yaml(
+        "choice-options.yaml",
+        """
+        name: choice-options
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          allow_choice_if_multiple: true
+          seed: choice-options
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
+    strategy = MagicMock()
+    strategy.max_assignments_per_player.return_value = 2
+    strategy.list_candidate_assignments_async = AsyncMock(
+        return_value=[
+            AssignmentCandidate("Explore", "pc-alpha", "npc-one"),
+            AssignmentCandidate("Explore", "pc-alpha", "npc-two"),
+        ]
+    )
+    monkeypatch.setattr("dcs_simulation_engine.core.experiment_manager.get_assignment_strategy", lambda _name: strategy)
+
+    try:
+        assignment, options = await ExperimentManager.resolve_assignment_state_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assignments = await async_mongo_provider.list_assignments(experiment_name=config.name, player_id=player.id)
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert assignment is None
+    assert options == [
+        {"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-one"},
+        {"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-two"},
+    ]
+    assert assignments == []
+
+
+async def test_invalid_player_choice_triplet_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """Selection must match the current backend-derived option set."""
+    path = write_yaml(
+        "choice-invalid.yaml",
+        """
+        name: choice-invalid
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          allow_choice_if_multiple: true
+          seed: choice-invalid
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
+    monkeypatch.setattr(
+        ExperimentManager,
+        "get_eligible_options_async",
+        AsyncMock(return_value=[{"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-one"}]),
+    )
+
+    try:
+        with pytest.raises(ValueError, match="not available"):
+            await ExperimentManager.create_player_choice_assignment_async(
+                provider=async_mongo_provider,
+                experiment_name=config.name,
+                player=player,
+                game_name="Explore",
+                pc_hid="pc-alpha",
+                npc_hid="npc-two",
+            )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+
+async def test_require_completion_false_allows_new_assignment_after_live_assignment(
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """Live assignments should not block new work when completion gating is disabled."""
+    path = write_yaml(
+        "no-completion-gate-live.yaml",
+        """
+        name: no-completion-gate-live
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          require_completion: false
+          seed: no-completion-gate-live
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Gate"}})
+
+    try:
+        first = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assert first is not None
+        await async_mongo_provider.update_assignment_status(
+            assignment_id=first.assignment_id,
+            status="in_progress",
+            active_session_id="session-live",
+        )
+
+        second = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert second is not None
+    assert second.assignment_id != first.assignment_id
+
+
+async def test_require_completion_false_allows_new_assignment_after_interruption(
     async_mongo_provider,
     write_yaml,
 ) -> None:
@@ -458,8 +632,7 @@ async def test_require_assignment_completion_false_allows_new_assignment_after_i
             - Explore
           quota_per_game: 5
           max_assignments_per_player: 2
-          assignment_mode: auto
-          require_assignment_completion: false
+          require_completion: false
           seed: no-completion-gate
         """,
     )
@@ -491,14 +664,10 @@ async def test_require_assignment_completion_false_allows_new_assignment_after_i
 async def test_completed_assignment_reflected_in_player_state_after_multi_assignment_game(
     async_mongo_provider, cached_multi_assignment_experiment
 ) -> None:
-    """After completing one game in a 3-assignment experiment, get_player_state_async must.
-
-    Return one completed assignment and two assigned ones — confirming that progress (1 of 3)
-    is correctly reflected for the player.
-    """
+    """After completing one game in a 3-assignment experiment, state should expose the next one."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Progress Tester"}})
 
-    # Register: creates assignment 1 and pre-generates assignments 2 & 3.
+    # Register: creates the first assignment.
     await ExperimentManager.submit_before_play_async(
         provider=async_mongo_provider,
         experiment_name=cached_multi_assignment_experiment.name,
@@ -514,7 +683,7 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
     )
     active = state_before["active_assignment"]
     assert active is not None
-    assert len(state_before["assignments"]) == 3, "All 3 assignments should be pre-generated"
+    assert len(state_before["assignments"]) == 1
 
     await async_mongo_provider.update_assignment_status(
         assignment_id=active.assignment_id,
@@ -545,7 +714,7 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
 
     statuses = [a.status for a in state_after["assignments"]]
     completed_count = statuses.count("completed")
-    assert len(state_after["assignments"]) == 3, "All 3 assignments must still be present"
+    assert len(state_after["assignments"]) == 2
     assert completed_count == 1, f"Expected 1 completed assignment, got {completed_count} — statuses: {statuses}"
     assert state_after["has_finished_experiment"] is False
     assert state_after["active_assignment"] is not None

@@ -4,9 +4,11 @@
  * DCS Server
  * OpenAPI spec version: 0.1.0
  */
+import type { EligibleAssignmentOption } from './eligibleAssignmentOption';
 import type { ExperimentAssignmentSummary } from './experimentAssignmentSummary';
 import type { ExperimentProgressResponse } from './experimentProgressResponse';
 import type { ExperimentSetupResponseFormsItem } from './experimentSetupResponseFormsItem';
+import type { NextAssignmentState } from './nextAssignmentState';
 
 /**
  * Setup payload for the experiment landing page.
@@ -21,7 +23,11 @@ export interface ExperimentSetupResponse {
   pending_post_play?: boolean;
   before_play_complete?: boolean;
   assignment_completed?: boolean;
-  assignment_mode?: string;
+  next_assignment?: NextAssignmentState | null;
+  allow_choice_if_multiple?: boolean;
+  require_completion?: boolean;
+  has_submitted_before_forms?: boolean;
+  eligible_assignment_options?: EligibleAssignmentOption[];
   assignments?: ExperimentAssignmentSummary[];
   resumable_session_id?: string | null;
 }

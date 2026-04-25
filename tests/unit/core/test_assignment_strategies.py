@@ -5,7 +5,6 @@ from typing import Any
 
 import pytest
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
-from dcs_simulation_engine.core.assignment_strategies.common import CandidateAssignmentStrategy
 from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
@@ -28,7 +27,7 @@ def _load_strategy_config(
     strategy: str,
     name: str,
     games: list[str] | None = None,
-    assignment_mode: str = "auto",
+    allow_choice_if_multiple: bool = False,
     max_assignments_per_player: int = 3,
 ) -> ExperimentConfig:
     games_yaml = "\n".join(f"    - {game}" for game in (games or ["Explore", "Foresight"]))
@@ -44,7 +43,7 @@ def _load_strategy_config(
                 games_yaml,
                 "  quota_per_game: 10",
                 f"  max_assignments_per_player: {max_assignments_per_player}",
-                f"  assignment_mode: {assignment_mode}",
+                f"  allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
                 f"  seed: {name}-seed",
             ]
         )
@@ -98,11 +97,7 @@ def _patch_game_configs(monkeypatch: pytest.MonkeyPatch, game_map: dict[str, tup
 
 
 def _patch_auto_pick_first(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        CandidateAssignmentStrategy,
-        "_select_auto_candidate",
-        lambda self, *, config, player, candidates: candidates[0],
-    )
+    _ = monkeypatch
 
 
 async def _create_assignment(

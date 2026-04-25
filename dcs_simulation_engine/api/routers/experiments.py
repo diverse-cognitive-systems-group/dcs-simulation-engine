@@ -22,6 +22,7 @@ from dcs_simulation_engine.api.models import (
     ExperimentSessionRequest,
     ExperimentSetupResponse,
     ExperimentStatusResponse,
+    NextAssignmentState,
     SelectAssignmentRequest,
 )
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
@@ -45,7 +46,8 @@ def _require_allowed_experiment(*, experiment_name: str, request: Request) -> No
         )
 
 
-def _assignment_summary(
+async def _assignment_summary(
+    provider,
     assignment,
     *,
     pending_post_play_ids: set[str] | None = None,
@@ -53,6 +55,12 @@ def _assignment_summary(
     if assignment is None:
         return None
     assignment_data = getattr(assignment, "data", {}) or {}
+    metadata = await ExperimentManager.assignment_display_metadata_async(
+        provider=provider,
+        game_name=assignment.game_name,
+        pc_hid=assignment.pc_hid,
+        npc_hid=assignment.npc_hid,
+    )
     return ExperimentAssignmentSummary(
         assignment_id=assignment.assignment_id,
         game_name=assignment.game_name,
@@ -61,7 +69,68 @@ def _assignment_summary(
         status=assignment.status,
         active_session_id=assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None,
         needs_post_play=assignment.assignment_id in (pending_post_play_ids or set()),
+        **metadata,
     )
+
+
+async def _assignment_summaries(
+    provider,
+    assignments,
+    *,
+    pending_post_play_ids: set[str] | None = None,
+) -> list[ExperimentAssignmentSummary]:
+    summaries = []
+    for assignment in assignments:
+        summary = await _assignment_summary(provider, assignment, pending_post_play_ids=pending_post_play_ids)
+        if summary is not None:
+            summaries.append(summary)
+    return summaries
+
+
+async def _eligible_assignment_options(provider, options) -> list[EligibleAssignmentOption]:
+    enriched = []
+    for option in options:
+        item = await ExperimentManager.enrich_assignment_option_async(provider=provider, option=option)
+        enriched.append(EligibleAssignmentOption(**item))
+    return enriched
+
+
+async def _next_assignment_state(
+    provider,
+    *,
+    current_assignment,
+    eligible_options,
+    pending_post_play: bool,
+    assignment_completed: bool,
+    is_open: bool,
+    has_submitted_before_forms: bool,
+    pending_post_play_ids: set[str] | None = None,
+) -> NextAssignmentState:
+    if pending_post_play:
+        return NextAssignmentState(mode="blocked", reason="pending_post_play")
+    if current_assignment is not None:
+        summary = await _assignment_summary(
+            provider,
+            current_assignment,
+            pending_post_play_ids=pending_post_play_ids,
+        )
+        reason = current_assignment.status
+        if current_assignment.status == "assigned":
+            reason = "locked"
+        return NextAssignmentState(mode="locked", reason=reason, assignment=summary)
+    if eligible_options:
+        return NextAssignmentState(
+            mode="choice",
+            reason="choice_allowed",
+            options=await _eligible_assignment_options(provider, eligible_options),
+        )
+    if assignment_completed:
+        return NextAssignmentState(mode="none", reason="complete")
+    if not is_open:
+        return NextAssignmentState(mode="none", reason="quota_closed")
+    if not has_submitted_before_forms:
+        return NextAssignmentState(mode="blocked", reason="before_forms")
+    return NextAssignmentState(mode="none", reason="unavailable")
 
 
 def _progress_response(progress: dict) -> ExperimentProgressResponse:
@@ -109,6 +178,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
     pending_post_play_ids = set(player_state.get("pending_post_play_ids", []))
     pending_post_play = bool(pending_post_play_ids)
     assignment_completed = bool(player_state["has_finished_experiment"])
+    eligible_options = player_state.get("eligible_assignment_options", [])
 
     # Surface resumable_session_id so the frontend can show a Resume CTA.
     resumable_session_id: str | None = None
@@ -117,18 +187,41 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         resumable_session_id = current_assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None
 
     progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=config.name)
+    is_open = not progress["is_complete"]
+    has_submitted_before_forms = bool(player_state.get("has_submitted_before_forms"))
     return ExperimentSetupResponse(
         experiment_name=config.name,
         description=config.description,
-        is_open=not progress["is_complete"],
+        is_open=is_open,
         forms=[form.model_dump(mode="json") for form in config.forms],
         progress=_progress_response(progress),
-        current_assignment=_assignment_summary(current_assignment, pending_post_play_ids=pending_post_play_ids),
+        current_assignment=await _assignment_summary(
+            provider,
+            current_assignment,
+            pending_post_play_ids=pending_post_play_ids,
+        ),
         pending_post_play=pending_post_play,
         before_play_complete=bool(player_state["has_submitted_before_forms"]),
         assignment_completed=assignment_completed,
-        assignment_mode=config.assignment_strategy.assignment_mode,
-        assignments=[_assignment_summary(a, pending_post_play_ids=pending_post_play_ids) for a in player_state.get("assignments", [])],
+        next_assignment=await _next_assignment_state(
+            provider,
+            current_assignment=current_assignment,
+            eligible_options=eligible_options,
+            pending_post_play=pending_post_play,
+            assignment_completed=assignment_completed,
+            is_open=is_open,
+            has_submitted_before_forms=has_submitted_before_forms,
+            pending_post_play_ids=pending_post_play_ids,
+        ),
+        allow_choice_if_multiple=config.assignment_strategy.allow_choice_if_multiple,
+        require_completion=config.assignment_strategy.require_completion,
+        has_submitted_before_forms=has_submitted_before_forms,
+        eligible_assignment_options=await _eligible_assignment_options(provider, eligible_options),
+        assignments=await _assignment_summaries(
+            provider,
+            player_state.get("assignments", []),
+            pending_post_play_ids=pending_post_play_ids,
+        ),
         resumable_session_id=resumable_session_id,
     )
 
@@ -157,7 +250,7 @@ async def register_experiment_player(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return ExperimentPlayerResponse(assignment=_assignment_summary(assignment))
+    return ExperimentPlayerResponse(assignment=await _assignment_summary(provider, assignment))
 
 
 @router.post("/{experiment_name}/sessions", response_model=CreateGameResponse)
@@ -223,7 +316,7 @@ async def submit_experiment_post_play(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return _assignment_summary(assignment)
+    return await _assignment_summary(provider, assignment)
 
 
 @router.get("/{experiment_name}/progress", response_model=ExperimentProgressResponse)
@@ -243,7 +336,7 @@ async def experiment_progress(experiment_name: str, request: Request) -> Experim
 
 @router.get("/{experiment_name}/eligible-options", response_model=EligibleAssignmentOptionsResponse)
 async def get_eligible_options(experiment_name: str, request: Request) -> EligibleAssignmentOptionsResponse:
-    """Return eligible game/character pairs for the authenticated player in player_choice mode."""
+    """Return eligible game/PC/NPC triplets for the authenticated player."""
     require_standard_mode_from_request(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
@@ -258,8 +351,8 @@ async def get_eligible_options(experiment_name: str, request: Request) -> Eligib
     )
     return EligibleAssignmentOptionsResponse(
         options=[
-            EligibleAssignmentOption(game_name=opt["game_name"], pc_hid=opt["pc_hid"], npc_hid=opt["npc_hid"])
-            for opt in options
+            option
+            for option in await _eligible_assignment_options(provider, options)
         ]
     )
 
@@ -270,7 +363,7 @@ async def select_assignment(
     body: SelectAssignmentRequest,
     request: Request,
 ) -> ExperimentAssignmentSummary:
-    """Create an assignment for the authenticated player based on their explicit game/character selection."""
+    """Create an assignment for the authenticated player based on their explicit triplet selection."""
     require_standard_mode_from_request(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
@@ -289,7 +382,7 @@ async def select_assignment(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _assignment_summary(assignment)
+    return await _assignment_summary(provider, assignment)
 
 
 @router.get("/{experiment_name}/status", response_model=ExperimentStatusResponse)

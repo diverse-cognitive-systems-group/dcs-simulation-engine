@@ -14,6 +14,8 @@ async def test_load_valid_usability_experiment_config(usability_experiment_confi
     assert config.assignment_strategy.strategy == "random_unique_game"
     assert config.assignment_strategy.quota_per_game == 5
     assert config.assignment_strategy.max_assignments_per_player == 1
+    assert config.assignment_strategy.allow_choice_if_multiple is False
+    assert config.assignment_strategy.require_completion is True
     assert len(config.games) == 4
     assert [form.name for form in config.forms] == ["intake", "usability_feedback"]
 
@@ -55,6 +57,28 @@ async def test_invalid_game_name_fails(write_yaml) -> None:
     )
 
     with pytest.raises(ValueError, match="Unknown game reference"):
+        ExperimentConfig.load(path)
+
+
+async def test_removed_assignment_policy_fields_fail(write_yaml) -> None:
+    """Configs should use require_completion and allow_choice_if_multiple."""
+    path = write_yaml(
+        "old-policy-fields.yaml",
+        """
+        name: old-policy-fields
+        description: Broken
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+          assignment_mode: player_choice
+          require_assignment_completion: false
+        """,
+    )
+
+    with pytest.raises(ValueError, match="allow_choice_if_multiple and require_completion"):
         ExperimentConfig.load(path)
 
 

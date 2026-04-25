@@ -5,14 +5,12 @@ condition: learning
 assignment_strategy:
   seed: 43 # for reproducibility of random assignment
   # use default random_unique_game strategy
-  strategy: random_unique_game
+  strategy: full_character_access
   games:
     - Infer Intent
     - Goal Horizon
-  quota_per_game: 3 # requires X unique players per game
-  max_assignments_per_player: 2 # allows each player to play up to X games
-  pc_eligible_only: true
-  assignment_mode: auto
+  allow_choice_if_multiple: true
+  require_completion: false
 forms:
   - name: intake
     before_or_after: before # "before" | "after"

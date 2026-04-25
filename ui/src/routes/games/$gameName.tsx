@@ -1,4 +1,4 @@
-// Game setup page at /games/:gameName. Lets the player choose a PC and NPC,
+// Game setup page at /games/:gameName. Lets the player choose player and simulator characters,
 // then POSTs to create a session and navigates to the play view.
 
 import { useQuery } from '@tanstack/react-query'
@@ -311,10 +311,10 @@ function GameSetupPage() {
 
           {npcs.length > 0 && (
             <div className="space-y-2">
-              <Label>Non-Player Character</Label>
+              <Label>Simulator Character</Label>
               <Select value={resolvedNpc} onValueChange={(v) => setNpcChoice(v ?? '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose an NPC" />
+                  <SelectValue placeholder="Choose a simulator character" />
                 </SelectTrigger>
                 <SelectContent>
                   {npcs.map((c) => (
