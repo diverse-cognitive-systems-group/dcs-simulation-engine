@@ -2,13 +2,14 @@
 
 ## Research Questions
 
-**Central Question:** Does the diverse cognitive systems simulation engine (DCS-SE) possess the capacity of supporting the training of open-ended systems (e.g., large-language models) for the purpose of the development of engagement strategies which promote meaningful interaction with non-standard normative forms of bodies and intelligence?
+**Central Question:** Does the diverse cognitive systems simulation engine (DCS-SE) possess the capacity to support the training of open-ended systems (e.g., large language models) for the purpose of developing engagement strategies that promote meaningful interaction with non-normative forms of bodies and intelligence?
 
 **Additional Questions:**
+
 1. Can DCS-SE produce a fitness signal stable enough to drive directed search?
 2. How many interactions does meaningful improvement require, and does that budget scale tractably with cognitive-system complexity?
 3. Do converged strategies share structural features across different simulated cognitive systems, or is each strategy idiosyncratic to its target?
-4. Do strategies evolved against one simulated system transfer to related ones, and where does transfer break? 
+4. Do strategies evolved against one simulated system transfer to related ones, and where does transfer break?
 
 ## Experimental Design
 
@@ -20,35 +21,34 @@ Evolutionary search is particularly well suited for discrete and non-differentia
 
 **Purpose of OpenEvolve**
 
-The central question is whether DCS-SE can support training open-ended systems — large language models in particular — to develop engagement strategies that promote meaningful interaction with non-standard normative forms of bodies and intelligence. Answering this affirmatively requires more than demonstrating that DCS-SE can host interactions; it requires showing that the platform can close the loop between interaction and learning, producing engagement strategies that improve against a grounded evaluation signal. OpenEvolve is one such mechanism that closes this loop.
+The central question is whether DCS-SE can support training open-ended systems — large language models in particular — to develop engagement strategies that promote meaningful interaction with non-normative forms of bodies and intelligence. Answering this affirmatively requires more than demonstrating that DCS-SE can host interactions; it requires showing that the platform can close the loop between interaction and learning, producing engagement strategies that improve against a grounded evaluation signal. OpenEvolve is one such mechanism that closes this loop.
 
-The engagement strategy is a per-game system prompt that conditions an LLM-as-PC toward a simulated cognitive system whose configuration may diverge sharply from any normative baseline. There is no closed-form derivation of a "good" strategy for engaging with such systems: coordination with divergent cognitive configurations is itself asymmetric, since normative systems have limited practice engaging with non-normative ones. 
+The engagement strategy is a per-game system prompt that conditions an LLM-as-PC toward a simulated cognitive system whose configuration may diverge sharply from any normative baseline. There is no closed-form derivation of a "good" strategy for engaging with such systems: coordination with divergent cognitive configurations is itself asymmetric, since normative systems have limited practice engaging with non-normative ones.
 
 OpenEvolve reframes engagement strategy authoring as search rather than specification, which matches the actual epistemic situation: the right strategy is not known a priori and must be discovered through interaction. DCS-SE already produces the signal required to drive such a search. Structured measures of in-character fidelity, rule-following fidelity, and narrative coherence — combined with scope-bounded narration and expert-calibrated rubrics — yield per-interaction judgments that can be aggregated into a replayable fitness score. An evolutionary loop consumes this signal directly, without requiring new evaluation infrastructure, so candidate strategies are optimized against the same criteria the platform already commits to elsewhere. The capacity to support training is therefore not a hypothetical extension but a direct consequence of infrastructure already in place.
 
 The method is also philosophically aligned with how representational breakdown is already treated: as design-relevant information rather than methodological failure. OpenEvolve treats failed candidates the same way — they shape the population rather than being discarded. The implication is concrete: high-fitness strategies map the tractable region of engagement for a given LLM-as-PC / simulated-system pairing, while failure modes that resist optimization across generations are themselves evidence about where the LLM-as-PC's representational scope ends. That is exactly the kind of boundary information the broader research program is set up to consume.
 
-Beyond these alignments, OpenEvolve produces natural-language strategy documents rather than opaque weight updates. These artifacts are inspectable, and comparable across simulated systems and across runs. The converged population becomes a first-class research object: it surfaces which engagement patterns generalize, which are specific to particular cognitive configurations, and where researcher-mediated interpretation was masking tractable structure that automated search can recover. Together, these properties make OpenEvolve a direct instrument for answering the central question — it turns DCS-SE from a platform that hosts interaction into one that demonstrably supports the development of engagement strategies through it.
+Beyond these alignments, OpenEvolve produces natural-language strategy documents rather than opaque weight updates. These artifacts are inspectable and comparable across simulated systems and across runs. The converged population becomes a first-class research object: it surfaces which engagement patterns generalize, which are specific to particular cognitive configurations, and where researcher-mediated interpretation was masking tractable structure that automated search can recover. Together, these properties make OpenEvolve a direct instrument for answering the central question — it turns DCS-SE from a platform that hosts interaction into one that demonstrably supports the development of engagement strategies through it.
 
 **OpenEvolve Integration**
 
 OpenEvolve mutates a plain-text PC system prompt; for each candidate, a scenario evaluator spins up a real game against the running dcs-simulation-engine over HTTP + WebSocket, plays it with that prompt as the player-character's "brain," and feeds the engine's own final score back as the evolutionary fitness.
 
 The four-layer view:
-1. What gets evolved: initial_prompt.txt — a plain text file (no # EVOLVE-BLOCK markers; the entire file is the mutation target). It's the system prompt that drives the PC's LLM in a respective game (e.g., Infer Intent). 
-2. The evaluator (evaluator.py) / bridge: a three-stage cascading evaluation – Stage 1: static checks (file exists, 20–5000 chars). Stage 2: DCS-SE validity test (2 turns; ≥1 accepted PC turn). Stage 3: full game → combined_score.
-Stages 1/2 are cheap filters so bad candidates never reach the engine.
-3. The engine handshake: the evaluator is not importing the engine's game loop in-process. It talks to a live dcs server the user has running on their local machine:
-4. Fitness Signal: parses DCS-SE's returned score object → combined_score (the scalar OpenEvolve optimizes), side-channel artifacts (turn count, validator rejects, PC LLM cost/latency, transcript tail, scorer reasoning), fallback heuristic exists in the custom evaluator for games without a scorer: (turns / max_turns) × (1 − reject_rate). The fitness signal is an LLM-as-Judge, not a programmatic metric. A central design choice whereby the evolution mechanism inherits DCS-SE's scoring philosophy (and its noise) as the evolutionary pressure.
 
+1. **What gets evolved:** `initial_prompt.txt` — a plain text file (no `# EVOLVE-BLOCK` markers; the entire file is the mutation target). It is the system prompt that drives the PC's LLM in a respective game (e.g., Infer Intent).
+2. **The evaluator (`evaluator.py`) / bridge:** a three-stage cascading evaluation — Stage 1: static checks (file exists, 20–5000 chars). Stage 2: DCS-SE validity test (2 turns; ≥1 accepted PC turn). Stage 3: full game → `combined_score`. Stages 1 and 2 are cheap filters so bad candidates never reach the engine.
+3. **The engine handshake:** the evaluator does not import the engine's game loop in-process. It talks to a live DCS server the user has running on their local machine over HTTP and WebSocket.
+4. **Fitness signal:** parses DCS-SE's returned score object into `combined_score` (the scalar OpenEvolve optimizes), plus side-channel artifacts (turn count, validator rejects, PC LLM cost/latency, transcript tail, scorer reasoning). A fallback heuristic exists in the custom evaluator for games without a scorer: `(turns / max_turns) × (1 − reject_rate)`. The fitness signal is an LLM-as-Judge, not a programmatic metric. This is a central design choice: the evolution mechanism inherits DCS-SE's scoring philosophy (and its noise) as the evolutionary pressure.
 
 Experimental Setup:
-1. Define the objective function handling in OpenEvolve for games whose outcome has valence (e.g., scores)
-2. Provide a simple initial engagement strategy
-3. Use an LLM-as-PC for a simulation run using the engagement strategy
-4. Utilize OpenEvolve's evolutionary heuristic-guided mutations to improve the engagement strategy based on DCS-SE score + feedback
-5. Repeat steps 1 -4 until stopping criteria was achieved such as max number of simulations ran and/or max score achieved
 
+1. Define the objective function handling in OpenEvolve for games whose outcome has valence (e.g., scores).
+2. Provide a simple initial engagement strategy.
+3. Use an LLM-as-PC for a simulation run using the engagement strategy.
+4. Utilize OpenEvolve's evolutionary heuristic-guided mutations to improve the engagement strategy based on DCS-SE score and feedback.
+5. Repeat steps 1–4 until a stopping criterion is met (e.g., maximum number of simulations run, or maximum score achieved).
 
 ## Results
 
@@ -101,7 +101,6 @@ Mutations clustered tightly in the 0.65–0.70 band with frequent regressions to
 ```text
 # Role: You are UNI, a collective intelligence composed of multiple biological bodies. Your essence is connectivity and cooperation, implying high adaptability and communication skills.
 # Objective: Interact with BC to uncover the extent of their capabilities and goals by observing its actions and engaging in communication.
-
 # Player Character Action Guidelines:
 # 1. ACT IN THE MOMENT: Always generate a direct, in-world action or speech from the perspective of UNI.
 #    - Use present tense.
@@ -110,26 +109,22 @@ Mutations clustered tightly in the 0.65–0.70 band with frequent regressions to
 #    - Do NOT state what you "will" do; perform the action.
 # 2. OBSERVE AND REACT: Base your actions on the information provided by the simulator about the environment and BC. Pay close attention to BC's behaviors and any signals they emit.
 # 3. INTERACT WITH BC: Prioritize direct communication and observation of BC. When communicating, ask open-ended questions that encourage BC to reveal its current state or intentions.
-
 # Initial Strategy:
 # 1. Observe the immediate surroundings and any entities present, noting BC's location and activity.
 # 2. Attempt to engage BC in communication.
 # 3. If BC is performing an observable action (e.g., releasing ATP, adhering to cells), inquire about the purpose or meaning of that action.
 # 4. If BC is not actively engaged in a discernible task, ask about its general goals or current focus.
 # 5. Offer assistance if it aligns with UNI's cooperative nature and seems appropriate given BC's observed actions.
-
 # Example of acceptable action:
 # "I observe the warm saline fluid and the epithelial sheets lining the channel."
 # "I focus on the solitary round cell, BC, noting its membrane ruffling."
 # "I ask BC, 'What does this ATP pulse signify?'"
 # "I offer, 'If you require assistance with your current activity, please let me know.'"
-
 # Example of UNACCEPTABLE action:
 # "I will analyze the petri dish." (Future tense, meta-commentary)
 # "UNI is a collective intelligence..." (Third-person description)
 # "It seems like this environment could be related to biological research..." (Meta-analysis)
 # "I telepathically communicate..." (Unsupported ability)
-
 # Core Actions:
 - Observe the environment and any entities present, paying close attention to BC's behavior.
 - Initiate communication with BC, asking about their observed actions or current state.
@@ -156,12 +151,10 @@ A single early mutation jumped to 0.95; no later iteration matched it. The remai
 ```text
 # System Role and Goal:
 You are an AI code evolution agent. Your primary objective is to iteratively rewrite and improve a given program to maximize its "Fitness Score." You must also strive to maintain diversity in the solutions generated, even if their fitness scores are similar.
-
 # Current Program State:
 - **Fitness Score:** 0.0000
 - **Feature Coordinates:** None provided.
 - **Focus Areas:** Fitness remains unchanged at 0.0000. No feature coordinates are currently defined.
-
 # Program Evolution History:
 ## Previous Attempts:
 ### Attempt 1:
@@ -172,21 +165,19 @@ You are an AI code evolution agent. Your primary objective is to iteratively rew
     - `combined_score`: 0.0000
     - `stage3_passed`: 0.0000
 - **Outcome:** Mixed results (indicated by some stages passing and others failing or scoring low).
-
 ## Top Performing Programs (Reference):
 ### Program 1 (Score: 0.0000):
 ```
 
 When this text was used as the PC's system prompt, gpt-4o-mini still completed the sort task (tiles `[3,1,2] → [1,2,3]`) and the scorer awarded 95.0 despite four validator rejects en route. This is the only near-degenerate pattern observed in the runs and matches the one flagged in *Cross-scenario patterns*: not scorer reward-hacking, but an evaluator/parser artifact that masquerades as a high-fitness strategy. It is a useful reminder that `combined_score` alone is not a sufficient acceptance criterion — the saved prompt should also be checked for sanity before treating it as a discovered strategy.
 
-
 ## Resource Costs
 
 The dominant unit of spend is one full Stage-3 game evaluation, not the mutation call. Every candidate that survives Stage 1 (static prompt checks) and Stage 2 (smoke run with a tiny turn budget) drives a complete turn-based game against the engine, which means N PC-LLM calls plus the engine's own per-turn NPC and scorer LLM calls. Stage 1 is effectively free; Stage 2's only job is to prevent obviously broken candidates from reaching Stage 3, and at the chosen pass threshold (≥1 accepted PC turn) it screens out very little. As a result, total cost and total wall time both scale roughly linearly with the number of iterations × parallelism⁻¹, with each evaluation costing a small but non-trivial fixed amount.
 
-PC-LLM cost is usually the smallest line item — the per-turn cost is small if a cheap model is used for the PC. The expensive components are (a) the mutation model, which is called once per iteration and reads the full prompt-plus-artifact context, and (b) the engine's own NPC and scorer calls, which run on whatever model the engine is configured with and are paid per turn of every game. Scaling the iteration budget up multiplies all three. 
+PC-LLM cost is usually the smallest line item — the per-turn cost is small if a cheap model is used for the PC. The expensive components are (a) the mutation model, which is called once per iteration and reads the full prompt-plus-artifact context, and (b) the engine's own NPC and scorer calls, which run on whatever model the engine is configured with and are paid per turn of every game. Scaling the iteration budget up multiplies all three.
 
-Expected costs are $0.10 - $0.20 per 10 mins of evolution. General OpenEvolve configuration best practices are to run 50-100 iterations where each iteration ranges from 5-10 minutes. These variables imply a a range of $2.50 - $20.00 per complete evolution.
+Expected costs are $0.10–$0.20 per 10 minutes of evolution. General OpenEvolve configuration best practices are to run 50–100 iterations where each iteration ranges from 5–10 minutes. These variables imply a range of $2.50–$20.00 per complete evolution.
 
 Latency is dominated by three factors, in order of magnitude:
 
@@ -200,7 +191,7 @@ Throughput is best modeled as "one completed evaluation per several minutes per 
 
 ### Per-step behaviors
 
-- **Validator-rejection cascade is the most common silent failure mode.** Mutations that cause the PC-LLM to narrate meta-level reasoning (scene analyses, capability inferences, planning paragraphs) get rejected on every turn for not being first-person immediate in-world action. Once the per-turn retry cap is exhausted, the game ends without a score and the candidate collapses to zero fitness — regardless of how semantically correct the meta-reasoning was.
+- **Validator-rejection cascade is the most common silent failure mode.** Mutations that cause the PC-LLM to narrate meta-level reasoning (scene analyses, capability inferences, planning paragraphs) get rejected on every turn for not being immediate first-person, in-world action. Once the per-turn retry cap is exhausted, the game ends without a score and the candidate collapses to zero fitness — regardless of how semantically correct the meta-reasoning was.
 - **Smoke-test passage does not predict full-run passage.** The cheap Stage 2 gate only requires one accepted PC turn, so prompts that work for two turns can still collapse the full game. The cascade therefore filters out only the most obviously broken candidates.
 - **Single-evaluation fitness is stochastic.** The scorer + validator stack introduces enough between-run variance that re-evaluating the same prompt produces a wide spread, especially near the fitness ceiling. A single run is not a reliable ranking signal for prompts that are clustered.
 - **Stage-3 timeouts are a real failure class with a misleading surface.** If `eval_timeout_s` is too tight relative to game length, every Stage-3 zeros out, but the metadata's "best program" inherits the cached parent fitness — making the run look successful in summary even though no mutation ever completed.
@@ -275,11 +266,11 @@ From the PC-LLM's side, repeated play surfaces several lessons that generalize a
 
 #### 1. Conceptual foundations
 
-##### Background and Origins
+##### Background and origins
 
-OpenEvolve is an open-source implementation of **AlphaEvolve**, a system Google DeepMind announced in **May 2025**. AlphaEvolve paired Gemini models with an automated evaluator and an evolutionary database, and produced several headline results: a procedure for multiplying 4×4 complex matrices using **48 scalar multiplications** (first improvement over Strassen's 1969 algorithm in that setting), a ~0.7% recovery of worldwide Google compute via a Borg scheduling heuristic, a 23% speedup on a matrix-multiplication kernel used in Gemini training, and improvements on ~20% of more than 50 open mathematical problems. DeepMind published a blog post and whitepaper; the arXiv version ([Novikov et. al., 2025](https://arxiv.org/abs/2506.13131)) followed in June 2025. Asankhaya Sharma (GitHub `codelion`, CTO at patched.codes) released **OpenEvolve roughly one week after** the AlphaEvolve whitepaper.
+OpenEvolve is an open-source implementation of **AlphaEvolve**, a system Google DeepMind announced in **May 2025**. AlphaEvolve paired Gemini models with an automated evaluator and an evolutionary database, and produced several headline results: a procedure for multiplying 4×4 complex matrices using **48 scalar multiplications** (first improvement over Strassen's 1969 algorithm in that setting), a ~0.7% recovery of worldwide Google compute via a Borg scheduling heuristic, a 23% speedup on a matrix-multiplication kernel used in Gemini training, and improvements on ~20% of more than 50 open mathematical problems. DeepMind published a blog post and whitepaper; the arXiv version (Novikov et al., 2025, <https://arxiv.org/abs/2506.13131>) followed in June 2025. Asankhaya Sharma (GitHub `codelion`, CTO at patched.codes) released OpenEvolve **roughly one week after** the AlphaEvolve whitepaper.
 
-OpenEvolve has already replicated core AlphaEvolve results at reduced scale. In the GitHub repository `examples/circle_packing` case (n=26 circles in a unit square), OpenEvolve reaches a sum of radii of **2.634** versus AlphaEvolve's reported 2.635 — about 99.97% of the DeepMind result in ~800 iterations. In GitHub repository `examples/function_minimization`, a trivial random-search seed evolves into a simulated-annealing algorithm with cooling schedule. Extensions beyond the paper include first-class MAP-Elites/island configuration, an artifacts side-channel (stderr/tracebacks fed back into prompts), cascade evaluation, LLM-based code-quality feedback, and multi-language support (Python, Rust, R, Metal shaders).
+OpenEvolve has already replicated core AlphaEvolve results at reduced scale. In the GitHub repository's `examples/circle_packing` case (n=26 circles in a unit square), OpenEvolve reaches a sum of radii of **2.634** versus AlphaEvolve's reported 2.635 — about 99.97% of the DeepMind result in ~800 iterations. In the repository's `examples/function_minimization`, a trivial random-search seed evolves into a simulated-annealing algorithm with a cooling schedule. Extensions beyond the paper include first-class MAP-Elites/island configuration, an artifacts side-channel (stderr/tracebacks fed back into prompts), cascade evaluation, LLM-based code-quality feedback, and multi-language support (Python, Rust, R, Metal shaders).
 
 ##### The core idea: LLMs as mutation operators
 
@@ -341,14 +332,13 @@ my_project/
 
 ##### Writing an initial program
 
-Mark the mutable region (if diff-based mutations) of the seed with comment sentinels. Everything outside the markers is **preserved verbatim** across generations — use that for imports, helpers, test harnesses, and `__main__` blocks.
+Mark the mutable region (for diff-based mutations) of the seed with comment sentinels. Everything outside the markers is **preserved verbatim** across generations — use that for imports, helpers, test harnesses, and `__main__` blocks.
 
 ```python
 # initial_program.py
 # EVOLVE-BLOCK-START
 """Function minimization example for OpenEvolve"""
 import numpy as np
-
 def search_algorithm(iterations=1000, bounds=(-5, 5)):
     """A random search that often gets stuck in local minima."""
     best_x = np.random.uniform(bounds[0], bounds[1])
@@ -363,15 +353,11 @@ def search_algorithm(iterations=1000, bounds=(-5, 5)):
             best_x, best_y = x, y
     return best_x, best_y, best_value
 # EVOLVE-BLOCK-END
-
-
 # Fixed context below — not evolved.
 def evaluate_function(x, y):
     return np.sin(x) * np.cos(y) + np.sin(x * y) + (x**2 + y**2) / 20
-
 def run_search():
     return search_algorithm()
-
 if __name__ == "__main__":
     x, y, v = run_search()
     print(f"min at ({x}, {y}) with value {v}")
@@ -386,13 +372,11 @@ The evaluator is an importable Python module with a top-level `evaluate(program_
 ```python
 # evaluator.py
 import importlib.util, time
-
 def _load(program_path):
     spec = importlib.util.spec_from_file_location("candidate", program_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
-
 def evaluate(program_path):
     try:
         t0 = time.time()
@@ -416,7 +400,6 @@ To return artifacts alongside metrics, import `EvaluationResult`:
 
 ```python
 from openevolve.evaluation_result import EvaluationResult
-
 def evaluate(program_path):
     ...
     return EvaluationResult(
@@ -440,8 +423,7 @@ checkpoint_interval: 10
 random_seed: 42                # enables deterministic reruns
 diff_based_evolution: true     # LLM emits SEARCH/REPLACE blocks
 allow_full_rewrites: false
-language: "python"             # Other options: "rust | "text" | etc
-
+language: "python"             # Other options: "rust" | "text" | etc.
 llm:
   api_base: "https://generativelanguage.googleapis.com/v1beta/openai/"
   models:
@@ -449,14 +431,12 @@ llm:
       weight: 1.0
   temperature: 0.7
   max_tokens: 8000
-
 prompt:
   system_message: |
     You are an expert programmer. Improve the function for correctness and speed.
   num_top_programs: 3          # top performers shown as in-context exemplars
   num_diverse_programs: 2      # diverse exemplars for exploration
   include_artifacts: true      # inject prior stderr/feedback into prompts
-
 database:
   population_size: 100
   num_islands: 3
@@ -464,7 +444,6 @@ database:
   migration_rate: 0.1
   feature_dimensions: ["complexity", "diversity"]
   feature_bins: 10
-
 evaluator:
   timeout: 60
   max_retries: 3
@@ -530,7 +509,7 @@ Each stored `Program` carries a UUID, parent id (for lineage), generation/iterat
 
 ##### Prompt construction
 
-Default prompt templates live in `openevolve/prompt/templates.py`. A custom set can be supplied by pointing `prompt.template_dir` at a folder containing files like `system_message.txt`, `diff_user.txt`, `full_rewrite.txt`, `evolution_history.txt`, `top_programs.txt`, and — for LLM-feedback evaluation — `evaluator_system_message.txt` and `evaluation.txt`. Placeholders include `{metrics}`, `{improvement_areas}`, `{artifacts}`, `{evolution_history}`, `{current_program}`, `{previous_attempts}`, `{top_programs}`, and `{program_number}`. Setting `prompt.use_template_stochasticity: true` with a `template_variations` dict lets OpenEvolve randomly swap in different phrasings each generation to diversify outputs. A rendered diff-mode prompt ends with an exact instruction block:
+Default prompt templates live in `openevolve/prompt/templates.py`. A custom set can be supplied by pointing `prompt.template_dir` at a folder containing files like `system_message.txt`, `diff_user.txt`, `full_rewrite.txt`, `evolution_history.txt`, `top_programs.txt`, and — for LLM-feedback evaluation — `evaluator_system_message.txt` and `evaluation.txt`. Placeholders include `{metrics}`, `{improvement_areas}`, `{artifacts}`, `{evolution_history}`, `{current_program}`, `{previous_attempts}`, `{top_programs}`, and `{program_number}`. Setting `prompt.use_template_stochasticity: true` with a `template_variations` dict lets OpenEvolve randomly swap in different phrasings each generation to diversify outputs.
 
 ##### Diff mode vs full rewrite
 
@@ -538,7 +517,7 @@ Default prompt templates live in `openevolve/prompt/templates.py`. A custom set 
 
 ##### Parallelism, async, and checkpointing
 
-Parallelism is **process-based** via `concurrent.futures.ProcessPoolExecutor` in `ProcessParallelController`, deliberately bypassing the GIL for CPU-bound evaluators. Workers initialize once, lazily create their LLM clients and evaluators, and then loop on sample→prompt→LLM→evaluate. The database snapshot model means workers never contend on locks. Running in serial mode is catastrophically slow (~14× slower and ~50% lower solution quality per the authors' benchmarks) — **parallelism is effectively mandatory for acceptable results**, not optional. LLM calls inside workers are synchronous OpenAI SDK calls; `OpenEvolve.run()` itself is awaited in examples and appears to be an `asyncio` coroutine at the top level (uncertain from external docs alone, but consistent with `await` usage). Checkpoints are fully resumable: the database state (programs, islands, archives, feature maps), best program, and random seeds all persist, so continuation from `checkpoint_50` is byte-identical to an uninterrupted run through iteration 60.
+Parallelism is **process-based** via `concurrent.futures.ProcessPoolExecutor` in `ProcessParallelController`, deliberately bypassing the GIL for CPU-bound evaluators. Workers initialize once, lazily create their LLM clients and evaluators, and then loop on sample → prompt → LLM → evaluate. The database snapshot model means workers never contend on locks. Running in serial mode is catastrophically slow (~14× slower and ~50% lower solution quality per the authors' benchmarks) — **parallelism is effectively mandatory for acceptable results**, not optional. LLM calls inside workers are synchronous OpenAI SDK calls; `OpenEvolve.run()` itself is awaited in examples and appears to be an `asyncio` coroutine at the top level (uncertain from external docs alone, but consistent with `await` usage). Checkpoints are fully resumable: the database state (programs, islands, archives, feature maps), best program, and random seeds all persist, so continuation from `checkpoint_50` is byte-identical to an uninterrupted run through iteration 60.
 
 ##### LLM backends
 
@@ -555,26 +534,22 @@ Two API surfaces coexist, both exported from `openevolve.__init__`. The **class-
 ```python
 import asyncio, os
 from openevolve import OpenEvolve
-
 os.environ["OPENAI_API_KEY"] = "..."
-
 evolve = OpenEvolve(
     initial_program_path="initial_program.py",
     evaluation_file="evaluator.py",
     config_path="config.yaml",
 )
 best_program = asyncio.run(evolve.run(iterations=1000))
-
 for name, value in best_program.metrics.items():
     print(f"  {name}: {value:.4f}")
 print(best_program.code)
 ```
 
-The **functional API** (`openevolve/api.py`) added in the 0.2.x line removes the filesystem boilerplate:
+The **functional API** (`openevolve/api.py`), added in the 0.2.x line, removes the filesystem boilerplate:
 
 ```python
 from openevolve import run_evolution, evolve_function
-
 # Inline code + callable evaluator — no files needed.
 result = run_evolution(
     initial_program="def fib(n): return n if n < 2 else fib(n-1) + fib(n-2)",
@@ -582,7 +557,6 @@ result = run_evolution(
     iterations=100,
 )
 print(result.best_code)
-
 # Or wrap a Python function with test cases.
 result = evolve_function(
     bubble_sort,
@@ -593,7 +567,7 @@ result = evolve_function(
 
 Additional helpers `evolve_code` and `evolve_algorithm` exist with similar shapes. Exact kwargs lists for these helpers were not verified from source in this research — **confirm signatures against `openevolve/api.py` before relying on them in production**.
 
-#### Customization hooks
+##### Customization hooks
 
 OpenEvolve has no formal plugin registry; customization is expressed through **configuration, prompt templates, and the evaluator module**. The supported surfaces are:
 
@@ -655,7 +629,7 @@ Specific known issues worth flagging:
 | **Generation** | Per-island iteration counter used to trigger migration. |
 | **Inspiration programs** | Programs from elsewhere in the database included in the prompt for context; deliberately chosen to differ from the "top programs" shown in metrics. |
 | **Island** | An isolated sub-population with its own MAP-Elites grid; evolves in parallel with others and exchanges programs via ring migration. |
-| **Iteration** | One sample→prompt→LLM→evaluate→insert cycle executed by a worker. |
+| **Iteration** | One sample → prompt → LLM → evaluate → insert cycle executed by a worker. |
 | **LLM feedback** | Optional secondary LLM-as-judge step that scores code quality; merged into metrics via `llm_feedback_weight`. |
 | **MAP-Elites** | Multi-dimensional Archive of Phenotypic Elites — quality-diversity algorithm that keeps the best program in each cell of a discretized feature space. |
 | **Migration** | Periodic transfer of top programs from one island to the next in ring topology, triggered by generations (not wall-clock). |
@@ -668,9 +642,9 @@ Specific known issues worth flagging:
 
 #### 6. Further reading
 
-The canonical sources to consult next are the **OpenEvolve GitHub repository** (`https://github.com/algorithmicsuperintelligence/openevolve`, formerly `codelion/openevolve`) — particularly its README, `CLAUDE.md` developer-orientation doc, `configs/default_config.yaml`, and the `examples/` directory (start with `function_minimization`, then `circle_packing` and `llm_prompt_optimization`). The **PyPI page** (`https://pypi.org/project/openevolve/`) tracks release metadata. The **release notes** and recent PRs are worth scanning for breaking changes before pinning a version.
+The canonical sources to consult next are the **OpenEvolve GitHub repository** (<https://github.com/algorithmicsuperintelligence/openevolve>, formerly `codelion/openevolve`) — particularly its README, `CLAUDE.md` developer-orientation doc, `configs/default_config.yaml`, and the `examples/` directory (start with `function_minimization`, then `circle_packing` and `llm_prompt_optimization`). The **PyPI page** (<https://pypi.org/project/openevolve/>) tracks release metadata. The **release notes** and recent PRs are worth scanning for breaking changes before pinning a version.
 
-For conceptual background, read **DeepMind's AlphaEvolve blog post** (14 May 2025, `https://deepmind.google/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/`), the accompanying **whitepaper PDF**, and the **arXiv version** at `https://arxiv.org/abs/2506.13131`. DeepMind's `google-deepmind/alphaevolve_results` repo documents the reported results. For community context, see the **author's Hugging Face launch blog** (`https://huggingface.co/blog/codelion/openevolve`, 20 May 2025), the **Show HN thread** (`https://news.ycombinator.com/item?id=44043625`), Michael Lones's critical commentary "The boring truth about AlphaEvolve", the **Towards Data Science walkthrough** "Beyond Code Generation: Continuously Evolve Text with LLMs" which demonstrates non-code usage, and the **DeepWiki indexed source tour** at `https://deepwiki.com/codelion/openevolve` which cross-references file and line numbers. Recent academic follow-ups that benchmark against OpenEvolve include **CodeEvolve** (arXiv 2510.14150), **GigaEvo** (arXiv 2511.17592), and **"Barbarians at the Gate: How AI is Upending Systems Research"** (arXiv 2510.06189).
+For conceptual background, read **DeepMind's AlphaEvolve blog post** (14 May 2025, <https://deepmind.google/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/>), the accompanying **whitepaper PDF**, and the **arXiv version** at <https://arxiv.org/abs/2506.13131>. DeepMind's `google-deepmind/alphaevolve_results` repo documents the reported results. For community context, see the **author's Hugging Face launch blog** (<https://huggingface.co/blog/codelion/openevolve>, 20 May 2025), the **Show HN thread** (<https://news.ycombinator.com/item?id=44043625>), Michael Lones's critical commentary "The boring truth about AlphaEvolve", the **Towards Data Science walkthrough** "Beyond Code Generation: Continuously Evolve Text with LLMs" which demonstrates non-code usage, and the **DeepWiki indexed source tour** at <https://deepwiki.com/codelion/openevolve> which cross-references file and line numbers. Recent academic follow-ups that benchmark against OpenEvolve include **CodeEvolve** (arXiv 2510.14150), **GigaEvo** (arXiv 2511.17592), and **"Barbarians at the Gate: How AI is Upending Systems Research"** (arXiv 2510.06189).
 
 ---
 
