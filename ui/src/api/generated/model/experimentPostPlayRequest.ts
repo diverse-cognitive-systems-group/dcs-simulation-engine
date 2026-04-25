@@ -11,4 +11,5 @@ import type { ExperimentPostPlayRequestResponses } from './experimentPostPlayReq
  */
 export interface ExperimentPostPlayRequest {
   responses: ExperimentPostPlayRequestResponses;
+  assignment_id?: string | null;
 }

@@ -1208,7 +1208,7 @@ export const useRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPost 
     }
     
 /**
- * Create a session for the authenticated player's current experiment assignment.
+ * Create or resume a session for one experiment assignment.
  * @summary Create Experiment Session
  */
 export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse200 = {
@@ -1300,7 +1300,7 @@ export const useCreateExperimentSessionApiExperimentsExperimentNameSessionsPost 
     }
     
 /**
- * Store the experiment post-play form on the latest completed assignment.
+ * Store the experiment post-play form on one completed assignment.
  * @summary Submit Experiment Post Play
  */
 export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse200 = {

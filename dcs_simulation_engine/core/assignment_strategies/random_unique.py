@@ -104,10 +104,6 @@ class RandomUniqueAssignmentStrategy:
         player: "PlayerRecord",
     ) -> list[dict[str, str]]:
         """Return all eligible {game_name, character_hid} options for the player to choose from."""
-        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
-        if active_assignment is not None:
-            return []
-
         player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
         completed_count = sum(1 for item in player_assignments if item.status == "completed")
         if completed_count >= self.max_assignments_per_player(config=config):

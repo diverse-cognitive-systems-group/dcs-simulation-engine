@@ -245,6 +245,36 @@ class SimulatorClient:
         """Return the validator model identifier for metadata recording."""
         return self._validator_model
 
+    def export_history(self) -> list[str]:
+        """Return a JSON-serialisable copy of the conversation history."""
+        return list(self._history)
+
+    def import_history(self, history: list[str]) -> None:
+        """Restore conversation history from a snapshot."""
+        self._history = list(history)
+        self._transcript_events = list(history)
+
+    def export_state(self) -> dict[str, Any]:
+        """Return all mutable simulator state needed for pause/resume."""
+        return {
+            "history": list(self._history),
+            "transcript_events": list(self._transcript_events),
+            "opening_metadata": dict(self._opening_metadata),
+        }
+
+    def import_state(self, state: dict[str, Any]) -> None:
+        """Restore mutable simulator state from a snapshot."""
+        history = state.get("history", [])
+        transcript_events = state.get("transcript_events", history)
+        opening_metadata = state.get("opening_metadata", {})
+
+        self._history = [str(entry) for entry in history] if isinstance(history, list) else []
+        if isinstance(transcript_events, list):
+            self._transcript_events = [str(entry) for entry in transcript_events]
+        else:
+            self._transcript_events = list(self._history)
+        self._opening_metadata = dict(opening_metadata) if isinstance(opening_metadata, dict) else {}
+
     @property
     def player_turn_validators(self) -> list[str]:
         """Configured player-turn validators for this simulator instance."""

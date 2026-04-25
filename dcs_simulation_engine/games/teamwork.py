@@ -62,6 +62,28 @@ class TeamworkGame(Game):
             show_final_score=overrides.show_final_score,
         )
 
+    def _export_additional_state(self) -> dict[str, Any]:
+        """Return teamwork-specific mutable state."""
+        return {
+            "shared_goal": self._shared_goal,
+            "challenges": self._challenges,
+            "score": dict(self._score),
+        }
+
+    def _import_additional_state(self, state: dict[str, Any]) -> None:
+        """Restore teamwork-specific mutable state."""
+        if "in_finish_flow" not in state:
+            self._in_finish_flow = bool(state.get("awaiting_challenges", False))
+
+        self._shared_goal = str(state.get("shared_goal", ""))
+        self._challenges = str(state.get("challenges", ""))
+        score = state.get("score", {})
+        self._score = dict(score) if isinstance(score, dict) else {}
+
+        engine_opening_metadata = getattr(self._engine, "_opening_metadata", None)
+        if isinstance(engine_opening_metadata, dict) and self._shared_goal and not engine_opening_metadata.get("shared_goal"):
+            engine_opening_metadata["shared_goal"] = self._shared_goal
+
     @property
     def shared_goal(self) -> str:
         """The shared goal for this game instance."""

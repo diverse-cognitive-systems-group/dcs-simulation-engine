@@ -277,3 +277,22 @@ async def test_simulator_client_updater_succeeds_after_one_simulator_validation_
     assert result.updater_result is not None
     assert result.updater_result.retries_used == 1
     assert validator_calls == 2
+
+
+@pytest.mark.unit
+def test_simulator_client_state_round_trip_preserves_resume_context(pc: CharacterRecord, npc: CharacterRecord) -> None:
+    """SimulatorClient should persist all mutable prompt context needed for resume."""
+    client = SimulatorClient(pc=pc, npc=npc)
+    client._history = ["Opening scene: A quiet room.", "Player (PC): I wave."]
+    client._transcript_events = ["Opening scene: A quiet room.", "Player (PC): I wave.", "Simulator: The NPC nods."]
+    client._opening_metadata = {"shared_goal": "Calmly solve the puzzle."}
+
+    snapshot = client.export_state()
+
+    restored = SimulatorClient(pc=pc, npc=npc)
+    restored.import_state(snapshot)
+
+    assert restored.export_state() == snapshot
+    assert restored._history == client._history
+    assert restored._transcript_events == client._transcript_events
+    assert restored._opening_metadata == client._opening_metadata

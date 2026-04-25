@@ -957,13 +957,13 @@ def test_experiment_before_play_submission_returns_assignment(
         )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "assignment": {
-            "assignment_id": "asg-2",
-            "game_name": "Foresight",
-            "character_hid": "pc-2",
-            "status": "assigned",
-        },
+    assert response.json()["assignment"] == {
+        "assignment_id": "asg-2",
+        "game_name": "Foresight",
+        "character_hid": "pc-2",
+        "status": "assigned",
+        "active_session_id": None,
+        "needs_post_play": False,
     }
 
 
@@ -982,15 +982,16 @@ def test_experiment_session_creation_returns_ws_path(
     """Experiment session creation should return the websocket path for the assigned session."""
     entry = SimpleNamespace(session_id="sess-exp-1")
     assignment = SimpleNamespace(assignment_id="asg-3")
+    start_mock = AsyncMock(return_value=(entry, assignment))
 
     with patch(
         "dcs_simulation_engine.api.routers.experiments.ExperimentManager.start_assignment_session_async",
-        new=AsyncMock(return_value=(entry, assignment)),
+        new=start_mock,
     ):
         response = client.post(
             "/api/experiments/usability/sessions",
             headers={"Authorization": "Bearer valid-key"},
-            json={"source": "experiment"},
+            json={"source": "experiment", "assignment_id": "asg-3"},
         )
 
     assert response.status_code == 200
@@ -999,6 +1000,7 @@ def test_experiment_session_creation_returns_ws_path(
         "status": "active",
         "ws_path": "/api/play/game/sess-exp-1/ws",
     }
+    assert start_mock.await_args.kwargs["assignment_id"] == "asg-3"
 
 
 @pytest.mark.unit
@@ -1025,7 +1027,7 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
     """Closing an experiment session should sync the assignment terminal state."""
     manager = DummySessionManager()
 
-    def _start_session(*, provider, registry, experiment_name, player, source):
+    def _start_session(*, provider, registry, experiment_name, player, source, assignment_id=None):
         entry = registry.add(
             player_id=player.id,
             game_name="Explore",
@@ -1066,6 +1068,112 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
     assert kwargs["assignment_id"] == "asg-live-1"
 
 
+@pytest.mark.functional
+def test_experiment_multiple_assignments_can_each_be_resumed(
+    patch_llm_client,
+    async_mongo_provider,
+) -> None:
+    """A player can pause and resume more than one experiment assignment independently."""
+
+    def _receive_until(ws, frame_type: str) -> list[dict]:
+        frames: list[dict] = []
+        while True:
+            frame = ws.receive_json()
+            frames.append(frame)
+            if frame.get("type") == frame_type:
+                return frames
+
+    _player, access_key = asyncio.run(
+        async_mongo_provider.create_player(
+            player_data={
+                "full_name": {"answer": "Resume Tester"},
+                "email": "resume@example.com",
+                "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
+            },
+            issue_access_key=True,
+        )
+    )
+    assert access_key is not None
+
+    app = create_app(
+        provider=async_mongo_provider,
+        session_ttl_seconds=3600,
+        sweep_interval_seconds=3600,
+    )
+
+    headers = {"Authorization": f"Bearer {access_key}"}
+    entry_payload = {
+        "responses": {
+            "intake": {
+                "professional_background": "Research engineer",
+                "technical_savviness": "On the higher end",
+                "technical_savviness_explanation": "I work with simulation tools daily.",
+            }
+        }
+    }
+
+    with TestClient(app) as client:
+        before_play = client.post(
+            "/api/experiments/usability/players",
+            headers=headers,
+            json=entry_payload,
+        )
+        assert before_play.status_code == 200, before_play.text
+
+        setup = client.get("/api/experiments/usability/setup", headers=headers)
+        assert setup.status_code == 200, setup.text
+        assignments = setup.json()["assignments"]
+        assert len(assignments) >= 2
+
+        paused_session_ids: dict[str, str] = {}
+        for assignment in assignments[:2]:
+            create_resp = client.post(
+                "/api/experiments/usability/sessions",
+                headers=headers,
+                json={
+                    "source": "experiment",
+                    "assignment_id": assignment["assignment_id"],
+                },
+            )
+            assert create_resp.status_code == 200, create_resp.text
+            session_id = create_resp.json()["session_id"]
+            paused_session_ids[assignment["assignment_id"]] = session_id
+
+            with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+                ws.send_json({"type": "auth", "api_key": access_key})
+                assert ws.receive_json()["type"] == "session_meta"
+                opening_frames = _receive_until(ws, "turn_end")
+                assert any(frame.get("type") == "event" for frame in opening_frames)
+
+        paused_setup = client.get("/api/experiments/usability/setup", headers=headers)
+        assert paused_setup.status_code == 200, paused_setup.text
+        paused_assignments = {assignment["assignment_id"]: assignment for assignment in paused_setup.json()["assignments"]}
+
+        for assignment_id, session_id in paused_session_ids.items():
+            assignment = paused_assignments[assignment_id]
+            assert assignment["status"] == "in_progress"
+            assert assignment["active_session_id"] == session_id
+
+            resume_resp = client.post(
+                "/api/experiments/usability/sessions",
+                headers=headers,
+                json={
+                    "source": "experiment",
+                    "assignment_id": assignment_id,
+                },
+            )
+            assert resume_resp.status_code == 200, resume_resp.text
+            assert resume_resp.json()["session_id"] == session_id
+
+            with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+                ws.send_json({"type": "auth", "api_key": access_key})
+                assert ws.receive_json()["type"] == "session_meta"
+                replay_frames = _receive_until(ws, "replay_end")
+                assert replay_frames[0]["type"] == "replay_start"
+                assert replay_frames[-1]["type"] == "replay_end"
+                assert replay_frames[-1]["turns"] >= 1
+
+
 @pytest.mark.unit
 def test_experiment_post_play_submission_persists_response(client: TestClient) -> None:
     """Experiment post-play submission should target the latest completed assignment."""
@@ -1092,6 +1200,8 @@ def test_experiment_post_play_submission_persists_response(client: TestClient) -
         "game_name": "Explore",
         "character_hid": "pc-1",
         "status": "completed",
+        "active_session_id": None,
+        "needs_post_play": False,
     }
 
 

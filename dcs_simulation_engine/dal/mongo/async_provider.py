@@ -392,6 +392,46 @@ class AsyncMongoProvider:
             return None
         return _to_session_record(doc)
 
+    async def save_runtime_state(self, *, session_id: str, runtime_state: dict) -> None:
+        """Upsert the resumable runtime snapshot on a session document."""
+        await maybe_await(
+            self._db[MongoColumns.SESSIONS].update_one(
+                {MongoColumns.SESSION_ID: session_id},
+                {
+                    "$set": {
+                        MongoColumns.RUNTIME_STATE: runtime_state,
+                        MongoColumns.UPDATED_AT: utc_now(),
+                    }
+                },
+            )
+        )
+
+    async def get_resumable_session(
+        self,
+        *,
+        player_id: str,
+        game_name: str,
+        pc_hid: str,
+        npc_hid: str,
+    ) -> SessionRecord | None:
+        """Return the most recent paused session for this player/game/character combo."""
+        cursor = self._db[MongoColumns.SESSIONS].find(
+            {
+                MongoColumns.PLAYER_ID: player_id,
+                MongoColumns.GAME_NAME: game_name,
+                MongoColumns.PC_HID: pc_hid,
+                MongoColumns.NPC_HID: npc_hid,
+                MongoColumns.STATUS: "paused",
+            }
+        )
+        sorter = getattr(cursor, "sort", None)
+        if callable(sorter):
+            cursor = sorter(MongoColumns.UPDATED_AT, -1)
+        docs = await _cursor_to_docs(cursor)
+        if not docs:
+            return None
+        return _to_session_record(docs[0])
+
     async def list_session_events(self, *, session_id: str) -> list[SessionEventRecord]:
         """Return all persisted session events in sequence order."""
         cursor = self._db[MongoColumns.SESSION_EVENTS].find({MongoColumns.SESSION_ID: session_id})
