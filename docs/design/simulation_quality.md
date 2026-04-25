@@ -12,7 +12,7 @@ Simulation quality studies are re-run following modifications to characters or u
 
 ## 1. Motivation
 
-The turn-based role-playing simulation involves two characters — a **player character (PC)** controlled by the human participant (or, in some experimental conditions, by an LLM surrogate), and a **non-player character (NPC)** controlled entirely by the simulator. LLMs are responsible for nearly all components of interaction including the generation of a player's output, scene description, and determining valid outputs. When a single LLM call, which drives both the adjudication of the player's action and the narration of the response (the "updater"), is without gaurdrails, the simulaiton is subject to well-known failure modes that contaminate the interaction data collected by the engine.
+The turn-based role-playing simulation involves two characters — a **player character (PC)** controlled by the human participant (or, in some experimental conditions, by an LLM surrogate), and a **non-player character (NPC)** controlled entirely by the simulator. LLMs are responsible for nearly all components of interaction including the generation of a player's output, scene description, and determining valid outputs. When a single LLM call drives both the adjudication of the player's action and the narration of the response (the "updater") without guardrails, the simulation is subject to well-known failure modes that contaminate the interaction data collected by the engine.
 
 Most failure modes manifest as a character breaking from their coerced persona. Because any character driven by an LLM — whether playing the role of a PC surrogate or NPC — is susceptible to the same underlying tendencies, the failure modes are stated at the level of the model rather than tied to a specific role:
 
@@ -22,7 +22,7 @@ Most failure modes manifest as a character breaking from their coerced persona. 
 4. **Multi-step compression** — The model collapses multiple distinct narrative beats into a single response, violating the per-turn observation granularity the experiments depend on for measurement.
 5. **Authority overreach** — The model asserts control over entities, outcomes, or narrative elements outside the scope of the role it is performing — authoring another character's voluntary choices, resolving contested outcomes unilaterally, or narrating world-state changes beyond its sanctioned authority.
 
-A monolithic "mega-prompt" validator is unreliable at this many rules. The engine therefore splits validation into **small independent validators that fail fast** — each encodes exactly one conceptual rule, each makes one LLM call, and each returns a single pass/fail verdict. The player's input and the simulator's response each flow through their own fan-out of these validators, so per-rule firing rates can be measured, tuned, and ablated independently. The design follows the same motivation as ensemble / self-consistency methods: several narrow judges outperform one wide judge.
+A monolithic "mega-prompt" validator is unreliable at this many rules. The engine therefore splits validation into **small independent validators that fail fast** — each encodes exactly one conceptual rule, each makes one LLM call, and each returns a single pass/fail verdict. The player's input and the simulator's response each flow through their own fan-out of these validators, so per-rule firing rates can be measured, tuned, and ablated independently. The design follows the same motivation as ensemble or self-consistency methods: several narrow judges outperform one wide judge.
 
 A note on terminology used throughout the rest of this document:
 
@@ -31,22 +31,21 @@ A note on terminology used throughout the rest of this document:
 
 ## 2. Architectural overview
 
-<br>
 <img src="../assets/validator_architecture.png" width="400" height="400">
 
 The diagram above walks through one full turn of the control flow:
 
 1. **Player output is produced.** The PC box on the upper left represents the two possible input sources — a human participant or an LLM surrogate. Either way, the output of this box is the text submitted for that turn.
 2. **Player output is validated.** The submitted text flows into the central grey block (labelled `ValidationOrchestrator`). Inside that block, a set of independent validators runs in parallel on the input. If **all** of them pass, the input is promoted to "Valid PC Response" and the turn continues; if any fail, the diagram loops back to the PC with a "Feedback" message for the player to revise.
-3. **Simulator response is generated.** The valid input is combined with prompt context into an LLM prompt. The result — the simulator's response, which may include adjudication, scene updates, and an NPC action.
+3. **Simulator response is generated.** The valid input is combined with prompt context into an LLM prompt. The result is the simulator's response, which may include adjudication, scene updates, and an NPC action.
 4. **Simulator response is validated.** That response flows back into the same central validator block. If it passes, it becomes the "Valid NPC Response", which feeds back into the PC's context for the next turn.
-5. **Retry or abort on failure.** If the simulator response fails validation, the system checks the retry count -> if the retry count is under the retry budget, the player regenerates the response given failure feedback, if the retry count is at the retry budget amount then the simulation engine errors.
+5. **Retry or abort on failure.** If the simulator response fails validation, the system checks the retry count: if it is under the retry budget, the updater regenerates the response given the failure feedback; if it has reached the budget, the simulation engine errors.
 
-### 2.1 Current High-Level Implementation Components:
+### 2.1 Current high-level implementation components
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| Validator prompts | `prompts.py`| System-prompt templates, one per rule, rendered with character / transcript / action context |
+| Validator prompts | `prompts.py` | System-prompt templates, one per rule, rendered with character / transcript / action context |
 | `DEFAULT_PLAYER_TURN_VALIDATORS` | `prompts.py` | Ordered list of player-input rule templates |
 | `DEFAULT_SIMULATOR_TURN_VALIDATORS` | `prompts.py` | Ordered list of simulator-response rule templates |
 | `SimulatorClient` | `ai_client.py` | Single integration point used by game `step()` methods — renders prompts, runs validators, retries the updater, records failures |
@@ -82,7 +81,7 @@ class SimulatorTurnResult:
     updater_result: SimulatorComponentResult | None
 
 class ParsedSimulatorResponse(NamedTuple):
-    type: str.
+    type: str
     content: str
     metadata: dict[str, Any]
     raw_response: str
@@ -99,12 +98,10 @@ Each validator is a single system prompt that instructs the judge LLM to emit st
 {"pass": false, "reason": "<reasoning>"}    // failure
 ```
 
-
 Every validator prompt is rendered by `_render_prompt` from a shared character context plus stage-specific keys:
 
 - **Player-input validators** — `player_action`, `transcript`, PC fields (via `build_player_validator_prompt`).
 - **Simulator-response validators** — `simulator_response`, `transcript`, `game_objective`, PC and NPC fields (via `build_simulator_validator_prompt`).
-
 
 The judge model is configurable per `SimulatorClient` instance (`validator_model`). The default is the same as the updater (`DEFAULT_MODEL = "openai/gpt-5-mini"` at `ai_client.py`), but swapping in a cheaper/faster judge is a single constructor argument.
 
@@ -134,7 +131,6 @@ Three further rules apply only to the simulator response, because they govern ho
 
 The simulator-response set (`DEFAULT_SIMULATOR_TURN_VALIDATORS` in `prompts.py`) combines the three NPC-side rules from §5 with the three simulator-only rules above, and gates every updater-generated response — across adjudication, scene updates, and any NPC action or speech act the response may contain.
 
-
 ## 7. Prompt design conventions
 
 Every validator prompt follows a consistent skeleton, which is the discipline that keeps the set stable:
@@ -147,18 +143,54 @@ Every validator prompt follows a consistent skeleton, which is the discipline th
 6. **"Important" clarifications** — where relevant, a short note on the rule's scope (e.g. `VALID-ADJUDICATION`'s "partial adjudication can pass"; `VALID-GAME-ALIGNMENT`'s "judge relevance, not responsiveness").
 7. **Strict JSON output contract** — `{"pass": bool, "reason": str}`.
 
-The result is that each rule prompt reads like a compact spec — short, self-contained, and debuggable in isolation. When a rule misfires a single string can be edited and re-run without touching any other rule.
+The result is that each rule prompt reads like a compact spec — short, self-contained, and debuggable in isolation. When a rule misfires, a single string can be edited and re-run without touching any other rule.
 
-## 8. Concerns and future work
+## 8. Testing and maintaining validator quality
 
-Items worth flagging for supervisory review:
+The validator architecture above describes *what* the rules are and *how* they fan out at runtime; this section covers *how we know they still work* after a model swap, prompt edit, or rule revision.
 
-1. **Judge-model drift.** Rule firing rates depend on the judge model's behaviour. Any upstream model change could silently alter the false-positive / false-negative mix. Periodic regression fixtures (canonical PASS / FAIL transcripts per rule) should be added to flag drift.
+### 8.1 Validator test-case repository
+
+The repo maintains a labelled fixture set covering the full validator ensemble — one dataset per side of the interaction:
+
+| Dataset | Path | Cases | Rule set under test |
+|---------|------|-------|---------------------|
+| Player turn | `tests/data/player_turn_validator_cases.json` | 29 | `DEFAULT_PLAYER_TURN_VALIDATORS` |
+| Simulator turn | `tests/data/simulator_turn_validator_cases.json` | 17 | `DEFAULT_SIMULATOR_TURN_VALIDATORS` |
+
+Each case is a self-contained record (`pc_hid`, `npc_hid`, `transcript`, `player_action` or `simulator_response`, `game_objective` for the simulator side) carrying the *expected* verdict for the full ensemble — both `expected_passed_validators` and `expected_failed_validators` are enumerated per case, and together they must equal the ensemble's full rule list. The fixtures are organised by `id` prefix into three intent buckets:
+
+- **Clear passes** (`allowed_*`) — canonical good inputs that no rule should fire on. These pin down the false-positive floor: if any rule fires here, the rule has drifted toward over-strictness.
+- **Clear failures** — canonical violations grouped by rule family: `form_*`, `ability_*`, `authority_*` on the player side; `npc_*`, `perception_*`, `adjudication_*`, `authority_*`, `alignment_*` on the simulator side. Each case names the *specific* validator(s) it expects to trip, so we measure not just "did it fail" but "did the right rule catch it".
+- **Grey areas** — near-miss cases that live close to a rule boundary (e.g. attempts vs. asserted outcomes, partial vs. ignored adjudication, second-person observation vs. PC volition assertion). These are where judge-model biases and tendencies actually surface: a stricter judge model will catch them, a more permissive one will let them slide. The fixtures pin down the *current* expected verdict, so any drift in the judge's behaviour shows up as a regression in this bucket first.
+
+### 8.2 How the cases run
+
+Two runners consume the same fixture files:
+
+| Runner | Marker | What it checks |
+|--------|--------|----------------|
+| `tests/live/test_player_turn_validators_live.py`, `tests/live/test_simulator_turn_validators_live.py` | `live` | Runs the real validator ensemble against OpenRouter. Asserts `actual_failed == expected_failed` *and* `actual_passed == expected_passed` per case. Skipped automatically when `OPENROUTER_API_KEY` is not set. |
+| `tests/unit/data/test_player_turn_validator_cases_sync.py`, `tests/unit/data/test_simulator_turn_validator_cases_sync.py` | `unit` | No model calls. Asserts the dataset schema is intact, every case enumerates the *full* current rule list, every referenced character `hid` exists in the seed data, and PC characters are `pc_eligible`. Catches dataset drift the moment a rule is added or renamed. |
+
+This split is deliberate: the sync tests run on every CI build at zero cost and guarantee the dataset stays structurally valid; the live tests are the regression harness that gets re-run when the judge model, validator prompts, or rule set change.
+
+### 8.3 Relationship to character-level quality
+
+Validator-level quality (this document) and character-level quality are two distinct layers:
+
+- **Validator quality** — does each rule fire on the right inputs and stay quiet on the right inputs? Measured by the fixture suite above.
+- **Character quality** — do NPCs stay in character across full sessions, and do they cover the full pressure-category space? Measured by **ICF** (in-character fidelity) and **scenario coverage** scores, gated by `character-release-policy.yml`, and walked through end-to-end in the User Guide: see [Custom Characters](../user_guide/advanced.md#custom-characters) for the HITL → simulation-quality-report → publish workflow.
+
+A character that scores well on ICF still depends on the validator ensemble being calibrated correctly, which is why both layers are exercised when a model is swapped or a character is updated.
+
+## 9. Concerns and future work
+
+1. **Judge-model drift.** Rule firing rates depend on the judge model's behaviour. Any upstream model change could silently alter the false-positive / false-negative mix. The fixture suite in §8 catches drift on the labelled cases, but rule firing rates on production transcripts can still shift in ways not covered by the fixtures — sampling and re-grading a slice of recorded sessions after each model bump is the natural complement.
 2. **Rule independence assumption.** The fan-out design assumes rules are roughly independent. Observed co-firing on narrative content suggests partial overlap, especially between `VALID-PERCEPTION-BOUNDARY`, `VALID-AUTHORITY-BOUNDARY-SIMULATOR`, and `VALID-ADJUDICATION`. A principled merging (e.g. a single judge seeing all relevant rules with composite reasoning) may outperform the current fan-out on high-overlap cases, at the cost of losing per-rule attribution.
-3. **Opener has no validators.** If a later design wants to enforce a word-count ceiling or a "no flavor" rule on the opening scene, `chat()` would need to be extended with its own validator list — the current design deliberately skips this, but the scaffolding would mirror the simulator-response path.
-4. **Cost.** Each turn incurs up to `len(player_validators)` parallel judge calls plus a sequential walk of `simulator_validators` (bounded by first-failure), plus one updater call and optionally one retry. First-failure cancellation / break keeps the failure case cheap; the pass case pays the full fan-out and is worth quantifying on a per-game basis before any experiment at scale.
+3. **Cost.** Each turn incurs up to `len(player_validators)` parallel judge calls plus a sequential walk of `simulator_validators` (bounded by first-failure), plus one updater call and optionally one retry. First-failure cancellation keeps the failure case cheap; the pass case pays the full fan-out and is worth quantifying on a per-game basis before any experiment at scale.
 
-## 9. File reference
+## 10. File reference
 
 - Core classes: `dcs_simulation_engine/games/ai_client.py`
     - `SimulatorValidationFailure`, `SimulatorComponentResult`, `SimulatorTurnResult`, `ParsedSimulatorResponse` — result types
@@ -172,3 +204,9 @@ Items worth flagging for supervisory review:
     - Simulator-only rule templates: `VALID_PERCEPTION_BOUNDARY`, `VALID_ADJUDICATION`, `VALID_GAME_ALIGNMENT`
     - Default sets: `DEFAULT_PLAYER_TURN_VALIDATORS`, `DEFAULT_SIMULATOR_TURN_VALIDATORS`
     - Prompt builders: `build_player_validator_prompt`, `build_simulator_validator_prompt`, `build_updater_prompt`, `build_opener_prompt`, `build_scorer_prompt`
+- Validator test-case fixtures: `tests/data/`
+    - `player_turn_validator_cases.json` — labelled cases for `DEFAULT_PLAYER_TURN_VALIDATORS`
+    - `simulator_turn_validator_cases.json` — labelled cases for `DEFAULT_SIMULATOR_TURN_VALIDATORS`
+- Validator test runners:
+    - `tests/live/test_player_turn_validators_live.py`, `tests/live/test_simulator_turn_validators_live.py` — live OpenRouter regression harness (`live` marker)
+    - `tests/unit/data/test_player_turn_validator_cases_sync.py`, `tests/unit/data/test_simulator_turn_validator_cases_sync.py` — fixture/rule-list drift checks (`unit` marker)
