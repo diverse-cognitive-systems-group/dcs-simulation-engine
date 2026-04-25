@@ -64,6 +64,8 @@ nav:
 
   - Examples: examples.md
 
+  - Feasibility Assessment: feasibility_assessment.md
+
   - Codebase Reference: codebase_reference.md
   - API Docs: "https://dcs-free-play-api.fly.dev/redoc"
   - FAQ: faq.md
