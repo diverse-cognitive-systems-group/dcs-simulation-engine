@@ -797,8 +797,6 @@ class ExperimentManager:
         normalized = reason.strip().lower().replace(" ", "_")
         completion_reasons = {
             "game_completed",
-            "game_complete",
-            "max_predictions_reached",
-            "player_exited",
+            "player_finished",
         }
         return normalized in completion_reasons or normalized.startswith("stopping_condition_met:")

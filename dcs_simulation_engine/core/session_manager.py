@@ -549,7 +549,7 @@ class SessionManager:
             return "user_close_button"
         if reason_l in {"received_exit_command", "user_exit_command"}:
             return "user_exit_command"
-        if reason_l in {"game_completed", "game_complete"}:
+        if reason_l in {"game_completed", "player_finished"}:
             return "game_completed"
         if reason_l in {"session_ttl_expired"} or "ttl" in reason_l:
             return "session_ttl_expired"

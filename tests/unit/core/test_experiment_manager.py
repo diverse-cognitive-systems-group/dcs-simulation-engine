@@ -54,15 +54,18 @@ async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mo
     "reason,expected",
     [
         ("game_completed", True),
-        ("game_complete", True),
         ("game completed", True),
         ("Game Completed", True),
-        ("max predictions reached", True),
-        ("max_predictions_reached", True),
-        ("player exited", True),
-        ("player_exited", True),
+        ("player finished", True),
+        ("player_finished", True),
         ("stopping_condition_met:max_turns", True),
         ("stopping_condition_met:anything", True),
+        ("stopping condition met: turns >= 50", True),
+        ("game_complete", False),
+        ("max predictions reached", False),
+        ("max_predictions_reached", False),
+        ("player exited", False),
+        ("player_exited", False),
         ("retry budget exhausted", False),
         ("websocket_disconnect", False),
         ("server_error", False),
@@ -356,6 +359,36 @@ async def test_stopping_condition_reason_marks_assignment_completed(async_mongo_
         experiment_name=cached_usability_experiment.name,
         assignment_id=assignment.assignment_id,
         exit_reason="stopping condition met: turns >=10",
+    )
+
+    assert updated is not None
+    assert updated.status == "completed"
+
+
+async def test_player_finished_reason_marks_assignment_completed(async_mongo_provider, cached_usability_experiment) -> None:
+    """/finish exits should count as experiment completion."""
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
+    assignment = await async_mongo_provider.create_assignment(
+        assignment_doc={
+            MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
+            MongoColumns.PLAYER_ID: player.id,
+            MongoColumns.GAME_NAME: "Explore",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
+            MongoColumns.FORM_RESPONSES: {},
+        }
+    )
+    await async_mongo_provider.update_assignment_status(
+        assignment_id=assignment.assignment_id,
+        status="in_progress",
+        active_session_id="sess-explore-1",
+    )
+
+    updated = await ExperimentManager.handle_session_terminal_state_async(
+        provider=async_mongo_provider,
+        experiment_name=cached_usability_experiment.name,
+        assignment_id=assignment.assignment_id,
+        exit_reason="player finished",
     )
 
     assert updated is not None
