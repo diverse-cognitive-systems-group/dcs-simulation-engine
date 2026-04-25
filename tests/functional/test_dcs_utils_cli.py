@@ -545,9 +545,7 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
                                 "game": "Explore",
                                 "pc_hid": "NA",
                                 "context_session_id": "missing-parent",
-                                "conversation_history": [
-                                    {"role": "assistant", "content": "A quiet machine waits."}
-                                ],
+                                "conversation_history": [{"role": "assistant", "content": "A quiet machine waits."}],
                                 "attempts": [
                                     {
                                         "player_message": "I inspect the machine",
@@ -710,9 +708,7 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
     attempt = data["scenario_groups"][0]["scenarios"][0]["attempts"][0]
     assert attempt["simulator_response"] == "Validation blocked that action."
     assert attempt["simulator_response_type"] == "error"
-    assert attempt["simulator_extra_events"] == [
-        {"event_type": "info", "content": "Try a grounded physical action instead."}
-    ]
+    assert attempt["simulator_extra_events"] == [{"event_type": "info", "content": "Try a grounded physical action instead."}]
 
 
 @pytest.mark.functional
@@ -908,9 +904,7 @@ def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
                                 player_message="Try blocked action",
                                 simulator_response="Validation blocked that action.",
                                 simulator_response_type="error",
-                                simulator_extra_events=[
-                                    {"event_type": "info", "content": "Try a grounded physical action instead."}
-                                ],
+                                simulator_extra_events=[{"event_type": "info", "content": "Try a grounded physical action instead."}],
                                 evaluator_feedback=EvaluatorFeedback(
                                     liked=False,
                                     comment="Validator caught it correctly.",
@@ -1110,9 +1104,7 @@ def test_admin_publish_characters(tmp_path, monkeypatch):
 
     # --- Change [2]: prod/characters.json — NA already present, so no save ---
     prod_chars_saves = [(p, d) for p, d in saved_calls if p.name == "characters.json"]
-    assert len(prod_chars_saves) == 0, (
-        "prod/characters.json should not be written when character is already present"
-    )
+    assert len(prod_chars_saves) == 0, "prod/characters.json should not be written when character is already present"
 
     # --- Change [3]: release_manifest.json recomputed via write_manifest ---
     assert len(manifest_calls) == 1, "Expected write_manifest to be called exactly once"

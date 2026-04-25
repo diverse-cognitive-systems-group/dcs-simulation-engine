@@ -19,6 +19,7 @@ export interface ExperimentSetupResponse {
   progress: ExperimentProgressResponse;
   current_assignment?: ExperimentAssignmentSummary | null;
   pending_post_play?: boolean;
+  before_play_complete?: boolean;
   assignment_completed?: boolean;
   assignment_mode?: string;
   assignments?: ExperimentAssignmentSummary[];

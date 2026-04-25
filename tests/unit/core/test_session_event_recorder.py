@@ -2,12 +2,14 @@
 # ruff: noqa: D102,D103,D105,D107
 
 import asyncio
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
 from dcs_simulation_engine.core.session_event_recorder import (
     SessionEventRecorder,
+    ValidationEventRecorder,
     _validate_event_classification,
 )
 from dcs_simulation_engine.dal.mongo.async_writer import AsyncMongoWriter
@@ -225,3 +227,62 @@ def test_validate_event_classification_accepts_only_supported_combinations(
             event_source=event_source,
             event_type=event_type,
         )
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_validation_event_recorder_persists_structured_violation_payload() -> None:
+    """Validation violations should be persisted as stable JSON payloads."""
+    db = FakeAsyncDB(
+        {
+            MongoColumns.SESSIONS: FakeAsyncCollection(),
+            MongoColumns.SESSION_EVENTS: FakeAsyncCollection(),
+        }
+    )
+    started_at = datetime.now(timezone.utc)
+    session_doc = {
+        "session_id": "session-validation",
+        "player_id": "player-1",
+        "game_name": "Explore",
+        "source": "api",
+        "pc_hid": "NA",
+        "npc_hid": "FW",
+        "session_started_at": started_at,
+        "session_ended_at": None,
+        "termination_reason": None,
+        "status": "active",
+        "turns_completed": 0,
+        "model_profile": {"updater_model": "m", "validator_model": "m", "scorer_model": None},
+        "game_config_snapshot": {"name": "Explore"},
+        "last_seq": 0,
+        "created_at": started_at,
+        "updated_at": started_at,
+    }
+
+    async with SessionEventRecorder(db=db, session_doc=session_doc, flush_interval_ms=10) as primary:
+        recorder = ValidationEventRecorder(db=db, session_doc=session_doc, primary=primary)
+        await recorder.__aenter__()
+        try:
+            await recorder.record_violation(
+                event_source="player_validation",
+                validator_name="VALID-PC-ABILITY",
+                stage="player_validation",
+                message="That action exceeds the player character abilities.",
+                response="I teleport through the wall.",
+                raw_result={"pass": False, "reason": "That action exceeds the player character abilities."},
+                turn_index=2,
+            )
+            await recorder.flush_pending()
+        finally:
+            await recorder.__aexit__(None, None, None)
+
+    payload_doc = db[MongoColumns.SESSION_EVENTS].docs[0]
+    payload = json.loads(payload_doc[MongoColumns.CONTENT])
+
+    assert payload_doc[MongoColumns.EVENT_SOURCE] == "player_validation"
+    assert payload_doc[MongoColumns.EVENT_TYPE] == "validation_violation"
+    assert payload["validator_name"] == "VALID-PC-ABILITY"
+    assert payload["stage"] == "player_validation"
+    assert payload["message"] == "That action exceeds the player character abilities."
+    assert payload["response"] == "I teleport through the wall."
+    assert payload["raw_result"] == {"pass": False, "reason": "That action exceeds the player character abilities."}

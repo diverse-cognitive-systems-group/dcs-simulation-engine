@@ -7,6 +7,7 @@ no player authentication is required.
 
 import pytest
 from dcs_simulation_engine.api.app import create_app
+from dcs_simulation_engine.core.session_manager import SessionManager
 from fastapi.testclient import TestClient
 
 pytestmark = [pytest.mark.functional]
@@ -42,9 +43,7 @@ def test_setup_returns_valid_pc_and_npc_options(game, setup_client):
     """
     response = setup_client.get(f"/api/play/setup/{game}")
 
-    assert response.status_code == 200, (
-        f"[{game}] Expected 200 from /api/play/setup, got {response.status_code}: {response.text}"
-    )
+    assert response.status_code == 200, f"[{game}] Expected 200 from /api/play/setup, got {response.status_code}: {response.text}"
 
     data = response.json()
     assert data.get("allowed") is True, f"[{game}] Expected allowed=True, got: {data.get('allowed')}"
@@ -74,15 +73,47 @@ def test_setup_pc_options_have_hid(game, setup_client):
         assert npc.get("hid"), f"[{game}] NPC entry missing non-empty hid: {npc}"
 
 
-@pytest.mark.skip(reason="pending fix of dropdown sorting")
-@pytest.mark.parametrize("game", ALL_GAMES)
-def test_setup_dropdown_sorted_alphabetically(game, setup_client):
-    """PC and NPC choices should be sorted alphabetically by display label."""
-    ...
+@pytest.mark.anyio
+async def test_session_manager_rejects_invalid_pc_choice(async_mongo_provider):
+    """Session creation should reject PC choices outside the allowed returned set."""
+    with pytest.raises(ValueError, match="Invalid pc_choice"):
+        await SessionManager.create_async(
+            game="explore",
+            provider=async_mongo_provider,
+            pc_choice="NOT_A_REAL_PC",
+            npc_choice="FW",
+        )
 
 
-@pytest.mark.skip(reason="pending implementation of configurable dropdown selector")
-@pytest.mark.parametrize("game", ALL_GAMES)
-def test_setup_configurable_selector_per_run_config(game, setup_client):
-    """Setup dropdown should reflect the selector configured by the run config."""
-    ...
+@pytest.mark.anyio
+async def test_session_manager_rejects_invalid_npc_choice(async_mongo_provider):
+    """Session creation should reject NPC choices outside the allowed returned set."""
+    with pytest.raises(ValueError, match="Invalid npc_choice"):
+        await SessionManager.create_async(
+            game="explore",
+            provider=async_mongo_provider,
+            pc_choice="NA",
+            npc_choice="NOT_A_REAL_NPC",
+        )
+
+
+def test_create_game_rejects_invalid_pc_choice(setup_client):
+    """POST /api/play/game should fail fast for an invalid PC choice."""
+    response = setup_client.post(
+        "/api/play/game",
+        json={"game": "explore", "pc_choice": "NOT_A_REAL_PC", "npc_choice": "FW", "source": "api"},
+    )
+
+    assert response.status_code == 400
+    assert "Invalid pc_choice" in response.text
+
+
+def test_create_game_rejects_invalid_npc_choice(setup_client):
+    """POST /api/play/game should fail fast for an invalid NPC choice."""
+    response = setup_client.post(
+        "/api/play/game",
+        json={"game": "explore", "pc_choice": "NA", "npc_choice": "NOT_A_REAL_NPC", "source": "api"},
+    )
+
+    assert response.status_code == 400
+    assert "Invalid npc_choice" in response.text

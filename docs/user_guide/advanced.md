@@ -14,9 +14,17 @@ To customize assignment strategies, checkout the code and implement the `Assignm
 
 Character filters allow users to specify useful categories of PCs/NPCs allowed in gameplay. For example, if a user wants only neurodivergent non-player characters allows they can use the built-in `neurodivergent` filter by name.
 
-To customize character filters, checkout the code and implement the `CharacterFilter` interface in `dcs_simulation_engine/core/character_filters.py`. Then reference your filter by name in a run configuration.
+To customize character filters, checkout the code and 
 
-⚠️ Note: This feature is incomplete or missing.
+### 1. Add the filter
+
+Implement the `CharacterFilter` interface in `dcs_simulation_engine/core/character_filters/base.py` (use the other filters as examples) and add it to the list of available filters in `dcs_simulation_engine/core/character_filters/__init__.py`
+
+### 2. Add the filter to a game
+
+Add the character filter to the games configuration (in `dcs_simulation_engine/games/`) that you want to make it available in
+
+Then run the engine with the filter referenced by name in the run config and only those characters will be selected from for gameplay.
 
 ## Custom Characters
 

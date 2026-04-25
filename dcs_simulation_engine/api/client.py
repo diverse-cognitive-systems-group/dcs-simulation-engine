@@ -18,7 +18,6 @@ from dcs_simulation_engine.api.models import (
     DeleteCharacterResponse,
     GameSetupOptionsResponse,
     GamesListResponse,
-    InferIntentEvaluationResponse,
     RegistrationRequest,
     RegistrationResponse,
     ServerConfigResponse,
@@ -206,25 +205,6 @@ class APIClient:
             headers={"Authorization": f"Bearer {key}"},
         )
 
-    def request_infer_intent_evaluation(
-        self,
-        session_id: str,
-        *,
-        api_key: Optional[str] = None,
-    ) -> InferIntentEvaluationResponse:
-        """Generate or fetch the cached Infer Intent evaluation for one completed session."""
-        key = self._resolve_api_key(api_key, required=False)
-        headers: dict[str, str] = {}
-        if key:
-            headers["Authorization"] = f"Bearer {key}"
-        return self._request(
-            "POST",
-            f"/api/sessions/{session_id}/infer-intent/evaluation",
-            None,
-            InferIntentEvaluationResponse,
-            headers=headers,
-        )
-
     def list_games(self) -> GamesListResponse:
         """List available games."""
         return self._request("GET", "/api/games/list", None, GamesListResponse)
@@ -388,12 +368,8 @@ class APIClient:
             raise APIRequestError("Expected session_meta websocket frame")
         return frame
 
-    def _drain_replay(self, ws: Any, *, replay_start_consumed: bool = False) -> None:
+    def _drain_replay(self, ws: Any) -> None:
         """Discard the replay burst the server sends when resuming a paused session."""
-        if not replay_start_consumed:
-            frame = self._recv_frame(ws)
-            if not isinstance(frame, WSReplayStartFrame):
-                raise APIRequestError("Expected replay_start websocket frame")
         while True:
             frame = self._recv_frame(ws)
             if isinstance(frame, WSReplayEventFrame):
@@ -416,7 +392,7 @@ class APIClient:
         while True:
             frame = self._recv_frame(ws)
             if isinstance(frame, WSReplayStartFrame):
-                self._drain_replay(ws, replay_start_consumed=True)
+                self._drain_replay(ws)
                 continue
             if isinstance(frame, WSEventFrame):
                 # Accumulate content frames; event_type distinguishes ai/info/warning/error.
@@ -435,7 +411,6 @@ class APIClient:
         api_key: str | None,
         text: Optional[str],
         include_opening: bool,
-        expect_replay: bool = False,
     ) -> tuple[WSSessionMetaFrame, list[WSEventFrame], WSTurnEndFrame]:
         """Open a WebSocket connection, optionally consume the opening turn, then advance.
 
@@ -456,8 +431,6 @@ class APIClient:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
             session_meta = self._recv_session_meta(ws)
-            if expect_replay:
-                self._drain_replay(ws)
             if include_opening:
                 # Consume the server-initiated opening turn before sending anything.
                 opening_events, opening_turn_end = self._recv_until_turn_end(ws)
@@ -479,7 +452,6 @@ class APIClient:
         session_id: str,
         api_key: str | None,
         include_opening: bool,
-        expect_replay: bool = False,
     ) -> tuple[WSSessionMetaFrame, WSStatusFrame]:
         """Fetch session status via WebSocket without advancing a turn.
 
@@ -493,8 +465,6 @@ class APIClient:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
             session_meta = self._recv_session_meta(ws)
-            if expect_replay:
-                self._drain_replay(ws)
             if include_opening:
                 # Must drain the opening turn before the server will accept requests.
                 self._recv_until_turn_end(ws)
@@ -502,7 +472,7 @@ class APIClient:
             while True:
                 frame = self._recv_frame(ws)
                 if isinstance(frame, WSReplayStartFrame):
-                    self._drain_replay(ws, replay_start_consumed=True)
+                    self._drain_replay(ws)
                     continue
                 break
 
@@ -517,7 +487,6 @@ class APIClient:
         session_id: str,
         api_key: str | None,
         include_opening: bool,
-        expect_replay: bool = False,
     ) -> WSSessionMetaFrame:
         """Close a session via WebSocket.
 
@@ -531,15 +500,13 @@ class APIClient:
             connect_kwargs["additional_headers"] = {"Authorization": f"Bearer {api_key}"}
         with connect(ws_url, **connect_kwargs) as ws:
             session_meta = self._recv_session_meta(ws)
-            if expect_replay:
-                self._drain_replay(ws)
             if include_opening:
                 self._recv_until_turn_end(ws)
             ws.send(WSCloseRequest(type="close").model_dump_json())
             while True:
                 frame = self._recv_frame(ws)
                 if isinstance(frame, WSReplayStartFrame):
-                    self._drain_replay(ws, replay_start_consumed=True)
+                    self._drain_replay(ws)
                     continue
                 break
             if not isinstance(frame, WSClosedFrame):

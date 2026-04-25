@@ -1,7 +1,5 @@
 """Pydantic models and payload parsers for the API layer."""
 
-from __future__ import annotations
-
 import json
 from datetime import datetime
 from typing import Literal
@@ -81,8 +79,8 @@ class RemoteStatusResponse(BaseModel):
     started_at: datetime
     uptime: int
     experiment_name: str | None = None
-    progress: ExperimentProgressResponse | None = None
-    experiment_status: ExperimentStatusResponse | None = None
+    progress: "ExperimentProgressResponse | None" = None
+    experiment_status: "ExperimentStatusResponse | None" = None
 
 
 class CreateGameRequest(BaseModel):
@@ -139,6 +137,8 @@ class ExperimentAssignmentSummary(BaseModel):
     game_name: str
     character_hid: str
     status: AssignmentStatus
+    active_session_id: str | None = None
+    needs_post_play: bool = False
 
 
 class ExperimentProgressResponse(BaseModel):
@@ -176,6 +176,7 @@ class ExperimentSetupResponse(BaseModel):
     progress: ExperimentProgressResponse
     current_assignment: ExperimentAssignmentSummary | None = None
     pending_post_play: bool = False
+    before_play_complete: bool = False
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
     assignment_mode: str = "auto"
@@ -220,12 +221,14 @@ class ExperimentSessionRequest(BaseModel):
     """Payload for creating a session from the current assignment."""
 
     source: str = Field(default="experiment", min_length=1)
+    assignment_id: str | None = None
 
 
 class ExperimentPostPlayRequest(BaseModel):
     """Payload for storing experiment post-play form answers."""
 
     responses: dict[str, dict]
+    assignment_id: str | None = None
 
 
 class SessionSummary(BaseModel):
@@ -244,23 +247,6 @@ class SessionsListResponse(BaseModel):
     """Response payload for session list endpoint."""
 
     sessions: list[SessionSummary]
-
-
-class InferIntentEvaluation(BaseModel):
-    """Parsed Infer Intent evaluation payload returned by the scorer."""
-
-    tier: int = Field(ge=0, le=3)
-    score: int = Field(ge=0, le=100)
-    reasoning: str = Field(min_length=1)
-
-
-class InferIntentEvaluationResponse(BaseModel):
-    """Response payload for the cached-or-generated Infer Intent evaluation."""
-
-    session_id: str
-    event_id: str
-    cached: bool
-    evaluation: InferIntentEvaluation
 
 
 class SessionEventFeedback(BaseModel):

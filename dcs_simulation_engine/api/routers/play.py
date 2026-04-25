@@ -39,6 +39,7 @@ from dcs_simulation_engine.api.models import (
     parse_ws_auth,
     parse_ws_request,
 )
+from dcs_simulation_engine.api.registry import hydrate_session_async
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status

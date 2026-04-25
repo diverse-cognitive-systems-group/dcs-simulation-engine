@@ -14,4 +14,6 @@ export interface ExperimentAssignmentSummary {
   game_name: string;
   character_hid: string;
   status: ExperimentAssignmentSummaryStatus;
+  active_session_id?: string | null;
+  needs_post_play?: boolean;
 }

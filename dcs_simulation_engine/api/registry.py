@@ -98,8 +98,11 @@ class SessionRegistry:
             return self._store.get(session_id)
 
     def claim_hydration(self, session_id: str) -> bool:
-        """Mark session_id as being hydrated.  Returns True if this caller won
-        the race; False if another coroutine is already hydrating it."""
+        """Mark session_id as being hydrated.
+
+        Returns True if this caller won
+        the race; False if another coroutine is already hydrating it.
+        """
         with self._lock:
             if session_id in self._store or session_id in self._pending_hydration:
                 return False
@@ -276,9 +279,7 @@ async def hydrate_session_async(
         return None
 
     try:
-        session_record = await maybe_await(
-            provider.get_session(session_id=session_id, player_id=player_id)
-        )
+        session_record = await maybe_await(provider.get_session(session_id=session_id, player_id=player_id))
         if session_record is None:
             logger.info("Session %s not found in DB; cannot hydrate.", session_id)
             return None
@@ -292,9 +293,7 @@ async def hydrate_session_async(
 
         runtime_state = session_record.data.get(MongoColumns.RUNTIME_STATE)
         if not runtime_state:
-            logger.warning(
-                "Session %s has no runtime_state snapshot; cannot hydrate.", session_id
-            )
+            logger.warning("Session %s has no runtime_state snapshot; cannot hydrate.", session_id)
             return None
 
         try:
@@ -307,9 +306,7 @@ async def hydrate_session_async(
             logger.warning("Session %s hydration failed: %s", session_id, exc)
             return None
 
-        assignment_record = await maybe_await(
-            provider.get_assignment_for_session_id(session_id=session_id)
-        )
+        assignment_record = await maybe_await(provider.get_assignment_for_session_id(session_id=session_id))
 
         entry = SessionEntry(
             session_id=session_id,

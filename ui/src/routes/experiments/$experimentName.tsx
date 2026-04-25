@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
+import type { ExperimentSetupResponse } from '@/api/generated/model/experimentSetupResponse'
 import { HttpError, httpClient } from '@/api/http'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -33,14 +34,14 @@ interface ExperimentQuestion {
   key: string
   prompt: string
   answer_type:
-    | 'string'
-    | 'bool'
-    | 'single_choice'
-    | 'multi_choice'
-    | 'number'
-    | 'email'
-    | 'phone'
-    | null
+  | 'string'
+  | 'bool'
+  | 'single_choice'
+  | 'multi_choice'
+  | 'number'
+  | 'email'
+  | 'phone'
+  | null
   options?: Array<string | number> | null
   required?: boolean
 }
@@ -57,8 +58,15 @@ interface EligibleAssignmentOption {
 }
 
 interface ExperimentPlayerResponse {
-  assignment: { assignment_id: string; game_name: string; character_hid: string; status: string } | null
+  assignment: {
+    assignment_id: string
+    game_name: string
+    character_hid: string
+    status: string
+  } | null
 }
+
+type ExperimentAssignment = NonNullable<ExperimentSetupResponse['assignments']>[number]
 
 function titleCase(value: string): string {
   return value
@@ -374,6 +382,9 @@ function ExperimentPage() {
   const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | 'select' | null>(null)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
+  const [selectedFeedbackAssignmentId, setSelectedFeedbackAssignmentId] = useState<string | null>(
+    null,
+  )
 
   useEffect(() => {
     setActiveExperimentName(experimentName)
@@ -391,15 +402,12 @@ function ExperimentPage() {
 
   const isPlayerChoice = data?.assignment_mode === 'player_choice'
   const needsSelection =
-    isPlayerChoice &&
-    !data?.current_assignment &&
-    !data?.pending_post_play &&
-    !data?.assignment_completed &&
-    !!data?.is_open
+    isPlayerChoice && !!data?.before_play_complete && !data?.assignment_completed && !!data?.is_open
 
   const { data: eligibleOptions } = useQuery({
     queryKey: ['eligible-options', experimentName],
     enabled: authenticated && needsSelection,
+    refetchOnMount: 'always',
     queryFn: () =>
       httpClient<{ options: EligibleAssignmentOption[] }>(
         `/api/experiments/${encodeURIComponent(experimentName)}/eligible-options`,
@@ -428,6 +436,28 @@ function ExperimentPage() {
       Object.keys(current).length > 0 ? current : emptyResponses(afterForms),
     )
   }, [afterForms])
+
+  const assignments = data?.assignments ?? []
+  const pendingFeedbackAssignments = assignments.filter((assignment) => assignment.needs_post_play)
+  const selectedFeedbackAssignment =
+    pendingFeedbackAssignments.find(
+      (assignment) => assignment.assignment_id === selectedFeedbackAssignmentId,
+    ) ?? null
+
+  useEffect(() => {
+    if (
+      selectedFeedbackAssignmentId &&
+      !pendingFeedbackAssignments.some(
+        (assignment) => assignment.assignment_id === selectedFeedbackAssignmentId,
+      )
+    ) {
+      setSelectedFeedbackAssignmentId(null)
+      return
+    }
+    if (!selectedFeedbackAssignmentId && pendingFeedbackAssignments.length === 1) {
+      setSelectedFeedbackAssignmentId(pendingFeedbackAssignments[0].assignment_id)
+    }
+  }, [pendingFeedbackAssignments, selectedFeedbackAssignmentId])
 
   function setResponse(
     setter: React.Dispatch<React.SetStateAction<FormResponseMap>>,
@@ -473,7 +503,7 @@ function ExperimentPage() {
     }
   }
 
-  async function handleStartSession() {
+  async function handleStartSession(assignment: ExperimentAssignment) {
     setSubmitError(null)
     setSubmitting('session')
     try {
@@ -481,14 +511,17 @@ function ExperimentPage() {
         `/api/experiments/${encodeURIComponent(experimentName)}/sessions`,
         {
           method: 'POST',
-          body: JSON.stringify({ source: 'experiment' }),
+          body: JSON.stringify({
+            source: 'experiment',
+            assignment_id: assignment.assignment_id,
+          }),
         },
       )
       await navigate({
         to: '/play/$sessionId',
         params: { sessionId: response.session_id },
         search: {
-          gameName: data?.current_assignment?.game_name ?? '',
+          gameName: assignment.game_name,
           experimentName,
         },
       })
@@ -503,6 +536,10 @@ function ExperimentPage() {
 
   async function handlePostPlaySubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (!selectedFeedbackAssignmentId) {
+      setSubmitError('Choose an assignment before submitting feedback.')
+      return
+    }
     const errors = validateResponses(afterForms, postResponses)
     setPostErrors(errors)
     if (Object.keys(errors).length > 0) return
@@ -512,10 +549,14 @@ function ExperimentPage() {
     try {
       await httpClient(`/api/experiments/${encodeURIComponent(experimentName)}/post-play`, {
         method: 'POST',
-        body: JSON.stringify({ responses: postResponses }),
+        body: JSON.stringify({
+          responses: postResponses,
+          assignment_id: selectedFeedbackAssignmentId,
+        }),
       })
       setPostErrors({})
       setPostResponses(emptyResponses(afterForms))
+      setSelectedFeedbackAssignmentId(null)
       await refetch()
     } catch (submitErr) {
       setSubmitError(submitErr instanceof Error ? submitErr.message : 'Unable to submit feedback.')
@@ -535,6 +576,8 @@ function ExperimentPage() {
           body: JSON.stringify({ game_name: gameName, character_hid: characterHid }),
         },
       )
+      setSelectedGame(null)
+      setSelectedCharacter(null)
       await refetch()
     } catch (selectErr) {
       setSubmitError(
@@ -657,159 +700,229 @@ function ExperimentPage() {
           </Card>
         )}
 
-        <Card className="border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle>
-              {data.pending_post_play
-                ? 'Post-Play Feedback'
-                : data.current_assignment
-                  ? 'Current Assignment'
-                  : data.assignment_completed
-                    ? 'Study Status'
-                    : needsSelection
-                      ? 'Choose Your Assignment'
-                      : 'Before-Play Questions'}
-            </CardTitle>
-            <CardDescription>
-              {data.pending_post_play
-                ? 'Tell us how the interface felt before you leave.'
-                : data.current_assignment
-                  ? 'This study only allows play through the assigned session below.'
-                  : data.assignment_completed
-                    ? 'You have completed all assignments currently available to you.'
-                    : needsSelection
-                      ? 'Select the game and character you would like to play.'
-                      : 'Complete the experiment-specific questions to receive your assignment.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {submitError && (
-              <Alert variant="destructive">
-                <AlertDescription>{submitError}</AlertDescription>
-              </Alert>
-            )}
+        {submitError && (
+          <Alert variant="destructive">
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
 
-            {!data.pending_post_play &&
-              !data.current_assignment &&
-              !data.assignment_completed &&
-              !data.is_open && (
+        {!data.before_play_complete && !data.assignment_completed && data.is_open && (
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Before-Play Questions</CardTitle>
+              <CardDescription>
+                Complete the experiment-specific questions to unlock your assignments.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleEntrySubmit} className="space-y-6">
+                {beforeForms.map((form) => (
+                  <FormSection
+                    key={form.name}
+                    form={form}
+                    responses={entryResponses}
+                    errors={entryErrors}
+                    onChange={(formName, key, value) =>
+                      setResponse(setEntryResponses, formName, key, value)
+                    }
+                  />
+                ))}
+                <Button type="submit" disabled={submitting === 'entry'}>
+                  {submitting === 'entry' ? 'Preparing assignments…' : 'Continue'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {needsSelection && (
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Choose Your Assignment</CardTitle>
+              <CardDescription>
+                Select another game and character to add to your available assignments.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {eligibleOptions?.options.length === 0 && (
                 <Alert>
                   <AlertDescription>
-                    This experiment has already reached its target quota and is not accepting new
-                    participants.
+                    No assignments are currently available. All slots may be filled.
                   </AlertDescription>
                 </Alert>
               )}
-
-            {!data.pending_post_play &&
-              !data.current_assignment &&
-              !data.assignment_completed &&
-              data.is_open &&
-              !isPlayerChoice && (
-                <form onSubmit={handleEntrySubmit} className="space-y-6">
-                  {beforeForms.map((form) => (
-                    <FormSection
-                      key={form.name}
-                      form={form}
-                      responses={entryResponses}
-                      errors={entryErrors}
-                      onChange={(formName, key, value) =>
-                        setResponse(setEntryResponses, formName, key, value)
-                      }
-                    />
-                  ))}
-                  <Button type="submit" disabled={submitting === 'entry'}>
-                    {submitting === 'entry' ? 'Preparing assignment…' : 'Continue to Assignment'}
-                  </Button>
-                </form>
-              )}
-
-            {needsSelection && (
-              <div className="space-y-4">
-                {eligibleOptions?.options.length === 0 && (
-                  <Alert>
-                    <AlertDescription>
-                      No assignments are currently available. All slots may be filled.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {(eligibleOptions?.options ?? []).length > 0 &&
-                  (() => {
-                    const gameOptions = [
-                      ...new Set((eligibleOptions?.options ?? []).map((o) => o.game_name)),
-                    ]
-                    const characterOptions = (eligibleOptions?.options ?? [])
-                      .filter((o) => o.game_name === selectedGame)
-                      .map((o) => o.character_hid)
-                    return (
-                      <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Game
-                          </Label>
-                          <Select
-                            value={selectedGame ?? ''}
-                            onValueChange={(val) => {
-                              setSelectedGame(val)
-                              setSelectedCharacter(null)
-                            }}
-                            disabled={submitting === 'select'}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a game…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {gameOptions.map((game) => (
-                                <SelectItem key={game} value={game}>
-                                  {game}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Character
-                          </Label>
-                          <Select
-                            value={selectedCharacter ?? ''}
-                            onValueChange={setSelectedCharacter}
-                            disabled={!selectedGame || submitting === 'select'}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  selectedGame ? 'Select a character…' : 'Select a game first'
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {characterOptions.map((char) => (
-                                <SelectItem key={char} value={char}>
-                                  {char}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          type="button"
-                          disabled={!selectedGame || !selectedCharacter || submitting === 'select'}
-                          onClick={() =>
-                            selectedGame &&
-                            selectedCharacter &&
-                            handleSelectAssignment(selectedGame, selectedCharacter)
-                          }
+              {(eligibleOptions?.options ?? []).length > 0 &&
+                (() => {
+                  const gameOptions = [
+                    ...new Set((eligibleOptions?.options ?? []).map((option) => option.game_name)),
+                  ]
+                  const characterOptions = (eligibleOptions?.options ?? [])
+                    .filter((option) => option.game_name === selectedGame)
+                    .map((option) => option.character_hid)
+                  return (
+                    <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Game
+                        </Label>
+                        <Select
+                          value={selectedGame ?? ''}
+                          onValueChange={(value) => {
+                            setSelectedGame(value)
+                            setSelectedCharacter(null)
+                          }}
+                          disabled={submitting === 'select'}
                         >
-                          {submitting === 'select' ? 'Selecting…' : 'Select Assignment'}
-                        </Button>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a game…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {gameOptions.map((game) => (
+                              <SelectItem key={game} value={game}>
+                                {game}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )
-                  })()}
-              </div>
-            )}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Character
+                        </Label>
+                        <Select
+                          value={selectedCharacter ?? ''}
+                          onValueChange={setSelectedCharacter}
+                          disabled={!selectedGame || submitting === 'select'}
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                selectedGame ? 'Select a character…' : 'Select a game first'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {characterOptions.map((character) => (
+                              <SelectItem key={character} value={character}>
+                                {character}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        disabled={!selectedGame || !selectedCharacter || submitting === 'select'}
+                        onClick={() =>
+                          selectedGame &&
+                          selectedCharacter &&
+                          handleSelectAssignment(selectedGame, selectedCharacter)
+                        }
+                      >
+                        {submitting === 'select' ? 'Selecting…' : 'Add Assignment'}
+                      </Button>
+                    </div>
+                  )
+                })()}
+            </CardContent>
+          </Card>
+        )}
 
-            {data.pending_post_play && (
+        {assignments.length > 0 && (
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Your Assignments</CardTitle>
+              <CardDescription>
+                Resume any saved assignment, start a queued one, or submit feedback for a completed
+                run.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  NPC selection is handled by the game defaults for this study. Each assignment
+                  keeps its own saved session, so you can come back to any paused one later.
+                </AlertDescription>
+              </Alert>
+              {assignments.map((assignment) => {
+                const statusLabel =
+                  assignment.status === 'in_progress'
+                    ? 'In Progress'
+                    : assignment.status === 'completed'
+                      ? 'Completed'
+                      : assignment.status === 'interrupted'
+                        ? 'Interrupted'
+                        : 'Assigned'
+                const isSelectedForFeedback =
+                  selectedFeedbackAssignment?.assignment_id === assignment.assignment_id
+
+                return (
+                  <div
+                    key={assignment.assignment_id}
+                    className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-lg font-semibold">{assignment.game_name}</div>
+                          <Badge variant="outline">{statusLabel}</Badge>
+                          {assignment.needs_post_play && (
+                            <Badge variant="secondary">Feedback Needed</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Character: {assignment.character_hid}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {assignment.needs_post_play && (
+                          <Button
+                            variant={isSelectedForFeedback ? 'secondary' : 'default'}
+                            onClick={() =>
+                              setSelectedFeedbackAssignmentId(assignment.assignment_id)
+                            }
+                            disabled={submitting === 'post'}
+                          >
+                            {isSelectedForFeedback ? 'Feedback Selected' : 'Submit Feedback'}
+                          </Button>
+                        )}
+                        {!assignment.needs_post_play && assignment.status === 'in_progress' && (
+                          <Button
+                            onClick={() => handleStartSession(assignment)}
+                            disabled={submitting === 'session'}
+                          >
+                            {submitting === 'session' ? 'Opening…' : 'Resume Session'}
+                          </Button>
+                        )}
+                        {!assignment.needs_post_play &&
+                          (assignment.status === 'assigned' ||
+                            assignment.status === 'interrupted') && (
+                            <Button
+                              onClick={() => handleStartSession(assignment)}
+                              disabled={submitting === 'session'}
+                            >
+                              {submitting === 'session' ? 'Opening…' : 'Start Session'}
+                            </Button>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedFeedbackAssignment && (
+          <Card className="border-border/70 shadow-sm">
+            <CardHeader>
+              <CardTitle>Post-Play Feedback</CardTitle>
+              <CardDescription>
+                Share feedback for {selectedFeedbackAssignment.game_name} as{' '}
+                {selectedFeedbackAssignment.character_hid}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <form onSubmit={handlePostPlaySubmit} className="space-y-6">
                 {afterForms.map((form) => (
                   <FormSection
@@ -826,69 +939,31 @@ function ExperimentPage() {
                   {submitting === 'post' ? 'Submitting…' : 'Submit Feedback'}
                 </Button>
               </form>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
-            {data.current_assignment && !data.pending_post_play && (
-              <div className="space-y-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Assigned Game
-                    </div>
-                    <div className="mt-2 text-2xl font-semibold">
-                      {data.current_assignment.game_name}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                      Assigned Character
-                    </div>
-                    <div className="mt-2 text-2xl font-semibold">
-                      {data.current_assignment.character_hid}
-                    </div>
-                  </div>
-                </div>
-                <Alert>
-                  <AlertDescription>
-                    NPC selection is handled by the game defaults for this study. Free character and
-                    game selection are disabled while your assignment is active.
-                  </AlertDescription>
-                </Alert>
-                {data.resumable_session_id ? (
-                  <Button onClick={handleStartSession} disabled={submitting === 'session'}>
-                    {submitting === 'session' ? 'Resuming session…' : 'Resume Assigned Session'}
-                  </Button>
-                ) : (
-                  <Button onClick={handleStartSession} disabled={submitting === 'session'}>
-                    {submitting === 'session' ? 'Starting session…' : 'Start Assigned Session'}
-                  </Button>
-                )}
-              </div>
-            )}
+        {data.assignment_completed && (
+          <Card className="border-border/70 shadow-sm">
+            <CardContent className="space-y-3 px-6 py-6">
+              <p className="text-lg font-medium">
+                Thank you. You have completed all available study assignments.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                There are no further assignments available for your account right now.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-            {!data.current_assignment && !data.pending_post_play && data.assignment_completed && (
-              <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 px-4 py-6">
-                <p className="text-lg font-medium">
-                  Thank you. You have completed all available study assignments.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  There are no further assignments available for your account right now.
-                </p>
-              </div>
-            )}
-
-            {!data.current_assignment &&
-              !data.pending_post_play &&
-              !data.assignment_completed &&
-              !data.is_open && (
-                <Alert>
-                  <AlertDescription>
-                    The experiment quota has been filled, so there are no new assignments available.
-                  </AlertDescription>
-                </Alert>
-              )}
-          </CardContent>
-        </Card>
+        {!data.is_open && assignments.length === 0 && !data.assignment_completed && (
+          <Alert>
+            <AlertDescription>
+              This experiment has already reached its target quota and is not accepting new
+              participants.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </div>
   )

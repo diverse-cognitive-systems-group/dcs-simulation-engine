@@ -31,6 +31,7 @@ import type {
   CreateGameRequest,
   CreateGameResponse,
   DeleteCharacterResponse,
+  EligibleAssignmentOptionsResponse,
   ExperimentAssignmentSummary,
   ExperimentPlayerRequest,
   ExperimentPlayerResponse,
@@ -43,13 +44,14 @@ import type {
   GameSetupOptionsResponse,
   GamesListResponse,
   GetSessionReconstructionApiSessionsSessionIdReconstructionGet200,
+  GetSessionStatusApiSessionsSessionIdStatusGet200,
   HTTPValidationError,
   HealthHealthzGet200,
-  InferIntentEvaluationResponse,
   RegistrationRequest,
   RegistrationResponse,
   RemoteBootstrapResponse,
   RemoteStatusResponse,
+  SelectAssignmentRequest,
   ServerConfigResponse,
   SessionsListResponse,
   StatusResponse,
@@ -246,6 +248,127 @@ export const useAuthUserApiPlayerAuthPost = <TError = HTTPValidationError,
       return useMutation(getAuthUserApiPlayerAuthPostMutationOptions(options), queryClient);
     }
     
+/**
+ * Return the current status of a session. Works in both standard and free-play modes.
+
+Used by the frontend to verify a stored session_id is still paused and resumable.
+ * @summary Get Session Status
+ */
+export type getSessionStatusApiSessionsSessionIdStatusGetResponse200 = {
+  data: GetSessionStatusApiSessionsSessionIdStatusGet200
+  status: 200
+}
+
+export type getSessionStatusApiSessionsSessionIdStatusGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type getSessionStatusApiSessionsSessionIdStatusGetResponseSuccess = (getSessionStatusApiSessionsSessionIdStatusGetResponse200) & {
+  headers: Headers;
+};
+export type getSessionStatusApiSessionsSessionIdStatusGetResponseError = (getSessionStatusApiSessionsSessionIdStatusGetResponse422) & {
+  headers: Headers;
+};
+
+export type getSessionStatusApiSessionsSessionIdStatusGetResponse = (getSessionStatusApiSessionsSessionIdStatusGetResponseSuccess | getSessionStatusApiSessionsSessionIdStatusGetResponseError)
+
+export const getGetSessionStatusApiSessionsSessionIdStatusGetUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/status`
+}
+
+export const getSessionStatusApiSessionsSessionIdStatusGet = async (sessionId: string, options?: RequestInit): Promise<getSessionStatusApiSessionsSessionIdStatusGetResponse> => {
+  
+  return httpClient<getSessionStatusApiSessionsSessionIdStatusGetResponse>(getGetSessionStatusApiSessionsSessionIdStatusGetUrl(sessionId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getGetSessionStatusApiSessionsSessionIdStatusGetQueryKey = (sessionId: string,) => {
+    return [
+    `/api/sessions/${sessionId}/status`
+    ] as const;
+    }
+
+    
+export const getGetSessionStatusApiSessionsSessionIdStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionStatusApiSessionsSessionIdStatusGetQueryKey(sessionId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>> = ({ signal }) => getSessionStatusApiSessionsSessionIdStatusGet(sessionId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(sessionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSessionStatusApiSessionsSessionIdStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>>
+export type GetSessionStatusApiSessionsSessionIdStatusGetQueryError = HTTPValidationError
+
+
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Session Status
+ */
+
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSessionStatusApiSessionsSessionIdStatusGetQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
 /**
  * List active in-memory sessions for the player tied to the provided API key.
  * @summary List Sessions
@@ -477,96 +600,6 @@ export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet
 
 
 
-/**
- * Return a cached Infer Intent evaluation or generate and persist it on first request.
- * @summary Request Infer Intent Evaluation
- */
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse200 = {
-  data: InferIntentEvaluationResponse
-  status: 200
-}
-
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseSuccess = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse200) & {
-  headers: Headers;
-};
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseError = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse422) & {
-  headers: Headers;
-};
-
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseSuccess | requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseError)
-
-export const getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostUrl = (sessionId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/infer-intent/evaluation`
-}
-
-export const requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost = async (sessionId: string, options?: RequestInit): Promise<requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse> => {
-  
-  return httpClient<requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse>(getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostUrl(sessionId),
-  {      
-    ...options,
-    method: 'POST'
-    
-    
-  }
-);}
-  
-
-
-
-export const getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext> => {
-
-const mutationKey = ['requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, {sessionId: string}> = (props) => {
-          const {sessionId} = props ?? {};
-
-          return  requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost(sessionId,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationResult = NonNullable<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>>
-    
-    export type RequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationError = HTTPValidationError
-
-    /**
- * @summary Request Infer Intent Evaluation
- */
-export const useRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>,
-        TError,
-        {sessionId: string},
-        TContext
-      > => {
-      return useMutation(getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationOptions(options), queryClient);
-    }
-    
 /**
  * Store or overwrite feedback on one persisted NPC-message event.
  * @summary Submit Session Event Feedback
@@ -1175,7 +1208,7 @@ export const useRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPost 
     }
     
 /**
- * Create a session for the authenticated player's current experiment assignment.
+ * Create or resume a session for one experiment assignment.
  * @summary Create Experiment Session
  */
 export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse200 = {
@@ -1267,7 +1300,7 @@ export const useCreateExperimentSessionApiExperimentsExperimentNameSessionsPost 
     }
     
 /**
- * Store the experiment post-play form on the latest completed assignment.
+ * Store the experiment post-play form on one completed assignment.
  * @summary Submit Experiment Post Play
  */
 export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse200 = {
@@ -1477,6 +1510,217 @@ export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TDa
 
 
 
+/**
+ * Return eligible game/character pairs for the authenticated player in player_choice mode.
+ * @summary Get Eligible Options
+ */
+export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse200 = {
+  data: EligibleAssignmentOptionsResponse
+  status: 200
+}
+
+export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseSuccess = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse200) & {
+  headers: Headers;
+};
+export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseError = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse422) & {
+  headers: Headers;
+};
+
+export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseSuccess | getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseError)
+
+export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetUrl = (experimentName: string,) => {
+
+
+  
+
+  return `/api/experiments/${experimentName}/eligible-options`
+}
+
+export const getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet = async (experimentName: string, options?: RequestInit): Promise<getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse> => {
+  
+  return httpClient<getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse>(getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetUrl(experimentName),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryKey = (experimentName: string,) => {
+    return [
+    `/api/experiments/${experimentName}/eligible-options`
+    ] as const;
+    }
+
+    
+export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryOptions = <TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryKey(experimentName);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>> = ({ signal }) => getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet(experimentName, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(experimentName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryResult = NonNullable<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>>
+export type GetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryError = HTTPValidationError
+
+
+export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
+ experimentName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>,
+          TError,
+          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
+ experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>,
+          TError,
+          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
+ experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Eligible Options
+ */
+
+export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
+ experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryOptions(experimentName,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Create an assignment for the authenticated player based on their explicit game/character selection.
+ * @summary Select Assignment
+ */
+export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse200 = {
+  data: ExperimentAssignmentSummary
+  status: 200
+}
+
+export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseSuccess = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse200) & {
+  headers: Headers;
+};
+export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseError = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse422) & {
+  headers: Headers;
+};
+
+export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseSuccess | selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseError)
+
+export const getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostUrl = (experimentName: string,) => {
+
+
+  
+
+  return `/api/experiments/${experimentName}/assignments/select`
+}
+
+export const selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost = async (experimentName: string,
+    selectAssignmentRequest: SelectAssignmentRequest, options?: RequestInit): Promise<selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse> => {
+  
+  return httpClient<selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse>(getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostUrl(experimentName),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      selectAssignmentRequest,)
+  }
+);}
+  
+
+
+
+export const getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, TError,{experimentName: string;data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, TError,{experimentName: string;data: SelectAssignmentRequest}, TContext> => {
+
+const mutationKey = ['selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, {experimentName: string;data: SelectAssignmentRequest}> = (props) => {
+          const {experimentName,data} = props ?? {};
+
+          return  selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost(experimentName,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationResult = NonNullable<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>>
+    export type SelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationBody = SelectAssignmentRequest
+    export type SelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Select Assignment
+ */
+export const useSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, TError,{experimentName: string;data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>,
+        TError,
+        {experimentName: string;data: SelectAssignmentRequest},
+        TContext
+      > => {
+      return useMutation(getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationOptions(options), queryClient);
+    }
+    
 /**
  * Return the current aggregate status for one experiment.
  * @summary Experiment Status

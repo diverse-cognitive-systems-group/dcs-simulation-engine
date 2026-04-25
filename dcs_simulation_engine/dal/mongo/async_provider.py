@@ -384,11 +384,7 @@ class AsyncMongoProvider:
         query: dict[str, Any] = {MongoColumns.SESSION_ID: session_id}
         if player_id is not None:
             query[MongoColumns.PLAYER_ID] = player_id
-        doc = await maybe_await(
-            self._db[MongoColumns.SESSIONS].find_one(
-                query
-            )
-        )
+        doc = await maybe_await(self._db[MongoColumns.SESSIONS].find_one(query))
         if not doc:
             return None
         return _to_session_record(doc)
@@ -462,9 +458,7 @@ class AsyncMongoProvider:
                 copied_events.append(copied)
             await maybe_await(self._db[MongoColumns.SESSION_EVENTS].insert_many(copied_events))
 
-        child = await maybe_await(
-            self._db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: child_session_id})
-        )
+        child = await maybe_await(self._db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: child_session_id}))
         if child is None:
             raise ValueError(f"Failed to create branched child for session {session_id!r}")
         return _to_session_record(child)

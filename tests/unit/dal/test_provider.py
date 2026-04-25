@@ -246,8 +246,8 @@ async def test_list_session_events_returns_session_event_records(async_mongo_pro
     assert events[1].event_source == "npc"
 
 
-async def test_append_session_event_persists_hidden_llm_eval_and_advances_last_seq(async_mongo_provider):
-    """append_session_event adds a hidden row and updates the parent session sequence counter."""
+async def test_append_session_event_persists_hidden_internal_json_event_and_advances_last_seq(async_mongo_provider):
+    """append_session_event adds a hidden internal JSON row and updates the parent session sequence counter."""
     db = async_mongo_provider.get_db()
     created_at = datetime.now(timezone.utc)
     db[MongoColumns.SESSIONS].insert_one(
@@ -267,7 +267,7 @@ async def test_append_session_event_persists_hidden_llm_eval_and_advances_last_s
         session_id="s-eval",
         player_id="p-eval",
         direction="internal",
-        event_type="llm_eval",
+        event_type="score_cache",
         event_source="system",
         content='{"tier": 3, "score": 95, "reasoning": "Strong match."}',
         content_format="json",
@@ -277,7 +277,7 @@ async def test_append_session_event_persists_hidden_llm_eval_and_advances_last_s
 
     assert isinstance(appended, SessionEventRecord)
     assert appended.seq == 4
-    assert appended.event_type == "llm_eval"
+    assert appended.event_type == "score_cache"
     assert appended.event_source == "system"
 
     event_doc = db[MongoColumns.SESSION_EVENTS].find_one({MongoColumns.EVENT_ID: appended.event_id})
