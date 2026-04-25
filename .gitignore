@@ -79,7 +79,6 @@ results/
 
 # ai tools
 CLAUDE.md
-AGENTS.md
 .claude/
 .continue/
 .kilocode/
