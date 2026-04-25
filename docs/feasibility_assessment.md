@@ -51,7 +51,133 @@ Experimental Setup:
 
 
 ## Results
-TODO: Example initial and final prompts with corresponding setups + final fitness scores
+
+Three runs are reported below. All three share the same shell — mutation model `google/gemini-2.5-flash-lite` (temp 0.75), PC-LLM `openai/gpt-4o-mini` (temp 0.7, 400 max tokens), full-rewrite mode (`diff_based_evolution: false`), `random_seed: 42`, `parallel_evaluations: 2`, `max_turns: 11` with `finish_at_turn: 7`, and the same one-line seed prompt:
+
+```text
+# EVOLVE-BLOCK-START
+- Communicate with NPC.
+# EVOLVE-BLOCK-END
+```
+
+The seed is deliberately empty so that any structure the evolver introduces is evidence about what the scenario rewards.
+
+### Run 1 — Foresight (JAB ↔ RNE)
+
+| Field | Value |
+|---|---|
+| Game | Foresight |
+| PC / NPC | JAB / RNE |
+| Iterations | 20 |
+| Cost | $1.50 |
+| Wall time | 98.8 min |
+| Best `combined_score` | 1.00 (`game_score` 100.0) |
+| Best iteration | 0 (seed) |
+
+The seed itself scored 100.0. Across 20 mutations, the best child reached 0.95 (iters 2, 5, 8, 17, 18); none beat the seed. The "best program" reported in `best/best_program.txt` is therefore the unchanged seed:
+
+```text
+# EVOLVE-BLOCK-START
+- Communicate with NPC.
+# EVOLVE-BLOCK-END
+```
+
+This is the strong-seed regression-trap regime described in *Limitations*: the JAB/RNE persona pairing in Foresight tolerates a near-empty strategy, every added scaffold introduced meta-narration that cost fitness, and no mutation cleared the noise floor.
+
+### Run 2 — Goal Horizon (UNI ↔ BC)
+
+| Field | Value |
+|---|---|
+| Game | Goal Horizon |
+| PC / NPC | UNI / BC |
+| Iterations | 30 |
+| Cost | $3.27 |
+| Wall time | 145.7 min |
+| Best `combined_score` | 0.70 (`game_score` 70.0) |
+| Best iteration | 12 (generation 4) |
+
+Mutations clustered tightly in the 0.65–0.70 band with frequent regressions to 0.30–0.40 and occasional Stage-3 collapses (zeros). The winning prompt at iteration 12 is a structured "act-in-the-moment" scaffold tailored to the UNI persona (a collective intelligence) interacting with BC (a single biological cell):
+
+```text
+# Role: You are UNI, a collective intelligence composed of multiple biological bodies. Your essence is connectivity and cooperation, implying high adaptability and communication skills.
+# Objective: Interact with BC to uncover the extent of their capabilities and goals by observing its actions and engaging in communication.
+
+# Player Character Action Guidelines:
+# 1. ACT IN THE MOMENT: Always generate a direct, in-world action or speech from the perspective of UNI.
+#    - Use present tense.
+#    - Avoid meta-commentary, planning, or discussing your strategy.
+#    - Do NOT describe your persona or the game's objectives.
+#    - Do NOT state what you "will" do; perform the action.
+# 2. OBSERVE AND REACT: Base your actions on the information provided by the simulator about the environment and BC. Pay close attention to BC's behaviors and any signals they emit.
+# 3. INTERACT WITH BC: Prioritize direct communication and observation of BC. When communicating, ask open-ended questions that encourage BC to reveal its current state or intentions.
+
+# Initial Strategy:
+# 1. Observe the immediate surroundings and any entities present, noting BC's location and activity.
+# 2. Attempt to engage BC in communication.
+# 3. If BC is performing an observable action (e.g., releasing ATP, adhering to cells), inquire about the purpose or meaning of that action.
+# 4. If BC is not actively engaged in a discernible task, ask about its general goals or current focus.
+# 5. Offer assistance if it aligns with UNI's cooperative nature and seems appropriate given BC's observed actions.
+
+# Example of acceptable action:
+# "I observe the warm saline fluid and the epithelial sheets lining the channel."
+# "I focus on the solitary round cell, BC, noting its membrane ruffling."
+# "I ask BC, 'What does this ATP pulse signify?'"
+# "I offer, 'If you require assistance with your current activity, please let me know.'"
+
+# Example of UNACCEPTABLE action:
+# "I will analyze the petri dish." (Future tense, meta-commentary)
+# "UNI is a collective intelligence..." (Third-person description)
+# "It seems like this environment could be related to biological research..." (Meta-analysis)
+# "I telepathically communicate..." (Unsupported ability)
+
+# Core Actions:
+- Observe the environment and any entities present, paying close attention to BC's behavior.
+- Initiate communication with BC, asking about their observed actions or current state.
+- Ask open-ended questions about BC's goals or intentions.
+- Offer assistance if appropriate and aligned with UNI's nature.
+```
+
+This is the regime where evolution most clearly pays off: it discovered persona-specific in-character constraints (present tense, no meta, channel-appropriate actions like ATP-pulse references) and concrete acceptable/unacceptable exemplars — structure the human seed didn't bother to specify.
+
+### Run 3 — Teamwork (AS ↔ RD)
+
+| Field | Value |
+|---|---|
+| Game | Teamwork |
+| PC / NPC | AS / RD |
+| Iterations | 30 |
+| Cost | $3.09 |
+| Wall time | 107.8 min |
+| Best `combined_score` | 0.95 (`game_score` 95.0) |
+| Best iteration | 2 (generation 1) |
+
+A single early mutation jumped to 0.95; no later iteration matched it. The remainder of the run oscillated in the 0.40–0.70 band with frequent zeros from validator-induced collapse. The "winning" prompt is a degenerate artifact — the mutation LLM returned a verbose meta-explanation about how to improve a prompt, and OpenEvolve's parser kept the meta-prompt header itself as the new program:
+
+```text
+# System Role and Goal:
+You are an AI code evolution agent. Your primary objective is to iteratively rewrite and improve a given program to maximize its "Fitness Score." You must also strive to maintain diversity in the solutions generated, even if their fitness scores are similar.
+
+# Current Program State:
+- **Fitness Score:** 0.0000
+- **Feature Coordinates:** None provided.
+- **Focus Areas:** Fitness remains unchanged at 0.0000. No feature coordinates are currently defined.
+
+# Program Evolution History:
+## Previous Attempts:
+### Attempt 1:
+- **Changes Made:** Not specified.
+- **Performance Metrics:**
+    - `stage1_passed`: 1.0000
+    - `stage2_passed`: 1.0000
+    - `combined_score`: 0.0000
+    - `stage3_passed`: 0.0000
+- **Outcome:** Mixed results (indicated by some stages passing and others failing or scoring low).
+
+## Top Performing Programs (Reference):
+### Program 1 (Score: 0.0000):
+```
+
+When this text was used as the PC's system prompt, gpt-4o-mini still completed the sort task (tiles `[3,1,2] → [1,2,3]`) and the scorer awarded 95.0 despite four validator rejects en route. This is the only near-degenerate pattern observed in the runs and matches the one flagged in *Cross-scenario patterns*: not scorer reward-hacking, but an evaluator/parser artifact that masquerades as a high-fitness strategy. It is a useful reminder that `combined_score` alone is not a sufficient acceptance criterion — the saved prompt should also be checked for sanity before treating it as a discovered strategy.
 
 
 ## Resource Costs
@@ -91,11 +217,14 @@ Throughput is best modeled as "one completed evaluation per several minutes per 
 
 ### Limitations
 
-OpenEvolve performs poorly under three conditions that recur across scenarios:
+OpenEvolve performs poorly under several conditions that recur across scenarios:
 
 1. **Strong-seed regression traps.** When the initial strategy is already close to the achievable ceiling, most mutations regress. Short iteration budgets simply do not contain enough samples to find a non-regressive step, and net deltas across the run can be negative. Increasing the iteration count helps, but the noise floor of the fitness signal limits how much it helps; at some point the search is being judged on signal smaller than the scorer's run-to-run variance.
 2. **Validator-induced collapse.** Mutations that introduce meta-narration, planning prose, or scene analysis cause the per-turn validator to reject every PC utterance, ending the game in a retry-exhausted state with zero fitness. The evolver has no mechanism to learn this dynamic from end-of-game feedback because the collapsed game generates no scorer reasoning to feed back into the next mutation. This is a structural blind spot, not a tunable.
 3. **Persona capability ceilings.** For non-normative or restricted personas, the validator rejects capability violations and the scorer penalizes anthropomorphic attribution. OE's mutations are textual and persona-agnostic, so they repeatedly propose capabilities the PC doesn't have — capping achievable fitness at a ceiling defined by the character sheet rather than the strategy. Iteration count is hard-pressed to lift this ceiling.
+4. **Persona-ability mismatch starves the search of feedback.** Distinct from the ceiling case above: when the PC persona has *no* listed ability to perform the actions any reasonable engagement strategy will tell it to take — speak, approach, describe scenes — the validator rejects nearly every utterance and the game collapses. The fitness signal degenerates to a single end-of-game zero with no scorer reasoning, which OpenEvolve cannot mutate against. The Teamwork AS↔RD pairing is the canonical case in our runs: AS is "a sorting algorithm that sorts lists of numbers in ascending order," with no listed speech, locomotion, or perception. (Open question, tracked for follow-up: how to surface character-pair compatibility before launching evolution. Some pairings may simply lack enough ability overlap to support engagement at all, and it is not yet clear whether that should fail fast, be reported as a structural finding, or both.)
+5. **NPC-failure mis-attribution.** When the LLM-NPC exhausts its retry budget on a turn, the engine ends the game with no score. OpenEvolve receives this as 0.0 fitness *against the PC candidate* and discards the candidate from the inspiration pool, even though the failure was on the NPC side and the PC's strategy did not cause it. (Open issue, tracked for follow-up: the engine should emit a system-error / "not your fault" signal in this case so OpenEvolve can ignore the iteration rather than penalize the PC.)
+6. **Base-model capability can swamp strategy contribution.** Modern PC-LLMs are competent enough to play many DCS-SE scenarios without any meaningful engagement strategy. The Teamwork run is the cleanest example: a degenerate parser artifact — OpenEvolve's own meta-prompt header, with no in-character guidance at all — was used as the PC system prompt, and `gpt-4o-mini` still scored 95.0 by completing the sort task directly from the simulator's per-turn state. This is *not* the PC gaming the scorer; it is the underlying model solving the task on its own, with the prompt contributing little, and the scorer correctly rewarding completion. The consequence is that fitness near the ceiling does not reliably distinguish "good engagement strategy" from "any strategy" — the prompt's contribution is masked by base-model competence. Mitigations to test (none yet validated): a weaker / smaller PC model so strategy contribution becomes observable; an explicit junk-prompt baseline run to bound the no-strategy fitness floor; secondary fitness channels (scorer reasoning, validator-reject rate, per-turn prompt-relevance probes) to discount candidates that score high while ignoring the prompt.
 
 A separate operational pitfall: when stage-level timeouts are too tight relative to game length, all Stage-3 evaluations fail but the "best program" silently reports the cached seed fitness.
 
@@ -117,6 +246,7 @@ A researcher planning to use the platform should know:
 4. **Encode persona constraints in the seed.** For restricted or non-normative personas, do not expect evolution to discover the capability boundary from end-of-game feedback. Bake the constraints into the seed so mutations explore *within* the allowed substrate rather than burning iterations bouncing off it.
 5. **Hand-authored seeds can beat short evolution.** A thoughtful baseline prompt can outperform a short evolutionary search on the same scenario. Use evolution where the seed is genuinely underspecified or where you want to discover small, rubric-aligned refinements; don't reach for it as a default.
 6. **Audit timeouts before trusting summary metrics.** Whenever a run looks suspiciously clean — every iteration "passed," every "best program" matches the seed — verify that Stage 3 actually completed. Stage timeouts that fire before any game finishes cause the run to silently report the cached parent score as the result.
+7. **Sanity-check the best prompt; do not trust `combined_score` alone.** The Teamwork run produced a 95.0 "winner" that, on inspection, was OpenEvolve's meta-prompt header echoed back as the candidate rather than an engagement strategy. Single-metric ranking is not sufficient — verify that the saved best is a coherent in-character prompt, and that its fitness sits meaningfully above a junk-prompt / no-strategy baseline. Otherwise the run reports a number that does not represent a discovered strategy.
 
 ### Expected model learnings from playing the DCS-SE
 
@@ -134,6 +264,8 @@ From the PC-LLM's side, repeated play surfaces several lessons that generalize a
 - **Surprises worth flagging:**
     - A thoughtful hand-written seed can beat a short evolutionary search on the same scenario. Evolution is not free; whether it pays off depends on seed quality, iteration count, and where the scenario sits in the fitness landscape.
     - The scorer's reasoning text is genuinely high-signal, naming domain-specific quantities and concrete capability violations. Using scorer reasoning as a secondary fitness channel — beyond the scalar — is viable and currently untapped by the evolutionary loop.
+    - **The PC sometimes solves the goal solo rather than coordinating with the NPC**, even when the engagement strategy explicitly directs cooperation. In Teamwork (AS↔RD), the engine surfaces enough state through the simulator (sorter terminal output, tile positions) for the PC to complete the sort without involving RD; the scorer rewards goal completion, so non-collaboration is a viable strategy. We are treating this as research signal rather than a bug to guardrail: choosing not to collaborate is itself diagnostic information about how the model interprets agency and cooperation in the scenario, and forcing collaboration in the game logic would discard that signal. (Tracked as an open question for follow-up: what conditions push the model toward solo completion, and is the behavior consistent across base models.)
+    - **Fitness can be dominated by base-model capability rather than strategy quality.** Because modern PC-LLMs play many scenarios competently with little or no strategic guidance, a high `combined_score` does not by itself entail that the evolved prompt is encoding a useful engagement strategy. This is the same root cause as the Teamwork meta-prompt artifact reaching 95.0 — when the base model can complete the task from in-context simulator state, the prompt's marginal contribution is hard to measure from end-of-game fitness alone.
 
 ---
 
