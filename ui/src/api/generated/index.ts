@@ -47,7 +47,6 @@ import type {
   GetSessionStatusApiSessionsSessionIdStatusGet200,
   HTTPValidationError,
   HealthHealthzGet200,
-  InferIntentEvaluationResponse,
   RegistrationRequest,
   RegistrationResponse,
   RemoteBootstrapResponse,
@@ -601,96 +600,6 @@ export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet
 
 
 
-/**
- * Return a cached Infer Intent evaluation or generate and persist it on first request.
- * @summary Request Infer Intent Evaluation
- */
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse200 = {
-  data: InferIntentEvaluationResponse
-  status: 200
-}
-
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseSuccess = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse200) & {
-  headers: Headers;
-};
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseError = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse422) & {
-  headers: Headers;
-};
-
-export type requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse = (requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseSuccess | requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponseError)
-
-export const getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostUrl = (sessionId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/infer-intent/evaluation`
-}
-
-export const requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost = async (sessionId: string, options?: RequestInit): Promise<requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse> => {
-  
-  return httpClient<requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostResponse>(getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostUrl(sessionId),
-  {      
-    ...options,
-    method: 'POST'
-    
-    
-  }
-);}
-  
-
-
-
-export const getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext> => {
-
-const mutationKey = ['requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, {sessionId: string}> = (props) => {
-          const {sessionId} = props ?? {};
-
-          return  requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost(sessionId,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationResult = NonNullable<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>>
-    
-    export type RequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationError = HTTPValidationError
-
-    /**
- * @summary Request Infer Intent Evaluation
- */
-export const useRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof requestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPost>>,
-        TError,
-        {sessionId: string},
-        TContext
-      > => {
-      return useMutation(getRequestInferIntentEvaluationApiSessionsSessionIdInferIntentEvaluationPostMutationOptions(options), queryClient);
-    }
-    
 /**
  * Store or overwrite feedback on one persisted NPC-message event.
  * @summary Submit Session Event Feedback

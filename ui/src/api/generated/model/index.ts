@@ -40,8 +40,6 @@ export * from './getSessionReconstructionApiSessionsSessionIdReconstructionGet20
 export * from './getSessionStatusApiSessionsSessionIdStatusGet200';
 export * from './healthHealthzGet200';
 export * from './hTTPValidationError';
-export * from './inferIntentEvaluation';
-export * from './inferIntentEvaluationResponse';
 export * from './registrationRequest';
 export * from './registrationResponse';
 export * from './remoteBootstrapResponse';

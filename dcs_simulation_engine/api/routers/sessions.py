@@ -9,13 +9,8 @@ from dcs_simulation_engine.api.auth import (
     require_player_async,
     require_standard_mode_from_request,
 )
-from dcs_simulation_engine.api.infer_intent_evaluation import (
-    InferIntentEvaluationUnavailableError,
-    generate_or_get_infer_intent_evaluation,
-)
 from dcs_simulation_engine.api.models import (
     ClearSessionEventFeedbackResponse,
-    InferIntentEvaluationResponse,
     SessionEventFeedback,
     SessionStatus,
     SessionSummary,
@@ -23,7 +18,6 @@ from dcs_simulation_engine.api.models import (
     SubmitSessionEventFeedbackRequest,
     SubmitSessionEventFeedbackResponse,
 )
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.utils.time import utc_now
 from fastapi import APIRouter, HTTPException, Request, status
 
@@ -137,52 +131,6 @@ async def get_session_reconstruction(session_id: str, request: Request) -> dict:
     if not payload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return payload
-
-
-@router.post(
-    "/{session_id}/infer-intent/evaluation",
-    response_model=InferIntentEvaluationResponse,
-)
-async def request_infer_intent_evaluation(
-    session_id: str,
-    request: Request,
-) -> InferIntentEvaluationResponse:
-    """Return a cached Infer Intent evaluation or generate and persist it on first request."""
-    provider = get_provider_from_request(request)
-    player_id = await _resolve_session_player_id(request=request, session_id=session_id)
-
-    if getattr(provider, "append_session_event", None) is None:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Infer Intent evaluation is unavailable for this provider.",
-        )
-
-    condition: str | None = None
-    get_assignment_fn = getattr(provider, "get_assignment_for_session_id", None)
-    if get_assignment_fn is not None:
-        assignment = await maybe_await(get_assignment_fn(session_id=session_id))
-        if assignment is not None and assignment.experiment_name:
-            try:
-                config = ExperimentManager.get_experiment_config_cached(assignment.experiment_name)
-                condition = config.condition
-            except Exception:
-                pass
-
-    try:
-        response = await generate_or_get_infer_intent_evaluation(
-            provider=provider,
-            session_id=session_id,
-            player_id=player_id,
-            condition=condition,
-        )
-    except InferIntentEvaluationUnavailableError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(exc)) from exc
-
-    if response is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    return response
 
 
 @router.post(

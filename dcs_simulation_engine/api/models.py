@@ -1,7 +1,5 @@
 """Pydantic models and payload parsers for the API layer."""
 
-from __future__ import annotations
-
 import json
 from datetime import datetime
 from typing import Literal
@@ -81,8 +79,8 @@ class RemoteStatusResponse(BaseModel):
     started_at: datetime
     uptime: int
     experiment_name: str | None = None
-    progress: ExperimentProgressResponse | None = None
-    experiment_status: ExperimentStatusResponse | None = None
+    progress: "ExperimentProgressResponse | None" = None
+    experiment_status: "ExperimentStatusResponse | None" = None
 
 
 class CreateGameRequest(BaseModel):
@@ -239,23 +237,6 @@ class SessionsListResponse(BaseModel):
     """Response payload for session list endpoint."""
 
     sessions: list[SessionSummary]
-
-
-class InferIntentEvaluation(BaseModel):
-    """Parsed Infer Intent evaluation payload returned by the scorer."""
-
-    tier: int = Field(ge=0, le=3)
-    score: int = Field(ge=0, le=100)
-    reasoning: str = Field(min_length=1)
-
-
-class InferIntentEvaluationResponse(BaseModel):
-    """Response payload for the cached-or-generated Infer Intent evaluation."""
-
-    session_id: str
-    event_id: str
-    cached: bool
-    evaluation: InferIntentEvaluation
 
 
 class SessionEventFeedback(BaseModel):
