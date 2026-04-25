@@ -1,5 +1,6 @@
 """CLI entry point for dcs-utils."""
 
+import json
 import re
 import webbrowser
 from pathlib import Path
@@ -556,6 +557,7 @@ def _hitl_create_cmd(
         save_scaffold,
         scenarios_path_for,
     )
+    from dcs_utils.hitl.responses import compute_status_summary, render_status_summary
 
     if db not in _VALID_DB:
         _console.print(f"ERROR: --db must be 'dev' or 'prod', got {db!r}.", style="error")
@@ -580,24 +582,9 @@ def _hitl_create_cmd(
         scaffold = build_scaffold(character, game)
 
     save_scaffold(scaffold, out_path)
-
-    total_groups = len(scaffold.scenario_groups)
-    total_attempts = sum(
-        len(s.attempts) for g in scaffold.scenario_groups for s in g.scenarios
-    )
     _console.print(f"[green]✔[/green] Scaffold written to: {out_path}", style="dim")
-    _console.print(
-        f"  {total_groups} scenario group(s), {total_attempts} attempt(s) to review.",
-        style="dim",
-    )
-    _console.print(
-        f"\nNext steps:\n"
-        f"  1. Review and edit player messages in the scenarios file.\n"
-        f"  2. dcs-utils hitl update {hid} --skip-feedback\n"
-        f"  3. dcs-utils hitl update {hid} --skip-engine-responses\n"
-        f"  4. dcs-utils hitl export {hid}",
-        style="dim",
-    )
+    summary = compute_status_summary(out_path)
+    _console.print("\n" + render_status_summary(summary), style="dim")
 
 
 # ---------------------------------------------------------------------------
@@ -608,39 +595,43 @@ def _hitl_create_cmd(
 @hitl_app.command("update")
 def _hitl_update_cmd(
     hid: str = typer.Argument(..., help="Character HID whose scenarios file to update."),
-    # what to skip
-    skip_engine_responses: bool = typer.Option(
+    only_history: bool = typer.Option(
         False,
-        "--skip-engine-responses",
-        help="Skip generating engine responses.",
+        "--only-history",
+        help="Only sync shared conversation history, then report remaining work.",
     ),
-    skip_feedback: bool = typer.Option(
+    skip_simulator_responses: bool = typer.Option(
         False,
-        "--skip-feedback",
-        help="Skip collecting evaluator feedback.",
+        "--skip-simulator-responses",
+        help="Skip generating simulator responses for attempts after history sync.",
     ),
-    # engine_responses options
+    skip_player_feedback: bool = typer.Option(
+        False,
+        "--skip-player-feedback",
+        help="Skip collecting evaluator feedback after history sync.",
+    ),
+    regenerate_parent_session: bool = typer.Option(
+        False,
+        "--regenerate-parent-session",
+        help="Rebuild a missing parent session from the saved shared history.",
+    ),
+    # simulator response + history options
     server_url: str = typer.Option(
-        "http://localhost:8080",
+        "http://localhost:8000",
         "--server-url",
         envvar="DCS_SERVER_URL",
-        help="(engine_responses) DCS server URL.",
+        help="(history/simulator) DCS server URL.",
     ),
     api_key: str = typer.Option(
         "",
         "--api-key",
         envvar="DCS_API_KEY",
-        help="(engine_responses) DCS API key.",
-    ),
-    include_empty: bool = typer.Option(
-        True,
-        "--include-empty/--no-include-empty",
-        help="(engine_responses) Process scenarios with empty conversation_history.",
+        help="(history/simulator) DCS API key.",
     ),
     concurrency: int = typer.Option(
         4,
         "--concurrency",
-        help="(engine_responses) Maximum number of parallel scenario requests.",
+        help="(simulator) Maximum number of parallel scenario requests.",
     ),
     # feedback options
     evaluator_id: str = typer.Option(
@@ -660,27 +651,29 @@ def _hitl_update_cmd(
         help="Skip these scenario IDs. Repeatable.",
     ),
 ) -> None:
-    """Update a character's scenarios with engine responses and/or evaluator feedback.
+    """Update a character's scenarios with shared history, simulator responses, and/or feedback.
 
-    By default both engine responses and feedback are updated. Skip either with
-    --skip-engine-responses or --skip-feedback.  When both run, engine responses
-    are generated first so feedback can be collected on the new responses.
+    Shared conversation history is always synchronized first. By default the
+    command then fills missing simulator responses for attempts and collects any
+    missing evaluator feedback before printing a final status summary.
 
     \b
     Examples:
-      dcs-utils hitl update AC                           # both (default)
-      dcs-utils hitl update AC --skip-feedback           # engine responses only
-      dcs-utils hitl update AC --skip-engine-responses   # feedback only
+      dcs-utils hitl update AC                                # history + responses + feedback
+      dcs-utils hitl update AC --only-history                 # history only
+      dcs-utils hitl update AC --skip-player-feedback         # history + responses
+      dcs-utils hitl update AC --skip-simulator-responses     # history + feedback
     """
     import asyncio
 
+    from dcs_simulation_engine.api.client import APIClient
     from dcs_utils.hitl.feedback import collect_feedback
     from dcs_utils.hitl.generate import scenarios_path_for
-    from dcs_utils.hitl.responses import generate_responses
+    from dcs_utils.hitl.responses import compute_status_summary, generate_responses, render_status_summary
 
-    if skip_engine_responses and skip_feedback:
+    if only_history and (skip_simulator_responses or skip_player_feedback):
         _console.print(
-            "ERROR: --skip-engine-responses and --skip-feedback cannot both be set — nothing to do.",
+            "ERROR: --only-history cannot be combined with --skip-simulator-responses or --skip-player-feedback.",
             style="error",
         )
         raise typer.Exit(1)
@@ -697,22 +690,35 @@ def _hitl_update_cmd(
     scenario_ids = list(scenario_only) if scenario_only else None
     exclude_ids = list(scenario_exclude) if scenario_exclude else None
 
-    if not skip_engine_responses:
-        asyncio.run(
-            generate_responses(
-                path=scenarios_path,
-                server_url=server_url,
-                api_key=api_key,
-                include_empty=include_empty,
-                only=scenario_ids,
-                include_ids=None,
-                exclude=exclude_ids,
-                concurrency=concurrency,
-                console=_console,
-            )
+    try:
+        with APIClient(url=server_url, api_key=api_key) as client:
+            client.health()
+    except Exception as exc:  # noqa: BLE001
+        _console.print(
+            "ERROR: Could not connect to the DCS server.\n"
+            f"Tried: {server_url}\n"
+            "The DCS server needs to be running to use `dcs-utils hitl update`.\n"
+            f"Details: {exc}",
+            style="error",
         )
+        raise typer.Exit(1)
 
-    if not skip_feedback:
+    asyncio.run(
+        generate_responses(
+            path=scenarios_path,
+            server_url=server_url,
+            api_key=api_key,
+            only=scenario_ids,
+            include_ids=None,
+            exclude=exclude_ids,
+            concurrency=concurrency,
+            run_attempts=not (only_history or skip_simulator_responses),
+            regenerate_parent_session=regenerate_parent_session,
+            console=_console,
+        )
+    )
+
+    if not only_history and not skip_player_feedback:
         collect_feedback(
             scenarios_path,
             evaluator_id=evaluator_id,
@@ -721,6 +727,14 @@ def _hitl_update_cmd(
             exclude=exclude_ids,
             console=_console,
         )
+
+    summary = compute_status_summary(
+        scenarios_path,
+        only=scenario_ids,
+        include_ids=None,
+        exclude=exclude_ids,
+    )
+    _console.print("\n" + render_status_summary(summary), style="dim")
 
 
 # ---------------------------------------------------------------------------
@@ -752,6 +766,7 @@ def _hitl_export_cmd(
     """
     from dcs_utils.hitl.export import export_results
     from dcs_utils.hitl.generate import scenarios_path_for
+    from dcs_utils.hitl.responses import compute_status_summary, render_status_summary
 
     scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
@@ -773,6 +788,28 @@ def _hitl_export_cmd(
             output_dir=output_dir.resolve(),
         )
 
+    manifest = json.loads((out / "__manifest__.json").read_text(encoding="utf-8"))
+
+    summary = compute_status_summary(scenarios_path)
+    _console.print("\n" + render_status_summary(summary), style="dim")
+    if any(
+        summary[key] > 0
+        for key in (
+            "attempts_without_simulator_responses",
+            "attempts_without_player_feedback",
+            "empty_conversation_histories",
+            "conversation_histories_missing_simulator_reply",
+        )
+    ):
+        _console.print("Export is proceeding with the current scenario file state.", style="dim")
+    _console.print(
+        "\nExported results\n"
+        f"  {manifest['total_scenarios']}/{manifest['source_total_scenarios']} scenario(s) exported\n"
+        f"  {manifest['total_attempts']}/{manifest['source_total_attempts']} attempt(s) exported\n"
+        f"  {manifest['skipped_attempts']} incomplete attempt(s) skipped\n"
+        f"  {manifest['skipped_scenarios']} scenario(s) with zero completed attempts skipped",
+        style="dim",
+    )
     _console.print(f"[green]✔[/green] Results written to: {out}", style="dim")
     _console.print(
         f"\nGenerate a report:\n"
