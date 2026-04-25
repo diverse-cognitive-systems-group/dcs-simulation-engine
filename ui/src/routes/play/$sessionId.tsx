@@ -41,7 +41,8 @@ const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
     { command: '/abilities', description: 'Show character abilities.' },
     {
       command: '/finish',
-      description: "Submit your prediction about the simulator character's capabilities and finish the game.",
+      description:
+        "Submit your prediction about the simulator character's capabilities and finish the game.",
     },
   ],
   inferintent: [

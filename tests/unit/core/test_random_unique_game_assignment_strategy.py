@@ -15,7 +15,8 @@ def _load_strategy_config(
     games: list[str],
     quota_per_game: int = 1,
     max_assignments_per_player: int = 1,
-    assignment_mode: str = "auto",
+    allow_choice_if_multiple: bool = False,
+    require_completion: bool = True,
 ) -> ExperimentConfig:
     games_yaml = "\n".join(f"    - {game}" for game in games)
     path = write_yaml(
@@ -31,7 +32,8 @@ def _load_strategy_config(
                 f"  quota_per_game: {quota_per_game}",
                 f"  max_assignments_per_player: {max_assignments_per_player}",
                 f"  seed: {name}-seed",
-                f"  assignment_mode: {assignment_mode}",
+                f"  allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
+                f"  require_completion: {str(require_completion).lower()}",
             ]
         )
         + "\n",
@@ -228,9 +230,10 @@ async def test_random_unique_player_choice_options_remain_available_with_existin
         name="player-choice-multi",
         games=["Explore", "foresight"],
         max_assignments_per_player=2,
-        assignment_mode="player_choice",
+        allow_choice_if_multiple=True,
+        require_completion=False,
     )
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     player, _ = await async_mongo_provider.create_player(
         player_data={
             "full_name": {"answer": "Chooser"},
@@ -244,7 +247,7 @@ async def test_random_unique_player_choice_options_remain_available_with_existin
         experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
     )
 
     options = await strategy.get_eligible_options_async(

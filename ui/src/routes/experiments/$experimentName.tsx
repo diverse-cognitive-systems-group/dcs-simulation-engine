@@ -419,7 +419,9 @@ function OptionDescription({ children }: { children: string }) {
   return <span className="block max-w-xl truncate text-xs text-muted-foreground">{children}</span>
 }
 
-function playerCharacterLabel(item: Pick<ExperimentAssignmentSummary, 'player_character_name' | 'pc_hid'>) {
+function playerCharacterLabel(
+  item: Pick<ExperimentAssignmentSummary, 'player_character_name' | 'pc_hid'>,
+) {
   if (item.player_character_name && item.player_character_name !== item.pc_hid) {
     return `${item.player_character_name} (${item.pc_hid})`
   }
@@ -458,7 +460,7 @@ function ExperimentPage() {
   const eligibleOptions =
     nextAssignment?.mode === 'choice'
       ? nextAssignment.options
-      : data?.eligible_assignment_options ?? []
+      : (data?.eligible_assignment_options ?? [])
   const needsSelection = nextAssignment?.mode === 'choice'
   const needsBeforeForms =
     nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'before_forms'
@@ -474,8 +476,7 @@ function ExperimentPage() {
     () => (data?.forms ?? []).filter((form) => form.before_or_after === 'after'),
     [data?.forms],
   )
-  const lockedAssignment =
-    nextAssignment?.mode === 'locked' ? nextAssignment.assignment : null
+  const lockedAssignment = nextAssignment?.mode === 'locked' ? nextAssignment.assignment : null
   const completedAssignmentCount = (data?.assignments ?? []).filter(
     (assignment) => assignment.status === 'completed',
   ).length
@@ -539,7 +540,9 @@ function ExperimentPage() {
     }
   }
 
-  async function handleStartSession(assignment: ExperimentAssignmentSummary | null = lockedAssignment) {
+  async function handleStartSession(
+    assignment: ExperimentAssignmentSummary | null = lockedAssignment,
+  ) {
     setSubmitError(null)
     if (!assignment) return
     setSubmitting('session')
@@ -784,14 +787,15 @@ function ExperimentPage() {
               <div className="space-y-4">
                 {(() => {
                   const gameOptions = [...new Set(eligibleOptions.map((o) => o.game_name))]
-                  const gameOptionItems = gameOptions.map((game) =>
-                    eligibleOptions.find((o) => o.game_name === game),
-                  ).filter((o): o is EligibleAssignmentOption => Boolean(o))
+                  const gameOptionItems = gameOptions
+                    .map((game) => eligibleOptions.find((o) => o.game_name === game))
+                    .filter((o): o is EligibleAssignmentOption => Boolean(o))
                   const pcOptionItems = eligibleOptions.filter(
                     (option, index, options) =>
                       option.game_name === selectedGame &&
                       options.findIndex(
-                        (item) => item.game_name === option.game_name && item.pc_hid === option.pc_hid,
+                        (item) =>
+                          item.game_name === option.game_name && item.pc_hid === option.pc_hid,
                       ) === index,
                   )
                   const npcOptionItems = eligibleOptions.filter(
@@ -807,107 +811,113 @@ function ExperimentPage() {
                   )
                   return (
                     <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Game
-                          </Label>
-                          <Select
-                            value={selectedGame ?? ''}
-                            onValueChange={(val) => {
-                              setSelectedGame(val)
-                              setSelectedPc(null)
-                              setSelectedNpc(null)
-                            }}
-                            disabled={submitting === 'select'}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a game…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {gameOptionItems.map((option) => (
-                                <SelectItem key={option.game_name} value={option.game_name}>
-                                  <span className="block">
-                                    <span className="block">{option.game_name}</span>
-                                    <OptionDescription>{option.game_description}</OptionDescription>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Player Character
-                          </Label>
-                          <Select
-                            value={selectedPc ?? ''}
-                            onValueChange={(val) => {
-                              setSelectedPc(val)
-                              setSelectedNpc(null)
-                            }}
-                            disabled={!selectedGame || submitting === 'select'}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  selectedGame ? 'Select a player character…' : 'Select a game first'
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {pcOptionItems.map((option) => (
-                                <SelectItem key={option.pc_hid} value={option.pc_hid}>
-                                  <span className="block">
-                                    <span className="block">
-                                      {playerCharacterLabel(option)}
-                                    </span>
-                                    <OptionDescription>{option.player_character_description}</OptionDescription>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                            Simulator Character
-                          </Label>
-                          <Select
-                            value={selectedNpc ?? ''}
-                            onValueChange={setSelectedNpc}
-                            disabled={!selectedGame || !selectedPc || submitting === 'select'}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  selectedPc ? 'Select a simulator character…' : 'Select a player character first'
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {npcOptionItems.map((option) => (
-                                <SelectItem key={option.npc_hid} value={option.npc_hid}>
-                                  <span className="block">
-                                    <span className="block">{option.npc_hid}</span>
-                                    <OptionDescription>{option.simulator_character_description}</OptionDescription>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button
-                          type="button"
-                          disabled={!selectedGame || !selectedPc || !selectedNpc || submitting === 'select'}
-                          onClick={() =>
-                            selectedGame &&
-                            selectedPc &&
-                            selectedNpc &&
-                            handleSelectAssignment(selectedGame, selectedPc, selectedNpc)
-                          }
+                      <div className="space-y-1.5">
+                        <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Game
+                        </Label>
+                        <Select
+                          value={selectedGame ?? ''}
+                          onValueChange={(val) => {
+                            setSelectedGame(val)
+                            setSelectedPc(null)
+                            setSelectedNpc(null)
+                          }}
+                          disabled={submitting === 'select'}
                         >
-                          {submitting === 'select' ? 'Selecting…' : 'Select Assignment'}
-                        </Button>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a game…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {gameOptionItems.map((option) => (
+                              <SelectItem key={option.game_name} value={option.game_name}>
+                                <span className="block">
+                                  <span className="block">{option.game_name}</span>
+                                  <OptionDescription>{option.game_description}</OptionDescription>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Player Character
+                        </Label>
+                        <Select
+                          value={selectedPc ?? ''}
+                          onValueChange={(val) => {
+                            setSelectedPc(val)
+                            setSelectedNpc(null)
+                          }}
+                          disabled={!selectedGame || submitting === 'select'}
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                selectedGame ? 'Select a player character…' : 'Select a game first'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {pcOptionItems.map((option) => (
+                              <SelectItem key={option.pc_hid} value={option.pc_hid}>
+                                <span className="block">
+                                  <span className="block">{playerCharacterLabel(option)}</span>
+                                  <OptionDescription>
+                                    {option.player_character_description}
+                                  </OptionDescription>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                          Simulator Character
+                        </Label>
+                        <Select
+                          value={selectedNpc ?? ''}
+                          onValueChange={setSelectedNpc}
+                          disabled={!selectedGame || !selectedPc || submitting === 'select'}
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                selectedPc
+                                  ? 'Select a simulator character…'
+                                  : 'Select a player character first'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {npcOptionItems.map((option) => (
+                              <SelectItem key={option.npc_hid} value={option.npc_hid}>
+                                <span className="block">
+                                  <span className="block">{option.npc_hid}</span>
+                                  <OptionDescription>
+                                    {option.simulator_character_description}
+                                  </OptionDescription>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        disabled={
+                          !selectedGame || !selectedPc || !selectedNpc || submitting === 'select'
+                        }
+                        onClick={() =>
+                          selectedGame &&
+                          selectedPc &&
+                          selectedNpc &&
+                          handleSelectAssignment(selectedGame, selectedPc, selectedNpc)
+                        }
+                      >
+                        {submitting === 'select' ? 'Selecting…' : 'Select Assignment'}
+                      </Button>
                     </div>
                   )
                 })()}
@@ -945,7 +955,9 @@ function ExperimentPage() {
               <div className="space-y-5">
                 <div className="space-y-5 rounded-xl border border-border/70 bg-muted/20 px-4 py-5">
                   <div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Game</div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      Game
+                    </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="text-2xl font-semibold">{lockedAssignment.game_name}</span>
                       <Badge variant="secondary">{titleCase(lockedAssignment.status)}</Badge>
@@ -1024,7 +1036,8 @@ function ExperimentPage() {
                     <div>
                       <div className="font-medium">{assignment.game_name}</div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        {playerCharacterLabel(assignment)} with simulator character {assignment.npc_hid}
+                        {playerCharacterLabel(assignment)} with simulator character{' '}
+                        {assignment.npc_hid}
                       </div>
                     </div>
                     <Badge variant={assignment.status === 'completed' ? 'default' : 'secondary'}>

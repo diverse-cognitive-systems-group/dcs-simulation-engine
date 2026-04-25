@@ -19,7 +19,6 @@ from dcs_simulation_engine.dal.base import (
 )
 from fastapi.testclient import TestClient
 
-
 ASSIGNMENT_DISPLAY_METADATA = {
     "game_description": "Game description",
     "player_character_name": "Player Character",
@@ -1161,11 +1160,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
         for _index in range(2):
             setup_payload = setup.json()
             options = setup_payload["eligible_assignment_options"]
-            option = next(
-                item
-                for item in options
-                if (item["game_name"], item["pc_hid"], item["npc_hid"]) not in used_options
-            )
+            option = next(item for item in options if (item["game_name"], item["pc_hid"], item["npc_hid"]) not in used_options)
             used_options.add((option["game_name"], option["pc_hid"], option["npc_hid"]))
             select_resp = client.post(
                 "/api/experiments/usability/assignments/select",
