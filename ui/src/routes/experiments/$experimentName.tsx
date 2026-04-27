@@ -711,9 +711,10 @@ function ExperimentPage() {
   ).length
 
   useEffect(() => {
+    const nextForms = data?.pending_form_groups?.[0]?.forms ?? []
     setFormErrors({})
-    setFormResponses(pendingForms.length ? emptyResponses(pendingForms) : {})
-  }, [pendingFormGroup?.group_id])
+    setFormResponses(nextForms.length ? emptyResponses(nextForms) : {})
+  }, [data?.pending_form_groups])
 
   function setResponse(
     setter: React.Dispatch<React.SetStateAction<FormResponseMap>>,
@@ -950,9 +951,7 @@ function ExperimentPage() {
 
             {needsBeforeForms && (
               <Alert>
-                <AlertDescription>
-                  Complete the required form to unlock gameplay.
-                </AlertDescription>
+                <AlertDescription>Complete the required form to unlock gameplay.</AlertDescription>
               </Alert>
             )}
 
