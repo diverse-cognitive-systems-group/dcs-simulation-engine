@@ -7,6 +7,7 @@
 * Smaller codebases are better than larger codebases.
 * Removing code is better than adding code if we can preserve functionality.
 * Prefer adding less code if it doesn't impact clarity or maintainability.
+* Do not change orval generated code manually
 
 ### Principles
 
