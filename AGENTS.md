@@ -7,7 +7,6 @@
 * Smaller codebases are better than larger codebases.
 * Removing code is better than adding code if we can preserve functionality.
 * Prefer adding less code if it doesn't impact clarity or maintainability.
-* Do not change orval generated code manually
 
 ### Principles
 
@@ -15,6 +14,11 @@
 * Strict API/UI separation — backend must not control or depend on UI
 * GUI is a client — no business logic in the frontend
 * DAL is isolated — database should be easily swappable
+
+### UI Guidelines
+
+* Do not change orval generated code manually
+* Use bun instead of npm
 
 ### Python Style
 
