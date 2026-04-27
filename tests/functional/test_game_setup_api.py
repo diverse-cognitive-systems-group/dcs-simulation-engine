@@ -8,11 +8,20 @@ no player authentication is required.
 import pytest
 from dcs_simulation_engine.api.app import create_app
 from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
 from fastapi.testclient import TestClient
 
 pytestmark = [pytest.mark.functional]
 
 ALL_GAMES = ["explore", "Infer Intent", "Goal Horizon", "foresight", "teamwork"]
+
+
+class _StaticCharacterProvider:
+    def __init__(self, characters) -> None:
+        self._characters = list(characters)
+
+    def get_characters(self):
+        return list(self._characters)
 
 
 @pytest.fixture
@@ -71,6 +80,24 @@ def test_setup_pc_options_have_hid(game, setup_client):
 
     for npc in data.get("npcs", []):
         assert npc.get("hid"), f"[{game}] NPC entry missing non-empty hid: {npc}"
+
+
+@pytest.mark.anyio
+async def test_goal_horizon_setup_uses_game_class_player_character_filter(setup_client, async_mongo_provider):
+    """Goal Horizon setup should expose player characters from its game class filter."""
+    response = setup_client.get("/api/play/setup/Goal Horizon")
+    assert response.status_code == 200
+
+    characters = await async_mongo_provider.get_characters()
+    expected = {
+        c.hid
+        for c in GoalHorizonGame.DEFAULT_PCS_FILTER.get_characters(
+            provider=_StaticCharacterProvider(characters)
+        )
+    }
+
+    data = response.json()
+    assert {pc["hid"] for pc in data["pcs"]} == expected
 
 
 @pytest.mark.anyio

@@ -55,7 +55,21 @@ class AssignmentStrategyConfig(BaseModel):
     max_assignments_per_player: int | None = None
     seed: str | int | None = None
     pc_eligible_only: bool = False
-    assignment_mode: Literal["auto", "player_choice"] = "auto"
+    allow_choice_if_multiple: bool = False
+    require_completion: bool = True
+
+    @model_validator(mode="after")
+    def reject_removed_policy_fields(self) -> "AssignmentStrategyConfig":
+        """Reject assignment policy names that were replaced by explicit booleans."""
+        extras = self.__pydantic_extra__ or {}
+        removed = {"assignment_mode", "require_assignment_completion"} & set(extras)
+        if removed:
+            names = ", ".join(sorted(removed))
+            raise ValueError(
+                f"Removed assignment policy field(s): {names}. "
+                "Use allow_choice_if_multiple and require_completion instead."
+            )
+        return self
 
     @field_validator("games")
     @classmethod

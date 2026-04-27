@@ -33,7 +33,7 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
         name: test-usability-exp
         description: Stable fixture for experiment tests.
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
             - Infer Intent
@@ -126,7 +126,7 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
         name: test-multi-assignment-exp
         description: Fixture for multi-assignment progress tests.
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
             - Infer Intent

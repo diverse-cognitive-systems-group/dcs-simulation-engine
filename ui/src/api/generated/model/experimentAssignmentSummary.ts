@@ -12,8 +12,14 @@ import type { ExperimentAssignmentSummaryStatus } from './experimentAssignmentSu
 export interface ExperimentAssignmentSummary {
   assignment_id: string;
   game_name: string;
-  character_hid: string;
+  pc_hid: string;
+  npc_hid: string;
   status: ExperimentAssignmentSummaryStatus;
   active_session_id?: string | null;
   needs_post_play?: boolean;
+  game_description?: string;
+  player_character_name?: string;
+  player_character_description?: string;
+  simulator_character_description?: string;
+  simulator_character_details_visible?: boolean;
 }

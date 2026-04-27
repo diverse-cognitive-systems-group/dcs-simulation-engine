@@ -4,21 +4,20 @@ description: |
 condition: learning
 assignment_strategy:
   seed: 43 # for reproducibility of random assignment
-  # use default random_unique strategy
-  strategy: random_unique
+  # use default random_unique_game strategy
+  strategy: full_character_access
   games:
     - Infer Intent
     - Goal Horizon
-  quota_per_game: 3 # requires X unique players per game
-  max_assignments_per_player: 2 # allows each player to play up to X games
-  pc_eligible_only: true
-  assignment_mode: auto
+  allow_choice_if_multiple: true
+  require_completion: false
 forms:
   - name: intake
     before_or_after: before # "before" | "after"
     questions:
       - key: professional_background
-        prompt: Describe your professional background (e.g., industry, role, years of experience).
+        prompt: Describe your professional background (e.g., industry, role, years of
+          experience).
         required: true
         answer_type: string
 
@@ -31,14 +30,16 @@ forms:
           - On the higher end
 
       - key: technical_savviness_explanation
-        prompt: Explain why you consider yourself on the lower or higher end of technical savviness (professional experience, hobbies, etc.).
+        prompt: Explain why you consider yourself on the lower or higher end of
+          technical savviness (professional experience, hobbies, etc.).
         answer_type: string
         required: true
   - name: outtake
     before_or_after: after
     questions:
       - key: usability_difficulty
-        prompt: What parts were confusing or difficult? (e.g., understanding what to do, how to do it, or interpreting results)
+        prompt: What parts were confusing or difficult? (e.g., understanding what to do,
+          how to do it, or interpreting results)
         answer_type: string
         required: true
 
@@ -48,7 +49,8 @@ forms:
         required: true
 
       - key: other_errors_or_issues
-        prompt: Any errors, bugs, or unexpected behavior not described above that we should know about?
+        prompt: Any errors, bugs, or unexpected behavior not described above that we
+          should know about?
         answer_type: string
 
       - key: overall_usability

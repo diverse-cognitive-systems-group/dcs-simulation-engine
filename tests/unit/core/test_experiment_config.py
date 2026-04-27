@@ -11,9 +11,11 @@ async def test_load_valid_usability_experiment_config(usability_experiment_confi
     config = usability_experiment_config
 
     assert config.name == "test-usability-exp"
-    assert config.assignment_strategy.strategy == "random_unique"
+    assert config.assignment_strategy.strategy == "random_unique_game"
     assert config.assignment_strategy.quota_per_game == 5
     assert config.assignment_strategy.max_assignments_per_player == 1
+    assert config.assignment_strategy.allow_choice_if_multiple is False
+    assert config.assignment_strategy.require_completion is True
     assert len(config.games) == 4
     assert [form.name for form in config.forms] == ["intake", "usability_feedback"]
 
@@ -26,7 +28,7 @@ async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
         name: legacy-exp
         description: Broken
         assignment_protocol:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
           quota_per_game: 1
@@ -46,7 +48,7 @@ async def test_invalid_game_name_fails(write_yaml) -> None:
         name: bad-exp
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Not A Real Game
           quota_per_game: 1
@@ -58,6 +60,28 @@ async def test_invalid_game_name_fails(write_yaml) -> None:
         ExperimentConfig.load(path)
 
 
+async def test_removed_assignment_policy_fields_fail(write_yaml) -> None:
+    """Configs should use require_completion and allow_choice_if_multiple."""
+    path = write_yaml(
+        "old-policy-fields.yaml",
+        """
+        name: old-policy-fields
+        description: Broken
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+          assignment_mode: player_choice
+          require_assignment_completion: false
+        """,
+    )
+
+    with pytest.raises(ValueError, match="allow_choice_if_multiple and require_completion"):
+        ExperimentConfig.load(path)
+
+
 async def test_invalid_quota_fails(write_yaml) -> None:
     """quota_per_game must be greater than zero."""
     path = write_yaml(
@@ -66,7 +90,7 @@ async def test_invalid_quota_fails(write_yaml) -> None:
         name: bad-quota
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
           quota_per_game: 0
@@ -79,14 +103,14 @@ async def test_invalid_quota_fails(write_yaml) -> None:
 
 
 async def test_max_assignments_cannot_exceed_game_count(write_yaml) -> None:
-    """random_unique cannot promise more assignments than available games."""
+    """random_unique_game cannot promise more assignments than available games."""
     path = write_yaml(
         "bad-max-assignments.yaml",
         """
         name: bad-max
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
             - Foresight
@@ -107,7 +131,7 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
         name: bad-form
         description: Broken
         assignment_strategy:
-          strategy: random_unique
+          strategy: random_unique_game
           games:
             - Explore
           quota_per_game: 1

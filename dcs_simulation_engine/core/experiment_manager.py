@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
+from dcs_simulation_engine.core.assignment_strategies.base import AssignmentCandidate
 from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.forms import (
     ExperimentForm,
@@ -144,15 +145,21 @@ class ExperimentManager:
         completed_assignments = [item for item in player_assignments if item.status == "completed"]
         strategy = cls._strategy_for(config=config)
         has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
+        eligible_assignment_options: list[dict[str, str]] = []
 
-        is_player_choice = config.assignment_strategy.assignment_mode == "player_choice"
-        if active_assignment is None and has_submitted_before_forms and not has_finished_experiment and not is_player_choice:
+        if (
+            pending_post_play is None
+            and has_submitted_before_forms
+            and not has_finished_experiment
+        ):
             player_record = await maybe_await(provider.get_player(player_id=player_id))
             if player_record is not None:
-                active_assignment = await cls.get_or_create_assignment_async(
+                active_assignment, eligible_assignment_options = await cls.resolve_assignment_state_async(
                     provider=provider,
                     experiment_name=config.name,
                     player=player_record,
+                    player_assignments=player_assignments,
+                    active_assignment=active_assignment,
                 )
                 player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
                 pending_post_play_items = _pending_post_play_items(player_assignments)
@@ -164,8 +171,207 @@ class ExperimentManager:
             "pending_post_play_ids": [item.assignment_id for item in pending_post_play_items],
             "has_finished_experiment": has_finished_experiment,
             "has_submitted_before_forms": has_submitted_before_forms,
-            "assignments": player_assignments,
+            "eligible_assignment_options": eligible_assignment_options,
+            "assignments": await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id)),
         }
+
+    @classmethod
+    async def resolve_assignment_state_async(
+        cls,
+        *,
+        provider: Any,
+        experiment_name: str,
+        player: PlayerRecord,
+        player_assignments: list[AssignmentRecord] | None = None,
+        active_assignment: AssignmentRecord | None = None,
+    ) -> tuple[AssignmentRecord | None, list[dict[str, str]]]:
+        """Return the current assignment or selectable next options for a player."""
+        config = cls.get_experiment_config_cached(experiment_name)
+        strategy = cls._strategy_for(config=config)
+        assignments = player_assignments
+        if assignments is None:
+            assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        current = cls._current_assignment_from_policy(
+            config=config,
+            assignments=assignments,
+            active_assignment=active_assignment,
+        )
+        if current is not None:
+            return current, []
+
+        completed_count = sum(1 for item in assignments if item.status == "completed")
+        if completed_count >= strategy.max_assignments_per_player(config=config):
+            return None, []
+
+        candidates = await maybe_await(strategy.list_candidate_assignments_async(provider=provider, config=config, player=player))
+        if not candidates:
+            return None, []
+
+        if config.assignment_strategy.allow_choice_if_multiple and len(candidates) > 1:
+            return None, [cls._candidate_to_option(candidate) for candidate in candidates]
+
+        assignment = await maybe_await(
+            provider.create_assignment(
+                assignment_doc=cls._assignment_doc_for_candidate(config=config, player=player, candidate=candidates[0]),
+                allow_concurrent=cls._allow_concurrent_assignment(config=config, assignments=assignments),
+            )
+        )
+        return assignment, []
+
+    @classmethod
+    def _current_assignment_from_policy(
+        cls,
+        *,
+        config: ExperimentConfig,
+        assignments: list[AssignmentRecord],
+        active_assignment: AssignmentRecord | None,
+    ) -> AssignmentRecord | None:
+        if config.assignment_strategy.require_completion:
+            if active_assignment is not None and active_assignment.status == "in_progress":
+                return active_assignment
+            for assignment in assignments:
+                if assignment.status == "in_progress":
+                    return assignment
+            if active_assignment is not None:
+                return active_assignment
+            for assignment in assignments:
+                if assignment.status in {"assigned", "interrupted"}:
+                    return assignment
+            return None
+        if active_assignment is not None and active_assignment.status == "assigned":
+            return active_assignment
+        for assignment in assignments:
+            if assignment.status == "assigned":
+                return assignment
+        return None
+
+    @classmethod
+    def _allow_concurrent_assignment(cls, *, config: ExperimentConfig, assignments: list[AssignmentRecord]) -> bool:
+        return not config.assignment_strategy.require_completion
+
+    @classmethod
+    def _candidate_to_option(cls, candidate: AssignmentCandidate) -> dict[str, str]:
+        return {
+            "game_name": candidate.game_name,
+            "pc_hid": candidate.pc_hid,
+            "npc_hid": candidate.npc_hid,
+        }
+
+    @classmethod
+    async def assignment_display_metadata_async(
+        cls,
+        *,
+        provider: Any,
+        game_name: str,
+        pc_hid: str,
+        npc_hid: str,
+    ) -> dict[str, Any]:
+        """Return display metadata for an assignment triplet."""
+        game_config = SessionManager.get_game_config_cached(game_name)
+        pc = await maybe_await(provider.get_character(hid=pc_hid))
+        npc = await maybe_await(provider.get_character(hid=npc_hid))
+        show_simulator_details = cls._game_shows_simulator_details(game_config=game_config)
+        simulator_description = npc.short_description or ""
+        if not show_simulator_details:
+            simulator_description = "Details hidden"
+        return {
+            "game_description": game_config.description or "",
+            "player_character_name": pc.name or pc.hid,
+            "player_character_description": pc.short_description or "",
+            "simulator_character_description": simulator_description,
+            "simulator_character_details_visible": show_simulator_details,
+        }
+
+    @classmethod
+    async def enrich_assignment_option_async(
+        cls,
+        *,
+        provider: Any,
+        option: dict[str, str],
+    ) -> dict[str, Any]:
+        """Attach display metadata to an assignment option."""
+        metadata = await cls.assignment_display_metadata_async(
+            provider=provider,
+            game_name=option["game_name"],
+            pc_hid=option["pc_hid"],
+            npc_hid=option["npc_hid"],
+        )
+        return {**option, **metadata}
+
+    @classmethod
+    def _game_shows_simulator_details(cls, *, game_config: Any) -> bool:
+        game_cls = game_config.get_game_class()
+        overrides = game_cls.parse_overrides({})
+        return bool(getattr(overrides, "show_npc_details", False))
+
+    @classmethod
+    def _assignment_doc_for_candidate(
+        cls,
+        *,
+        config: ExperimentConfig,
+        player: PlayerRecord,
+        candidate: AssignmentCandidate,
+    ) -> dict[str, Any]:
+        assignment_doc: dict[str, Any] = {
+            MongoColumns.EXPERIMENT_NAME: config.name,
+            MongoColumns.PLAYER_ID: player.id,
+            MongoColumns.GAME_NAME: candidate.game_name,
+            MongoColumns.PC_HID: candidate.pc_hid,
+            MongoColumns.NPC_HID: candidate.npc_hid,
+            MongoColumns.STATUS: "assigned",
+            MongoColumns.FORM_RESPONSES: {},
+        }
+        if candidate.metadata:
+            assignment_doc.update(candidate.metadata)
+        return assignment_doc
+
+    @classmethod
+    async def _has_submitted_before_forms_async(
+        cls,
+        *,
+        provider: Any,
+        config: ExperimentConfig,
+        player_id: str,
+    ) -> bool:
+        before_form_names = {form.name for form in config.forms_for_phase(before_or_after="before")}
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, experiment_name=config.name))
+        submitted_before_keys = set((player_forms.data if player_forms else {}).keys())
+        return not before_form_names or before_form_names.issubset(submitted_before_keys)
+
+    @classmethod
+    async def _pending_post_play_assignment_async(
+        cls,
+        *,
+        config: ExperimentConfig,
+        player_assignments: list[AssignmentRecord],
+    ) -> AssignmentRecord | None:
+        completed_assignments = [item for item in player_assignments if item.status == "completed"]
+        after_form_names = {form.name for form in config.forms_for_phase(before_or_after="after")}
+        return next(
+            (
+                item
+                for item in reversed(completed_assignments)
+                if not after_form_names.issubset(set(item.data.get(MongoColumns.FORM_RESPONSES, {}).keys()))
+            ),
+            None,
+        )
+
+    @classmethod
+    async def _player_can_receive_assignment_options_async(
+        cls,
+        *,
+        provider: Any,
+        config: ExperimentConfig,
+        player: PlayerRecord,
+    ) -> bool:
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        if await cls._pending_post_play_assignment_async(config=config, player_assignments=player_assignments) is not None:
+            return False
+        if not await cls._has_submitted_before_forms_async(provider=provider, config=config, player_id=player.id):
+            return False
+        strategy = cls._strategy_for(config=config)
+        completed_count = sum(1 for item in player_assignments if item.status == "completed")
+        return completed_count < strategy.max_assignments_per_player(config=config)
 
     @classmethod
     async def submit_before_play_async(
@@ -190,24 +396,16 @@ class ExperimentManager:
         before_forms = config.forms_for_phase(before_or_after="before")
         normalized_before_forms = cls.normalize_form_submissions(forms=before_forms, responses=responses)
         await cls.ensure_experiment_async(provider=provider, experiment_name=config.name)
-        assignment = await cls.get_or_create_assignment_async(
-            provider=provider,
-            experiment_name=config.name,
-            player=player_record,
-        )
-        if assignment is not None and config.assignment_strategy.assignment_mode == "auto":
-            strategy = cls._strategy_for(config=config)
-            if hasattr(strategy, "generate_remaining_assignments_async"):
-                await strategy.generate_remaining_assignments_async(
-                    provider=provider,
-                    config=config,
-                    player=player_record,
-                )
         await cls.store_player_form_payloads_async(
             provider=provider,
             player_id=player_id,
             experiment_name=config.name,
             forms_payload=normalized_before_forms,
+        )
+        assignment, _options = await cls.resolve_assignment_state_async(
+            provider=provider,
+            experiment_name=config.name,
+            player=player_record,
         )
         return assignment
 
@@ -220,9 +418,12 @@ class ExperimentManager:
         player: PlayerRecord,
     ) -> AssignmentRecord | None:
         """Return the active assignment for a player or create one on demand."""
-        config = cls.get_experiment_config_cached(experiment_name)
-        strategy = cls._strategy_for(config=config)
-        return await maybe_await(strategy.get_or_create_assignment_async(provider=provider, config=config, player=player))
+        assignment, _options = await cls.resolve_assignment_state_async(
+            provider=provider,
+            experiment_name=experiment_name,
+            player=player,
+        )
+        return assignment
 
     @classmethod
     async def start_assignment_session_async(
@@ -247,7 +448,8 @@ class ExperimentManager:
                 assignment_id=assignment_id,
             )
         else:
-            assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player.id))
+            state = await cls.get_player_state_async(provider=provider, experiment_name=experiment_name, player_id=player.id)
+            assignment = state["active_assignment"]
         if assignment is None:
             raise ValueError("No matching assignment is available for this player.")
         if assignment.status == "completed":
@@ -275,8 +477,8 @@ class ExperimentManager:
             game=assignment.game_name,
             provider=provider,
             source=source,
-            pc_choice=assignment.character_hid,
-            npc_choice=None,
+            pc_choice=assignment.pc_hid,
+            npc_choice=assignment.npc_hid,
             player_id=player.id,
         )
         entry = registry.add(
@@ -539,13 +741,9 @@ class ExperimentManager:
         experiment_name: str,
         player: PlayerRecord,
     ) -> list[dict[str, str]]:
-        """Return eligible {game_name, character_hid} options for a player in player_choice mode."""
-        config = cls.get_experiment_config_cached(experiment_name)
-        strategy = cls._strategy_for(config=config)
-        get_eligible = getattr(strategy, "get_eligible_options_async", None)
-        if get_eligible is None:
-            return []
-        return await maybe_await(get_eligible(provider=provider, config=config, player=player))
+        """Return selectable {game_name, pc_hid, npc_hid} options for the player."""
+        state = await cls.get_player_state_async(provider=provider, experiment_name=experiment_name, player_id=player.id)
+        return list(state.get("eligible_assignment_options", []))
 
     @classmethod
     async def create_player_choice_assignment_async(
@@ -555,29 +753,34 @@ class ExperimentManager:
         experiment_name: str,
         player: PlayerRecord,
         game_name: str,
-        character_hid: str,
+        pc_hid: str,
+        npc_hid: str,
     ) -> AssignmentRecord:
-        """Create a specific assignment for a player who selected game+character manually."""
+        """Create a specific assignment for a player who selected one explicit candidate."""
         config = cls.get_experiment_config_cached(experiment_name)
+        if not config.assignment_strategy.allow_choice_if_multiple:
+            raise ValueError("This experiment is not configured for participant assignment choice.")
         eligible = await cls.get_eligible_options_async(
             provider=provider,
             experiment_name=experiment_name,
             player=player,
         )
-        eligible_set = {(opt["game_name"], opt["character_hid"]) for opt in eligible}
-        if (game_name, character_hid) not in eligible_set:
-            raise ValueError("The selected game and character are not available for assignment.")
+        eligible_set = {(opt["game_name"], opt["pc_hid"], opt["npc_hid"]) for opt in eligible}
+        if (game_name, pc_hid, npc_hid) not in eligible_set:
+            raise ValueError("The selected game, PC, and NPC are not available for assignment.")
+        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
         assignment = await maybe_await(
             provider.create_assignment(
                 assignment_doc={
                     MongoColumns.EXPERIMENT_NAME: config.name,
                     MongoColumns.PLAYER_ID: player.id,
                     MongoColumns.GAME_NAME: game_name,
-                    MongoColumns.CHARACTER_HID: character_hid,
+                    MongoColumns.PC_HID: pc_hid,
+                    MongoColumns.NPC_HID: npc_hid,
                     MongoColumns.STATUS: "assigned",
                     MongoColumns.FORM_RESPONSES: {},
                 },
-                allow_concurrent=True,
+                allow_concurrent=cls._allow_concurrent_assignment(config=config, assignments=player_assignments),
             )
         )
         if assignment is None:
@@ -594,8 +797,6 @@ class ExperimentManager:
         normalized = reason.strip().lower().replace(" ", "_")
         completion_reasons = {
             "game_completed",
-            "game_complete",
-            "max_predictions_reached",
-            "player_exited",
+            "player_finished",
         }
         return normalized in completion_reasons or normalized.startswith("stopping_condition_met:")

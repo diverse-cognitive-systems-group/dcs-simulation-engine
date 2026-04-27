@@ -1,4 +1,4 @@
-"""Tests for the random_unique assignment strategy."""
+"""Tests for the random_unique_game assignment strategy."""
 
 import pytest
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
@@ -15,7 +15,8 @@ def _load_strategy_config(
     games: list[str],
     quota_per_game: int = 1,
     max_assignments_per_player: int = 1,
-    assignment_mode: str = "auto",
+    allow_choice_if_multiple: bool = False,
+    require_completion: bool = True,
 ) -> ExperimentConfig:
     games_yaml = "\n".join(f"    - {game}" for game in games)
     path = write_yaml(
@@ -25,13 +26,14 @@ def _load_strategy_config(
                 f"name: {name}",
                 "description: Strategy test fixture",
                 "assignment_strategy:",
-                "  strategy: random_unique",
+                "  strategy: random_unique_game",
                 "  games:",
                 games_yaml,
                 f"  quota_per_game: {quota_per_game}",
                 f"  max_assignments_per_player: {max_assignments_per_player}",
                 f"  seed: {name}-seed",
-                f"  assignment_mode: {assignment_mode}",
+                f"  allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
+                f"  require_completion: {str(require_completion).lower()}",
             ]
         )
         + "\n",
@@ -45,7 +47,8 @@ async def _create_assignment(
     experiment_name: str,
     player_id: str,
     game_name: str,
-    character_hid: str,
+    pc_hid: str,
+    npc_hid: str = "test-npc-a",
     status: str = "assigned",
 ) -> None:
     assignment = await provider.create_assignment(
@@ -53,7 +56,8 @@ async def _create_assignment(
             MongoColumns.EXPERIMENT_NAME: experiment_name,
             MongoColumns.PLAYER_ID: player_id,
             MongoColumns.GAME_NAME: game_name,
-            MongoColumns.CHARACTER_HID: character_hid,
+            MongoColumns.PC_HID: pc_hid,
+            MongoColumns.NPC_HID: npc_hid,
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -70,10 +74,10 @@ async def _create_assignment(
         )
 
 
-async def test_random_unique_progress_closes_on_in_progress_quota(async_mongo_provider, write_yaml) -> None:
+async def test_random_unique_game_progress_closes_on_in_progress_quota(async_mongo_provider, write_yaml) -> None:
     """Progress should close once in-progress plus completed players fill the quota."""
     config = _load_strategy_config(write_yaml, name="single-progress", games=["Explore"])
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
 
     await _create_assignment(
@@ -81,7 +85,7 @@ async def test_random_unique_progress_closes_on_in_progress_quota(async_mongo_pr
         experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
         status="in_progress",
     )
 
@@ -90,10 +94,10 @@ async def test_random_unique_progress_closes_on_in_progress_quota(async_mongo_pr
     assert progress == {"total": 1, "completed": 0, "is_complete": True}
 
 
-async def test_random_unique_status_closes_on_counted_quota(async_mongo_provider, write_yaml) -> None:
+async def test_random_unique_game_status_closes_on_counted_quota(async_mongo_provider, write_yaml) -> None:
     """Status openness should be based on counted players, not only completed rows."""
     config = _load_strategy_config(write_yaml, name="single-status", games=["Explore"])
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
 
     await _create_assignment(
@@ -101,7 +105,7 @@ async def test_random_unique_status_closes_on_counted_quota(async_mongo_provider
         experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
         status="in_progress",
     )
 
@@ -111,7 +115,7 @@ async def test_random_unique_status_closes_on_counted_quota(async_mongo_provider
     assert status_payload["per_game"]["Explore"] == {"total": 1, "completed": 0, "in_progress": 1}
 
 
-async def test_random_unique_does_not_repeat_games_for_the_same_player(async_mongo_provider, write_yaml) -> None:
+async def test_random_unique_game_does_not_repeat_games_for_the_same_player(async_mongo_provider, write_yaml) -> None:
     """Players should receive a different game when multiple assignments are allowed."""
     config = _load_strategy_config(
         write_yaml,
@@ -119,7 +123,7 @@ async def test_random_unique_does_not_repeat_games_for_the_same_player(async_mon
         games=["Explore", "Foresight"],
         max_assignments_per_player=2,
     )
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Repeat"}})
 
     first = await strategy.get_or_create_assignment_async(provider=async_mongo_provider, config=config, player=player)
@@ -132,14 +136,14 @@ async def test_random_unique_does_not_repeat_games_for_the_same_player(async_mon
     assert second.game_name != first.game_name
 
 
-async def test_random_unique_skips_games_at_counted_quota(async_mongo_provider, write_yaml) -> None:
+async def test_random_unique_game_skips_games_at_counted_quota(async_mongo_provider, write_yaml) -> None:
     """Only games below quota should remain eligible for new assignments."""
     config = _load_strategy_config(
         write_yaml,
         name="remaining-games",
         games=["Explore", "Foresight"],
     )
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     filled_player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Filled"}})
     next_player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Next"}})
 
@@ -148,7 +152,7 @@ async def test_random_unique_skips_games_at_counted_quota(async_mongo_provider, 
         experiment_name=config.name,
         player_id=filled_player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
         status="in_progress",
     )
 
@@ -162,10 +166,10 @@ async def test_random_unique_skips_games_at_counted_quota(async_mongo_provider, 
     assert assignment.game_name == "Foresight"
 
 
-async def test_random_unique_assigned_rows_do_not_consume_quota(async_mongo_provider, write_yaml) -> None:
+async def test_random_unique_game_assigned_rows_do_not_consume_quota(async_mongo_provider, write_yaml) -> None:
     """Assigned rows should not reserve one of the per-game quota slots."""
     config = _load_strategy_config(write_yaml, name="assigned-does-not-count", games=["Explore"])
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     first_player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Assigned"}})
     second_player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Fresh"}})
 
@@ -174,7 +178,7 @@ async def test_random_unique_assigned_rows_do_not_consume_quota(async_mongo_prov
         experiment_name=config.name,
         player_id=first_player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
     )
 
     assignment = await strategy.get_or_create_assignment_async(
@@ -187,10 +191,10 @@ async def test_random_unique_assigned_rows_do_not_consume_quota(async_mongo_prov
     assert assignment.game_name == "Explore"
 
 
-async def test_random_unique_interrupted_rows_release_quota(async_mongo_provider, write_yaml) -> None:
+async def test_random_unique_game_interrupted_rows_release_quota(async_mongo_provider, write_yaml) -> None:
     """Interrupted work should free the game for later players again."""
     config = _load_strategy_config(write_yaml, name="interrupted-releases", games=["Explore"])
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     first_player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Interrupted"}})
     second_player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Replacement"}})
 
@@ -199,7 +203,7 @@ async def test_random_unique_interrupted_rows_release_quota(async_mongo_provider
         experiment_name=config.name,
         player_id=first_player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
         status="in_progress",
     )
     interrupted = await async_mongo_provider.get_active_assignment(experiment_name=config.name, player_id=first_player.id)
@@ -226,9 +230,10 @@ async def test_random_unique_player_choice_options_remain_available_with_existin
         name="player-choice-multi",
         games=["Explore", "foresight"],
         max_assignments_per_player=2,
-        assignment_mode="player_choice",
+        allow_choice_if_multiple=True,
+        require_completion=False,
     )
-    strategy = get_assignment_strategy("random_unique")
+    strategy = get_assignment_strategy("random_unique_game")
     player, _ = await async_mongo_provider.create_player(
         player_data={
             "full_name": {"answer": "Chooser"},
@@ -242,7 +247,7 @@ async def test_random_unique_player_choice_options_remain_available_with_existin
         experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
-        character_hid="test-char-a",
+        pc_hid="test-char-a",
     )
 
     options = await strategy.get_eligible_options_async(

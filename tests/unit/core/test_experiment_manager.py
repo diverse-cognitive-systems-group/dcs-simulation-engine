@@ -1,8 +1,11 @@
 """Tests for ExperimentManager."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from dcs_simulation_engine.core.assignment_strategies.base import AssignmentCandidate
+from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 
@@ -18,6 +21,12 @@ def _entry_form_payload() -> dict[str, dict[str, object]]:
             "technical_experience_details": "Research computing background",
         }
     }
+
+
+def _cache_config(config: ExperimentConfig):
+    original_cache = ExperimentManager._experiment_config_cache.copy()
+    ExperimentManager._experiment_config_cache = {ExperimentManager._cache_key(config.name): config}
+    return original_cache
 
 
 async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
@@ -45,15 +54,18 @@ async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mo
     "reason,expected",
     [
         ("game_completed", True),
-        ("game_complete", True),
         ("game completed", True),
         ("Game Completed", True),
-        ("max predictions reached", True),
-        ("max_predictions_reached", True),
-        ("player exited", True),
-        ("player_exited", True),
+        ("player finished", True),
+        ("player_finished", True),
         ("stopping_condition_met:max_turns", True),
         ("stopping_condition_met:anything", True),
+        ("stopping condition met: turns >= 50", True),
+        ("game_complete", False),
+        ("max predictions reached", False),
+        ("max_predictions_reached", False),
+        ("player exited", False),
+        ("player_exited", False),
         ("retry budget exhausted", False),
         ("websocket_disconnect", False),
         ("server_error", False),
@@ -165,7 +177,8 @@ async def test_progress_counts_completed_assignments_and_unique_players(async_mo
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_a.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -179,7 +192,8 @@ async def test_progress_counts_completed_assignments_and_unique_players(async_mo
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_b.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-b",
+            MongoColumns.PC_HID: "test-char-b",
+            MongoColumns.NPC_HID: "test-npc-b",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -225,7 +239,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_a.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -239,7 +254,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_b.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-b",
+            MongoColumns.PC_HID: "test-char-b",
+            MongoColumns.NPC_HID: "test-npc-b",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -254,7 +270,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player_c.id,
             MongoColumns.GAME_NAME: "Foresight",
-            MongoColumns.CHARACTER_HID: "test-char-c",
+            MongoColumns.PC_HID: "test-char-c",
+            MongoColumns.NPC_HID: "test-npc-c",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -284,7 +301,8 @@ async def test_status_deduplicates_completed_players_per_game(async_mongo_provid
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -298,7 +316,8 @@ async def test_status_deduplicates_completed_players_per_game(async_mongo_provid
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: "Explore",
-            MongoColumns.CHARACTER_HID: "test-char-b",
+            MongoColumns.PC_HID: "test-char-b",
+            MongoColumns.NPC_HID: "test-npc-b",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -324,7 +343,8 @@ async def test_stopping_condition_reason_marks_assignment_completed(async_mongo_
             MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: "Goal Horizon",
-            MongoColumns.CHARACTER_HID: "test-char-a",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
             MongoColumns.FORM_RESPONSES: {},
         }
     )
@@ -339,6 +359,36 @@ async def test_stopping_condition_reason_marks_assignment_completed(async_mongo_
         experiment_name=cached_usability_experiment.name,
         assignment_id=assignment.assignment_id,
         exit_reason="stopping condition met: turns >=10",
+    )
+
+    assert updated is not None
+    assert updated.status == "completed"
+
+
+async def test_player_finished_reason_marks_assignment_completed(async_mongo_provider, cached_usability_experiment) -> None:
+    """/finish exits should count as experiment completion."""
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
+    assignment = await async_mongo_provider.create_assignment(
+        assignment_doc={
+            MongoColumns.EXPERIMENT_NAME: cached_usability_experiment.name,
+            MongoColumns.PLAYER_ID: player.id,
+            MongoColumns.GAME_NAME: "Explore",
+            MongoColumns.PC_HID: "test-char-a",
+            MongoColumns.NPC_HID: "test-npc-a",
+            MongoColumns.FORM_RESPONSES: {},
+        }
+    )
+    await async_mongo_provider.update_assignment_status(
+        assignment_id=assignment.assignment_id,
+        status="in_progress",
+        active_session_id="sess-explore-1",
+    )
+
+    updated = await ExperimentManager.handle_session_terminal_state_async(
+        provider=async_mongo_provider,
+        experiment_name=cached_usability_experiment.name,
+        assignment_id=assignment.assignment_id,
+        exit_reason="player finished",
     )
 
     assert updated is not None
@@ -381,14 +431,19 @@ async def test_compute_status_dispatches_to_assignment_strategy(
     strategy.compute_status_async.assert_awaited_once()
 
 
-async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
+async def test_get_or_create_assignment_uses_first_strategy_candidate(
     monkeypatch: pytest.MonkeyPatch, async_mongo_provider, cached_usability_experiment
 ) -> None:
-    """ExperimentManager should delegate assignment creation to the configured strategy."""
+    """ExperimentManager should create the first ordered strategy candidate when choice is disabled."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Delegated"}})
-    assignment = object()
     strategy = MagicMock()
-    strategy.get_or_create_assignment_async = AsyncMock(return_value=assignment)
+    strategy.max_assignments_per_player.return_value = 1
+    strategy.list_candidate_assignments_async = AsyncMock(
+        return_value=[
+            AssignmentCandidate("Explore", "pc-alpha", "npc-beta"),
+            AssignmentCandidate("Foresight", "pc-gamma", "npc-delta"),
+        ]
+    )
 
     monkeypatch.setattr("dcs_simulation_engine.core.experiment_manager.get_assignment_strategy", lambda _name: strategy)
 
@@ -398,21 +453,254 @@ async def test_get_or_create_assignment_dispatches_to_assignment_strategy(
         player=player,
     )
 
-    assert result is assignment
-    strategy.get_or_create_assignment_async.assert_awaited_once()
+    assert result is not None
+    assert result.game_name == "Explore"
+    assert result.pc_hid == "pc-alpha"
+    assert result.npc_hid == "npc-beta"
+    strategy.list_candidate_assignments_async.assert_awaited_once()
+
+
+async def test_create_player_choice_assignment_persists_pc_and_npc(
+    monkeypatch: pytest.MonkeyPatch, async_mongo_provider, write_yaml
+) -> None:
+    """Player-choice assignment creation should persist the selected PC/NPC triple."""
+    path = write_yaml(
+        "choice-enabled.yaml",
+        """
+        name: choice-enabled
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          allow_choice_if_multiple: true
+          seed: choice-enabled
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
+    monkeypatch.setattr(
+        ExperimentManager,
+        "get_eligible_options_async",
+        AsyncMock(return_value=[{"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-beta"}]),
+    )
+
+    try:
+        assignment = await ExperimentManager.create_player_choice_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+            game_name="Explore",
+            pc_hid="pc-alpha",
+            npc_hid="npc-beta",
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert assignment.pc_hid == "pc-alpha"
+    assert assignment.npc_hid == "npc-beta"
+
+
+async def test_allow_choice_if_multiple_returns_options_without_creating_assignment(
+    monkeypatch: pytest.MonkeyPatch,
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """When multiple choice is enabled, multiple candidates should be exposed but not persisted."""
+    path = write_yaml(
+        "choice-options.yaml",
+        """
+        name: choice-options
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          allow_choice_if_multiple: true
+          seed: choice-options
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
+    strategy = MagicMock()
+    strategy.max_assignments_per_player.return_value = 2
+    strategy.list_candidate_assignments_async = AsyncMock(
+        return_value=[
+            AssignmentCandidate("Explore", "pc-alpha", "npc-one"),
+            AssignmentCandidate("Explore", "pc-alpha", "npc-two"),
+        ]
+    )
+    monkeypatch.setattr("dcs_simulation_engine.core.experiment_manager.get_assignment_strategy", lambda _name: strategy)
+
+    try:
+        assignment, options = await ExperimentManager.resolve_assignment_state_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assignments = await async_mongo_provider.list_assignments(experiment_name=config.name, player_id=player.id)
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert assignment is None
+    assert options == [
+        {"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-one"},
+        {"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-two"},
+    ]
+    assert assignments == []
+
+
+async def test_invalid_player_choice_triplet_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """Selection must match the current backend-derived option set."""
+    path = write_yaml(
+        "choice-invalid.yaml",
+        """
+        name: choice-invalid
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          allow_choice_if_multiple: true
+          seed: choice-invalid
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Chooser"}})
+    monkeypatch.setattr(
+        ExperimentManager,
+        "get_eligible_options_async",
+        AsyncMock(return_value=[{"game_name": "Explore", "pc_hid": "pc-alpha", "npc_hid": "npc-one"}]),
+    )
+
+    try:
+        with pytest.raises(ValueError, match="not available"):
+            await ExperimentManager.create_player_choice_assignment_async(
+                provider=async_mongo_provider,
+                experiment_name=config.name,
+                player=player,
+                game_name="Explore",
+                pc_hid="pc-alpha",
+                npc_hid="npc-two",
+            )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+
+async def test_require_completion_false_allows_new_assignment_after_live_assignment(
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """Live assignments should not block new work when completion gating is disabled."""
+    path = write_yaml(
+        "no-completion-gate-live.yaml",
+        """
+        name: no-completion-gate-live
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          require_completion: false
+          seed: no-completion-gate-live
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Gate"}})
+
+    try:
+        first = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assert first is not None
+        await async_mongo_provider.update_assignment_status(
+            assignment_id=first.assignment_id,
+            status="in_progress",
+            active_session_id="session-live",
+        )
+
+        second = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert second is not None
+    assert second.assignment_id != first.assignment_id
+
+
+async def test_require_completion_false_allows_new_assignment_after_interruption(
+    async_mongo_provider,
+    write_yaml,
+) -> None:
+    """Interrupted assignments should stop blocking new work when completion gating is disabled."""
+    path = write_yaml(
+        "no-completion-gate.yaml",
+        """
+        name: no-completion-gate
+        description: Strategy test fixture
+        assignment_strategy:
+          strategy: full_character_access
+          games:
+            - Explore
+          quota_per_game: 5
+          max_assignments_per_player: 2
+          require_completion: false
+          seed: no-completion-gate
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Gate"}})
+
+    try:
+        first = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assert first is not None
+        await async_mongo_provider.update_assignment_status(assignment_id=first.assignment_id, status="interrupted")
+
+        second = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert second is not None
+    assert second.assignment_id != first.assignment_id
 
 
 async def test_completed_assignment_reflected_in_player_state_after_multi_assignment_game(
     async_mongo_provider, cached_multi_assignment_experiment
 ) -> None:
-    """After completing one game in a 3-assignment experiment, get_player_state_async must.
-
-    Return one completed assignment and two assigned ones — confirming that progress (1 of 3)
-    is correctly reflected for the player.
-    """
+    """After completing one game in a 3-assignment experiment, state should expose the next one."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Progress Tester"}})
 
-    # Register: creates assignment 1 and pre-generates assignments 2 & 3.
+    # Register: creates the first assignment.
     await ExperimentManager.submit_before_play_async(
         provider=async_mongo_provider,
         experiment_name=cached_multi_assignment_experiment.name,
@@ -428,7 +716,7 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
     )
     active = state_before["active_assignment"]
     assert active is not None
-    assert len(state_before["assignments"]) == 3, "All 3 assignments should be pre-generated"
+    assert len(state_before["assignments"]) == 1
 
     await async_mongo_provider.update_assignment_status(
         assignment_id=active.assignment_id,
@@ -459,7 +747,7 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
 
     statuses = [a.status for a in state_after["assignments"]]
     completed_count = statuses.count("completed")
-    assert len(state_after["assignments"]) == 3, "All 3 assignments must still be present"
+    assert len(state_after["assignments"]) == 2
     assert completed_count == 1, f"Expected 1 completed assignment, got {completed_count} — statuses: {statuses}"
     assert state_after["has_finished_experiment"] is False
     assert state_after["active_assignment"] is not None

@@ -54,8 +54,8 @@ Games listed are the ones that the assignment strategy (below) will pull from wh
 
 ### Define how players get to gameplay sessions (**assignment strategy**)
 
-Assignment strategy controls what games + characters come up for players and how much control they have over what they play next.
+Assignment strategy controls which game + player-character + simulator-character triplets come up for players and how much control they have over what they play next.
 
 You can write your own assignment strategy and point to it or use provided ones.
-- random_unique: assign game + player combinations randomly while ensuring uniqueness until quota is met, then allow repeats as needed
+- random_unique_game: assign allowed game triplets in deterministic random order while ensuring each player receives each configured game at most once
 - ...

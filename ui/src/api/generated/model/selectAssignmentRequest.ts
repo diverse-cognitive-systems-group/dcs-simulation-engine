@@ -10,5 +10,6 @@
  */
 export interface SelectAssignmentRequest {
   game_name: string;
-  character_hid: string;
+  pc_hid: string;
+  npc_hid: string;
 }

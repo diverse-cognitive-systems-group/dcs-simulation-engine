@@ -21,6 +21,14 @@ from dcs_simulation_engine.dal.base import (
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from fastapi.testclient import TestClient
 
+ASSIGNMENT_DISPLAY_METADATA = {
+    "game_description": "Game description",
+    "player_character_name": "Player Character",
+    "player_character_description": "Player character description",
+    "simulator_character_description": "Details hidden",
+    "simulator_character_details_visible": False,
+}
+
 
 class DummySessionManager:
     """Minimal async session manager used to test API + WS flows."""
@@ -930,7 +938,8 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     assignment = SimpleNamespace(
         assignment_id="asg-1",
         game_name="Explore",
-        character_hid="pc-1",
+        pc_hid="pc-1",
+        npc_hid="npc-1",
         status="assigned",
     )
 
@@ -941,7 +950,10 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
                 name="usability",
                 description="Usability study",
                 forms=[form],
-                assignment_strategy=SimpleNamespace(assignment_mode="random_unique"),
+                assignment_strategy=SimpleNamespace(
+                    allow_choice_if_multiple=False,
+                    require_completion=True,
+                ),
             ),
         ),
         patch(
@@ -966,9 +978,14 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
                     "pending_post_play": None,
                     "has_finished_experiment": False,
                     "has_submitted_before_forms": True,
+                    "eligible_assignment_options": [],
                     "assignments": [assignment],
                 }
             ),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.assignment_display_metadata_async",
+            new=AsyncMock(return_value=ASSIGNMENT_DISPLAY_METADATA),
         ),
     ):
         response = client.get(
@@ -982,6 +999,12 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     assert payload["current_assignment"]["assignment_id"] == "asg-1"
     assert payload["progress"] == {"total": 20, "completed": 4, "is_complete": False}
     assert payload["pending_post_play"] is False
+    assert payload["allow_choice_if_multiple"] is False
+    assert payload["require_completion"] is True
+    assert payload["has_submitted_before_forms"] is True
+    assert payload["eligible_assignment_options"] == []
+    assert "character_hid" not in payload["current_assignment"]
+    assert payload["current_assignment"]["game_description"] == "Game description"
     assert payload["forms"][0]["name"] == "intake"
 
 
@@ -993,13 +1016,20 @@ def test_experiment_before_play_submission_returns_assignment(
     assignment = SimpleNamespace(
         assignment_id="asg-2",
         game_name="Foresight",
-        character_hid="pc-2",
+        pc_hid="pc-2",
+        npc_hid="npc-2",
         status="assigned",
     )
 
-    with patch(
-        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_before_play_async",
-        new=AsyncMock(return_value=assignment),
+    with (
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_before_play_async",
+            new=AsyncMock(return_value=assignment),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.assignment_display_metadata_async",
+            new=AsyncMock(return_value=ASSIGNMENT_DISPLAY_METADATA),
+        ),
     ):
         response = client.post(
             "/api/experiments/usability/players",
@@ -1011,10 +1041,12 @@ def test_experiment_before_play_submission_returns_assignment(
     assert response.json()["assignment"] == {
         "assignment_id": "asg-2",
         "game_name": "Foresight",
-        "character_hid": "pc-2",
+        "pc_hid": "pc-2",
+        "npc_hid": "npc-2",
         "status": "assigned",
         "active_session_id": None,
         "needs_post_play": False,
+        **ASSIGNMENT_DISPLAY_METADATA,
     }
 
 
@@ -1173,11 +1205,25 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
 
         setup = client.get("/api/experiments/usability/setup", headers=headers)
         assert setup.status_code == 200, setup.text
-        assignments = setup.json()["assignments"]
-        assert len(assignments) >= 2
 
         paused_session_ids: dict[str, str] = {}
-        for assignment in assignments[:2]:
+        used_options: set[tuple[str, str, str]] = set()
+        for _index in range(2):
+            setup_payload = setup.json()
+            options = setup_payload["eligible_assignment_options"]
+            option = next(item for item in options if (item["game_name"], item["pc_hid"], item["npc_hid"]) not in used_options)
+            used_options.add((option["game_name"], option["pc_hid"], option["npc_hid"]))
+            select_resp = client.post(
+                "/api/experiments/usability/assignments/select",
+                headers=headers,
+                json={
+                    "game_name": option["game_name"],
+                    "pc_hid": option["pc_hid"],
+                    "npc_hid": option["npc_hid"],
+                },
+            )
+            assert select_resp.status_code == 200, select_resp.text
+            assignment = select_resp.json()
             create_resp = client.post(
                 "/api/experiments/usability/sessions",
                 headers=headers,
@@ -1195,6 +1241,9 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
                 assert ws.receive_json()["type"] == "session_meta"
                 opening_frames = _receive_until(ws, "turn_end")
                 assert any(frame.get("type") == "event" for frame in opening_frames)
+
+            setup = client.get("/api/experiments/usability/setup", headers=headers)
+            assert setup.status_code == 200, setup.text
 
         paused_setup = client.get("/api/experiments/usability/setup", headers=headers)
         assert paused_setup.status_code == 200, paused_setup.text
@@ -1231,13 +1280,20 @@ def test_experiment_post_play_submission_persists_response(client: TestClient) -
     assignment = SimpleNamespace(
         assignment_id="asg-complete-1",
         game_name="Explore",
-        character_hid="pc-1",
+        pc_hid="pc-1",
+        npc_hid="npc-1",
         status="completed",
     )
 
-    with patch(
-        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.store_post_play_async",
-        new=AsyncMock(return_value=assignment),
+    with (
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.store_post_play_async",
+            new=AsyncMock(return_value=assignment),
+        ),
+        patch(
+            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.assignment_display_metadata_async",
+            new=AsyncMock(return_value=ASSIGNMENT_DISPLAY_METADATA),
+        ),
     ):
         response = client.post(
             "/api/experiments/usability/post-play",
@@ -1249,10 +1305,12 @@ def test_experiment_post_play_submission_persists_response(client: TestClient) -
     assert response.json() == {
         "assignment_id": "asg-complete-1",
         "game_name": "Explore",
-        "character_hid": "pc-1",
+        "pc_hid": "pc-1",
+        "npc_hid": "npc-1",
         "status": "completed",
         "active_session_id": None,
         "needs_post_play": False,
+        **ASSIGNMENT_DISPLAY_METADATA,
     }
 
 

@@ -7,7 +7,7 @@
 import type { EligibleAssignmentOption } from './eligibleAssignmentOption';
 
 /**
- * List of eligible assignment options for a player in player_choice mode.
+ * List of eligible assignment options for a player.
  */
 export interface EligibleAssignmentOptionsResponse {
   options: EligibleAssignmentOption[];

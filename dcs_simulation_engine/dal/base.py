@@ -72,7 +72,8 @@ class AssignmentRecord(NamedTuple):
     experiment_name: str
     player_id: str
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
     status: str
     assigned_at: Any
     data: dict[str, Any]

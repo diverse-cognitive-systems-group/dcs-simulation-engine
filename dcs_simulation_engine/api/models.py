@@ -12,6 +12,7 @@ SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
 AssignmentStatus = Literal["assigned", "in_progress", "completed", "interrupted"]
+NextAssignmentMode = Literal["locked", "choice", "blocked", "none"]
 
 
 class RegistrationRequest(BaseModel):
@@ -135,10 +136,16 @@ class ExperimentAssignmentSummary(BaseModel):
 
     assignment_id: str
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
     status: AssignmentStatus
     active_session_id: str | None = None
     needs_post_play: bool = False
+    game_description: str = ""
+    player_character_name: str = ""
+    player_character_description: str = ""
+    simulator_character_description: str = ""
+    simulator_character_details_visible: bool = False
 
 
 class ExperimentProgressResponse(BaseModel):
@@ -166,6 +173,15 @@ class ExperimentStatusResponse(BaseModel):
     per_game: dict[str, ExperimentGameStatusResponse]
 
 
+class NextAssignmentState(BaseModel):
+    """Backend-derived state for the next participant action."""
+
+    mode: NextAssignmentMode
+    reason: str = ""
+    assignment: ExperimentAssignmentSummary | None = None
+    options: list["EligibleAssignmentOption"] = Field(default_factory=list)
+
+
 class ExperimentSetupResponse(BaseModel):
     """Setup payload for the experiment landing page."""
 
@@ -179,21 +195,31 @@ class ExperimentSetupResponse(BaseModel):
     before_play_complete: bool = False
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
-    assignment_mode: str = "auto"
+    next_assignment: NextAssignmentState | None = None
+    allow_choice_if_multiple: bool = False
+    require_completion: bool = True
+    has_submitted_before_forms: bool = False
+    eligible_assignment_options: list["EligibleAssignmentOption"] = Field(default_factory=list)
     assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
     # Set when the current assignment has a paused session the player can resume.
     resumable_session_id: str | None = None
 
 
 class EligibleAssignmentOption(BaseModel):
-    """One eligible game+character option returned in player_choice mode."""
+    """One eligible game+PC+NPC option returned when assignment choice is allowed."""
 
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
+    game_description: str = ""
+    player_character_name: str = ""
+    player_character_description: str = ""
+    simulator_character_description: str = ""
+    simulator_character_details_visible: bool = False
 
 
 class EligibleAssignmentOptionsResponse(BaseModel):
-    """List of eligible assignment options for a player in player_choice mode."""
+    """List of eligible assignment options for a player."""
 
     options: list[EligibleAssignmentOption]
 
@@ -202,7 +228,8 @@ class SelectAssignmentRequest(BaseModel):
     """Payload for player-directed assignment selection."""
 
     game_name: str
-    character_hid: str
+    pc_hid: str
+    npc_hid: str
 
 
 class ExperimentPlayerRequest(BaseModel):

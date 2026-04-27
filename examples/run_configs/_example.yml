@@ -16,8 +16,8 @@ condition: learning
 # ── Assignment strategy ──────────────────────────────────────────────────────
 
 assignment_strategy:
-  # Assignment method (currently only one supported)
-  strategy: random_unique
+  # Assignment method
+  strategy: random_unique_game
 
   # Games included in this run (names are normalized automatically)
   games:
@@ -38,10 +38,11 @@ assignment_strategy:
   # If true, only PC-eligible players are considered
   pc_eligible_only: true
 
-  # Assignment behavior:
-  #   auto          → system assigns
-  #   player_choice → player selects
-  assignment_mode: auto
+  # If true, expose the backend-derived candidate set for participant choice.
+  allow_choice_if_multiple: false
+
+  # If true, unfinished/interrupted assignments block the next assignment.
+  require_completion: true
 
 # ── Forms (optional) ─────────────────────────────────────────────────────────
 

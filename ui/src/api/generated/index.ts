@@ -1511,7 +1511,7 @@ export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TDa
 
 
 /**
- * Return eligible game/character pairs for the authenticated player in player_choice mode.
+ * Return eligible game/PC/NPC triplets for the authenticated player.
  * @summary Get Eligible Options
  */
 export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse200 = {
@@ -1630,7 +1630,7 @@ export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptions
 
 
 /**
- * Create an assignment for the authenticated player based on their explicit game/character selection.
+ * Create an assignment for the authenticated player based on their explicit triplet selection.
  * @summary Select Assignment
  */
 export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse200 = {

@@ -41,7 +41,8 @@ const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
     { command: '/abilities', description: 'Show character abilities.' },
     {
       command: '/finish',
-      description: "Submit your prediction about the NPC's capabilities and finish the game.",
+      description:
+        "Submit your prediction about the simulator character's capabilities and finish the game.",
     },
   ],
   inferintent: [
@@ -239,7 +240,7 @@ function PlayPage() {
 
       const feedback: MessageFeedback = {
         liked: result.feedback.liked,
-        comment: result.feedback.comment,
+        comment: result.feedback.comment ?? '',
         doesntMakeSense: result.feedback.doesnt_make_sense,
         outOfCharacter: result.feedback.out_of_character,
         other: result.feedback.other ?? false,
@@ -283,7 +284,7 @@ function PlayPage() {
   const inputDisabled = isClosed || isError
 
   // Send is blocked while the simulation is loading or awaiting the next turn response.
-  // turns === 0 means the initial NPC message hasn't arrived yet (game not started).
+  // turns === 0 means the initial simulator message hasn't arrived yet (game not started).
   const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting || turns === 0
 
   return (
@@ -299,12 +300,12 @@ function PlayPage() {
           </Badge>
           {pcHid && (
             <Badge variant="secondary" className="text-xs" title="Your character">
-              PC: {pcHid}
+              Player Character: {pcHid}
             </Badge>
           )}
           {npcHid && (
             <Badge variant="secondary" className="text-xs" title="Simulator character">
-              NPC: {npcHid}
+              Simulator Character: {npcHid}
             </Badge>
           )}
           {isClosed && (

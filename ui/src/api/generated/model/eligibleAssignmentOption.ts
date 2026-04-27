@@ -6,9 +6,15 @@
  */
 
 /**
- * One eligible game+character option returned in player_choice mode.
+ * One eligible game+PC+NPC option returned when assignment choice is allowed.
  */
 export interface EligibleAssignmentOption {
   game_name: string;
-  character_hid: string;
+  pc_hid: string;
+  npc_hid: string;
+  game_description?: string;
+  player_character_name?: string;
+  player_character_description?: string;
+  simulator_character_description?: string;
+  simulator_character_details_visible?: boolean;
 }
