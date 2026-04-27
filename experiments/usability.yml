@@ -13,7 +13,9 @@ assignment_strategy:
   require_completion: false
 forms:
   - name: intake
-    before_or_after: before # "before" | "after"
+    trigger:
+      event: before_all_assignments
+      match: null
     questions:
       - key: professional_background
         prompt: Describe your professional background (e.g., industry, role, years of
@@ -35,7 +37,9 @@ forms:
         answer_type: string
         required: true
   - name: outtake
-    before_or_after: after
+    trigger:
+      event: after_assignment
+      match: null
     questions:
       - key: usability_difficulty
         prompt: What parts were confusing or difficult? (e.g., understanding what to do,

@@ -7,6 +7,7 @@ from typing import Any, Literal, Optional
 import yaml
 from dcs_simulation_engine.core.forms import (
     ExperimentForm,
+    FormTriggerEvent,
 )
 from dcs_simulation_engine.utils.serde import SerdeMixin
 from pydantic import (
@@ -132,9 +133,21 @@ class ExperimentConfig(SerdeMixin, BaseModel):
         """Canonical list of games included in the experiment assignment strategy."""
         return list(self.assignment_strategy.games or [])
 
-    def forms_for_phase(self, *, before_or_after: str) -> list[ExperimentForm]:
-        """Return forms matching one phase."""
-        return [form for form in self.forms if form.before_or_after == before_or_after]
+    def forms_for_trigger(self, *, event: FormTriggerEvent | str) -> list[ExperimentForm]:
+        """Return forms matching one registered trigger event."""
+        return [form for form in self.forms if form.trigger.event == event]
+
+    def form_groups_for_trigger(self, *, event: FormTriggerEvent | str) -> list[dict[str, Any]]:
+        """Return configured form groups for one trigger event."""
+        forms = self.forms_for_trigger(event=event)
+        if not forms:
+            return []
+        return [
+            {
+                "trigger": {"event": event, "match": None},
+                "forms": forms,
+            }
+        ]
 
     @classmethod
     def load(cls, path: str | Path) -> "ExperimentConfig":

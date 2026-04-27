@@ -11,6 +11,20 @@ from pydantic import (
     model_validator,
 )
 
+FormTriggerEvent = Literal[
+    "before_all_assignments",
+    "before_assignment",
+    "after_assignment",
+    "after_all_assignments",
+]
+
+REGISTERED_FORM_TRIGGER_EVENTS = {
+    "before_all_assignments",
+    "before_assignment",
+    "after_assignment",
+    "after_all_assignments",
+}
+
 
 def _normalize_identifier(value: str) -> str:
     """Normalize an identifier into lowercase snake_case."""
@@ -52,13 +66,31 @@ class ExperimentFormQuestion(BaseModel):
         return self
 
 
+class ExperimentFormTrigger(BaseModel):
+    """Canonical trigger for experiment forms."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event: FormTriggerEvent
+    match: Any = None
+
+    @model_validator(mode="after")
+    def validate_registered_trigger(self) -> "ExperimentFormTrigger":
+        """Validate event registration and v1 match support."""
+        if self.event not in REGISTERED_FORM_TRIGGER_EVENTS:
+            raise ValueError(f"Unknown form trigger event: {self.event}")
+        if self.match is not None:
+            raise ValueError("Form trigger match must be null for the current built-in triggers.")
+        return self
+
+
 class ExperimentForm(BaseModel):
-    """Named experiment form shown before or after gameplay."""
+    """Named experiment form shown at a registered experiment trigger."""
 
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    before_or_after: Literal["before", "after"]
+    trigger: ExperimentFormTrigger
     questions: list[ExperimentFormQuestion] = Field(default_factory=list)
 
     @field_validator("name")

@@ -41,7 +41,9 @@ next_game_strategy:
 # DATA COLLECTION FORMS
 forms:
   - name: research_participation_consent
-    trigger: before_all
+    trigger:
+      event: before_all_assignments
+      match: null
     questions:
       - type: message
         prompt: |
@@ -69,10 +71,14 @@ forms:
         required: false
 
   - name: intake
-    trigger: before_all
+    trigger:
+      event: before_all_assignments
+      match: null
     questions:
       - ...
   - name: outtake
-    trigger: after_all
+    trigger:
+      event: after_all_assignments
+      match: null
     questions:
       - ...

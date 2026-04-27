@@ -44,7 +44,9 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
           seed: test-usability-seed
         forms:
           - name: intake
-            before_or_after: before
+            trigger:
+              event: before_all_assignments
+              match: null
             questions:
               - prompt: Please complete the intake form.
               - key: age
@@ -76,7 +78,9 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
                 prompt: Briefly describe your technical experience
                 answer_type: string
           - name: usability_feedback
-            before_or_after: after
+            trigger:
+              event: after_assignment
+              match: null
             questions:
               - prompt: Please share any usability feedback.
               - key: usability_issues
@@ -136,14 +140,18 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
           seed: test-multi-seed
         forms:
           - name: intake
-            before_or_after: before
+            trigger:
+              event: before_all_assignments
+              match: null
             questions:
               - key: age
                 prompt: Age
                 answer_type: number
                 required: true
           - name: usability_feedback
-            before_or_after: after
+            trigger:
+              event: after_assignment
+              match: null
             questions:
               - key: usability_issues
                 prompt: Any issues?

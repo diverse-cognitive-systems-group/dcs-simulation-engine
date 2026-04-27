@@ -29,14 +29,24 @@ def _cache_config(config: ExperimentConfig):
     return original_cache
 
 
-async def test_submit_before_play_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
+async def _submit_entry_forms(async_mongo_provider, config: ExperimentConfig, player_id: str) -> None:
+    await ExperimentManager.submit_form_group_async(
+        provider=async_mongo_provider,
+        experiment_name=config.name,
+        player_id=player_id,
+        group_id="before_all_assignments",
+        responses=_entry_form_payload(),
+    )
+
+
+async def test_submit_form_group_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
     """Submitting before-play answers should persist the form in the forms collection, not on the assignment."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Ada Lovelace"}})
-    assignment = await ExperimentManager.submit_before_play_async(
+    await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
+    assignment = await ExperimentManager.get_or_create_assignment_async(
         provider=async_mongo_provider,
         experiment_name=cached_usability_experiment.name,
-        player_id=player.id,
-        responses=_entry_form_payload(),
+        player=player,
     )
 
     assert assignment is not None
@@ -81,6 +91,7 @@ def test_is_completion_reason(reason: str, expected: bool) -> None:
 async def test_interrupted_assignment_is_reused(async_mongo_provider, cached_usability_experiment) -> None:
     """Interrupted assignments should be returned again instead of generating a new row."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Ada"}})
+    await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
     first = await ExperimentManager.get_or_create_assignment_async(
         provider=async_mongo_provider,
         experiment_name=cached_usability_experiment.name,
@@ -105,6 +116,7 @@ async def test_interrupted_assignment_is_reused(async_mongo_provider, cached_usa
 async def test_completed_assignment_blocks_further_assignment_when_max_is_one(async_mongo_provider, cached_usability_experiment) -> None:
     """A player should stop receiving assignments after one completed game when max_assignments=1."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Bob"}})
+    await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
     assignment = await ExperimentManager.get_or_create_assignment_async(
         provider=async_mongo_provider,
         experiment_name=cached_usability_experiment.name,
@@ -130,11 +142,11 @@ async def test_post_play_completion_marks_experiment_finished_after_single_assig
 ) -> None:
     """Once post-play feedback is complete, single-game participants should be marked finished."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Dana"}})
-    first = await ExperimentManager.submit_before_play_async(
+    await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
+    first = await ExperimentManager.get_or_create_assignment_async(
         provider=async_mongo_provider,
         experiment_name=cached_usability_experiment.name,
-        player_id=player.id,
-        responses=_entry_form_payload(),
+        player=player,
     )
     assert first is not None
 
@@ -142,10 +154,11 @@ async def test_post_play_completion_marks_experiment_finished_after_single_assig
         assignment_id=first.assignment_id,
         status="completed",
     )
-    await ExperimentManager.store_post_play_async(
+    await ExperimentManager.submit_form_group_async(
         provider=async_mongo_provider,
         experiment_name=cached_usability_experiment.name,
         player_id=player.id,
+        group_id=f"after_assignment:{first.assignment_id}",
         responses={
             "usability_feedback": {
                 "usability_issues": "None",
@@ -165,6 +178,121 @@ async def test_post_play_completion_marks_experiment_finished_after_single_assig
     assert state["pending_post_play"] is None
     assert state["active_assignment"] is None
     assert state["has_finished_experiment"] is True
+
+
+async def test_before_assignment_forms_are_pending_per_assignment(async_mongo_provider, write_yaml) -> None:
+    """Before-assignment triggers should attach to the assignment they gate."""
+    path = write_yaml(
+        "before-assignment-forms.yaml",
+        """
+        name: before-assignment-forms
+        description: Trigger fixture
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+        forms:
+          - name: pre_game
+            trigger:
+              event: before_assignment
+              match: null
+            questions:
+              - key: ready
+                prompt: Ready?
+                answer_type: bool
+                required: true
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Pre"}})
+
+    try:
+        assignment = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assert assignment is not None
+        state = await ExperimentManager.get_player_state_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player_id=player.id,
+        )
+        assert state["pending_form_groups"][0]["group_id"] == f"before_assignment:{assignment.assignment_id}"
+
+        await ExperimentManager.submit_form_group_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player_id=player.id,
+            group_id=f"before_assignment:{assignment.assignment_id}",
+            responses={"pre_game": {"ready": True}},
+        )
+        state_after = await ExperimentManager.get_player_state_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player_id=player.id,
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert state_after["pending_form_groups"] == []
+
+
+async def test_after_all_assignment_forms_are_pending_after_completion(async_mongo_provider, write_yaml) -> None:
+    """After-all triggers should wait until all required assignments are completed."""
+    path = write_yaml(
+        "after-all-forms.yaml",
+        """
+        name: after-all-forms
+        description: Trigger fixture
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+        forms:
+          - name: exit
+            trigger:
+              event: after_all_assignments
+              match: null
+            questions:
+              - key: done
+                prompt: Done?
+                answer_type: bool
+                required: true
+        """,
+    )
+    config = ExperimentConfig.load(Path(path))
+    original_cache = _cache_config(config)
+    player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Post"}})
+
+    try:
+        assignment = await ExperimentManager.get_or_create_assignment_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player=player,
+        )
+        assert assignment is not None
+        before_done = await ExperimentManager.get_player_state_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player_id=player.id,
+        )
+        await async_mongo_provider.update_assignment_status(assignment_id=assignment.assignment_id, status="completed")
+        after_done = await ExperimentManager.get_player_state_async(
+            provider=async_mongo_provider,
+            experiment_name=config.name,
+            player_id=player.id,
+        )
+    finally:
+        ExperimentManager._experiment_config_cache = original_cache
+
+    assert before_done["pending_form_groups"] == []
+    assert after_done["pending_form_groups"][0]["group_id"] == "after_all_assignments"
 
 
 async def test_progress_counts_completed_assignments_and_unique_players(async_mongo_provider, cached_usability_experiment) -> None:
@@ -436,6 +564,7 @@ async def test_get_or_create_assignment_uses_first_strategy_candidate(
 ) -> None:
     """ExperimentManager should create the first ordered strategy candidate when choice is disabled."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Delegated"}})
+    await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
     strategy = MagicMock()
     strategy.max_assignments_per_player.return_value = 1
     strategy.list_candidate_assignments_async = AsyncMock(
@@ -701,10 +830,11 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Progress Tester"}})
 
     # Register: creates the first assignment.
-    await ExperimentManager.submit_before_play_async(
+    await ExperimentManager.submit_form_group_async(
         provider=async_mongo_provider,
         experiment_name=cached_multi_assignment_experiment.name,
         player_id=player.id,
+        group_id="before_all_assignments",
         responses={"intake": {"age": 30}},
     )
 
@@ -724,10 +854,11 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
     )
 
     # Submit post-play so pending_post_play is cleared.
-    await ExperimentManager.store_post_play_async(
+    await ExperimentManager.submit_form_group_async(
         provider=async_mongo_provider,
         experiment_name=cached_multi_assignment_experiment.name,
         player_id=player.id,
+        group_id=f"after_assignment:{active.assignment_id}",
         responses={
             "usability_feedback": {
                 "usability_issues": "",
