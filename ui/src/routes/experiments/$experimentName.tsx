@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HttpError, httpClient } from '@/api/http'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -46,7 +46,14 @@ interface ExperimentQuestion {
 
 interface ExperimentFormSchema {
   name: string
-  before_or_after: 'before' | 'after'
+  trigger: {
+    event:
+      | 'before_all_assignments'
+      | 'before_assignment'
+      | 'after_assignment'
+      | 'after_all_assignments'
+    match: null
+  }
   questions: ExperimentQuestion[]
 }
 
@@ -94,6 +101,7 @@ interface ExperimentSetupResponse {
   description: string
   is_open: boolean
   forms: ExperimentFormSchema[]
+  pending_form_groups: PendingFormGroup[]
   progress: ExperimentProgressResponse
   current_assignment: ExperimentAssignmentSummary | null
   pending_post_play: boolean
@@ -108,8 +116,17 @@ interface ExperimentSetupResponse {
   resumable_session_id?: string | null
 }
 
-interface ExperimentPlayerResponse {
-  assignment: ExperimentAssignmentSummary | null
+interface PendingFormGroup {
+  group_id: string
+  trigger: ExperimentFormSchema['trigger']
+  forms: ExperimentFormSchema[]
+  assignment_id?: string | null
+}
+
+interface ExperimentFormSubmitResponse {
+  group_id: string
+  trigger: ExperimentFormSchema['trigger']
+  assignment_id?: string | null
 }
 
 function titleCase(value: string): string {
@@ -117,6 +134,13 @@ function titleCase(value: string): string {
     .split('_')
     .join(' ')
     .replace(/\b\w/g, (match) => match.toUpperCase())
+}
+
+function triggerLabel(trigger: ExperimentFormSchema['trigger']): string {
+  if (trigger.event === 'before_all_assignments') return 'Before Study'
+  if (trigger.event === 'before_assignment') return 'Before Gameplay'
+  if (trigger.event === 'after_assignment') return 'After Gameplay'
+  return 'After Study'
 }
 
 function emptyResponses(forms: ExperimentFormSchema[]): FormResponseMap {
@@ -396,9 +420,7 @@ function FormSection(props: {
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Form</p>
           <h3 className="text-lg font-semibold">{titleCase(form.name)}</h3>
         </div>
-        <Badge variant="outline">
-          {form.before_or_after === 'before' ? 'Before Play' : 'After Play'}
-        </Badge>
+        <Badge variant="outline">{triggerLabel(form.trigger)}</Badge>
       </div>
       {form.questions.map((question) => (
         <QuestionField
@@ -647,12 +669,10 @@ function ExperimentPage() {
   const { experimentName } = useParams({ from: '/experiments/$experimentName' })
   const navigate = useNavigate()
   const authenticated = isAuthenticated()
-  const [entryResponses, setEntryResponses] = useState<FormResponseMap>({})
-  const [entryErrors, setEntryErrors] = useState<Record<string, Record<string, string>>>({})
-  const [postResponses, setPostResponses] = useState<FormResponseMap>({})
-  const [postErrors, setPostErrors] = useState<Record<string, Record<string, string>>>({})
+  const [formResponses, setFormResponses] = useState<FormResponseMap>({})
+  const [formErrors, setFormErrors] = useState<Record<string, Record<string, string>>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState<'entry' | 'session' | 'post' | 'select' | null>(null)
+  const [submitting, setSubmitting] = useState<'form' | 'session' | 'select' | null>(null)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [selectedPc, setSelectedPc] = useState<string | null>(null)
   const [selectedNpc, setSelectedNpc] = useState<string | null>(null)
@@ -672,43 +692,28 @@ function ExperimentPage() {
   })
 
   const nextAssignment = data?.next_assignment ?? null
+  const pendingFormGroup = data?.pending_form_groups?.[0] ?? null
+  const pendingForms = pendingFormGroup?.forms ?? []
   const eligibleOptions =
     nextAssignment?.mode === 'choice'
       ? nextAssignment.options
       : (data?.eligible_assignment_options ?? [])
   const needsSelection = nextAssignment?.mode === 'choice'
   const needsBeforeForms =
-    nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'before_forms'
+    nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'pending_forms'
   const noAssignmentsAvailable =
     nextAssignment?.mode === 'none' &&
     (nextAssignment.reason === 'unavailable' || nextAssignment.reason === 'quota_closed')
 
-  const beforeForms = useMemo(
-    () => (data?.forms ?? []).filter((form) => form.before_or_after === 'before'),
-    [data?.forms],
-  )
-  const afterForms = useMemo(
-    () => (data?.forms ?? []).filter((form) => form.before_or_after === 'after'),
-    [data?.forms],
-  )
   const lockedAssignment = nextAssignment?.mode === 'locked' ? nextAssignment.assignment : null
   const unfinishedAssignmentCount = (data?.assignments ?? []).filter(
     (assignment) => assignment.status !== 'completed',
   ).length
 
   useEffect(() => {
-    if (!beforeForms.length) return
-    setEntryResponses((current) =>
-      Object.keys(current).length > 0 ? current : emptyResponses(beforeForms),
-    )
-  }, [beforeForms])
-
-  useEffect(() => {
-    if (!afterForms.length) return
-    setPostResponses((current) =>
-      Object.keys(current).length > 0 ? current : emptyResponses(afterForms),
-    )
-  }, [afterForms])
+    setFormErrors({})
+    setFormResponses(pendingForms.length ? emptyResponses(pendingForms) : {})
+  }, [pendingFormGroup?.group_id])
 
   function setResponse(
     setter: React.Dispatch<React.SetStateAction<FormResponseMap>>,
@@ -730,25 +735,26 @@ function ExperimentPage() {
     await navigate({ to: '/login' })
   }
 
-  async function handleEntrySubmit(event: React.FormEvent) {
+  async function handleFormSubmit(event: React.FormEvent) {
     event.preventDefault()
-    const errors = validateResponses(beforeForms, entryResponses)
-    setEntryErrors(errors)
+    if (!pendingFormGroup) return
+    const errors = validateResponses(pendingForms, formResponses)
+    setFormErrors(errors)
     if (Object.keys(errors).length > 0) return
 
     setSubmitError(null)
-    setSubmitting('entry')
+    setSubmitting('form')
     try {
-      await httpClient<ExperimentPlayerResponse>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/players`,
+      await httpClient<ExperimentFormSubmitResponse>(
+        `/api/experiments/${encodeURIComponent(experimentName)}/forms/submit`,
         {
           method: 'POST',
-          body: JSON.stringify({ responses: entryResponses }),
+          body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
         },
       )
       await refetch()
     } catch (submitErr) {
-      setSubmitError(submitErr instanceof Error ? submitErr.message : 'Registration failed')
+      setSubmitError(submitErr instanceof Error ? submitErr.message : 'Unable to submit form.')
     } finally {
       setSubmitting(null)
     }
@@ -783,29 +789,6 @@ function ExperimentPage() {
       setSubmitError(
         submitErr instanceof Error ? submitErr.message : 'Unable to start the session.',
       )
-    } finally {
-      setSubmitting(null)
-    }
-  }
-
-  async function handlePostPlaySubmit(event: React.FormEvent) {
-    event.preventDefault()
-    const errors = validateResponses(afterForms, postResponses)
-    setPostErrors(errors)
-    if (Object.keys(errors).length > 0) return
-
-    setSubmitError(null)
-    setSubmitting('post')
-    try {
-      await httpClient(`/api/experiments/${encodeURIComponent(experimentName)}/post-play`, {
-        method: 'POST',
-        body: JSON.stringify({ responses: postResponses }),
-      })
-      setPostErrors({})
-      setPostResponses(emptyResponses(afterForms))
-      await refetch()
-    } catch (submitErr) {
-      setSubmitError(submitErr instanceof Error ? submitErr.message : 'Unable to submit feedback.')
     } finally {
       setSubmitting(null)
     }
@@ -895,14 +878,7 @@ function ExperimentPage() {
     )
   }
 
-  const showBeforeFormOverlay =
-    needsBeforeForms &&
-    data.is_open &&
-    !data.pending_post_play &&
-    !lockedAssignment &&
-    !data.assignment_completed
-  const showPostPlayOverlay = data.pending_post_play
-  const showFormOverlay = showBeforeFormOverlay || showPostPlayOverlay
+  const showFormOverlay = Boolean(pendingFormGroup)
   const pageDimmed = showFormOverlay
   const assignments = data.assignments ?? []
 
@@ -975,7 +951,7 @@ function ExperimentPage() {
             {needsBeforeForms && (
               <Alert>
                 <AlertDescription>
-                  Complete the required form to unlock gameplay selection.
+                  Complete the required form to unlock gameplay.
                 </AlertDescription>
               </Alert>
             )}
@@ -1057,34 +1033,19 @@ function ExperimentPage() {
           </CardContent>
         </Card>
       </div>
-      {showBeforeFormOverlay && (
+      {pendingFormGroup && (
         <FormOverlay
-          title="Complete Intake"
-          description="Answer the required questions before choosing your next gameplay session."
-          forms={beforeForms}
-          responses={entryResponses}
-          errors={entryErrors}
+          title={triggerLabel(pendingFormGroup.trigger)}
+          description="Complete the required form before continuing."
+          forms={pendingForms}
+          responses={formResponses}
+          errors={formErrors}
           submitError={submitError}
-          submitting={submitting === 'entry'}
-          submitLabel="Continue to Gameplay"
-          submittingLabel="Preparing gameplay session…"
-          onSubmit={handleEntrySubmit}
-          onChange={(formName, key, value) => setResponse(setEntryResponses, formName, key, value)}
-        />
-      )}
-      {showPostPlayOverlay && (
-        <FormOverlay
-          title="Submit Feedback"
-          description="Complete the required feedback form before continuing to another gameplay session."
-          forms={afterForms}
-          responses={postResponses}
-          errors={postErrors}
-          submitError={submitError}
-          submitting={submitting === 'post'}
-          submitLabel="Submit Feedback"
+          submitting={submitting === 'form'}
+          submitLabel="Submit"
           submittingLabel="Submitting…"
-          onSubmit={handlePostPlaySubmit}
-          onChange={(formName, key, value) => setResponse(setPostResponses, formName, key, value)}
+          onSubmit={handleFormSubmit}
+          onChange={(formName, key, value) => setResponse(setFormResponses, formName, key, value)}
         />
       )}
     </div>

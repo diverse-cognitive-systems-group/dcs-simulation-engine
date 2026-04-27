@@ -18,6 +18,8 @@ async def test_load_valid_usability_experiment_config(usability_experiment_confi
     assert config.assignment_strategy.require_completion is True
     assert len(config.games) == 4
     assert [form.name for form in config.forms] == ["intake", "usability_feedback"]
+    assert config.forms[0].trigger.event == "before_all_assignments"
+    assert config.forms[1].trigger.event == "after_assignment"
 
 
 async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
@@ -138,7 +140,9 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
           max_assignments_per_player: 1
         forms:
           - name: intake
-            before_or_after: before
+            trigger:
+              event: before_all_assignments
+              match: null
             questions:
               - key: technical_savviness
                 prompt: Savvy
@@ -151,6 +155,83 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
         ExperimentConfig.load(path)
 
 
+async def test_legacy_before_or_after_form_key_is_rejected(write_yaml) -> None:
+    """Forms must use canonical trigger objects."""
+    path = write_yaml(
+        "legacy-form-trigger.yaml",
+        """
+        name: legacy-form-trigger
+        description: Broken
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+        forms:
+          - name: intake
+            before_or_after: before
+            questions: []
+        """,
+    )
+
+    with pytest.raises(ValueError, match="trigger"):
+        ExperimentConfig.load(path)
+
+
+async def test_unknown_form_trigger_event_is_rejected(write_yaml) -> None:
+    """Only registered form trigger events are accepted."""
+    path = write_yaml(
+        "unknown-form-trigger.yaml",
+        """
+        name: unknown-form-trigger
+        description: Broken
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+        forms:
+          - name: intake
+            trigger:
+              event: before_everything
+              match: null
+            questions: []
+        """,
+    )
+
+    with pytest.raises(ValueError, match="before_all_assignments"):
+        ExperimentConfig.load(path)
+
+
+async def test_form_trigger_match_must_be_null(write_yaml) -> None:
+    """Current built-in triggers do not accept match filters."""
+    path = write_yaml(
+        "matched-form-trigger.yaml",
+        """
+        name: matched-form-trigger
+        description: Broken
+        assignment_strategy:
+          strategy: random_unique_game
+          games:
+            - Explore
+          quota_per_game: 1
+          max_assignments_per_player: 1
+        forms:
+          - name: intake
+            trigger:
+              event: before_all_assignments
+              match:
+                game: Explore
+            questions: []
+        """,
+    )
+
+    with pytest.raises(ValueError, match="match must be null"):
+        ExperimentConfig.load(path)
+
+
 async def test_experiment_config_snapshot_is_serializable(usability_experiment_config) -> None:
     """Experiment config snapshots should be JSON-friendly for DB storage."""
     config = usability_experiment_config
@@ -159,4 +240,5 @@ async def test_experiment_config_snapshot_is_serializable(usability_experiment_c
     assert snapshot["name"] == "test-usability-exp"
     assert snapshot["assignment_strategy"]["max_assignments_per_player"] == 1
     assert snapshot["forms"][0]["name"] == "intake"
+    assert snapshot["forms"][0]["trigger"] == {"event": "before_all_assignments", "match": None}
     assert "age" in [question["key"] for question in snapshot["forms"][0]["questions"]]
