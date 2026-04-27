@@ -548,7 +548,7 @@ function AssignmentChooser(props: {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
       <div>
-        <div className="font-medium">Select an assignment</div>
+        <div className="font-medium">Select an gameplay setup</div>
         <p className="mt-1 text-sm text-muted-foreground">
           Choose one available game and character pairing.
         </p>
@@ -637,7 +637,7 @@ function AssignmentChooser(props: {
           onSelect(selectedGame, selectedPc, selectedNpc)
         }
       >
-        {submitting ? 'Selecting…' : 'Select Assignment'}
+        {submitting ? 'Selecting…' : 'Select Gameplay Setup'}
       </Button>
     </div>
   )
@@ -692,10 +692,9 @@ function ExperimentPage() {
     [data?.forms],
   )
   const lockedAssignment = nextAssignment?.mode === 'locked' ? nextAssignment.assignment : null
-  const completedAssignmentCount = (data?.assignments ?? []).filter(
-    (assignment) => assignment.status === 'completed',
+  const unfinishedAssignmentCount = (data?.assignments ?? []).filter(
+    (assignment) => assignment.status !== 'completed',
   ).length
-  const assignmentCount = (data?.assignments ?? []).length
 
   useEffect(() => {
     if (!beforeForms.length) return
@@ -829,7 +828,7 @@ function ExperimentPage() {
       await refetch()
     } catch (selectErr) {
       setSubmitError(
-        selectErr instanceof Error ? selectErr.message : 'Unable to select assignment.',
+        selectErr instanceof Error ? selectErr.message : 'Unable to select gameplay session.',
       )
     } finally {
       setSubmitting(null)
@@ -861,8 +860,8 @@ function ExperimentPage() {
               Register for an Access Key
             </Button>
             <p className="text-sm text-muted-foreground">
-              After you sign in, this page will show your assignment flow and any
-              experiment-specific intake questions.
+              After you sign in, this page will show your gameplay session(s) and any intake
+              questions.
             </p>
           </CardContent>
         </Card>
@@ -924,7 +923,6 @@ function ExperimentPage() {
       >
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
-            <Badge variant="outline">Experiment</Badge>
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">
                 {titleCase(data.experiment_name)}
@@ -938,31 +936,13 @@ function ExperimentPage() {
 
         <Card className="border-border/70 shadow-sm">
           <CardHeader>
-            <CardTitle>Progress</CardTitle>
-            <CardDescription>
-              {completedAssignmentCount} of {assignmentCount} assignments completed
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {(() => {
-              const total = assignmentCount
-              const pct = total > 0 ? Math.round((completedAssignmentCount / total) * 100) : 0
-              return (
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              )
-            })()}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/70 shadow-sm">
-          <CardHeader>
-            <CardTitle>Assignments</CardTitle>
-            <CardDescription>Active and completed gameplay assignments.</CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>Gameplay Sessions</CardTitle>
+              {unfinishedAssignmentCount > 0 && (
+                <Badge variant="secondary">{unfinishedAssignmentCount} unfinished</Badge>
+              )}
+            </div>
+            <CardDescription>Active and completed gameplay sessions.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {submitError && !showFormOverlay && (
@@ -995,7 +975,7 @@ function ExperimentPage() {
             {needsBeforeForms && (
               <Alert>
                 <AlertDescription>
-                  Complete the required form to unlock assignment selection.
+                  Complete the required form to unlock gameplay selection.
                 </AlertDescription>
               </Alert>
             )}
@@ -1003,7 +983,7 @@ function ExperimentPage() {
             {data.pending_post_play && (
               <Alert>
                 <AlertDescription>
-                  Complete the required feedback form before starting another assignment.
+                  Complete the required feedback form before starting another gameplay session.
                 </AlertDescription>
               </Alert>
             )}
@@ -1011,7 +991,7 @@ function ExperimentPage() {
             {data.assignment_completed && (
               <Alert>
                 <AlertDescription>
-                  Thank you. You have completed all available study assignments.
+                  Thank you. You have completed all available gameplay sessions.
                 </AlertDescription>
               </Alert>
             )}
@@ -1019,7 +999,7 @@ function ExperimentPage() {
             {noAssignmentsAvailable && (
               <Alert>
                 <AlertDescription>
-                  No assignments are currently available. All slots may be filled.
+                  No gameplay sessions are currently available. All slots may be filled.
                 </AlertDescription>
               </Alert>
             )}
@@ -1030,14 +1010,14 @@ function ExperimentPage() {
               !noAssignmentsAvailable && (
                 <Alert>
                   <AlertDescription>
-                    The experiment quota has been filled, so there are no new assignments available.
+                    The gameplay session quota has been filled, so there are no new ones available.
                   </AlertDescription>
                 </Alert>
               )}
 
             {assignments.length === 0 && !needsSelection ? (
               <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                No assignments have been created yet.
+                No gameplay sessions have been created yet.
               </div>
             ) : (
               assignments.map((assignment) => (
@@ -1080,14 +1060,14 @@ function ExperimentPage() {
       {showBeforeFormOverlay && (
         <FormOverlay
           title="Complete Intake"
-          description="Answer the required questions before choosing your next assignment."
+          description="Answer the required questions before choosing your next gameplay session."
           forms={beforeForms}
           responses={entryResponses}
           errors={entryErrors}
           submitError={submitError}
           submitting={submitting === 'entry'}
-          submitLabel="Continue to Assignment"
-          submittingLabel="Preparing assignment…"
+          submitLabel="Continue to Gameplay"
+          submittingLabel="Preparing gameplay session…"
           onSubmit={handleEntrySubmit}
           onChange={(formName, key, value) => setResponse(setEntryResponses, formName, key, value)}
         />
@@ -1095,7 +1075,7 @@ function ExperimentPage() {
       {showPostPlayOverlay && (
         <FormOverlay
           title="Submit Feedback"
-          description="Complete the required feedback form before continuing to another assignment."
+          description="Complete the required feedback form before continuing to another gameplay session."
           forms={afterForms}
           responses={postResponses}
           errors={postErrors}

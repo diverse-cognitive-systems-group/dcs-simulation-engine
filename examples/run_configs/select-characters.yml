@@ -1,0 +1,49 @@
+# METADATA
+name: Select Characters
+description: |
+  An engine run configuration used for internal purposes where only specific characters are allowed.
+
+seed: 42
+
+# USER INTERFACE OPTIONS
+ui:
+  launch_gui: true
+  registration_required: false
+
+# PLAYERS ALLOWED
+players:
+  humans:
+    all: true
+
+# GAMES INCLUDED
+games:
+  - name: Explore
+    overrides:
+      pcs_allowed: human-normative
+      npcs_allowed: neurodivergent
+  - name: Infer Intent
+    overrides:
+      pcs_allowed: human-normative
+      npcs_allowed: neurodivergent
+  - name: Foresight
+    overrides:
+      pcs_allowed: human-normative
+      npcs_allowed: neurodivergent
+  - name: Goal Horizon
+    overrides:
+      pcs_allowed: human-normative
+      npcs_allowed: neurodivergent
+  - name: Teamwork
+    overrides:
+      pcs_allowed: human-normative
+      npcs_allowed: neurodivergent
+
+# NEXT GAME STRATEGY
+next_game_strategy:
+  strategy:
+    id: full_character_access
+    allow_choice_if_multiple: true
+    require_completion: false
+
+# DATA COLLECTION FORMS
+forms: null
