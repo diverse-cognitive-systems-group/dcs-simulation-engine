@@ -51,6 +51,7 @@ def ensure_default_indexes(db: Database[Any]) -> None:
     db[MongoColumns.SESSIONS].create_index(MongoColumns.SESSION_ID, unique=True)
     db[MongoColumns.SESSIONS].create_index([(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)])
     db[MongoColumns.SESSIONS].create_index([(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)])
+    db[MongoColumns.SESSIONS].create_index([(MongoColumns.BRANCH_FROM_SESSION_ID, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)])
     db[MongoColumns.SESSION_EVENTS].create_index(
         [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.SEQ, ASCENDING)],
         unique=True,
@@ -99,6 +100,9 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
     await db[MongoColumns.SESSIONS].create_index(MongoColumns.SESSION_ID, unique=True)
     await db[MongoColumns.SESSIONS].create_index([(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.SESSION_STARTED_AT, DESCENDING)])
     await db[MongoColumns.SESSIONS].create_index([(MongoColumns.STATUS, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)])
+    await db[MongoColumns.SESSIONS].create_index(
+        [(MongoColumns.BRANCH_FROM_SESSION_ID, ASCENDING), (MongoColumns.UPDATED_AT, DESCENDING)]
+    )
     await db[MongoColumns.SESSION_EVENTS].create_index(
         [(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.SEQ, ASCENDING)],
         unique=True,

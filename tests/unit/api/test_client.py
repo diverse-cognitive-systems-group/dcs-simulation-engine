@@ -264,3 +264,63 @@ def test_simulation_run_close_consumes_session_meta_before_close(monkeypatch: py
         assert run.session_meta.npc_hid == "npc-close"
 
     assert json.loads(second_ws.sent[0]) == {"type": "close"}
+
+
+def test_branch_session_returns_resumed_run_and_drains_replay(monkeypatch: pytest.MonkeyPatch) -> None:
+    """branch_session should return a resumed-style run that drains replay before advance."""
+    branch_ws = _FakeWebSocket(
+        [
+            _json_frame(
+                {
+                    "type": "session_meta",
+                    "session_id": "child-1",
+                    "pc_hid": "pc-a",
+                    "npc_hid": "npc-a",
+                    "has_game_feedback": False,
+                }
+            ),
+            _json_frame({"type": "replay_start", "session_id": "child-1"}),
+            _json_frame(
+                {
+                    "type": "replay_event",
+                    "session_id": "child-1",
+                    "event_type": "ai",
+                    "content": "opening",
+                    "event_id": "evt-opening",
+                    "role": "ai",
+                }
+            ),
+            _json_frame({"type": "replay_end", "session_id": "child-1", "turns": 1}),
+            _json_frame(
+                {
+                    "type": "event",
+                    "session_id": "child-1",
+                    "event_type": "ai",
+                    "content": "branch reply",
+                    "event_id": "evt-branch",
+                }
+            ),
+            _json_frame({"type": "turn_end", "session_id": "child-1", "turns": 2, "exited": False}),
+        ]
+    )
+    monkeypatch.setattr(api_client, "connect", _ConnectFactory(branch_ws))
+
+    with api_client.APIClient(url="http://example.test", timeout=1.0) as api:
+        monkeypatch.setattr(
+            api,
+            "_request",
+            lambda method, path, body, response_model, **kwargs: type(
+                "BranchResponse",
+                (),
+                {"session_id": "child-1", "game_name": "Explore"},
+            )(),
+        )
+        run = api.branch_session("root-1")
+        run.step("look around")
+
+        assert run.session_id == "child-1"
+        assert run.simulator_output == "branch reply"
+        assert run.turns == 2
+        assert [event.content for event in run.history] == ["branch reply"]
+
+    assert json.loads(branch_ws.sent[0]) == {"type": "advance", "text": "look around"}

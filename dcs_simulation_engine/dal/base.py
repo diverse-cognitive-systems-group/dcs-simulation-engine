@@ -144,6 +144,16 @@ class DataProvider:
         """Upsert the resumable runtime snapshot on a session document."""
         raise NotImplementedError
 
+    def branch_session(
+        self,
+        *,
+        session_id: str,
+        player_id: str | None,
+        branched_at: Any,
+    ) -> SessionRecord:
+        """Clone a persisted session into a new paused child session."""
+        raise NotImplementedError
+
     def get_resumable_session(
         self,
         *,

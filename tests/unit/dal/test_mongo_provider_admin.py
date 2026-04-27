@@ -46,6 +46,7 @@ async def test_default_indexes_include_pii_and_exclude_removed_indexes(async_mon
     assert sessions_idx["session_id_1"].get("unique") is True
     assert "player_id_1_session_started_at_-1" in sessions_idx
     assert "status_1_updated_at_-1" in sessions_idx
+    assert "branch_from_session_id_1_updated_at_-1" in sessions_idx
     assert "session_id_1_seq_1" in session_events_idx
     assert session_events_idx["session_id_1_seq_1"].get("unique") is True
     assert "event_id_1" in session_events_idx
@@ -142,6 +143,7 @@ async def test_seed_database_restores_default_indexes_after_drop(async_mongo_pro
     assert sessions_idx["session_id_1"].get("unique") is True
     assert "player_id_1_session_started_at_-1" in sessions_idx
     assert "status_1_updated_at_-1" in sessions_idx
+    assert "branch_from_session_id_1_updated_at_-1" in sessions_idx
     assert "session_id_1_seq_1" in session_events_idx
     assert session_events_idx["session_id_1_seq_1"].get("unique") is True
     assert "event_id_1" in session_events_idx
