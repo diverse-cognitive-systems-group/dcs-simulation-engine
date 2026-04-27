@@ -1,0 +1,49 @@
+# METADATA
+name: Benchmark AI Performance
+description: |
+  An engine run configuration used for benchmarking AI model performance across games and characters. Players are AI models (provider + ID or custom) executed via the engine run harness.
+
+seed: 42
+
+# USER INTERFACE OPTIONS
+ui:
+  launch_gui: false
+  registration_required: true
+
+# PLAYERS ALLOWED
+players:
+  humans:
+    all: false
+  models:
+    - id: openrouter:openai-gpt-4o
+    - id: openrouter:anthropic-claude-2
+    - id: openrouter:google-palm-2.0-pro
+    - id: openrouter:deepseek-odin-1.0
+    # OR custom models:
+    # - id: "../oe/model.py"
+
+    # GAMES INCLUDED
+games:
+  - name: Infer Intent
+    overrides:
+      # or false if you don't want the AI to learn from game scores
+      display_score: true
+  - name: Foresight
+    overrides:
+      display_score: true
+  - name: Goal Horizon
+    overrides:
+      display_score: true
+  - name: Teamwork
+    overrides:
+      display_score: true
+
+# NEXT GAME STRATEGY
+next_game_strategy:
+  strategy:
+    id: next_incomplete_combination
+    allow_choice_if_multiple: false
+    require_completion: true
+
+# DATA COLLECTION FORMS
+forms: null
