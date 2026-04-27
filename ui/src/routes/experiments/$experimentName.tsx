@@ -32,14 +32,14 @@ interface ExperimentQuestion {
   key: string
   prompt: string
   answer_type:
-  | 'string'
-  | 'bool'
-  | 'single_choice'
-  | 'multi_choice'
-  | 'number'
-  | 'email'
-  | 'phone'
-  | null
+    | 'string'
+    | 'bool'
+    | 'single_choice'
+    | 'multi_choice'
+    | 'number'
+    | 'email'
+    | 'phone'
+    | null
   options?: Array<string | number> | null
   required?: boolean
 }
@@ -860,8 +860,8 @@ function ExperimentPage() {
               Register for an Access Key
             </Button>
             <p className="text-sm text-muted-foreground">
-              After you sign in, this page will show your gameplay session(s) and any
-              intake questions.
+              After you sign in, this page will show your gameplay session(s) and any intake
+              questions.
             </p>
           </CardContent>
         </Card>
