@@ -104,7 +104,131 @@ The engine exposes an API endpoint, so you do not have to use our text-based Rea
 
 This is useful for non-run-harnessed gameplay, where the client directly interacts with the engine API without using the run harness. This enables custom orchestration, AI-driven control loops, and integration into external systems or apps.
 
-TODO: Add open-evolve example
+[OpenEvolve](https://github.com/codelion/openevolve) is an evolutionary coding agent: it mutates a small "initial program" file across generations and scores each candidate with an evaluator function. To evolve a program that *plays* a game on the engine, the evaluator drives the engine through `APIClient` directly — no run config, no run harness, just an in-process control loop.
+
+```plaintext
+[OpenEvolve controller]
+   - mutates initial_program
+   - schedules evaluations
+          │
+          ▼
+[evaluator.py: evaluate(candidate_path)]
+   - imports candidate
+   - opens APIClient → start_game(...)
+   - loops run.step(text) until done
+   - returns {"combined_score": float, ...}
+          │
+          │ HTTP + WebSocket
+          ▼
+[Simulation Engine API on :8000]
+```
+
+#### Step 1 — Drive a single game from Python
+
+The minimal non-harnessed loop uses `APIClient.start_game` (in `dcs_simulation_engine.api.client`)
+and the returned `SimulationRun` context manager. The first `step()` consumes the engine's opening
+turn; subsequent `step(text)` calls submit player input.
+
+```python
+from dcs_simulation_engine.api.client import APIClient
+from dcs_simulation_engine.api.models import CreateGameRequest
+
+def play_one_game(strategy_fn, *, max_turns: int = 12) -> dict:
+    """Drive one game session end-to-end. `strategy_fn(history) -> str` is the policy."""
+    request = CreateGameRequest(
+        game="Infer Intent",
+        pc_choice=None,         # let the server pick a default-eligible PC
+        npc_choice=None,
+        source="openevolve",    # tag the session for downstream filtering
+    )
+    with APIClient(url="http://localhost:8000") as client, \
+         client.start_game(request) as run:
+        run.step()              # consume the opening turn
+        while not run.is_complete and run.turns < max_turns:
+            utterance = strategy_fn(run.history)
+            run.step(utterance)
+        return {"turns": run.turns, "exited": run.is_complete, "history": run.history}
+```
+
+Run the engine in free-play mode (`dcs server --free-play`) so no API key is required, or pass
+`api_key=...` on `CreateGameRequest` when running against an authenticated deployment.
+
+#### Step 2 — Make the strategy evolvable
+
+OpenEvolve evolves whatever lives between `EVOLVE-BLOCK-START` / `EVOLVE-BLOCK-END` markers in the
+initial program file. For prompt evolution this can be as small as a strategy snippet that gets
+injected into a frozen LLM prompt template; for code evolution it is a callable.
+
+```python
+# initial_program.py — OpenEvolve will mutate the body of the EVOLVE block.
+
+# EVOLVE-BLOCK-START
+def choose_utterance(history: list) -> str:
+    """Return the next player utterance given prior events."""
+    return "Tell me more about what you want."
+# EVOLVE-BLOCK-END
+```
+
+#### Step 3 — Wire up the evaluator
+
+The evaluator imports the candidate, runs one or more games against the live engine, and returns
+metrics. OpenEvolve maximizes `combined_score`; additional keys become artifacts the next generation
+can be conditioned on.
+
+```python
+# evaluator.py
+import importlib.util
+
+def _load(candidate_path: str):
+    spec = importlib.util.spec_from_file_location("candidate", candidate_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+def evaluate(candidate_path: str) -> dict:
+    candidate = _load(candidate_path)
+    try:
+        result = play_one_game(candidate.choose_utterance, max_turns=12)
+    except Exception as exc:
+        return {"combined_score": 0.0, "error": str(exc)[:500]}
+
+    # Score however the experiment defines success — turn count, a Scorer LLM call,
+    # game-specific exit reason, etc. Keep `combined_score` in [0, 1].
+    score = 1.0 if result["exited"] else result["turns"] / 12
+    return {"combined_score": score, "turns": result["turns"]}
+```
+
+#### Step 4 — Run evolution
+
+A minimal `config.yaml` for OpenEvolve, pointing at OpenRouter for the mutation LLM:
+
+```yaml
+max_iterations: 50
+llm:
+  api_base: "https://openrouter.ai/api/v1/"
+  api_key: ${OPENROUTER_API_KEY}
+  models:
+    - name: "google/gemini-2.5-flash-lite"
+      weight: 1.0
+evaluator:
+  timeout: 600
+  parallel_evaluations: 2
+```
+
+Then launch evolution from the OpenEvolve CLI against the running engine:
+
+```bash
+dcs server --free-play &                    # engine on :8000
+python openevolve-run.py initial_program.py evaluator.py --config config.yaml --iterations 50
+```
+
+> A complete reference implementation — including a multi-stage cascading evaluator, a frozen
+> prompt template, and a runtime config that injects an LLM-driven player character — lives in the
+> companion repo [`dcs-interfacing-agents`](https://github.com/diverse-cognitive-systems-group/dcs-interfacing-agents)
+> under `OpenEvolve/examples/llm_prompt/`. 
+>
+> The comprehensive and complete default `config.yaml` file can be found at OpenEvolve's GitHub page regarding the configs – [page link](https://github.com/algorithmicsuperintelligence/openevolve/blob/main/configs/default_config.yaml).
+
 
 ### Example Unity Integration
 
