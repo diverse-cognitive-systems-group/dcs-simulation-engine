@@ -45,7 +45,7 @@ Character sheets usually include:
 Use the human-in-the-loop (HITL) CLI to generate scenarios and evaluate character behavior:
 
 ```bash
-dcs-utils hitl create <character_hid> --db dev
+dcs admin hitl create <character_hid> --db dev
 ```
 
 This creates a scaffolded scenarios file in `dcs_utils/data/character_scenarios/`. Edit the prompts so they actually pressure-test the character's behavior.
