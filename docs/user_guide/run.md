@@ -1,122 +1,176 @@
-# Run the engine
+# Run The Engine Locally
 
-⚠️ Note: This page is incomplete and/or missing information.
+This page covers the current **local** workflows:
 
-The engine can be run locally and played just on your local computer or it can be run remotely (on an external server, called a "deployment") so that the access link can be shared any player(s) (human or AI).
+- VS Code devcontainer
+- local shell workflow outside VS Code
+- Docker Compose quickstart
 
-## Run locally
+> For remote deployment to Fly.io, see [Deployment](deployment.md).
 
-TODO: complete localy deployment instructions when CLI is finalized
+All three expose the same core endpoints:
 
-## Run remotely (deployment)
+- UI: `http://localhost:5173`
+- API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
-By default the engine supports Fly.io for remote deployment however it is dockerized and can be deployed on any platform that supports Docker containers. 
+For Fly.io deployment, use [Deployment](deployment.md).
 
-The `dcs` CLI provides a streamlined interface for deploying to Fly.io, and the generated Fly configs can be adapted for other platforms as needed.
+## Option 1: Run In VS Code
 
-Each remote deployment creates three Fly apps: `db`, `api`, and `ui`.
+The repo already includes a devcontainer plus launch/tasks configuration.
 
-### Example Real Deployment (quickstart)
+### Prerequisites
 
-#### 1) Prerequisites
+- VS Code
+- Docker Desktop or an equivalent local Docker engine
+- the Dev Containers extension
 
-- `flyctl` installed
-- Fly.io account access
+### Workflow
+
+1. Open the repository in the devcontainer.
+2. Wait for `postCreateCommand` to finish:
+   - `uv sync --extra dev`
+   - `cd /app/ui && bun install`
+3. Open **Run and Debug** in VS Code.
+4. Choose one of the shipped launch configurations:
+   - `dcs server`: standard mode with `--default-experiment usability`
+   - `dcs server freeplay`: anonymous free-play mode
+5. Start the launch configuration. VS Code runs the `start-mongo` task first,
+   which brings up Mongo from `.devcontainer/dev.compose.yml`.
+6. Open a terminal in the devcontainer and start the UI:
+
+```bash
+cd ui
+bun run dev
+```
+
+7. Open `http://localhost:5173` in your browser.
+
+### What VS Code Automates
+
+- `start-mongo` runs `docker compose -f .devcontainer/dev.compose.yml up --detach`
+- `stop-mongo` runs when you stop debugging. It:
+  - dumps the database with `dcs dump ./runs`
+  - tears Mongo down with `docker compose -f .devcontainer/dev.compose.yml down --volumes`
+
+If you use the `dcs server` launch configuration, the UI will route players into
+the shipped `usability` experiment automatically.
+
+## Option 2: Run Outside VS Code
+
+This is the closest manual equivalent to the VS Code workflow.
+
+### Prerequisites
+
+- Python `3.13`
+- `uv`
+- `bun`
+- Docker
 - `OPENROUTER_API_KEY`
-- Experiment config YAML file
-- `dcs` CLI available (or use `uv run dcs` from this repo)
 
-#### 2) Authenticate and set keys
+### One-Time Setup
 
 ```bash
-flyctl auth login
-export FLY_API_TOKEN=your-fly-token
-export OPENROUTER_API_KEY=your-openrouter-key
+uv sync --extra dev
+cd ui
+bun install
+cd ..
 ```
 
-#### 3) Deploy
+### Start Mongo
 
 ```bash
-dcs remote deploy \
-  --config path/to/example.yml \
-  --mongo-seed-path database_seeds/prod \
-  --region iad
+docker compose -f .devcontainer/dev.compose.yml up --detach
 ```
 
-After deploy, save the printed **admin key** to your `.env` file using `DCS_ADMIN_KEY=your-admin-key` or use `--admin-key` flag on remote following commands.
+### Start The API
 
-### Workflow Options
-
-#### Check status
+Standard mode with the shipped `usability` experiment:
 
 ```bash
-dcs remote status \
-  --uri https://dcs-example-api.fly.dev \
+uv run dcs server \
+  --mongo-seed-dir database_seeds/dev \
+  --dump ./runs \
+  --default-experiment usability
 ```
 
-#### Save database
-
-Database can be saved at any time, independent of deployment or teardown.
+Anonymous free-play mode:
 
 ```bash
-dcs remote save \
-  --uri https://dcs-example-api.fly.dev \
-  --save-db-path example.zip
+uv run dcs server \
+  --mongo-seed-dir database_seeds/dev \
+  --dump ./runs \
+  --free-play
 ```
 
-#### Stop + destroy (with final save)
+### Start The UI
 
-`remote stop` saves first; if save fails, app destruction does not proceed.
+In a second terminal:
 
 ```bash
-dcs remote stop \
-  --uri https://dcs-example-api.fly.dev \
-  --save-db-path example-final.zip \
-  --api-app dcs-example-api \
-  --ui-app dcs-example-ui \
-  --db-app dcs-example-db
+cd ui
+bun run dev
 ```
 
-### Additional Deployment Options
+### Stop Cleanly
 
-#### Free-play mode
+- Stop the API server with `Ctrl+C`. If you passed `--dump ./runs`, shutdown
+  writes a fresh timestamped dump automatically.
+- Tear down Mongo:
 
 ```bash
-dcs remote deploy \
-  --free-play \
-  --mongo-seed-path dump/2026_03_20_07_35_09 \
-  --region lax
+docker compose -f .devcontainer/dev.compose.yml down --volumes
 ```
 
-#### Fallback regions
+If you did not run the server with `--dump`, export the database manually
+before removing Mongo:
 
 ```bash
-dcs remote deploy \
-  --config /path/to/example.yaml \
-  --mongo-seed-path database_seeds/dev \
-  --regions lax,sjc,sea
+uv run dcs dump ./runs
 ```
 
-Fly regions reference: https://fly.io/docs/reference/regions/
+## Option 3: Docker Compose Quickstart
 
-#### Targeted redeploy
+Use this when you want the whole local stack quickly and do not need the VS
+Code debug flow.
 
-Redeploy only the UI app to a new region, keeping the same API and DB apps:
+### Start
 
 ```bash
-dcs remote deploy \
-  --config /path/to/example.yaml \
-  --mongo-seed-path dump/2026_03_20_07_35_09 \
-  --region lax \
-  --only-app ui
+OPENROUTER_API_KEY=your-openrouter-key docker compose up --build --detach
 ```
 
-### Additional Notes
-- Generated Fly configs are written to `deployments/<deployment-slug>/` each time you run `dcs remote deploy`, and deploy uses those saved files directly.
-- No local deployment manifest is written beyond those generated Fly config files. Keep the deploy output or use `--json` and store it yourself.
-- The UI is built for the paired API automatically during deploy.
-- The API is started in remote-managed mode for either one hosted experiment or free-play mode.
-- The first admin key is claimed automatically during deployment and becomes the only key allowed to export the database.
-- Database exports written by `dcs remote save` and `dcs dump` include collection JSON plus manifest/index metadata, and those artifacts can be used again with `--mongo-seed-path`.
-- When `--regions` is provided, deploy attempts the listed regions in order and uses the first region that succeeds.
-- You can deploy multiple experiments independently by running `dcs remote deploy` once per experiment config, or deploy one free-play stack with `--free-play`.
+Anonymous free-play mode:
+
+```bash
+OPENROUTER_API_KEY=your-openrouter-key \
+DCS_FREE_PLAY=1 \
+docker compose up --build --detach
+```
+
+### Notes
+
+- The Compose stack seeds Mongo from `database_seeds/dev`.
+- The API container always runs with `--dump ./runs`, so shutdown dumps appear
+  in the host `runs/` directory.
+- Standard-mode Compose runs do not set `--default-experiment`, so players can
+  register and browse games without being pinned to one experiment.
+
+### Stop
+
+```bash
+docker compose down --volumes
+```
+
+## Choosing A Local Mode
+
+- Use standard mode when you need registration, sign-in, or experiment-specific
+  forms and assignment flows.
+- Use free play when you want the fastest local human-play smoke test.
+- Use `--fake-ai-response "..."` with either local shell workflow when you want
+  deterministic local testing without live model calls.
+
+
+
