@@ -53,7 +53,7 @@ This creates a scaffolded scenarios file in `dcs_utils/data/character_scenarios/
 Then run HITL updates while the DCS server is running:
 
 ```bash
-dcs-utils hitl update <character_hid>
+dcs admin hitl update <character_hid>
 ```
 
 `hitl update` can:
