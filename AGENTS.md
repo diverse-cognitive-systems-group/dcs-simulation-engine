@@ -15,6 +15,11 @@
 * GUI is a client — no business logic in the frontend
 * DAL is isolated — database should be easily swappable
 
+### UI Guidelines
+
+* Do not change orval generated code manually
+* Use bun instead of npm
+
 ### Python Style
 
 * Prefer idiomatic Python; avoid porting patterns from Java/C# that don’t fit Python.

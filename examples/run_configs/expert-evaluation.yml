@@ -36,7 +36,9 @@ next_game_strategy:
 
 forms:
   - name: research_participation_consent
-    trigger: before_all
+    trigger:
+      event: before_all_assignments
+      match: null
     questions:
       - type: message
         prompt: |
@@ -63,14 +65,20 @@ forms:
           - I consent to participate in this research study.
         required: false
   - name: expertise_intake
-    trigger: before_all
+    trigger:
+      event: before_all_assignments
+      match: null
     questions:
       - ...
   - name: post_game_feedback
-    trigger: after_each
+    trigger:
+      event: after_assignment
+      match: null
     questions:
       - ...
   - name: outtake
-    trigger: after_all
+    trigger:
+      event: after_all_assignments
+      match: null
     questions:
       - ...

@@ -925,7 +925,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     """Experiment setup should return forms, progress, and the current assignment state."""
     form = ExperimentForm(
         name="intake",
-        before_or_after="before",
+        trigger={"event": "before_all_assignments", "match": None},
         questions=[
             ExperimentFormQuestion(
                 key="full_name",
@@ -979,6 +979,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
                     "has_finished_experiment": False,
                     "has_submitted_before_forms": True,
                     "eligible_assignment_options": [],
+                    "pending_form_groups": [],
                     "assignments": [assignment],
                 }
             ),
@@ -1003,51 +1004,35 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     assert payload["require_completion"] is True
     assert payload["has_submitted_before_forms"] is True
     assert payload["eligible_assignment_options"] == []
+    assert payload["pending_form_groups"] == []
     assert "character_hid" not in payload["current_assignment"]
     assert payload["current_assignment"]["game_description"] == "Game description"
     assert payload["forms"][0]["name"] == "intake"
 
 
 @pytest.mark.unit
-def test_experiment_before_play_submission_returns_assignment(
+def test_experiment_form_group_submission_returns_group(
     client: TestClient,
 ) -> None:
-    """Experiment before-play submission should return the current assignment for the signed-in player."""
-    assignment = SimpleNamespace(
-        assignment_id="asg-2",
-        game_name="Foresight",
-        pc_hid="pc-2",
-        npc_hid="npc-2",
-        status="assigned",
-    )
+    """Experiment form submission should store one pending group."""
+    group = {
+        "group_id": "before_all_assignments",
+        "trigger": {"event": "before_all_assignments", "match": None},
+    }
 
-    with (
-        patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_before_play_async",
-            new=AsyncMock(return_value=assignment),
-        ),
-        patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.assignment_display_metadata_async",
-            new=AsyncMock(return_value=ASSIGNMENT_DISPLAY_METADATA),
-        ),
-    ):
+    with patch(
+        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_form_group_async",
+        new=AsyncMock(return_value=group),
+    ) as submit_mock:
         response = client.post(
-            "/api/experiments/usability/players",
+            "/api/experiments/usability/forms/submit",
             headers={"Authorization": "Bearer valid-key"},
-            json={"responses": {"intake": {"full_name": "Ada"}}},
+            json={"group_id": "before_all_assignments", "responses": {"intake": {"full_name": "Ada"}}},
         )
 
     assert response.status_code == 200
-    assert response.json()["assignment"] == {
-        "assignment_id": "asg-2",
-        "game_name": "Foresight",
-        "pc_hid": "pc-2",
-        "npc_hid": "npc-2",
-        "status": "assigned",
-        "active_session_id": None,
-        "needs_post_play": False,
-        **ASSIGNMENT_DISPLAY_METADATA,
-    }
+    assert response.json() == group | {"assignment_id": None}
+    assert submit_mock.await_args.kwargs["group_id"] == "before_all_assignments"
 
 
 @pytest.mark.unit
@@ -1186,6 +1171,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
 
     headers = {"Authorization": f"Bearer {access_key}"}
     entry_payload = {
+        "group_id": "before_all_assignments",
         "responses": {
             "intake": {
                 "professional_background": "Research engineer",
@@ -1197,7 +1183,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
 
     with TestClient(app) as client:
         before_play = client.post(
-            "/api/experiments/usability/players",
+            "/api/experiments/usability/forms/submit",
             headers=headers,
             json=entry_payload,
         )
@@ -1275,43 +1261,29 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
 
 
 @pytest.mark.unit
-def test_experiment_post_play_submission_persists_response(client: TestClient) -> None:
-    """Experiment post-play submission should target the latest completed assignment."""
-    assignment = SimpleNamespace(
-        assignment_id="asg-complete-1",
-        game_name="Explore",
-        pc_hid="pc-1",
-        npc_hid="npc-1",
-        status="completed",
-    )
+def test_experiment_assignment_form_group_submission_persists_response(client: TestClient) -> None:
+    """Experiment form submission should accept assignment-scoped groups."""
+    group = {
+        "group_id": "after_assignment:asg-complete-1",
+        "trigger": {"event": "after_assignment", "match": None},
+        "assignment_id": "asg-complete-1",
+    }
 
-    with (
-        patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.store_post_play_async",
-            new=AsyncMock(return_value=assignment),
-        ),
-        patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.assignment_display_metadata_async",
-            new=AsyncMock(return_value=ASSIGNMENT_DISPLAY_METADATA),
-        ),
+    with patch(
+        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_form_group_async",
+        new=AsyncMock(return_value=group),
     ):
         response = client.post(
-            "/api/experiments/usability/post-play",
+            "/api/experiments/usability/forms/submit",
             headers={"Authorization": "Bearer valid-key"},
-            json={"responses": {"usability_feedback": {"usability_issues": "None"}}},
+            json={
+                "group_id": "after_assignment:asg-complete-1",
+                "responses": {"usability_feedback": {"usability_issues": "None"}},
+            },
         )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "assignment_id": "asg-complete-1",
-        "game_name": "Explore",
-        "pc_hid": "pc-1",
-        "npc_hid": "npc-1",
-        "status": "completed",
-        "active_session_id": None,
-        "needs_post_play": False,
-        **ASSIGNMENT_DISPLAY_METADATA,
-    }
+    assert response.json() == group
 
 
 @pytest.mark.unit

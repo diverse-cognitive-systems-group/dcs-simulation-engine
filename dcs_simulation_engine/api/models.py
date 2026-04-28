@@ -13,6 +13,12 @@ EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
 AssignmentStatus = Literal["assigned", "in_progress", "completed", "interrupted"]
 NextAssignmentMode = Literal["locked", "choice", "blocked", "none"]
+FormTriggerEvent = Literal[
+    "before_all_assignments",
+    "before_assignment",
+    "after_assignment",
+    "after_all_assignments",
+]
 
 
 class RegistrationRequest(BaseModel):
@@ -182,6 +188,22 @@ class NextAssignmentState(BaseModel):
     options: list["EligibleAssignmentOption"] = Field(default_factory=list)
 
 
+class FormTriggerResponse(BaseModel):
+    """Canonical form trigger returned by setup APIs."""
+
+    event: FormTriggerEvent
+    match: None = None
+
+
+class PendingFormGroupResponse(BaseModel):
+    """Actionable group of forms the participant must submit."""
+
+    group_id: str
+    trigger: FormTriggerResponse
+    forms: list[dict] = Field(default_factory=list)
+    assignment_id: str | None = None
+
+
 class ExperimentSetupResponse(BaseModel):
     """Setup payload for the experiment landing page."""
 
@@ -189,6 +211,7 @@ class ExperimentSetupResponse(BaseModel):
     description: str
     is_open: bool
     forms: list[dict] = Field(default_factory=list)
+    pending_form_groups: list[PendingFormGroupResponse] = Field(default_factory=list)
     progress: ExperimentProgressResponse
     current_assignment: ExperimentAssignmentSummary | None = None
     pending_post_play: bool = False
@@ -232,29 +255,25 @@ class SelectAssignmentRequest(BaseModel):
     npc_hid: str
 
 
-class ExperimentPlayerRequest(BaseModel):
-    """Entry-form payload for experiment registration."""
+class ExperimentFormSubmitRequest(BaseModel):
+    """Payload for submitting one pending experiment form group."""
 
+    group_id: str = Field(min_length=1)
     responses: dict[str, dict]
 
 
-class ExperimentPlayerResponse(BaseModel):
-    """Assignment response after an authenticated player submits before-play forms."""
+class ExperimentFormSubmitResponse(BaseModel):
+    """Response after storing one pending experiment form group."""
 
-    assignment: ExperimentAssignmentSummary | None = None
+    group_id: str
+    trigger: FormTriggerResponse
+    assignment_id: str | None = None
 
 
 class ExperimentSessionRequest(BaseModel):
     """Payload for creating a session from the current assignment."""
 
     source: str = Field(default="experiment", min_length=1)
-    assignment_id: str | None = None
-
-
-class ExperimentPostPlayRequest(BaseModel):
-    """Payload for storing experiment post-play form answers."""
-
-    responses: dict[str, dict]
     assignment_id: str | None = None
 
 

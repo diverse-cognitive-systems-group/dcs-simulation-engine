@@ -14,15 +14,15 @@ from dcs_simulation_engine.api.models import (
     EligibleAssignmentOption,
     EligibleAssignmentOptionsResponse,
     ExperimentAssignmentSummary,
+    ExperimentFormSubmitRequest,
+    ExperimentFormSubmitResponse,
     ExperimentGameStatusResponse,
-    ExperimentPlayerRequest,
-    ExperimentPlayerResponse,
-    ExperimentPostPlayRequest,
     ExperimentProgressResponse,
     ExperimentSessionRequest,
     ExperimentSetupResponse,
     ExperimentStatusResponse,
     NextAssignmentState,
+    PendingFormGroupResponse,
     SelectAssignmentRequest,
 )
 from dcs_simulation_engine.core.experiment_manager import ExperimentManager
@@ -95,6 +95,15 @@ async def _eligible_assignment_options(provider, options) -> list[EligibleAssign
     return enriched
 
 
+def _pending_form_group_response(group) -> PendingFormGroupResponse:
+    return PendingFormGroupResponse(
+        group_id=group["group_id"],
+        trigger=group["trigger"],
+        forms=[form.model_dump(mode="json") for form in group.get("forms", [])],
+        assignment_id=group.get("assignment_id"),
+    )
+
+
 async def _next_assignment_state(
     provider,
     *,
@@ -129,7 +138,7 @@ async def _next_assignment_state(
     if not is_open:
         return NextAssignmentState(mode="none", reason="quota_closed")
     if not has_submitted_before_forms:
-        return NextAssignmentState(mode="blocked", reason="before_forms")
+        return NextAssignmentState(mode="blocked", reason="pending_forms")
     return NextAssignmentState(mode="none", reason="unavailable")
 
 
@@ -177,6 +186,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
     current_assignment = player_state["active_assignment"]
     pending_post_play_ids = set(player_state.get("pending_post_play_ids", []))
     pending_post_play = bool(pending_post_play_ids)
+    pending_form_groups = player_state.get("pending_form_groups", [])
     assignment_completed = bool(player_state["has_finished_experiment"])
     eligible_options = player_state.get("eligible_assignment_options", [])
 
@@ -194,6 +204,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         description=config.description,
         is_open=is_open,
         forms=[form.model_dump(mode="json") for form in config.forms],
+        pending_form_groups=[_pending_form_group_response(group) for group in pending_form_groups],
         progress=_progress_response(progress),
         current_assignment=await _assignment_summary(
             provider,
@@ -226,13 +237,13 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
     )
 
 
-@router.post("/{experiment_name}/players", response_model=ExperimentPlayerResponse)
-async def register_experiment_player(
+@router.post("/{experiment_name}/forms/submit", response_model=ExperimentFormSubmitResponse)
+async def submit_experiment_form_group(
     experiment_name: str,
-    body: ExperimentPlayerRequest,
+    body: ExperimentFormSubmitRequest,
     request: Request,
-) -> ExperimentPlayerResponse:
-    """Store before-play experiment forms for the authenticated participant and generate an assignment."""
+) -> ExperimentFormSubmitResponse:
+    """Store responses for one pending experiment form group."""
     require_standard_mode_from_request(
         request,
         detail="Experiment endpoints are disabled when the server is running in free play mode.",
@@ -241,16 +252,21 @@ async def register_experiment_player(
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     try:
-        assignment = await ExperimentManager.submit_before_play_async(
+        group = await ExperimentManager.submit_form_group_async(
             provider=provider,
             experiment_name=experiment_name,
             player_id=player.id,
+            group_id=body.group_id,
             responses=body.responses,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return ExperimentPlayerResponse(assignment=await _assignment_summary(provider, assignment))
+    return ExperimentFormSubmitResponse(
+        group_id=group["group_id"],
+        trigger=group["trigger"],
+        assignment_id=group.get("assignment_id"),
+    )
 
 
 @router.post("/{experiment_name}/sessions", response_model=CreateGameResponse)
@@ -290,35 +306,6 @@ async def create_experiment_session(
     )
 
 
-@router.post("/{experiment_name}/post-play", response_model=ExperimentAssignmentSummary)
-async def submit_experiment_post_play(
-    experiment_name: str,
-    body: ExperimentPostPlayRequest,
-    request: Request,
-) -> ExperimentAssignmentSummary:
-    """Store the experiment post-play form on one completed assignment."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
-    provider = get_provider_from_request(request)
-    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-
-    try:
-        assignment = await ExperimentManager.store_post_play_async(
-            provider=provider,
-            experiment_name=experiment_name,
-            player_id=player.id,
-            responses=body.responses,
-            assignment_id=body.assignment_id,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-    return await _assignment_summary(provider, assignment)
-
-
 @router.get("/{experiment_name}/progress", response_model=ExperimentProgressResponse)
 async def experiment_progress(experiment_name: str, request: Request) -> ExperimentProgressResponse:
     """Return the current finite progress for the usability experiment."""
@@ -349,12 +336,7 @@ async def get_eligible_options(experiment_name: str, request: Request) -> Eligib
         experiment_name=experiment_name,
         player=player,
     )
-    return EligibleAssignmentOptionsResponse(
-        options=[
-            option
-            for option in await _eligible_assignment_options(provider, options)
-        ]
-    )
+    return EligibleAssignmentOptionsResponse(options=[option for option in await _eligible_assignment_options(provider, options)])
 
 
 @router.post("/{experiment_name}/assignments/select", response_model=ExperimentAssignmentSummary)
