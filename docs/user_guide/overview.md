@@ -1,3 +1,6 @@
-The general workflow for using the engine across use cases is to configure it (define that game, characters, etc. you want to run), run it (locally or remotely), share access link with players (human or AI), monitor activity, and export gameplay results for analysis. The full user guide contains specific use case examples.
+# User Guide Overview
 
-<img src="../assets/workflow.png" alt="Workflow overview" width="600"/>
+The primary user-guide landing page is now [main.md](main.md).
+
+Start there for the current overview, local run paths, Fly.io deployment
+workflow, reporting, and performance-testing guidance.

@@ -1,61 +1,139 @@
-# Configure an engine run
+# Configure An Engine Run
 
-⚠️ Note: This page is incomplete and/or missing information.
+Experiment configuration is currently driven by the
+`ExperimentConfig` model in `dcs_simulation_engine/core/experiment_config.py`.
+If you want a runnable starting point, use `experiments/usability.yml`. If you
+want a fuller template that shows the current schema, use
+`examples/run_configs/_example.yml`.
 
-A run configuration specifies how the engine should be run including:
+Do not use `examples/run_configs/benchmark-ai-performance.yml` or the other
+legacy draft files as the primary template without updating them first. Several
+of those files still use an older schema and do not validate against the
+current model.
 
-- what players (human and/or AI) are participating
-- what forms they see and when (e.g. consent, pre-game, post-game, after all gameplay sessions, etc.)
-- what gameplay scenarios they should encounter (games + characters)
+## Where Config Files Live
 
----
+- For local standard-mode runs that use `--default-experiment`, put the YAML
+  file in `experiments/` and refer to it by name.
+- For Fly.io deployments, pass any readable YAML path with
+  `dcs remote deploy --config`.
+- The engine also discovers experiment configs copied into
+  `deployments/<deployment-slug>/experiments/`.
 
-## Example Configs
+## Minimal Example
 
-These examples are provided in `examples/run_configs` of the main repository and can be used as templates for your own configurations.
+```yaml
+name: my-study
+description: |
+  Example experiment config for a local or remote study.
+condition: learning
 
-| Example File | Description | Use Case |
-|---|---|---|
-| `benchmark-ai.yml` | Runs the engine with specified AI models (e.g. GPT-4o, Claude, your own custom models) so users can see how well they perform across various scenarios. | Used by AI researchers to examine how well their models engage with various simulated diverse cognitive systems. |
-| `benchmark-humans.yml` | Runs the engine so humans can play and users can see how they perform across various scenarios. | Used by psychology researchers to examine how well humans engage with various simulated diverse cognitive systems. |
-| `evaluate-batches.yml` | Runs the engine so that humans can evaluate batches of characters across scenarios based on player expertise. | Used by AI researchers and DCS maintainers to evaluate the quality of simulated characters by having experts evaluate them. |
-| `evaluate-specific.yml` | Runs the engine for humans to play with specific scenarios. | Used by AI researchers and DCS maintainers to conduct targeted evaluations of individual characters. |
-| `training.yml` | Runs the engine so that human players can learn how to engage with divergent humans. | Used in leadership training and other training contexts to expose neurotypical huamn players to individuals with diverse abilities, cognitive profiles, etc. (i.e. neurodivergence). |
-| `usability.yml` | Runs the engine so human players can evaluate the usability of the system. | Used by DCS maintainers to evaluate the usability of the GUI. |
+assignment_strategy:
+  strategy: random_unique_game
+  games:
+    - Explore
+    - Infer Intent
+  quota_per_game: 5
+  max_assignments_per_player: 1
+  seed: 42
+  allow_choice_if_multiple: false
+  require_completion: true
 
----
+forms:
+  - name: intake
+    before_or_after: before
+    questions:
+      - key: participant_background
+        prompt: Briefly describe any relevant background.
+        answer_type: string
+```
 
-## Configurations
+## Top-Level Fields
 
-***Run configurations include only the minimal parameters needed to support DCS use cases. The goal is not maximum configurability, but enabling the engine to run across different players (AI and human) and scenarios (games and characters), with data captured at defined points so users can evaluate performance, analyze behavior, and iterate on experiments.***
+- `name`: required experiment identifier. This is also the experiment name used
+  in API routes and in `--default-experiment`.
+- `description`: optional human-readable summary.
+- `condition`: optional label. Current accepted values are `learning` and
+  `static`.
+- `assignment_strategy`: required. Controls which games are included and how
+  assignments are created.
+- `forms`: optional list of before-play and after-play forms.
 
-## Specify metadata
-This captures the identity of the run and what its for.
-- **`name`** — unique identifier used in API routes
-- **`description`** — human-readable summary
+## Assignment Strategy Fields
 
-## Define who the **players** are
-This controls whether GUI is launched in addition to the API. If only AI players are listed, no GUI is launched for the run.
+The current schema accepts these common fields under `assignment_strategy`:
 
-- **`players`** — list of players allowed to participate in the run (e.g. `human`, `gpt-4o`, `claude-2`, etc.)
+- `strategy`
+- `games`
+- `player_characters`
+- `non_player_characters`
+- `quota_per_game`
+- `max_assignments_per_player`
+- `seed`
+- `pc_eligible_only`
+- `allow_choice_if_multiple`
+- `require_completion`
 
-### Define what forms players see and when
-Forms are used for showing surveys, questionnaires, consent forms, instructions at different events during the run. 
+Current built-in strategy names are:
 
-Events include:
+- `full_character_access`
+- `unplayed_combination_choice`
+- `expertise_matched_character_choice`
+- `next_incomplete_combination`
+- `least_played_combination_next`
+- `progressive_divergence_assignment`
+- `max_contrast_pairing`
+- `expertise_matched_character_next`
+- `expertise_matched_character_batch`
+- `random_unique_game`
 
-- before_all_gameplay_sessions
-- after_all_gameplay_sessions
-- before_each_gameplay_session
-- after_each_gameplay_session
+## Built-In Games
 
-### Define what games should be included
-Games listed are the ones that the assignment strategy (below) will pull from when creating assignments. It includes the game and any game-specific configurations exposed in that game definition. Omitting games list will pull from all core games with default configurations.
+The repo currently ships these canonical game names:
 
-### Define how players get to gameplay sessions (**assignment strategy**)
+- `Explore`
+- `Infer Intent`
+- `Foresight`
+- `Goal Horizon`
+- `Teamwork`
 
-Assignment strategy controls which game + player-character + simulator-character triplets come up for players and how much control they have over what they play next.
+Game references are normalized, so `goal-horizon`, `goal_horizon`, and
+`Goal Horizon` resolve to the same built-in game.
 
-You can write your own assignment strategy and point to it or use provided ones.
-- random_unique_game: assign allowed game triplets in deterministic random order while ensuring each player receives each configured game at most once
-- ...
+## Forms
+
+Forms are attached to the experiment and appear either before or after
+gameplay.
+
+- `before_or_after` must be `before` or `after`.
+- `answer_type` may be `string`, `bool`, `single_choice`, `multi_choice`,
+  `number`, `email`, or `phone`.
+- Choice questions require an `options` list.
+- Question keys are optional, but providing stable keys is recommended if you
+  plan to compare results across runs.
+
+## Using A Config Locally
+
+Save a config as `experiments/my-study.yml`, then start the server in standard
+mode:
+
+```bash
+uv run dcs server \
+  --mongo-seed-dir database_seeds/dev \
+  --dump ./runs \
+  --default-experiment my-study
+```
+
+That makes the experiment available at `/experiments/my-study` in the UI and at
+the corresponding experiment API routes.
+
+## Using A Config On Fly.io
+
+Pass the YAML path directly during deploy:
+
+```bash
+uv run dcs remote deploy \
+  --config experiments/my-study.yml \
+  --mongo-seed-path database_seeds/dev \
+  --region lax
+```

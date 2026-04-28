@@ -65,11 +65,12 @@ nav:
       - Characters: design/characters.md
 
   - User Guide:
-      - Overview: user_guide/overview.md
+      - Overview: user_guide/main.md
       - 1. Configure: user_guide/configure.md
-      - 2. Run: user_guide/run.md
+      - 2. Run Locally: user_guide/run.md
       - 3. Play/Monitor: user_guide/play.md
       - 4. Analyze Results: user_guide/analyze_results.md
+      - 5. Deploy to Fly.io: user_guide/deployment.md
       - Advanced: user_guide/advanced.md
 
   - Examples: examples.md
