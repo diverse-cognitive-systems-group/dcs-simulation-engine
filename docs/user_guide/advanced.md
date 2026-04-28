@@ -71,13 +71,13 @@ In practice, this stage is iterative: adjust the character sheet and/or scenario
 Export the completed HITL scenarios to a results directory:
 
 ```bash
-dcs-utils hitl export <character_hid>
+dcs admin hitl export <character_hid>
 ```
 
 Then generate a simulation quality report:
 
 ```bash
-dcs-utils report results results/hitl_<character_hid> --only sim-quality --title "Simulation Quality — <character_hid>"
+dcs report results results/hitl_<character_hid> --only sim-quality --title "Simulation Quality — <character_hid>"
 ```
 
 Review the report and determine whether the coverage and in-character fidelity (ICF) scores are sufficient for publication.
@@ -89,7 +89,7 @@ If results are insufficient, go back to step 2 and improve the character sheet a
 Publish the character evaluation results:
 
 ```bash
-dcs-utils admin publish characters <path-to-sim-quality-report.html>
+dcs admin publish characters <path-to-sim-quality-report.html>
 ```
 
 Then open a PR that includes:
