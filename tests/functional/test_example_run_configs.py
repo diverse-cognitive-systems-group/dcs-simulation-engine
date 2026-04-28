@@ -1,71 +1,50 @@
-"""Functional tests for example run config files.
+"""Functional tests for example run config files."""
 
-All tests in this file are xfailed pending run config refactoring.
-
-Once the run config refactor is complete, these tests should:
-- Parse every YAML in examples/run_configs/ without error
-- Validate player filtering (all players, specific human players, AI models)
-- Validate per-game overrides are applied correctly
-
-The parametrized test_example_run_config_is_parseable test is structured
-to automatically pick up any new configs added to examples/run_configs/.
-"""
-
-import glob
 from pathlib import Path
 
 import pytest
+from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config_references
 
-pytestmark = [pytest.mark.functional, pytest.mark.xfail(reason="pending run config refactor — not yet implemented")]
+pytestmark = pytest.mark.functional
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_CONFIG_GLOB = str(_REPO_ROOT / "examples" / "run_configs" / "*.yml")
-_CONFIG_FILES = sorted(glob.glob(_CONFIG_GLOB))
+_CONFIG_FILES = sorted((_REPO_ROOT / "examples" / "run_configs").glob("*.yml"))
 
 
-# @pytest.mark.parametrize(
-#     "config_path",
-#     _CONFIG_FILES,
-#     ids=lambda p: Path(p).stem,
-# )
-# def test_example_run_config_is_parseable(config_path):
-#     """Each example run config YAML should load and parse without error."""
-#     ...
+@pytest.mark.parametrize("config_path", _CONFIG_FILES, ids=lambda p: p.stem)
+def test_example_run_config_is_parseable(config_path: Path) -> None:
+    """Each example run config YAML should load and parse without error."""
+    assert RunConfig.load(config_path).name
 
 
-# @pytest.mark.parametrize(
-#     "config_path",
-#     _CONFIG_FILES,
-#     ids=lambda p: Path(p).stem,
-# )
-# def test_run_config_allows_all_players(config_path):
-#     """Run config with no player filter should allow any registered player."""
-#     ...
+@pytest.mark.parametrize("config_path", _CONFIG_FILES, ids=lambda p: p.stem)
+def test_example_run_config_references_are_valid(config_path: Path) -> None:
+    """Each example should reference known games, strategies, and game overrides."""
+    validate_run_config_references(RunConfig.load(config_path))
 
 
-# @pytest.mark.parametrize(
-#     "config_path",
-#     _CONFIG_FILES,
-#     ids=lambda p: Path(p).stem,
-# )
-# def test_run_config_allows_only_specific_human_players(config_path):
-#     """Run config with a player allowlist should restrict access correctly."""
-#     ...
+def test_demo_run_config_is_anonymous() -> None:
+    """Demo is intentionally configured as a no-registration human run."""
+    config = RunConfig.load(_REPO_ROOT / "examples" / "run_configs" / "demo.yml")
 
-# @pytest.mark.parametrize(
-#     "config_path",
-#     _CONFIG_FILES,
-#     ids=lambda p: Path(p).stem,
-# )
-# def test_run_config_runs_specific_ai_players(config_path):
-#     """Run config that specifies AI model players should execute them correctly."""
-#     ...
+    assert config.registration_required is False
 
-# @pytest.mark.parametrize(
-#     "config_path",
-#     _CONFIG_FILES,
-#     ids=lambda p: Path(p).stem,
-# )
-# def test_run_config_per_game_overrides(config_path):
-#     """Per-game overrides in run config should be applied to the session."""
-#     ...
+
+def test_benchmark_ai_run_config_has_model_players() -> None:
+    """Benchmark AI config should expose configured model players."""
+    config = RunConfig.load(_REPO_ROOT / "examples" / "run_configs" / "benchmark-ai.yml")
+
+    assert config.has_model_players is True
+
+
+def test_run_config_game_names_preserve_config_order() -> None:
+    """Game order should match the source config declaration order."""
+    config = RunConfig.load(_REPO_ROOT / "examples" / "run_configs" / "demo.yml")
+
+    assert config.game_names == [
+        "Explore",
+        "Infer Intent",
+        "Foresight",
+        "Goal Horizon",
+        "Teamwork",
+    ]

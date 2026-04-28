@@ -17,8 +17,8 @@ players:
 games:
   - name: Teamwork
     overrides:
-      pcs_allowed: neurotypical_human
-      npcs_allowed: divergent_humans
+      pcs_allowed: neurotypical
+      npcs_allowed: divergent
       player_retry_budget: 6
 
 # NEXT GAME STRATEGY
@@ -35,8 +35,7 @@ forms:
       event: before_all_assignments
       match: null
     questions:
-      - type: message
-        prompt: |
+      - prompt: |
           # Training Participation Consent
 
           You are being asked to participate in a voluntary training experience designed to help you engage with and understand a range of cognitive styles, perspectives, and interaction patterns, including those associated with neurodivergent and otherwise underrepresented populations.
@@ -44,9 +43,9 @@ forms:
           During this training, you will interact with simulated characters. These characters are not real individuals and are not intended to fully represent any specific person or group. Instead, they are designed to approximate certain behavioral patterns, communication styles, and perceptual or cognitive tendencies.
 
           This training is for learning purposes only. You may stop at any time.
-      - type: single_choice
+      - answer_type: single_choice
         key: consent
-        label: Do you understand the purpose of this training and agree to participate?
+        prompt: Do you understand the purpose of this training and agree to participate?
         options:
           - I understand and agree to participate in this training.
         required: true

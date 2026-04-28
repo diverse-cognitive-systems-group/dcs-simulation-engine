@@ -40,8 +40,7 @@ forms:
       event: before_all_assignments
       match: null
     questions:
-      - type: message
-        prompt: |
+      - prompt: |
           # Informed Consent for Research Study Participation
 
           You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one's ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
@@ -51,34 +50,119 @@ forms:
           We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact dcs@psych.gatech.edu
 
           If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
-      - type: single_choice
+      - answer_type: single_choice
         key: consent
-        label: Do you consent to participate in this research study under the terms
+        prompt: Do you consent to participate in this research study under the terms
           described above?
         options:
           - I consent to participate in this research study.
         required: true
-      - type: single_choice
-        key: consent
-        label: Do you consent follow-up contact for this research study?
+      - answer_type: single_choice
+        key: consent_to_followup
+        prompt: Do you consent follow-up contact for this research study?
         options:
-          - I consent to participate in this research study.
+          - I consent to follow-up contact for this research study.
         required: false
   - name: expertise_intake
     trigger:
       event: before_all_assignments
       match: null
     questions:
-      - ...
+      - answer_type: multi_choice
+        key: expertise_areas
+        prompt: |
+          Following this intake, you will engage with simulated characters and evaluate how well they align with your real-world experience. 
+
+          Select all areas where you have sufficient experience or expertise; your selections will determine which characters you evaluate.
+        options:
+          - ADHD / attention regulation divergence
+          - Anxiety / hypervigilance
+          - Autism
+          - Obsessive-compulsive disorder / intrusive thoughts / compulsive or
+            obsessive patterns
+          - Deaf / hard of hearing / ASL or sign language use
+          - Blind / low vision / visual impairment
+          - Mobility impairment / wheelchair use / paralysis / orthostatic
+            conditions
+          - Cancer / oncological illness
+          - Down syndrome
+          - Sensory divergence / highly sensitive person / synesthesia / perfect
+            pitch
+          - Metabolic divergence / obesity
+          - State-dependent speech / gestural, visual, or whistled communication
+          - Artificial intelligence / LLM / software agent / classification or
+            sorting algorithm
+          - Assistive robotics / smart assistive technology / exoskeletons
+          - Biohacking / cyborg / human enhancement
+          - Neural organoids / cells / biological systems
+          - Non-human animals / planarian / flatworm / frog embryo / prey mammals
+          - Alien or distributed minds
+          - Nanotechnology / molecular self-assembly systems
+          - Vehicles / eVTOL / flying cars
+          - Thermostats / thermal regulators
+          - Multi divergent
+        required: true
+      - answer_type: string
+        key: expertise_explanation
+        prompt: Briefly describe your experience or expertise in the areas selected
+          above (e.g., lived, professional, or caregiver experience). This will
+          help determine which characters you evaluate.
+        required: true
   - name: post_game_feedback
     trigger:
       event: after_assignment
       match: null
     questions:
-      - ...
+      - answer_type: single_choice
+        key: alignment_rating
+        prompt: For this gameplay session, how well did the simulated character align
+          with your real-world experience?
+        options:
+          - Highly aligned with my experience.
+          - Generally aligned with my experience, with some exceptions.
+          - Mixed or inconsistent alignment.
+          - Largely not aligned with my experience.
+        required: true
+      - answer_type: string
+        key: alignment_explanation
+        prompt: Please explain your rating. What aspects of the experience were well
+          aligned, and where did it fall short?
+        required: true
+      - answer_type: string
+        key: extra
+        prompt: Anything else?
+        required: false
   - name: outtake
     trigger:
       event: after_all_assignments
       match: null
     questions:
-      - ...
+      - answer_type: single_choice
+        key: overall_alignment_rating
+        prompt: Across ALL gameplay sessions, how well did the simulated character align
+          with your real-world experience?
+        options:
+          - Highly aligned with my experience.
+          - Generally aligned with my experience, with some exceptions.
+          - Mixed or inconsistent alignment.
+          - Largely not aligned with my experience.
+        required: true
+      - answer_type: single_choice
+        key: useful_for_training
+        prompt: |
+          An intended use case of the simulation engine is to provide exposure to forms of perception, cognition, and lived experience that users may not regularly encounter.
+
+          In your opinion, could this system serve as an effective introductory exposure (e.g., for workplace training or education) to help people engage more comfortably and thoughtfully with individuals whose experiences differ from their own?
+        options:
+          - Yes, I this could be effective for introductory exposure.
+          - No, I this system would not be effective for that purpose.
+        required: true
+      - answer_type: string
+        key: useful_for_training_explanation
+        prompt: |
+          Explain your answer to the previous question. If yes/no, why? What limitations that would prevent this system from being effective for introductory exposure?
+        required: true
+      - answer_type: string
+        key: extra
+        prompt: Anything else?
+        required: false

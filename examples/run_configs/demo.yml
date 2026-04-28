@@ -7,7 +7,7 @@ description: |
 ui:
   # Engine always launches the API, however for human players use launch_gui: true to also launch the GUI web interface
   launch_gui: true
-  registration_required: true # or is_demo? Or allow 'demo' signin/bypass??
+  registration_required: false
 
 # PLAYERS ALLOWED
 players:
@@ -18,19 +18,19 @@ players:
 games:
   - name: Explore
     overrides:
-      max_time_s: 300 # 5min
+      max_playtime: 300 # 5min
   - name: Infer Intent
     overrides:
-      max_time_s: 300 # 5min
+      max_playtime: 300 # 5min
   - name: Foresight
     overrides:
-      max_time_s: 300 # 5min
+      max_playtime: 300 # 5min
   - name: Goal Horizon
     overrides:
-      max_time_s: 300 # 5min
+      max_playtime: 300 # 5min
   - name: Teamwork
     overrides:
-      max_time_s: 300 # 5min
+      max_playtime: 300 # 5min
 
 # NEXT GAME STRATEGY
 next_game_strategy:

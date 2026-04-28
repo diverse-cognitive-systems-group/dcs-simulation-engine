@@ -37,8 +37,7 @@ forms:
       event: before_all_assignments
       match: null
     questions:
-      - type: message
-        prompt: |
+      - prompt: |
           # Informed Consent for Research Study Participation
 
           You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one's ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
@@ -48,18 +47,18 @@ forms:
           We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact dcs@psych.gatech.edu
 
           If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
-      - type: single_choice
+      - answer_type: single_choice
         key: consent
-        label: Do you consent to participate in this research study under the terms
+        prompt: Do you consent to participate in this research study under the terms
           described above?
         options:
           - I consent to participate in this research study.
         required: true
-      - type: single_choice
-        key: consent
-        label: Do you consent follow-up contact for this research study?
+      - answer_type: single_choice
+        key: consent_to_followup
+        prompt: Do you consent follow-up contact for this research study?
         options:
-          - I consent to participate in this research study.
+          - I consent to follow-up contact for this research study.
         required: false
 
   - name: intake
@@ -67,10 +66,56 @@ forms:
       event: before_all_assignments
       match: null
     questions:
-      - ...
+      - key: professional_background
+        prompt: Describe your professional background (e.g., industry, role, years of
+          experience).
+        required: true
+        answer_type: string
+
+      - key: technical_savviness
+        prompt: How technically savvy do you consider yourself?
+        answer_type: single_choice
+        required: true
+        options:
+          - On the lower end
+          - On the higher end
+
+      - key: technical_savviness_explanation
+        prompt: Explain why you consider yourself on the lower or higher end of
+          technical savviness (professional experience, hobbies, etc.).
+        answer_type: string
+        required: true
   - name: outtake
     trigger:
       event: after_all_assignments
       match: null
     questions:
-      - ...
+      - key: usability_difficulty
+        prompt: What parts were confusing or difficult? (e.g., understanding what to do,
+          how to do it, or interpreting results)
+        answer_type: string
+        required: true
+
+      - key: usability_ease
+        prompt: What parts were easy or intuitive to use? Please describe.
+        answer_type: string
+        required: true
+
+      - key: other_errors_or_issues
+        prompt: Any errors, bugs, or unexpected behavior not described above that we
+          should know about?
+        answer_type: string
+
+      - key: overall_usability
+        prompt: Overall, how easy or difficult was it to use and understand?
+        answer_type: single_choice
+        required: true
+        options:
+          - Very difficult
+          - Difficult
+          - Neutral
+          - Easy
+          - Very easy
+      - key: additional_feedback
+        prompt: Anything else?
+        answer_type: string

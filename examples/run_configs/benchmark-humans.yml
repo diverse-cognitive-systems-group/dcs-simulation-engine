@@ -20,16 +20,16 @@ games:
   - name: Infer Intent
     overrides:
       # or false if you don't want the human to learn from game scores
-      display_score: true
+      show_final_score: true
   - name: Foresight
     overrides:
-      display_score: true
+      show_final_score: true
   - name: Goal Horizon
     overrides:
-      display_score: true
+      show_final_score: true
   - name: Teamwork
     overrides:
-      display_score: true
+      show_final_score: true
 
 # NEXT GAME STRATEGY
 next_game_strategy:
@@ -45,8 +45,7 @@ forms:
       event: before_all_assignments
       match: null
     questions:
-      - type: message
-        prompt: |
+      - prompt: |
           # Informed Consent for Research Study Participation
 
           You are being asked to be a volunteer in a research study. You may not participant if you are under 18-years-old or located outside of the United States. The purpose of this study is to assess one's ability to infer goals of various simulated cognitive systems, including humans and AI. You will be asked to interact with an unknown cognitive system and attempt to infer its goals. It will take approximately an hour to complete.
@@ -56,18 +55,18 @@ forms:
           We will comply with any applicable laws and regulations regarding confidentiality. To make sure that this research is being carried out in the proper way, the Georgia Institute of Technology IRB may review study records. The Office of Human Research Protections may also look at study records. If you have any questions about the study, you may contact dcs@psych.gatech.edu
 
           If you have any questions about your rights as a research subject, you may contact Georgia Institute of Technology Office of Research Integrity Assurance at IRB@gatech.edu. Thank you for participating in this study.
-      - type: single_choice
+      - answer_type: single_choice
         key: consent
-        label: Do you consent to participate in this research study under the terms
+        prompt: Do you consent to participate in this research study under the terms
           described above?
         options:
           - I consent to participate in this research study.
         required: true
-      - type: single_choice
-        key: consent
-        label: Do you consent follow-up contact for this research study?
+      - answer_type: single_choice
+        key: consent_to_followup
+        prompt: Do you consent follow-up contact for this research study?
         options:
-          - I consent to participate in this research study.
+          - I consent to follow-up contact for this research study.
         required: false
 
   - name: intake
@@ -75,10 +74,70 @@ forms:
       event: before_all_assignments
       match: null
     questions:
-      - ...
+      - answer_type: single_choice
+        key: age_range
+        prompt: What is your age range?
+        options:
+          - 18-34
+          - 35-54
+          - 55+
+        required: true
+      - answer_type: single_choice
+        key: technical_savviness
+        prompt: How would you rate your technical proficiency (comfort with digital
+          tools, software, or technical systems) relative to your peers (i.e.
+          those with similar age and backgrounds). systems)?
+        options:
+          - Higher than average relative to my peers
+          - About average relative to my peers
+          - Lower than average relative to my peers
+        required: true
+      - answer_type: string
+        key: peers
+        prompt: Who do you consider your peers when assessing your technical
+          proficiency? Why do you consider your proficiency to be higher,
+          average, or lower than them?
+        required: true
+      - answer_type: multi_choice
+        key: experience_with_dcs
+        prompt: What types of experience do you have engaging with individuals whose
+          sensory, cognitive, or physical experiences differ from typical norms
+          (e.g., neurodivergence, disability, chronic illness, or other forms of
+          divergence)? Select all that apply.
+        options:
+          - Personal lived experience
+          - Close family members or friends
+          - Professional experience (e.g., healthcare, education, research)
+          - Limited or no direct experience
+        required: true
+      - answer_type: string
+        key: background_affecting_engagement
+        prompt: Are there any cultural, philosophical, religious, educational, or other
+          background experiences that may affect how you engage with individuals
+          whose sensory, perceptual, physical, cultural, etc. experiences may be
+          very different from your own?
+        required: false
   - name: outtake
     trigger:
       event: after_all_assignments
       match: null
     questions:
-      - ...
+      - answer_type: string
+        key: performance_factors
+        prompt: Reflecting on your overall gameplay, were there any factors that may
+          have influenced your performance or how your results should be
+          interpreted (e.g., confusion, difficulty understanding certain
+          characters, interface issues, distractions, or strategies you used)?
+          Please describe anything important to consider.
+        required: false
+      - answer_type: string
+        key: learning_outcomes
+        prompt: Did you learn anything during the experience? This could include
+          strategies for playing the game, ways of engaging with certain
+          characters, patterns you noticed, or anything else that helped (or
+          hindered) your performance.
+        required: false
+      - answer_type: string
+        key: extra_feedback
+        prompt: Anything else?
+        required: false
