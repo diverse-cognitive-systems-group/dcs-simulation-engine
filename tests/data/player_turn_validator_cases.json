@@ -486,6 +486,23 @@
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
             ]
+        },
+        {
+            "id": "form_internal_analysis_only",
+            "description": "Pure internal analysis with no externally observable action should fail form because deliberation about a future action is not itself an action.",
+            "input_pattern": "internal_analysis_only",
+            "pc_hid": "AS",
+            "npc_hid": "NB",
+            "transcript": "Opening scene: You enter a new space. In this space, a directory board beside a closed faculty wing posts a scrambled list of room numbers waiting to be reordered, and NB is standing within arm's reach of the board with a marker in hand.",
+            "player_action": "I continue to analyze the scrambled list of room numbers for potential pairwise comparisons that would help me determine the correct order. I also check for any adjacent numbers that could be easily swapped to begin the sorting process.",
+            "expected_ensemble_pass": false,
+            "expected_failed_validators": [
+                "VALID-PC-ACTION"
+            ],
+            "expected_passed_validators": [
+                "VALID-PC-ABILITY",
+                "VALID-PLAYER-AUTHORITY-BOUNDARY"
+            ]
         }
     ]
 }
