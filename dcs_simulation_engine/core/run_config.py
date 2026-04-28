@@ -1,6 +1,7 @@
 """Run configuration models and static validation helpers."""
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from dcs_simulation_engine.core.forms import ExperimentForm
@@ -106,9 +107,39 @@ class RunConfig(SerdeMixin, BaseModel):
         """Load a run config from YAML."""
         return cls.from_yaml(path)
 
-    def forms_for_trigger(self, trigger: str) -> list[ExperimentForm]:
+    def forms_for_trigger(self, trigger: str | None = None, *, event: str | None = None) -> list[ExperimentForm]:
         """Return forms matching one trigger event string."""
-        return [form for form in self.forms if form.trigger.event == trigger]
+        event_name = event if event is not None else trigger
+        return [form for form in self.forms if form.trigger.event == event_name]
+
+    def form_groups_for_trigger(self, *, event: str) -> list[dict[str, Any]]:
+        """Return configured form groups for one trigger event."""
+        forms = self.forms_for_trigger(event)
+        if not forms:
+            return []
+        return [
+            {
+                "trigger": {"event": event, "match": None},
+                "forms": forms,
+            }
+        ]
+
+    @property
+    def assignment_strategy(self) -> SimpleNamespace:
+        """Expose the existing assignment-strategy view for run configs."""
+        strategy = self.next_game_strategy.strategy
+        values = strategy.model_dump()
+        values["strategy"] = values.pop("id")
+        values["games"] = self.game_names
+        values.setdefault("player_characters", None)
+        values.setdefault("non_player_characters", None)
+        values.setdefault("quota_per_game", None)
+        values.setdefault("max_assignments_per_player", None)
+        values.setdefault("seed", self.seed)
+        values.setdefault("pc_eligible_only", False)
+        values.setdefault("allow_choice_if_multiple", False)
+        values.setdefault("require_completion", True)
+        return SimpleNamespace(**values)
 
     @property
     def registration_required(self) -> bool:
@@ -131,7 +162,7 @@ def validate_run_config_references(config: RunConfig) -> None:
     from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
     from dcs_simulation_engine.core.session_manager import SessionManager
 
-    get_assignment_strategy(config.next_game_strategy.strategy.id)
+    get_assignment_strategy(config.next_game_strategy.strategy.id).validate_config(config=config)
 
     for game in config.games:
         game_config = SessionManager.get_game_config_cached(game.name)

@@ -7,6 +7,7 @@ import typer
 from dcs_simulation_engine.api.app import (
     DEFAULT_HOST,
     DEFAULT_PORT,
+    DEFAULT_RUN_CONFIG_PATH,
     DEFAULT_SESSION_TTL_SECONDS,
     DEFAULT_SWEEP_INTERVAL_SECONDS,
     create_app,
@@ -58,22 +59,17 @@ def server(
         "--fake-ai-response",
         help="Return this string for all AI responses instead of calling OpenRouter.",
     ),
-    free_play: bool = typer.Option(
-        False,
-        "--free-play",
-        help="Run the server in anonymous free play mode without registration or experiments.",
+    config: Path = typer.Option(
+        DEFAULT_RUN_CONFIG_PATH,
+        "--config",
+        envvar="DCS_RUN_CONFIG",
+        help="Run config YAML to use for this engine run.",
     ),
     remote_managed: bool = typer.Option(
         False,
         "--remote-managed",
         envvar="DCS_REMOTE_MANAGED",
         help="Run the server as a remote-managed deployment with bootstrap/export endpoints enabled.",
-    ),
-    default_experiment: Optional[str] = typer.Option(
-        None,
-        "--default-experiment",
-        envvar="DCS_DEFAULT_EXPERIMENT_NAME",
-        help="Default experiment name for experiment-centric deployments.",
     ),
     bootstrap_token: Optional[str] = typer.Option(
         None,
@@ -102,8 +98,8 @@ def server(
             provider=None,
             mongo_uri=mongo_uri,
             shutdown_dump_dir=dump_dir,
-            server_mode="free_play" if free_play else "standard",
-            default_experiment_name=default_experiment,
+            run_config_path=config,
+            server_mode="standard",
             remote_management_enabled=remote_managed,
             bootstrap_token=bootstrap_token,
             session_ttl_seconds=ttl_seconds,

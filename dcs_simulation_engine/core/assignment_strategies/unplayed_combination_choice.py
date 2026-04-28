@@ -19,7 +19,7 @@ class UnplayedCombinationChoiceAssignmentStrategy(CandidateAssignmentStrategy):
         player,
     ) -> list[AssignmentCandidate]:
         """Return allowed triplets ordered by ascending player completion count for the exact triplet."""
-        game_order = {game_name: index for index, game_name in enumerate(config.games)}
+        game_order = {game_name: index for index, game_name in enumerate(config.game_names)}
         assignments = await self._list_player_assignments(provider=provider, config=config, player=player)
         triple_counts = self._completed_triple_counts(assignments=assignments)
         candidates = await self._build_candidate_pool(provider=provider, config=config, player=player)

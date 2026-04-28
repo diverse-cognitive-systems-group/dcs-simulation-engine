@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from typing import Callable, Iterator
 
 import pytest
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.run_config import RunConfig
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 
 
 @pytest.fixture
@@ -103,22 +103,20 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
 
 
 @pytest.fixture
-def usability_experiment_config(usability_experiment_config_path: Path) -> ExperimentConfig:
+def usability_experiment_config(usability_experiment_config_path: Path) -> RunConfig:
     """Load the stable experiment config fixture."""
-    return ExperimentConfig.load(usability_experiment_config_path)
+    return RunConfig.load(usability_experiment_config_path)
 
 
 @pytest.fixture
-def cached_usability_experiment(usability_experiment_config: ExperimentConfig) -> Iterator[ExperimentConfig]:
-    """Register the stable experiment config in the ExperimentManager cache."""
-    original_cache = ExperimentManager._experiment_config_cache.copy()
-    ExperimentManager._experiment_config_cache = {
-        ExperimentManager._cache_key(usability_experiment_config.name): usability_experiment_config
-    }
+def cached_usability_experiment(usability_experiment_config: RunConfig) -> Iterator[RunConfig]:
+    """Register the stable run config in the EngineRunManager."""
+    original_config = EngineRunManager._run_config
+    EngineRunManager._run_config = usability_experiment_config
     try:
         yield usability_experiment_config
     finally:
-        ExperimentManager._experiment_config_cache = original_cache
+        EngineRunManager._run_config = original_config
 
 
 @pytest.fixture
@@ -175,12 +173,12 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
 @pytest.fixture
 def cached_multi_assignment_experiment(
     multi_assignment_experiment_config_path: Path,
-) -> Iterator[ExperimentConfig]:
-    """Register the multi-assignment experiment config in the ExperimentManager cache."""
-    config = ExperimentConfig.load(multi_assignment_experiment_config_path)
-    original_cache = ExperimentManager._experiment_config_cache.copy()
-    ExperimentManager._experiment_config_cache = {ExperimentManager._cache_key(config.name): config}
+) -> Iterator[RunConfig]:
+    """Register the multi-assignment run config in the EngineRunManager."""
+    config = RunConfig.load(multi_assignment_experiment_config_path)
+    original_config = EngineRunManager._run_config
+    EngineRunManager._run_config = config
     try:
         yield config
     finally:
-        ExperimentManager._experiment_config_cache = original_cache
+        EngineRunManager._run_config = original_config

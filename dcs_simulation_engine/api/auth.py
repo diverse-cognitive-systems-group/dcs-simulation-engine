@@ -69,14 +69,16 @@ def build_server_config(
     *,
     server_mode: ServerMode,
     default_experiment_name: str | None = None,
+    registration_required: bool = True,
 ) -> ServerConfigResponse:
     """Translate the active mode into frontend-readable capability flags."""
     is_standard = server_mode == "standard"
+    authentication_required = is_standard and registration_required
     return ServerConfigResponse(
         mode=server_mode,
-        authentication_required=is_standard,
-        registration_enabled=is_standard,
-        experiments_enabled=is_standard,
+        authentication_required=authentication_required,
+        registration_enabled=authentication_required,
+        experiments_enabled=True,
         default_experiment_name=default_experiment_name,
     )
 

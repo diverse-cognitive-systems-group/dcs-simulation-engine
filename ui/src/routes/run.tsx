@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { createRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
+import { createRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { HttpError, httpClient } from '@/api/http'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
@@ -19,10 +19,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { clearAuth, isAuthenticated, setActiveExperimentName } from '@/lib/auth'
+import {
+  clearAuth,
+  ensureAnonymousAuth,
+  isAuthenticated,
+  setActiveExperimentName,
+} from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { cn } from '@/lib/utils'
-import { rootRoute } from '../__root'
+import { rootRoute } from './__root'
 
 type ScalarValue = string | boolean
 type FieldValue = ScalarValue | string[]
@@ -665,8 +670,7 @@ function AssignmentChooser(props: {
   )
 }
 
-function ExperimentPage() {
-  const { experimentName } = useParams({ from: '/experiments/$experimentName' })
+function RunPage() {
   const navigate = useNavigate()
   const authenticated = isAuthenticated()
   const [formResponses, setFormResponses] = useState<FormResponseMap>({})
@@ -677,19 +681,16 @@ function ExperimentPage() {
   const [selectedPc, setSelectedPc] = useState<string | null>(null)
   const [selectedNpc, setSelectedNpc] = useState<string | null>(null)
 
-  useEffect(() => {
-    setActiveExperimentName(experimentName)
-  }, [experimentName])
-
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['experiment-setup', experimentName, authenticated],
+    queryKey: ['run-setup', authenticated],
     enabled: authenticated,
     refetchOnMount: 'always',
-    queryFn: () =>
-      httpClient<ExperimentSetupResponse>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/setup`,
-      ),
+    queryFn: () => httpClient<ExperimentSetupResponse>('/api/run/setup'),
   })
+
+  useEffect(() => {
+    setActiveExperimentName(data?.experiment_name ?? '')
+  }, [data?.experiment_name])
 
   const nextAssignment = data?.next_assignment ?? null
   const pendingFormGroup = data?.pending_form_groups?.[0] ?? null
@@ -747,7 +748,7 @@ function ExperimentPage() {
     setSubmitting('form')
     try {
       await httpClient<ExperimentFormSubmitResponse>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/forms/submit`,
+        '/api/run/forms/submit',
         {
           method: 'POST',
           body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
@@ -769,11 +770,11 @@ function ExperimentPage() {
     setSubmitting('session')
     try {
       const response = await httpClient<{ session_id: string }>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/sessions`,
+        '/api/run/sessions',
         {
           method: 'POST',
           body: JSON.stringify({
-            source: 'experiment',
+            source: 'run',
             assignment_id: assignment.assignment_id,
           }),
         },
@@ -783,7 +784,7 @@ function ExperimentPage() {
         params: { sessionId: response.session_id },
         search: {
           gameName: assignment?.game_name ?? '',
-          experimentName,
+          experimentName: data?.experiment_name ?? '',
         },
       })
     } catch (submitErr) {
@@ -800,7 +801,7 @@ function ExperimentPage() {
     setSubmitting('select')
     try {
       await httpClient(
-        `/api/experiments/${encodeURIComponent(experimentName)}/assignments/select`,
+        '/api/run/assignments/select',
         {
           method: 'POST',
           body: JSON.stringify({ game_name: gameName, pc_hid: pcHid, npc_hid: npcHid }),
@@ -827,7 +828,7 @@ function ExperimentPage() {
         </div>
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>{titleCase(experimentName)}</CardTitle>
+            <CardTitle>{titleCase(data?.experiment_name ?? 'Run')}</CardTitle>
             <CardDescription>
               Sign in with your access key or register before viewing study details.
             </CardDescription>
@@ -1051,14 +1052,18 @@ function ExperimentPage() {
   )
 }
 
-export const experimentRoute = createRoute({
+export const runRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/experiments/$experimentName',
+  path: '/run',
   beforeLoad: async () => {
     const serverConfig = await getServerConfig()
-    if (serverConfig.mode === 'free_play') {
-      throw redirect({ to: '/games' })
+    if (serverConfig.authentication_required) {
+      if (!isAuthenticated()) {
+        throw redirect({ to: '/login' })
+      }
+      return
     }
+    await ensureAnonymousAuth()
   },
-  component: ExperimentPage,
+  component: RunPage,
 })

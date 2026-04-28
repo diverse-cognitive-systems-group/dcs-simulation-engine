@@ -44,7 +44,7 @@ class ProgressiveDivergenceAssignmentStrategy(CandidateAssignmentStrategy):
             config=config,
             statuses=["in_progress", "completed"],
         )
-        game_order = {game_name: index for index, game_name in enumerate(config.games)}
+        game_order = {game_name: index for index, game_name in enumerate(config.game_names)}
         ranked = self._sort_by_descending_divergence(
             candidates=candidates,
             reference_npc=reference_npc,

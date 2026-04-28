@@ -202,10 +202,7 @@ function PlayPage() {
 
   async function handleClose() {
     if (experimentName) {
-      await navigate({
-        to: '/experiments/$experimentName',
-        params: { experimentName },
-      })
+      await navigate({ to: '/run' })
       return
     }
     await navigate({ to: '/games' })

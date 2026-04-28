@@ -12,7 +12,7 @@ from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.divergence import compute_divergence_score
 
 if TYPE_CHECKING:
-    from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+    from dcs_simulation_engine.core.run_config import RunConfig
     from dcs_simulation_engine.dal.base import AssignmentRecord, PlayerRecord
 
 
@@ -34,10 +34,10 @@ class CandidateAssignmentStrategy:
 
     name = ""
 
-    def validate_config(self, *, config: "ExperimentConfig") -> None:
+    def validate_config(self, *, config: "RunConfig") -> None:
         """Validate strategy config shared across candidate-based strategies."""
-        if not config.assignment_strategy.games:
-            raise ValueError(f"{self.name} requires assignment_strategy.games")
+        if not config.game_names:
+            raise ValueError(f"{self.name} requires run config games")
         if config.assignment_strategy.quota_per_game is not None and config.assignment_strategy.quota_per_game <= 0:
             raise ValueError(f"{self.name} requires a positive quota_per_game")
 
@@ -45,14 +45,14 @@ class CandidateAssignmentStrategy:
         if max_assignments is not None and max_assignments <= 0:
             raise ValueError(f"{self.name} requires max_assignments_per_player to be positive")
 
-    def max_assignments_per_player(self, *, config: "ExperimentConfig") -> int:
+    def max_assignments_per_player(self, *, config: "RunConfig") -> int:
         """Return the configured per-player assignment cap for this strategy."""
         configured = config.assignment_strategy.max_assignments_per_player
         if configured is None:
-            return len(config.games)
+            return len(config.game_names)
         return max(0, int(configured))
 
-    async def compute_progress_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
+    async def compute_progress_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
         """Compute quota-based experiment progress for the configured games."""
         quota = config.assignment_strategy.quota_per_game
         completed_players_by_game = await self._players_by_game(
@@ -74,12 +74,12 @@ class CandidateAssignmentStrategy:
             }
         quota_count = int(quota)
         return {
-            "total": quota_count * len(config.games),
+            "total": quota_count * len(config.game_names),
             "completed": completed_total,
-            "is_complete": all(len(counted_players_by_game.get(game_name, set())) >= quota_count for game_name in config.games),
+            "is_complete": all(len(counted_players_by_game.get(game_name, set())) >= quota_count for game_name in config.game_names),
         }
 
-    async def compute_status_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
+    async def compute_status_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
         """Compute per-game status counts and overall experiment openness."""
         quota = config.assignment_strategy.quota_per_game
         completed_players_by_game = await self._players_by_game(
@@ -100,7 +100,7 @@ class CandidateAssignmentStrategy:
 
         per_game: dict[str, dict[str, int]] = {}
         quota_count = int(quota) if quota is not None else 0
-        for game_name in config.games:
+        for game_name in config.game_names:
             per_game[game_name] = {
                 "total": quota_count,
                 "completed": len(completed_players_by_game.get(game_name, set())),
@@ -115,8 +115,8 @@ class CandidateAssignmentStrategy:
                 "per_game": per_game,
             }
         return {
-            "is_open": any(len(counted_players_by_game.get(game_name, set())) < quota_count for game_name in config.games),
-            "total": quota_count * len(config.games),
+            "is_open": any(len(counted_players_by_game.get(game_name, set())) < quota_count for game_name in config.game_names),
+            "total": quota_count * len(config.game_names),
             "completed": sum(item["completed"] for item in per_game.values()),
             "per_game": per_game,
         }
@@ -125,7 +125,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[AssignmentCandidate]:
         """Return ordered candidate assignments for the player."""
@@ -135,7 +135,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[dict[str, str]]:
         """Return serialized candidate assignment options."""
@@ -146,7 +146,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
         """Return an existing assignment or create one from this strategy's candidates."""
@@ -175,7 +175,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
         active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
@@ -190,7 +190,7 @@ class CandidateAssignmentStrategy:
     def _assignment_doc_for_candidate(
         self,
         *,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
         candidate: AssignmentCandidate,
     ) -> dict[str, Any]:
@@ -211,7 +211,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[AssignmentCandidate]:
         counted_players_by_game = await self._players_by_game(
@@ -223,7 +223,7 @@ class CandidateAssignmentStrategy:
         pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
         candidates: list[AssignmentCandidate] = []
 
-        for game_name in config.games:
+        for game_name in config.game_names:
             if quota is not None and len(counted_players_by_game.get(game_name, set())) >= int(quota):
                 continue
             game_config = SessionManager.get_game_config_cached(game_name)
@@ -253,7 +253,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list["AssignmentRecord"]:
         return await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
@@ -275,7 +275,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         statuses: list[str],
     ) -> dict[tuple[str, str], int]:
         assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, statuses=statuses))

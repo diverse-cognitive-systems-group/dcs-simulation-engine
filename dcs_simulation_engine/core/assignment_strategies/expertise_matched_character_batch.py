@@ -33,7 +33,7 @@ class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrate
         active_batch_npc = self._active_batch_npc(config=config, assignments=player_assignments)
         characters_by_hid = await self._character_map(provider=provider)
         matched_npc_hids = self._expertise_match_hids(player=player, characters_by_hid=characters_by_hid)
-        game_order = {game_name: index for index, game_name in enumerate(config.games)}
+        game_order = {game_name: index for index, game_name in enumerate(config.game_names)}
         npc_order = self._ordered_npcs(
             candidates=candidates,
             matched_npc_hids=matched_npc_hids,
@@ -44,7 +44,7 @@ class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrate
         if target_npc is None:
             for npc_hid in npc_order:
                 completed_games = completed_games_by_npc.get(npc_hid, set())
-                if len(completed_games) < len(config.games):
+                if len(completed_games) < len(config.game_names):
                     target_npc = npc_hid
                     break
         if target_npc is None:
@@ -52,7 +52,7 @@ class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrate
 
         remaining_games = [
             game_name
-            for game_name in config.games
+            for game_name in config.game_names
             if game_name not in completed_games_by_npc.get(target_npc, set())
         ]
         if not remaining_games:
@@ -81,7 +81,7 @@ class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrate
                 for item in assignments
                 if item.status == "completed" and str(item.data.get("batch_npc_hid") or "") == batch_npc_hid
             }
-            if len(completed_games) < len(config.games):
+            if len(completed_games) < len(config.game_names):
                 return batch_npc_hid
         return None
 

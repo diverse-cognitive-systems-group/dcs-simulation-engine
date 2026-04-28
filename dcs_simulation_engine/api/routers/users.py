@@ -9,7 +9,6 @@ from dcs_simulation_engine.api.auth import (
     is_remote_management_enabled_from_request,
     maybe_await,
     require_player_async,
-    require_standard_mode_from_request,
 )
 from dcs_simulation_engine.api.models import (
     AuthRequest,
@@ -91,10 +90,9 @@ def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
 @router.post("/registration", response_model=RegistrationResponse)
 async def register_user(body: RegistrationRequest, request: Request) -> RegistrationResponse:
     """Register a new player record and return a newly issued API key."""
-    require_standard_mode_from_request(
-        request,
-        detail="Player registration is disabled when the server is running in free play mode.",
-    )
+    run_config = request.app.state.run_config
+    if not run_config.registration_required:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Player registration is disabled for this run.")
     provider = get_provider_from_request(request)
     player_data = _registration_to_player_data(body)
     if is_remote_management_enabled_from_request(request) and not await has_remote_admin_async(provider=provider):
@@ -107,13 +105,27 @@ async def register_user(body: RegistrationRequest, request: Request) -> Registra
     return RegistrationResponse(player_id=record.id, api_key=api_key)
 
 
+@router.post("/anonymous", response_model=RegistrationResponse)
+async def anonymous_user(request: Request) -> RegistrationResponse:
+    """Create an ephemeral anonymous player for runs that do not require registration."""
+    run_config = request.app.state.run_config
+    if run_config.registration_required:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Anonymous players are disabled for this run.")
+    provider = get_provider_from_request(request)
+    record, api_key = await maybe_await(
+        provider.create_player(
+            player_data={"anonymous": True, "run_name": run_config.name},
+            issue_access_key=True,
+        )
+    )
+    if api_key is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to issue access key")
+    return RegistrationResponse(player_id=record.id, api_key=api_key)
+
+
 @router.post("/auth", response_model=AuthResponse)
 async def auth_user(body: AuthRequest, request: Request) -> AuthResponse:
     """Authenticate a user API key and return the associated player id."""
-    require_standard_mode_from_request(
-        request,
-        detail="Player authentication is disabled when the server is running in free play mode.",
-    )
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=body.api_key)
     full_name = player.data.get("full_name", {}).get("answer", "")

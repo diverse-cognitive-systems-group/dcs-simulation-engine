@@ -36,7 +36,7 @@ services:
       [
         "/bin/sh",
         "-c",
-        "exec /app/.venv/bin/dcs server --mongo-seed-dir /app/database_seeds/dev ${DCS_FREE_PLAY:+--free-play} --dump ./runs",
+        "exec /app/.venv/bin/dcs server --mongo-seed-dir /app/database_seeds/dev --config ${DCS_RUN_CONFIG:-/app/examples/run_configs/demo.yml} --dump ./runs",
       ]
     environment:
       MONGO_URI: mongodb://mongo:27017/

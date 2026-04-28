@@ -1020,11 +1020,12 @@ export type experimentSetupApiExperimentsExperimentNameSetupGetResponseError = (
 export type experimentSetupApiExperimentsExperimentNameSetupGetResponse = (experimentSetupApiExperimentsExperimentNameSetupGetResponseSuccess | experimentSetupApiExperimentsExperimentNameSetupGetResponseError)
 
 export const getExperimentSetupApiExperimentsExperimentNameSetupGetUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/setup`
+  return `/api/run/setup`
 }
 
 export const experimentSetupApiExperimentsExperimentNameSetupGet = async (experimentName: string, options?: RequestInit): Promise<experimentSetupApiExperimentsExperimentNameSetupGetResponse> => {
@@ -1043,8 +1044,9 @@ export const experimentSetupApiExperimentsExperimentNameSetupGet = async (experi
 
 
 export const getExperimentSetupApiExperimentsExperimentNameSetupGetQueryKey = (experimentName: string,) => {
+  void experimentName;
     return [
-    `/api/experiments/${experimentName}/setup`
+    `/api/run/setup`
     ] as const;
     }
 
@@ -1139,11 +1141,12 @@ export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostRespo
 export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse = (registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponseSuccess | registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponseError)
 
 export const getRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/players`
+  return `/api/run/players`
 }
 
 export const registerExperimentPlayerApiExperimentsExperimentNamePlayersPost = async (experimentName: string,
@@ -1231,11 +1234,12 @@ export type createExperimentSessionApiExperimentsExperimentNameSessionsPostRespo
 export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse = (createExperimentSessionApiExperimentsExperimentNameSessionsPostResponseSuccess | createExperimentSessionApiExperimentsExperimentNameSessionsPostResponseError)
 
 export const getCreateExperimentSessionApiExperimentsExperimentNameSessionsPostUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/sessions`
+  return `/api/run/sessions`
 }
 
 export const createExperimentSessionApiExperimentsExperimentNameSessionsPost = async (experimentName: string,
@@ -1323,11 +1327,12 @@ export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResp
 export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse = (submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponseSuccess | submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponseError)
 
 export const getSubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/post-play`
+  return `/api/run/post-play`
 }
 
 export const submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost = async (experimentName: string,
@@ -1415,11 +1420,12 @@ export type experimentProgressApiExperimentsExperimentNameProgressGetResponseErr
 export type experimentProgressApiExperimentsExperimentNameProgressGetResponse = (experimentProgressApiExperimentsExperimentNameProgressGetResponseSuccess | experimentProgressApiExperimentsExperimentNameProgressGetResponseError)
 
 export const getExperimentProgressApiExperimentsExperimentNameProgressGetUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/progress`
+  return `/api/run/progress`
 }
 
 export const experimentProgressApiExperimentsExperimentNameProgressGet = async (experimentName: string, options?: RequestInit): Promise<experimentProgressApiExperimentsExperimentNameProgressGetResponse> => {
@@ -1438,8 +1444,9 @@ export const experimentProgressApiExperimentsExperimentNameProgressGet = async (
 
 
 export const getExperimentProgressApiExperimentsExperimentNameProgressGetQueryKey = (experimentName: string,) => {
+  void experimentName;
     return [
-    `/api/experiments/${experimentName}/progress`
+    `/api/run/progress`
     ] as const;
     }
 
@@ -1534,11 +1541,12 @@ export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResp
 export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseSuccess | getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseError)
 
 export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/eligible-options`
+  return `/api/run/eligible-options`
 }
 
 export const getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet = async (experimentName: string, options?: RequestInit): Promise<getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse> => {
@@ -1557,8 +1565,9 @@ export const getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet = 
 
 
 export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryKey = (experimentName: string,) => {
+  void experimentName;
     return [
-    `/api/experiments/${experimentName}/eligible-options`
+    `/api/run/eligible-options`
     ] as const;
     }
 
@@ -1653,11 +1662,12 @@ export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostRes
 export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseSuccess | selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseError)
 
 export const getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/assignments/select`
+  return `/api/run/assignments/select`
 }
 
 export const selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost = async (experimentName: string,
@@ -1745,11 +1755,12 @@ export type experimentStatusApiExperimentsExperimentNameStatusGetResponseError =
 export type experimentStatusApiExperimentsExperimentNameStatusGetResponse = (experimentStatusApiExperimentsExperimentNameStatusGetResponseSuccess | experimentStatusApiExperimentsExperimentNameStatusGetResponseError)
 
 export const getExperimentStatusApiExperimentsExperimentNameStatusGetUrl = (experimentName: string,) => {
+  void experimentName;
 
 
   
 
-  return `/api/experiments/${experimentName}/status`
+  return `/api/run/status`
 }
 
 export const experimentStatusApiExperimentsExperimentNameStatusGet = async (experimentName: string, options?: RequestInit): Promise<experimentStatusApiExperimentsExperimentNameStatusGetResponse> => {
@@ -1768,8 +1779,9 @@ export const experimentStatusApiExperimentsExperimentNameStatusGet = async (expe
 
 
 export const getExperimentStatusApiExperimentsExperimentNameStatusGetQueryKey = (experimentName: string,) => {
+  void experimentName;
     return [
-    `/api/experiments/${experimentName}/status`
+    `/api/run/status`
     ] as const;
     }
 

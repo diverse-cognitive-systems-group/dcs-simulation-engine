@@ -28,7 +28,7 @@ from dcs_simulation_engine.api.models import (
     RemoteStatusResponse,
 )
 from dcs_simulation_engine.cli.bootstrap import create_provider_admin
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json_async
 from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.auth import validate_access_key
@@ -239,7 +239,7 @@ async def bootstrap_remote_deployment(request: Request) -> RemoteBootstrapRespon
 
     experiment_name = get_default_experiment_name_from_request(request)
     if experiment_name:
-        await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
+        await EngineRunManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
 
     return RemoteBootstrapResponse(
         player_id=record.id,
@@ -260,15 +260,15 @@ async def remote_status(request: Request) -> RemoteStatusResponse:
     experiment_status = None
     if default_experiment_name:
         try:
-            await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=default_experiment_name)
+            await EngineRunManager.ensure_experiment_async(provider=provider, experiment_name=default_experiment_name)
             progress = _progress_response(
-                await ExperimentManager.compute_progress_async(
+                await EngineRunManager.compute_progress_async(
                     provider=provider,
                     experiment_name=default_experiment_name,
                 )
             )
             experiment_status = _status_response(
-                await ExperimentManager.compute_status_async(provider=provider, experiment_name=default_experiment_name)
+                await EngineRunManager.compute_status_async(provider=provider, experiment_name=default_experiment_name)
             )
         except Exception as exc:
             logger.exception("Failed to compute remote status for {}", default_experiment_name)

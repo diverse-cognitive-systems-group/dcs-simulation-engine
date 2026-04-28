@@ -39,7 +39,7 @@ from dcs_simulation_engine.api.models import (
     parse_ws_request,
 )
 from dcs_simulation_engine.api.registry import hydrate_session_async
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from loguru import logger
@@ -67,7 +67,7 @@ def _require_generic_play_enabled(request: Request) -> None:
 
 async def _reject_if_experiment_gated(*, provider: Any, player_id: str) -> None:
     """Block generic play endpoints for players who are inside an experiment flow."""
-    latest_assignment = await ExperimentManager.get_latest_assignment_for_player_async(
+    latest_assignment = await EngineRunManager.get_latest_assignment_for_player_async(
         provider=provider,
         player_id=player_id,
     )
@@ -82,11 +82,11 @@ async def _reject_if_experiment_gated(*, provider: Any, player_id: str) -> None:
     )
 
 
-async def _sync_experiment_assignment_if_needed(*, provider: Any, entry: Any) -> None:
+async def _sync_run_assignment_if_needed(*, provider: Any, entry: Any) -> None:
     """Update experiment assignment state when a session reaches a terminal state."""
     if entry.experiment_name is None or entry.assignment_id is None:
         return
-    await ExperimentManager.handle_session_terminal_state_async(
+    await EngineRunManager.handle_session_terminal_state_async(
         provider=provider,
         experiment_name=entry.experiment_name,
         assignment_id=entry.assignment_id,
@@ -384,7 +384,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             registry.touch(session_id)
             if entry.manager.exited:
                 registry.close(session_id)
-                await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                await _sync_run_assignment_if_needed(provider=provider, entry=entry)
 
             await _send_events(websocket, session_id, opening_events)
             await _send_turn_end(
@@ -413,7 +413,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                 registry.touch(session_id)
                 if entry.manager.exited:
                     registry.close(session_id)
-                    await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                    await _sync_run_assignment_if_needed(provider=provider, entry=entry)
 
                 await _send_events(websocket, session_id, events)
                 await _send_turn_end(
@@ -451,7 +451,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                         )
                 registry.set_ws_connected(session_id, False)
                 registry.close(session_id)
-                await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                await _sync_run_assignment_if_needed(provider=provider, entry=entry)
                 await websocket.send_json({"type": "closed", "session_id": session_id})
                 await websocket.close()
                 return
@@ -489,7 +489,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                         session_id=session_id,
                     )
                     registry.close(session_id)
-                    await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                    await _sync_run_assignment_if_needed(provider=provider, entry=entry)
                 except Exception:
                     logger.exception("Failed to finalize session after internal websocket error: {}", session_id)
         logger.exception("Unhandled websocket error for session {}", session_id)

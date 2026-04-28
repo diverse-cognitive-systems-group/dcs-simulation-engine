@@ -1,13 +1,10 @@
-"""Experiment-scoped endpoints for assignment-driven study flows."""
+"""Run-scoped endpoints for assignment-driven study flows."""
 
 from dcs_simulation_engine.api.auth import (
     api_key_from_request,
-    get_default_experiment_name_from_request,
     get_provider_from_request,
     get_registry_from_request,
-    is_remote_management_enabled_from_request,
     require_player_async,
-    require_standard_mode_from_request,
 )
 from dcs_simulation_engine.api.models import (
     CreateGameResponse,
@@ -25,25 +22,15 @@ from dcs_simulation_engine.api.models import (
     PendingFormGroupResponse,
     SelectAssignmentRequest,
 )
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from fastapi import APIRouter, HTTPException, Request, status
 
-router = APIRouter(prefix="/api/experiments", tags=["experiments"])
+router = APIRouter(prefix="/api/run", tags=["run"])
 
 
-def _require_allowed_experiment(*, experiment_name: str, request: Request) -> None:
-    """Restrict experiment-only deployments to their configured experiment slug."""
-    if not is_remote_management_enabled_from_request(request):
-        return
-    allowed = get_default_experiment_name_from_request(request)
-    if allowed is None:
-        return
-    if experiment_name.strip().lower() != allowed.strip().lower():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Experiment '{experiment_name}' is not hosted on this deployment.",
-        )
+def _get_run_manager(request: Request) -> EngineRunManager:
+    return request.app.state.engine_run_manager
 
 
 async def _assignment_summary(
@@ -55,7 +42,7 @@ async def _assignment_summary(
     if assignment is None:
         return None
     assignment_data = getattr(assignment, "data", {}) or {}
-    metadata = await ExperimentManager.assignment_display_metadata_async(
+    metadata = await EngineRunManager.assignment_display_metadata_async(
         provider=provider,
         game_name=assignment.game_name,
         pc_hid=assignment.pc_hid,
@@ -90,7 +77,7 @@ async def _assignment_summaries(
 async def _eligible_assignment_options(provider, options) -> list[EligibleAssignmentOption]:
     enriched = []
     for option in options:
-        item = await ExperimentManager.enrich_assignment_option_async(provider=provider, option=option)
+        item = await EngineRunManager.enrich_assignment_option_async(provider=provider, option=option)
         enriched.append(EligibleAssignmentOption(**item))
     return enriched
 
@@ -166,19 +153,15 @@ def _status_response(status_payload: dict) -> ExperimentStatusResponse:
     )
 
 
-@router.get("/{experiment_name}/setup", response_model=ExperimentSetupResponse)
-async def experiment_setup(experiment_name: str, request: Request) -> ExperimentSetupResponse:
-    """Return experiment metadata, form schemas, and current player assignment state."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+@router.get("/setup", response_model=ExperimentSetupResponse)
+async def run_setup(request: Request) -> ExperimentSetupResponse:
+    """Return run metadata, form schemas, and current player assignment state."""
+    manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
-    config = ExperimentManager.get_experiment_config_cached(experiment_name)
-    await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=config.name)
+    config = manager.run_config
+    await manager.ensure_run_async(provider=provider)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    player_state = await ExperimentManager.get_player_state_async(
+    player_state = await manager.get_player_state_async(
         provider=provider,
         experiment_name=config.name,
         player_id=player.id,
@@ -196,7 +179,7 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
         current_assignment_data = getattr(current_assignment, "data", {}) or {}
         resumable_session_id = current_assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None
 
-    progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=config.name)
+    progress = await manager.compute_progress_async(provider=provider, experiment_name=config.name)
     is_open = not progress["is_complete"]
     has_submitted_before_forms = bool(player_state.get("has_submitted_before_forms"))
     return ExperimentSetupResponse(
@@ -237,24 +220,20 @@ async def experiment_setup(experiment_name: str, request: Request) -> Experiment
     )
 
 
-@router.post("/{experiment_name}/forms/submit", response_model=ExperimentFormSubmitResponse)
-async def submit_experiment_form_group(
-    experiment_name: str,
+@router.post("/forms/submit", response_model=ExperimentFormSubmitResponse)
+async def submit_run_form_group(
     body: ExperimentFormSubmitRequest,
     request: Request,
 ) -> ExperimentFormSubmitResponse:
-    """Store responses for one pending experiment form group."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+    """Store responses for one pending run form group."""
+    manager = _get_run_manager(request)
+    config = manager.run_config
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     try:
-        group = await ExperimentManager.submit_form_group_async(
+        group = await manager.submit_form_group_async(
             provider=provider,
-            experiment_name=experiment_name,
+            experiment_name=config.name,
             player_id=player.id,
             group_id=body.group_id,
             responses=body.responses,
@@ -269,27 +248,23 @@ async def submit_experiment_form_group(
     )
 
 
-@router.post("/{experiment_name}/sessions", response_model=CreateGameResponse)
-async def create_experiment_session(
-    experiment_name: str,
+@router.post("/sessions", response_model=CreateGameResponse)
+async def create_run_session(
     body: ExperimentSessionRequest,
     request: Request,
 ) -> CreateGameResponse:
-    """Create or resume a session for one experiment assignment."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+    """Create or resume a session for one run assignment."""
+    manager = _get_run_manager(request)
+    config = manager.run_config
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 
     try:
-        entry, _assignment = await ExperimentManager.start_assignment_session_async(
+        entry, _assignment = await manager.start_assignment_session_async(
             provider=provider,
             registry=registry,
-            experiment_name=experiment_name,
+            experiment_name=config.name,
             player=player,
             source=body.source,
             assignment_id=body.assignment_id,
@@ -306,57 +281,44 @@ async def create_experiment_session(
     )
 
 
-@router.get("/{experiment_name}/progress", response_model=ExperimentProgressResponse)
-async def experiment_progress(experiment_name: str, request: Request) -> ExperimentProgressResponse:
-    """Return the current finite progress for the usability experiment."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+@router.get("/progress", response_model=ExperimentProgressResponse)
+async def run_progress(request: Request) -> ExperimentProgressResponse:
+    """Return the current finite progress for the run."""
+    manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    progress = await ExperimentManager.compute_progress_async(provider=provider, experiment_name=experiment_name)
-    await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
+    progress = await manager.compute_progress_async(provider=provider, experiment_name=manager.run_config.name)
+    await manager.ensure_run_async(provider=provider)
     return _progress_response(progress)
 
 
-@router.get("/{experiment_name}/eligible-options", response_model=EligibleAssignmentOptionsResponse)
-async def get_eligible_options(experiment_name: str, request: Request) -> EligibleAssignmentOptionsResponse:
+@router.get("/eligible-options", response_model=EligibleAssignmentOptionsResponse)
+async def get_eligible_options(request: Request) -> EligibleAssignmentOptionsResponse:
     """Return eligible game/PC/NPC triplets for the authenticated player."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+    manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    options = await ExperimentManager.get_eligible_options_async(
+    options = await manager.get_eligible_options_async(
         provider=provider,
-        experiment_name=experiment_name,
+        experiment_name=manager.run_config.name,
         player=player,
     )
     return EligibleAssignmentOptionsResponse(options=[option for option in await _eligible_assignment_options(provider, options)])
 
 
-@router.post("/{experiment_name}/assignments/select", response_model=ExperimentAssignmentSummary)
+@router.post("/assignments/select", response_model=ExperimentAssignmentSummary)
 async def select_assignment(
-    experiment_name: str,
     body: SelectAssignmentRequest,
     request: Request,
 ) -> ExperimentAssignmentSummary:
     """Create an assignment for the authenticated player based on their explicit triplet selection."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+    manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     try:
-        assignment = await ExperimentManager.create_player_choice_assignment_async(
+        assignment = await manager.create_player_choice_assignment_async(
             provider=provider,
-            experiment_name=experiment_name,
+            experiment_name=manager.run_config.name,
             player=player,
             game_name=body.game_name,
             pc_hid=body.pc_hid,
@@ -367,16 +329,12 @@ async def select_assignment(
     return await _assignment_summary(provider, assignment)
 
 
-@router.get("/{experiment_name}/status", response_model=ExperimentStatusResponse)
-async def experiment_status(experiment_name: str, request: Request) -> ExperimentStatusResponse:
-    """Return the current aggregate status for one experiment."""
-    require_standard_mode_from_request(
-        request,
-        detail="Experiment endpoints are disabled when the server is running in free play mode.",
-    )
-    _require_allowed_experiment(experiment_name=experiment_name, request=request)
+@router.get("/status", response_model=ExperimentStatusResponse)
+async def run_status(request: Request) -> ExperimentStatusResponse:
+    """Return the current aggregate status for the run."""
+    manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
-    status_payload = await ExperimentManager.compute_status_async(provider=provider, experiment_name=experiment_name)
+    await manager.ensure_run_async(provider=provider)
+    status_payload = await manager.compute_status_async(provider=provider, experiment_name=manager.run_config.name)
     return _status_response(status_payload)

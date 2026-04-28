@@ -19,9 +19,8 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import httpx
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.deployments import templates as deployment_templates
-from dcs_simulation_engine.helpers.experiment_helpers import get_experiment_config
 from dcs_simulation_engine.infra.fly import FlyError
 from dcs_simulation_engine.utils.auth import validate_access_key
 from jinja2 import StrictUndefined
@@ -363,9 +362,9 @@ def _api_process_command(
         "--remote-managed",
     ]
     if free_play:
-        parts.append("--free-play")
+        parts.extend(["--config", "/app/examples/run_configs/demo.yml"])
     else:
-        parts.extend(["--default-experiment", deployment_name])
+        parts.extend(["--config", "/app/deployments/" + deployment_name + "/run_configs/run_config.yml"])
     parts.extend(
         [
             "--bootstrap-token",
@@ -431,11 +430,11 @@ def _deployment_artifact_dir(*, experiment_name: str) -> Path:
     return _repo_root() / REMOTE_DEPLOYMENTS_DIRNAME / slugify_experiment_name(experiment_name)
 
 
-def _write_deployment_experiment_config(*, output_dir: Path, experiment_name: str, source_path: Path) -> Path:
-    """Persist the selected experiment config under the deployment artifact directory."""
-    experiment_dir = output_dir / "experiments"
+def _write_deployment_run_config(*, output_dir: Path, experiment_name: str, source_path: Path) -> Path:
+    """Persist the selected run config under the deployment artifact directory."""
+    experiment_dir = output_dir / "run_configs"
     experiment_dir.mkdir(parents=True, exist_ok=True)
-    destination = experiment_dir / f"{slugify_experiment_name(experiment_name)}.yaml"
+    destination = experiment_dir / "run_config.yml"
     shutil.copy2(source_path, destination)
     return destination
 
@@ -557,10 +556,14 @@ def _bootstrap_remote_deployment(
     return admin_key
 
 
-def load_experiment_config(config: str | Path) -> tuple[Path, ExperimentConfig]:
-    """Resolve and load the experiment config selected for remote deployment."""
-    resolved = Path(get_experiment_config(str(config))).expanduser().resolve()
-    return resolved, ExperimentConfig.load(resolved)
+def load_run_config(config: str | Path) -> tuple[Path, RunConfig]:
+    """Resolve and load the run config selected for remote deployment."""
+    possible_path = Path(config).expanduser()
+    if possible_path.is_file():
+        resolved = possible_path.resolve()
+    else:
+        resolved = (_repo_root() / "examples" / "run_configs" / str(config)).with_suffix(".yml").resolve()
+    return resolved, RunConfig.load(resolved)
 
 
 def _resolve_remote_deployment_target(
@@ -568,7 +571,7 @@ def _resolve_remote_deployment_target(
     config: str | Path | None,
     free_play: bool,
 ) -> tuple[str, Path | None]:
-    """Return the deployment name and optional source experiment config path."""
+    """Return the deployment name and optional source run config path."""
     if free_play:
         if config is not None:
             raise RemoteLifecycleError("Use either config or free_play, not both.")
@@ -577,7 +580,7 @@ def _resolve_remote_deployment_target(
     if config is None:
         raise RemoteLifecycleError("config is required unless free_play=True.")
 
-    config_path, experiment = load_experiment_config(config)
+    config_path, experiment = load_run_config(config)
     return experiment.name, config_path
 
 
@@ -633,7 +636,7 @@ def deploy_remote_experiment(
         rendered_configs=rendered_configs,
     )
     if config_path is not None:
-        _write_deployment_experiment_config(
+        _write_deployment_run_config(
             output_dir=artifact_dir,
             experiment_name=deployment_name,
             source_path=config_path,
@@ -734,7 +737,7 @@ def fetch_remote_status(
             experiment_status: dict[str, Any]
             if experiment_name:
                 headers = {"Authorization": f"Bearer {admin_key}"}
-                experiment_response = client.get(f"/api/experiments/{experiment_name}/status", headers=headers)
+                experiment_response = client.get("/api/run/status", headers=headers)
                 experiment_response.raise_for_status()
                 experiment_status = experiment_response.json()
             else:
