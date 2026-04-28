@@ -37,7 +37,9 @@ def _assert_player_line(line: str, *, expected_pc_hid: str, case_id: str, datase
 
 
 def _assert_simulator_line(line: str, *, case_id: str, dataset_name: str) -> None:
-    assert line.startswith(SIMULATOR_PREFIX), f"{dataset_name} case {case_id} transcript simulator line must start with '{SIMULATOR_PREFIX}'"
+    assert line.startswith(SIMULATOR_PREFIX), (
+        f"{dataset_name} case {case_id} transcript simulator line must start with '{SIMULATOR_PREFIX}'"
+    )
     assert line[len(SIMULATOR_PREFIX) :].strip(), f"{dataset_name} case {case_id} transcript simulator line must have content"
 
 

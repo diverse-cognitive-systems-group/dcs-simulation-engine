@@ -42,6 +42,15 @@ plugins:
             # show_if_no_docstring: true  # Renders members even if they have no docstring (shows at least the name/signature)
             show_root_heading: true # Adds a top-level heading for the root object/module on the page
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra_javascript:
+  - https://unpkg.com/mermaid@11/dist/mermaid.min.js
+  - javascripts/mermaid.js
 nav:
   - Home: index.md
 
@@ -49,6 +58,7 @@ nav:
 
   - Design:
       - Overview: design/overview.md
+      - Architecture Overview: architecture_overview.md
       - Usability: design/usability.md
       - Simulation Quality: design/simulation_quality.md
       - Games: design/games.md
