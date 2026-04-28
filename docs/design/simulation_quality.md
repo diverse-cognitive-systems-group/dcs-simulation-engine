@@ -1,6 +1,6 @@
-# DCS-SE Simulation Quality Studies
+# DCS-SE Simulation Quality
 
-Simulation quality studies are re-run following modifications to characters or underlying models to demonstrate that DCS-SE continues to produce consistently high-quality role-playing behavior.
+Simulation quality checks are re-run following modifications to characters, prompts, validators, or underlying models to demonstrate that DCS-SE continues to produce consistently high-quality simulation behavior.
 
 ⚠️ TODO: link report.
 
@@ -8,9 +8,34 @@ Simulation quality studies are re-run following modifications to characters or u
 
 ---
 
-# Validator Architecture
+## Character Representational Quality
 
-## 1. Motivation
+Character representational quality is how we test and maintain whether a simulated character behaves like the cognitive system it is supposed to represent.
+
+For each character, we:
+
+- Build a structured character sheet grounded in research, interviews, or other appropriate source material
+- Generate a HITL scenario scaffold covering multiple pressure categories
+- Edit those scenarios so they actually test the representational bounds of the character
+- Run HITL updates to generate simulator outputs and collect evaluator feedback on whether responses are in character, out of character, or invalid
+- Export the completed scenarios and generate a simulation-quality report
+
+Characters are not added to production unless they pass the quality thresholds defined by `character-release-policy.yml`. In practice this means they must clear release gates such as:
+
+- **In-character fidelity (ICF)** — whether the character stays behaviorally consistent across scenarios
+- **Scenario coverage** — whether the evaluation meaningfully covers the pressure-category space intended for that character
+
+Because these evaluations are fingerprinted against the character sheet, prompt, and model configuration, changes to any of those components require re-evaluation.
+
+For the end-to-end workflow, see [Custom Characters](../user_guide/advanced.md#custom-characters).
+
+## Gameplay Quality
+
+Gameplay is guardrailed using low-latency validator ensembles that fail quickly when a player turn or simulator turn violates engine or game rules.
+
+## Validator Architecture
+
+### 1. Motivation
 
 The turn-based role-playing simulation involves two characters — a **player character (PC)** controlled by the human participant (or, in some experimental conditions, by an LLM surrogate), and a **non-player character (NPC)** controlled entirely by the simulator. LLMs are responsible for nearly all components of interaction including the generation of a player's output, scene description, and determining valid outputs. When a single LLM call drives both the adjudication of the player's action and the narration of the response (the "updater") without guardrails, the simulation is subject to well-known failure modes that contaminate the interaction data collected by the engine.
 
@@ -29,7 +54,7 @@ A note on terminology used throughout the rest of this document:
 - **Player output** — text the player submits, written from the PC's perspective (e.g. `"I pull on the door."`). The player is the agent producing it; the PC is the in-fiction subject.
 - **Simulator response** — everything the simulator produces in reaction: adjudication of the player's action, scene / world updates, and optionally an NPC action or speech act in the same immediate beat. The NPC is not the only thing the simulator outputs — it is one possible component of the simulation engine's response.
 
-## 2. Architectural overview
+### 2. Architectural overview
 
 <img src="../assets/validator_architecture.png" width="400" height="400">
 
@@ -50,7 +75,7 @@ The diagram above walks through one full turn of the control flow:
 | `DEFAULT_SIMULATOR_TURN_VALIDATORS` | `prompts.py` | Ordered list of simulator-response rule templates |
 | `SimulatorClient` | `ai_client.py` | Single integration point used by game `step()` methods — renders prompts, runs validators, retries the updater, records failures |
 
-## 3. Data model
+### 3. Data model
 
 Validation outcomes flow end-to-end via four record types (`ai_client.py`):
 
@@ -89,7 +114,7 @@ class ParsedSimulatorResponse(NamedTuple):
 
 `SimulatorTurnResult` is what `step()` returns to the game loop. `SimulatorValidationFailure` is the record persisted to MongoDB via the event recorder, so every violation is queryable post-hoc for per-rule failure-rate analysis.
 
-## 4. Validator prompts
+### 4. Validator prompts
 
 Each validator is a single system prompt that instructs the judge LLM to emit strict JSON:
 
@@ -105,7 +130,7 @@ Every validator prompt is rendered by `_render_prompt` from a shared character c
 
 The judge model is configurable per `SimulatorClient` instance (`validator_model`). The default is the same as the updater (`DEFAULT_MODEL = "openai/gpt-5-mini"` at `ai_client.py`), but swapping in a cheaper/faster judge is a single constructor argument.
 
-## 5. Symmetric rules (applied to both PC and NPC)
+### 5. Symmetric rules (applied to both PC and NPC)
 
 Three rule concerns apply symmetrically to both sides of the interaction, with a PC-side version applied to every submitted player output and an NPC-side version applied to every simulator response. These three concerns form the core of the validator design: they protect against the same underlying failure modes regardless of which side is generating the content.
 
@@ -119,7 +144,7 @@ Three rule concerns apply symmetrically to both sides of the interaction, with a
 
 The player-input set (`DEFAULT_PLAYER_TURN_VALIDATORS` in `prompts.py`) runs the three PC-side rules above as a fan-out on every submitted player output. Validators race in parallel; as soon as any rule fails, remaining in-flight rules are cancelled and awaited. This is a deliberate cost/latency optimisation: any single failure vetoes the turn, so no information is lost by cancelling the others. In the pass case the full fan-out cost is paid, but latency is bounded by the slowest single judge rather than the sum.
 
-## 6. Simulator-only rules
+### 6. Simulator-only rules
 
 Three further rules apply only to the simulator response, because they govern how the simulated world is presented to the player and how the objective is pursued — concerns with no PC-side analog:
 
@@ -131,7 +156,7 @@ Three further rules apply only to the simulator response, because they govern ho
 
 The simulator-response set (`DEFAULT_SIMULATOR_TURN_VALIDATORS` in `prompts.py`) combines the three NPC-side rules from §5 with the three simulator-only rules above, and gates every updater-generated response — across adjudication, scene updates, and any NPC action or speech act the response may contain.
 
-## 7. Prompt design conventions
+### 7. Prompt design conventions
 
 Every validator prompt follows a consistent skeleton, which is the discipline that keeps the set stable:
 
@@ -145,7 +170,7 @@ Every validator prompt follows a consistent skeleton, which is the discipline th
 
 The result is that each rule prompt reads like a compact spec — short, self-contained, and debuggable in isolation. When a rule misfires, a single string can be edited and re-run without touching any other rule.
 
-## 8. Testing and maintaining validator quality
+### 8. Testing and maintaining validator quality
 
 The validator architecture above describes *what* the rules are and *how* they fan out at runtime; this section covers *how we know they still work* after a model swap, prompt edit, or rule revision.
 
@@ -184,13 +209,13 @@ Validator-level quality (this document) and character-level quality are two dist
 
 A character that scores well on ICF still depends on the validator ensemble being calibrated correctly, which is why both layers are exercised when a model is swapped or a character is updated.
 
-## 9. Concerns and future work
+### 9. Concerns and future work
 
 1. **Judge-model drift.** Rule firing rates depend on the judge model's behaviour. Any upstream model change could silently alter the false-positive / false-negative mix. The fixture suite in §8 catches drift on the labelled cases, but rule firing rates on production transcripts can still shift in ways not covered by the fixtures — sampling and re-grading a slice of recorded sessions after each model bump is the natural complement.
 2. **Rule independence assumption.** The fan-out design assumes rules are roughly independent. Observed co-firing on narrative content suggests partial overlap, especially between `VALID-PERCEPTION-BOUNDARY`, `VALID-AUTHORITY-BOUNDARY-SIMULATOR`, and `VALID-ADJUDICATION`. A principled merging (e.g. a single judge seeing all relevant rules with composite reasoning) may outperform the current fan-out on high-overlap cases, at the cost of losing per-rule attribution.
 3. **Cost.** Each turn incurs up to `len(player_validators)` parallel judge calls plus a sequential walk of `simulator_validators` (bounded by first-failure), plus one updater call and optionally one retry. First-failure cancellation keeps the failure case cheap; the pass case pays the full fan-out and is worth quantifying on a per-game basis before any experiment at scale.
 
-## 10. File reference
+### 10. File reference
 
 - Core classes: `dcs_simulation_engine/games/ai_client.py`
     - `SimulatorValidationFailure`, `SimulatorComponentResult`, `SimulatorTurnResult`, `ParsedSimulatorResponse` — result types
