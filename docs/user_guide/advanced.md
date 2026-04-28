@@ -225,7 +225,7 @@ python openevolve-run.py initial_program.py evaluator.py --config config.yaml --
 > A complete reference implementation — including a multi-stage cascading evaluator, a frozen
 > prompt template, and a runtime config that injects an LLM-driven player character — lives in the
 > companion repo [`dcs-interfacing-agents`](https://github.com/diverse-cognitive-systems-group/dcs-interfacing-agents)
-> under `OpenEvolve/examples/llm_prompt/`. 
+> under `OpenEvolve/examples/llm_prompt/` (NOTE: dcs-interfacing-agents is WIP regarding OpenEvolve example). 
 >
 > The comprehensive and complete default `config.yaml` file can be found at OpenEvolve's GitHub page regarding the configs – [page link](https://github.com/algorithmicsuperintelligence/openevolve/blob/main/configs/default_config.yaml).
 
