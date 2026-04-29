@@ -7,6 +7,33 @@ import pytest
 from dcs_simulation_engine.infra import remote as remote_infra
 
 
+def _write_run_config(path: Path, *, name: str = "usability-ca") -> None:
+    """Write a minimal valid run config for remote deployment tests."""
+    path.write_text(
+        "\n".join(
+            [
+                f"name: {name}",
+                "description: Remote deployment test run",
+                "ui:",
+                "  registration_required: true",
+                "players:",
+                "  humans:",
+                "    all: true",
+                "games:",
+                "  - name: Explore",
+                "next_game_strategy:",
+                "  strategy:",
+                "    id: full_character_access",
+                "    allow_choice_if_multiple: true",
+                "    require_completion: false",
+                "forms: []",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 @pytest.mark.unit
 def test_derive_remote_app_names_uses_default_prefix() -> None:
     """Remote app names should be derived from the normalized experiment slug."""
@@ -105,20 +132,7 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
     """Remote deploy should render temp Fly configs and return concrete follow-up commands."""
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
-    config_path.write_text(
-        "\n".join(
-            [
-                "name: usability-ca",
-                "assignment_strategy:",
-                "  strategy: random_unique_game",
-                "  games:",
-                "    - explore",
-                "  quota_per_game: 1",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    _write_run_config(config_path)
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
@@ -172,22 +186,23 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
     api_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-api.fly.toml").read_text(encoding="utf-8")
     ui_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-ui.fly.toml").read_text(encoding="utf-8")
     db_fly = (artifacts_root / "deployments" / "usability-ca" / "dcs-usability-ca-db.fly.toml").read_text(encoding="utf-8")
-    copied_experiment = (artifacts_root / "deployments" / "usability-ca" / "experiments" / "usability-ca.yaml").read_text(encoding="utf-8")
+    copied_run_config = (artifacts_root / "deployments" / "usability-ca" / "run_configs" / "run_config.yml").read_text(encoding="utf-8")
 
     assert 'dockerfile = "../../docker/api.dockerfile"' in api_fly
     assert "--host 0.0.0.0 --port 8000" in api_fly
     assert "--remote-managed" in api_fly
     assert 'dockerfile = "../../docker/ui.fly.dockerfile"' in ui_fly
     assert 'dockerfile = "../../docker/mongo.fly.dockerfile"' in db_fly
-    assert "name: usability-ca" in copied_experiment
+    assert "--config /app/deployments/usability-ca/run_configs/run_config.yml" in api_fly
+    assert "name: usability-ca" in copied_run_config
 
 
 @pytest.mark.unit
-def test_deploy_remote_experiment_supports_free_play_mode(
+def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Remote deploy should support free-play mode without an experiment config."""
+    """Remote deploy should support the anonymous demo run config without a custom config."""
     seed_path = tmp_path / "seed.json"
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
@@ -235,9 +250,9 @@ def test_deploy_remote_experiment_supports_free_play_mode(
     assert len(deploy_calls) == 3
 
     api_fly = (artifacts_root / "deployments" / "free-play" / "dcs-free-play-api.fly.toml").read_text(encoding="utf-8")
-    assert "--free-play" in api_fly
+    assert "--config /app/examples/run_configs/demo.yml" in api_fly
     assert "--default-experiment" not in api_fly
-    assert not (artifacts_root / "deployments" / "free-play" / "experiments").exists()
+    assert not (artifacts_root / "deployments" / "free-play" / "run_configs").exists()
 
 
 @pytest.mark.unit
@@ -248,20 +263,7 @@ def test_deploy_remote_experiment_can_target_one_app(
     """Targeted remote deploys should only redeploy the requested app and skip bootstrap."""
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
-    config_path.write_text(
-        "\n".join(
-            [
-                "name: usability-ca",
-                "assignment_strategy:",
-                "  strategy: random_unique_game",
-                "  games:",
-                "    - explore",
-                "  quota_per_game: 1",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    _write_run_config(config_path)
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
@@ -319,20 +321,7 @@ def test_deploy_remote_experiment_api_only_does_not_redeploy_ui(
     """Targeted API deploys should not implicitly redeploy the UI app."""
     config_path = tmp_path / "experiment.yaml"
     seed_path = tmp_path / "seed.json"
-    config_path.write_text(
-        "\n".join(
-            [
-                "name: usability-ca",
-                "assignment_strategy:",
-                "  strategy: random_unique_game",
-                "  games:",
-                "    - explore",
-                "  quota_per_game: 1",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    _write_run_config(config_path)
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
@@ -434,7 +423,7 @@ def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch
                         "experiment_name": "usability-ca",
                     }
                 )
-            if path == "/api/experiments/usability-ca/status":
+            if path == "/api/run/status":
                 return _Response({"is_open": True, "total": 4, "completed": 2, "per_game": {}})
             raise AssertionError(f"Unexpected path: {path}")
 
@@ -449,7 +438,7 @@ def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch
     assert result.experiment_name == "usability-ca"
     assert result.experiment_status == {"is_open": True, "total": 4, "completed": 2, "per_game": {}}
     assert calls[1] == (
-        "/api/experiments/usability-ca/status",
+        "/api/run/status",
         {"Authorization": "Bearer admin-key"},
     )
 
