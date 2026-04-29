@@ -37,14 +37,14 @@ interface ExperimentQuestion {
   key: string
   prompt: string
   answer_type:
-  | 'string'
-  | 'bool'
-  | 'single_choice'
-  | 'multi_choice'
-  | 'number'
-  | 'email'
-  | 'phone'
-  | null
+    | 'string'
+    | 'bool'
+    | 'single_choice'
+    | 'multi_choice'
+    | 'number'
+    | 'email'
+    | 'phone'
+    | null
   options?: Array<string | number> | null
   required?: boolean
 }
@@ -53,10 +53,10 @@ interface ExperimentFormSchema {
   name: string
   trigger: {
     event:
-    | 'before_all_assignments'
-    | 'before_assignment'
-    | 'after_assignment'
-    | 'after_all_assignments'
+      | 'before_all_assignments'
+      | 'before_assignment'
+      | 'after_assignment'
+      | 'after_all_assignments'
     match: null
   }
   questions: ExperimentQuestion[]
@@ -747,13 +747,10 @@ function RunPage() {
     setSubmitError(null)
     setSubmitting('form')
     try {
-      await httpClient<ExperimentFormSubmitResponse>(
-        '/api/run/forms/submit',
-        {
-          method: 'POST',
-          body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
-        },
-      )
+      await httpClient<ExperimentFormSubmitResponse>('/api/run/forms/submit', {
+        method: 'POST',
+        body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
+      })
       await refetch()
     } catch (submitErr) {
       setSubmitError(submitErr instanceof Error ? submitErr.message : 'Unable to submit form.')
@@ -769,16 +766,13 @@ function RunPage() {
     if (!assignment) return
     setSubmitting('session')
     try {
-      const response = await httpClient<{ session_id: string }>(
-        '/api/run/sessions',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            source: 'run',
-            assignment_id: assignment.assignment_id,
-          }),
-        },
-      )
+      const response = await httpClient<{ session_id: string }>('/api/run/sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          source: 'run',
+          assignment_id: assignment.assignment_id,
+        }),
+      })
       await navigate({
         to: '/play/$sessionId',
         params: { sessionId: response.session_id },
@@ -800,13 +794,10 @@ function RunPage() {
     setSubmitError(null)
     setSubmitting('select')
     try {
-      await httpClient(
-        '/api/run/assignments/select',
-        {
-          method: 'POST',
-          body: JSON.stringify({ game_name: gameName, pc_hid: pcHid, npc_hid: npcHid }),
-        },
-      )
+      await httpClient('/api/run/assignments/select', {
+        method: 'POST',
+        body: JSON.stringify({ game_name: gameName, pc_hid: pcHid, npc_hid: npcHid }),
+      })
       setSelectedGame(null)
       setSelectedPc(null)
       setSelectedNpc(null)

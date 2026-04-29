@@ -30,6 +30,7 @@ class EngineRunManager:
     _run_config: RunConfig | None = None
 
     def __init__(self, run_config: RunConfig, provider: Any | None = None) -> None:
+        """Initialize the manager with the active run config and optional provider."""
         self.run_config = run_config
         self.provider = provider
         type(self)._run_config = run_config

@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from typing import Callable, Iterator
 
 import pytest
-from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
+from dcs_simulation_engine.core.run_config import RunConfig
 
 
 @pytest.fixture

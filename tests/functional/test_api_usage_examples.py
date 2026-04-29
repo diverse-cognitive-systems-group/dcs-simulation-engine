@@ -13,6 +13,7 @@ import httpx
 import pytest
 import uvicorn
 from dcs_simulation_engine.api.app import create_app
+from dcs_simulation_engine.core.run_config import RunConfig
 
 pytestmark = pytest.mark.functional
 
@@ -20,12 +21,39 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _EXAMPLES_DIR = _REPO_ROOT / "examples" / "api_usage"
 _IGNORED_EXAMPLE_STEMS = {"infer_intent_eval"}
 _SCRIPT_CONFIG = {
-    "explore": {"mode": "free_play", "args": []},
-    "infer_intent": {"mode": "free_play", "args": []},
-    "goal_horizon": {"mode": "free_play", "args": []},
-    "foresight": {"mode": "free_play", "args": []},
-    "register_auth_play_close": {"mode": "standard", "args": []},
+    "explore": {"registration_required": False, "args": []},
+    "infer_intent": {"registration_required": False, "args": []},
+    "goal_horizon": {"registration_required": False, "args": []},
+    "foresight": {"registration_required": False, "args": []},
+    "register_auth_play_close": {"registration_required": True, "args": []},
 }
+
+
+def _run_config(*, registration_required: bool) -> RunConfig:
+    """Return a compact run config for API usage smoke tests."""
+    return RunConfig.model_validate(
+        {
+            "name": "api-usage-registration" if registration_required else "api-usage-anonymous",
+            "description": "API usage example smoke test",
+            "ui": {"registration_required": registration_required},
+            "players": {"humans": {"all": True}},
+            "games": [
+                {"name": "Explore"},
+                {"name": "Infer Intent"},
+                {"name": "Foresight"},
+                {"name": "Goal Horizon"},
+                {"name": "Teamwork"},
+            ],
+            "next_game_strategy": {
+                "strategy": {
+                    "id": "full_character_access",
+                    "allow_choice_if_multiple": True,
+                    "require_completion": False,
+                }
+            },
+            "forms": [],
+        }
+    )
 
 
 def _find_open_port() -> int:
@@ -36,12 +64,12 @@ def _find_open_port() -> int:
 
 
 @contextmanager
-def _run_live_server(*, provider, server_mode: str):
+def _run_live_server(*, provider, run_config: RunConfig):
     """Run the FastAPI app under uvicorn on a temporary local port."""
     port = _find_open_port()
     app = create_app(
         provider=provider,
-        server_mode=server_mode,
+        run_config=run_config,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
@@ -94,7 +122,8 @@ def test_api_usage_example_runs(
     env = os.environ.copy()
     env["PYTHONPATH"] = str(_REPO_ROOT)
 
-    with _run_live_server(provider=async_mongo_provider, server_mode=config["mode"]) as base_url:
+    run_config = _run_config(registration_required=config["registration_required"])
+    with _run_live_server(provider=async_mongo_provider, run_config=run_config) as base_url:
         result = subprocess.run(
             [sys.executable, str(script), "--base-url", base_url, *config["args"]],
             cwd=_REPO_ROOT,
