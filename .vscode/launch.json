@@ -16,7 +16,7 @@
             "cwd": "${workspaceFolder}",
         },
         {
-            "name": "dcs server",
+            "name": "dcs server demo",
             "type": "debugpy",
             "request": "launch",
             "python": "/opt/venv/bin/python",

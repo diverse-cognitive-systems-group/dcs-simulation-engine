@@ -32,16 +32,17 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
         """
         name: test-usability-exp
         description: Stable fixture for experiment tests.
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-            - Infer Intent
-            - Foresight
-            - Goal Horizon
-          quota_per_game: 5
-          max_assignments_per_player: 1
-          seed: test-usability-seed
+        games:
+          - name: Explore
+          - name: Infer Intent
+          - name: Foresight
+          - name: Goal Horizon
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 5
+            max_assignments_per_player: 1
+            seed: test-usability-seed
         forms:
           - name: intake
             trigger:
@@ -127,15 +128,16 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
         """
         name: test-multi-assignment-exp
         description: Fixture for multi-assignment progress tests.
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-            - Infer Intent
-            - Foresight
-          quota_per_game: 10
-          max_assignments_per_player: 3
-          seed: test-multi-seed
+        games:
+          - name: Explore
+          - name: Infer Intent
+          - name: Foresight
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 10
+            max_assignments_per_player: 3
+            seed: test-multi-seed
         forms:
           - name: intake
             trigger:

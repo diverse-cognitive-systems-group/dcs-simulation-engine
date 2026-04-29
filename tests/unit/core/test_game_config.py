@@ -42,7 +42,7 @@ async def test_default_get_valid_characters_uses_game_class_filters(
 
 async def test_goal_horizon_get_valid_characters_uses_default_player_filter(async_mongo_provider) -> None:
     """Goal Horizon choices should follow GoalHorizonGame.DEFAULT_PCS_FILTER."""
-    cfg = GameConfig.load("games/goal-horizon.yaml")
+    cfg = GameConfig.from_game_class(GoalHorizonGame)
     characters = await async_mongo_provider.get_characters()
     expected = {
         c.hid

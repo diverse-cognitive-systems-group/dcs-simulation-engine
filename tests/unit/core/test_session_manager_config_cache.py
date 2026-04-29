@@ -25,15 +25,17 @@ def test_get_game_config_cached_loads_once_and_returns_defensive_copies(monkeypa
     SessionManager._game_config_cache.clear()
     load_calls = {"count": 0}
 
-    def _fake_get_game_config(_game: str) -> str:
-        return "/tmp/explore.yaml"
+    class _FakeGame:
+        GAME_NAME = "Explore"
 
-    def _fake_load(_path: str) -> _DummyConfig:
+    def _fake_from_game_class(_game_cls, *, overrides=None) -> _DummyConfig:
+        assert _game_cls is _FakeGame
+        assert overrides == {}
         load_calls["count"] += 1
         return _DummyConfig()
 
-    monkeypatch.setattr("dcs_simulation_engine.core.session_manager.get_game_config", _fake_get_game_config)
-    monkeypatch.setattr("dcs_simulation_engine.core.session_manager.GameConfig.load", _fake_load)
+    monkeypatch.setattr(SessionManager, "_builtin_game_classes", classmethod(lambda cls: {"explore": _FakeGame}))
+    monkeypatch.setattr("dcs_simulation_engine.core.session_manager.GameConfig.from_game_class", _fake_from_game_class)
 
     try:
         cfg1 = SessionManager.get_game_config_cached("Explore")

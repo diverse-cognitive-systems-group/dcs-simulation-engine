@@ -1,7 +1,7 @@
-"""Tests for ExperimentConfig."""
+"""Tests for RunConfig."""
 
 import pytest
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config_references
 
 pytestmark = [pytest.mark.unit, pytest.mark.anyio]
 
@@ -23,7 +23,7 @@ async def test_load_valid_usability_experiment_config(usability_experiment_confi
 
 
 async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
-    """Configs must use assignment_strategy and should not accept the old key."""
+    """Configs must use next_game_strategy and should not accept the old key."""
     path = write_yaml(
         "legacy-experiment.yaml",
         """
@@ -38,50 +38,55 @@ async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
         """,
     )
 
-    with pytest.raises(ValueError, match="assignment_strategy"):
-        ExperimentConfig.load(path)
+    with pytest.raises(ValueError, match="Unknown field at `assignment_protocol`"):
+        RunConfig.load(path)
 
 
 async def test_invalid_game_name_fails(write_yaml) -> None:
-    """Unknown games should be rejected at config-parse time."""
+    """Unknown games should be rejected by static reference validation."""
     path = write_yaml(
         "bad-experiment.yaml",
         """
         name: bad-exp
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Not A Real Game
-          quota_per_game: 1
-          max_assignments_per_player: 1
+        games:
+          - name: Not A Real Game
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 1
         """,
     )
 
-    with pytest.raises(ValueError, match="Unknown game reference"):
-        ExperimentConfig.load(path)
+    config = RunConfig.load(path)
+    with pytest.raises(FileNotFoundError, match="No game config matching"):
+        validate_run_config_references(config)
 
 
-async def test_removed_assignment_policy_fields_fail(write_yaml) -> None:
-    """Configs should use require_completion and allow_choice_if_multiple."""
+async def test_assignment_policy_fields_use_run_config_names(write_yaml) -> None:
+    """Configs should expose require_completion and allow_choice_if_multiple."""
     path = write_yaml(
-        "old-policy-fields.yaml",
+        "assignment-policy-fields.yaml",
         """
-        name: old-policy-fields
-        description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-          quota_per_game: 1
-          max_assignments_per_player: 1
-          assignment_mode: player_choice
-          require_assignment_completion: false
+        name: assignment-policy-fields
+        description: Policy field fixture
+        games:
+          - name: Explore
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 1
+            allow_choice_if_multiple: true
+            require_completion: false
         """,
     )
 
-    with pytest.raises(ValueError, match="allow_choice_if_multiple and require_completion"):
-        ExperimentConfig.load(path)
+    config = RunConfig.load(path)
+
+    assert config.assignment_strategy.allow_choice_if_multiple is True
+    assert config.assignment_strategy.require_completion is False
 
 
 async def test_invalid_quota_fails(write_yaml) -> None:
@@ -91,17 +96,19 @@ async def test_invalid_quota_fails(write_yaml) -> None:
         """
         name: bad-quota
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-          quota_per_game: 0
-          max_assignments_per_player: 1
+        games:
+          - name: Explore
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 0
+            max_assignments_per_player: 1
         """,
     )
 
+    config = RunConfig.load(path)
     with pytest.raises(ValueError, match="positive quota_per_game"):
-        ExperimentConfig.load(path)
+        validate_run_config_references(config)
 
 
 async def test_max_assignments_cannot_exceed_game_count(write_yaml) -> None:
@@ -111,18 +118,20 @@ async def test_max_assignments_cannot_exceed_game_count(write_yaml) -> None:
         """
         name: bad-max
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-            - Foresight
-          quota_per_game: 1
-          max_assignments_per_player: 3
+        games:
+          - name: Explore
+          - name: Foresight
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 3
         """,
     )
 
+    config = RunConfig.load(path)
     with pytest.raises(ValueError, match="cannot assign more games per player"):
-        ExperimentConfig.load(path)
+        validate_run_config_references(config)
 
 
 async def test_invalid_form_field_type_fails(write_yaml) -> None:
@@ -132,12 +141,13 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
         """
         name: bad-form
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-          quota_per_game: 1
-          max_assignments_per_player: 1
+        games:
+          - name: Explore
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 1
         forms:
           - name: intake
             trigger:
@@ -152,7 +162,7 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
     )
 
     with pytest.raises(ValueError, match="Input should be"):
-        ExperimentConfig.load(path)
+        RunConfig.load(path)
 
 
 async def test_legacy_before_or_after_form_key_is_rejected(write_yaml) -> None:
@@ -162,12 +172,13 @@ async def test_legacy_before_or_after_form_key_is_rejected(write_yaml) -> None:
         """
         name: legacy-form-trigger
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-          quota_per_game: 1
-          max_assignments_per_player: 1
+        games:
+          - name: Explore
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 1
         forms:
           - name: intake
             before_or_after: before
@@ -176,7 +187,7 @@ async def test_legacy_before_or_after_form_key_is_rejected(write_yaml) -> None:
     )
 
     with pytest.raises(ValueError, match="trigger"):
-        ExperimentConfig.load(path)
+        RunConfig.load(path)
 
 
 async def test_unknown_form_trigger_event_is_rejected(write_yaml) -> None:
@@ -186,12 +197,13 @@ async def test_unknown_form_trigger_event_is_rejected(write_yaml) -> None:
         """
         name: unknown-form-trigger
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-          quota_per_game: 1
-          max_assignments_per_player: 1
+        games:
+          - name: Explore
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 1
         forms:
           - name: intake
             trigger:
@@ -202,7 +214,7 @@ async def test_unknown_form_trigger_event_is_rejected(write_yaml) -> None:
     )
 
     with pytest.raises(ValueError, match="before_all_assignments"):
-        ExperimentConfig.load(path)
+        RunConfig.load(path)
 
 
 async def test_form_trigger_match_must_be_null(write_yaml) -> None:
@@ -212,12 +224,13 @@ async def test_form_trigger_match_must_be_null(write_yaml) -> None:
         """
         name: matched-form-trigger
         description: Broken
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-          quota_per_game: 1
-          max_assignments_per_player: 1
+        games:
+          - name: Explore
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 1
+            max_assignments_per_player: 1
         forms:
           - name: intake
             trigger:
@@ -229,7 +242,7 @@ async def test_form_trigger_match_must_be_null(write_yaml) -> None:
     )
 
     with pytest.raises(ValueError, match="match must be null"):
-        ExperimentConfig.load(path)
+        RunConfig.load(path)
 
 
 async def test_experiment_config_snapshot_is_serializable(usability_experiment_config) -> None:
@@ -238,7 +251,7 @@ async def test_experiment_config_snapshot_is_serializable(usability_experiment_c
     snapshot = config.model_dump(mode="json")
 
     assert snapshot["name"] == "test-usability-exp"
-    assert snapshot["assignment_strategy"]["max_assignments_per_player"] == 1
+    assert snapshot["next_game_strategy"]["strategy"]["max_assignments_per_player"] == 1
     assert snapshot["forms"][0]["name"] == "intake"
     assert snapshot["forms"][0]["trigger"] == {"event": "before_all_assignments", "match": None}
     assert "age" in [question["key"] for question in snapshot["forms"][0]["questions"]]
