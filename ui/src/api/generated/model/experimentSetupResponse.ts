@@ -9,6 +9,7 @@ import type { ExperimentAssignmentSummary } from './experimentAssignmentSummary'
 import type { ExperimentProgressResponse } from './experimentProgressResponse';
 import type { ExperimentSetupResponseFormsItem } from './experimentSetupResponseFormsItem';
 import type { NextAssignmentState } from './nextAssignmentState';
+import type { PendingFormGroupResponse } from './pendingFormGroupResponse';
 
 /**
  * Setup payload for the experiment landing page.
@@ -18,15 +19,13 @@ export interface ExperimentSetupResponse {
   description: string;
   is_open: boolean;
   forms?: ExperimentSetupResponseFormsItem[];
+  pending_form_groups?: PendingFormGroupResponse[];
   progress: ExperimentProgressResponse;
   current_assignment?: ExperimentAssignmentSummary | null;
-  pending_post_play?: boolean;
-  before_play_complete?: boolean;
   assignment_completed?: boolean;
   next_assignment?: NextAssignmentState | null;
   allow_choice_if_multiple?: boolean;
   require_completion?: boolean;
-  has_submitted_before_forms?: boolean;
   eligible_assignment_options?: EligibleAssignmentOption[];
   assignments?: ExperimentAssignmentSummary[];
   resumable_session_id?: string | null;

@@ -13,8 +13,6 @@ from dcs_simulation_engine.api.auth import (
     get_provider_from_websocket,
     get_registry_from_request,
     get_registry_from_websocket,
-    get_server_mode_from_request,
-    get_server_mode_from_websocket,
     is_remote_management_enabled_from_request,
     maybe_await,
     require_player_async,
@@ -210,12 +208,9 @@ async def setup_options(game_name: str, request: Request) -> GameSetupOptionsRes
     """Return setup-ready authorization and valid character choices for a game."""
     _require_generic_play_enabled(request)
     provider = get_provider_from_request(request)
-    server_mode = get_server_mode_from_request(request)
-    player_id: str | None = None
-    if server_mode == "standard":
-        player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-        player_id = player.id
-        await _reject_if_experiment_gated(provider=provider, player_id=player.id)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    player_id = player.id
+    await _reject_if_experiment_gated(provider=provider, player_id=player.id)
 
     try:
         game_config = SessionManager.get_game_config_cached(game_name)
@@ -270,12 +265,9 @@ async def create_game(body: CreateGameRequest, request: Request) -> CreateGameRe
     _require_generic_play_enabled(request)
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
-    server_mode = get_server_mode_from_request(request)
-    player_id: str | None = None
-    if server_mode == "standard":
-        player = await require_player_async(provider=provider, api_key=body.api_key)
-        player_id = player.id
-        await _reject_if_experiment_gated(provider=provider, player_id=player.id)
+    player = await require_player_async(provider=provider, api_key=body.api_key)
+    player_id = player.id
+    await _reject_if_experiment_gated(provider=provider, player_id=player.id)
 
     try:
         manager = await SessionManager.create_async(
@@ -313,18 +305,25 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
     provider = get_provider_from_websocket(websocket)
     registry = get_registry_from_websocket(websocket)
-    server_mode = get_server_mode_from_websocket(websocket)
 
     try:
+        # Try header-based auth first (Python client), then first-message auth (browser).
+        api_key = api_key_from_websocket(websocket)
+        if api_key is None:
+            raw = await websocket.receive_text()
+            auth_frame = parse_ws_auth(raw)
+            if auth_frame is not None:
+                api_key = auth_frame.api_key
+
+        player = await require_player_async(provider=provider, api_key=api_key)
+
         entry = registry.get(session_id)
         if entry is None:
             # Session may be dormant after a process restart — attempt to
             # hydrate it from the persisted runtime snapshot before giving up.
-            # Auth hasn't run yet, so pass player_id=None; the ownership check
-            # below will still enforce it once we have the player record.
             entry = await hydrate_session_async(
                 session_id=session_id,
-                player_id=None,
+                player_id=player.id,
                 provider=provider,
                 registry=registry,
             )
@@ -339,20 +338,10 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             await websocket.close()
             return
 
-        if server_mode == "standard":
-            # Try header-based auth first (Python client), then first-message auth (browser).
-            api_key = api_key_from_websocket(websocket)
-            if api_key is None:
-                raw = await websocket.receive_text()
-                auth_frame = parse_ws_auth(raw)
-                if auth_frame is not None:
-                    api_key = auth_frame.api_key
-
-            player = await require_player_async(provider=provider, api_key=api_key)
-            if entry.player_id != player.id:
-                await _send_error(websocket, "Unauthorized for this session")
-                await websocket.close()
-                return
+        if entry.player_id != player.id:
+            await _send_error(websocket, "Unauthorized for this session")
+            await websocket.close()
+            return
 
         is_resume = entry.status == "paused"
         if is_resume:

@@ -16,7 +16,7 @@ export interface ExperimentAssignmentSummary {
   npc_hid: string;
   status: ExperimentAssignmentSummaryStatus;
   active_session_id?: string | null;
-  needs_post_play?: boolean;
+  has_pending_forms?: boolean;
   game_description?: string;
   player_character_name?: string;
   player_character_description?: string;

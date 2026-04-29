@@ -1,7 +1,6 @@
 # Devcontainer compose only provisions MongoDB.
-# Server mode is chosen when you run `dcs server` inside the devcontainer;
-# set `DCS_FREE_PLAY=1` in `../.env` for free-play mode, or leave it unset/0
-# for the standard registration and experiment flow.
+# Server behavior is chosen by the run config you pass to `dcs server`.
+# Use a config with `ui.registration_required: false` for anonymous local play.
 services:
   mongo:
     image: mongo:8.0

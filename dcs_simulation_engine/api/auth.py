@@ -2,11 +2,7 @@
 
 from typing import Any, cast
 
-from dcs_simulation_engine.api.models import (
-    RemoteDeploymentMode,
-    ServerConfigResponse,
-    ServerMode,
-)
+from dcs_simulation_engine.api.models import RemoteDeploymentMode, ServerConfigResponse
 from dcs_simulation_engine.api.registry import SessionRegistry
 from dcs_simulation_engine.dal.base import DataProvider, PlayerRecord
 from dcs_simulation_engine.utils.async_utils import maybe_await
@@ -35,16 +31,6 @@ def get_registry_from_websocket(websocket: WebSocket) -> SessionRegistry:
     return cast(SessionRegistry, websocket.app.state.registry)
 
 
-def get_server_mode_from_request(request: Request) -> ServerMode:
-    """Fetch the configured server mode from app state for an HTTP request."""
-    return cast(ServerMode, getattr(request.app.state, "server_mode", "standard"))
-
-
-def get_server_mode_from_websocket(websocket: WebSocket) -> ServerMode:
-    """Fetch the configured server mode from app state for a WebSocket connection."""
-    return cast(ServerMode, getattr(websocket.app.state, "server_mode", "standard"))
-
-
 def get_default_experiment_name_from_request(request: Request) -> str | None:
     """Fetch the configured default experiment name from app state for an HTTP request."""
     return cast(str | None, getattr(request.app.state, "default_experiment_name", None))
@@ -67,17 +53,14 @@ def is_remote_management_enabled_from_websocket(websocket: WebSocket) -> bool:
 
 def build_server_config(
     *,
-    server_mode: ServerMode,
     default_experiment_name: str | None = None,
     registration_required: bool = True,
 ) -> ServerConfigResponse:
     """Translate the active mode into frontend-readable capability flags."""
-    is_standard = server_mode == "standard"
-    authentication_required = is_standard and registration_required
     return ServerConfigResponse(
-        mode=server_mode,
-        authentication_required=authentication_required,
-        registration_enabled=authentication_required,
+        mode="standard",
+        authentication_required=registration_required,
+        registration_enabled=registration_required,
         experiments_enabled=True,
         default_experiment_name=default_experiment_name,
     )
@@ -85,26 +68,12 @@ def build_server_config(
 
 def resolve_remote_deployment_mode(
     *,
-    server_mode: ServerMode,
     default_experiment_name: str | None,
 ) -> RemoteDeploymentMode:
     """Collapse app state into a public deployment mode for remote status."""
-    if server_mode == "free_play":
-        return "free_play"
     if default_experiment_name:
         return "experiment"
     return "standard"
-
-
-def require_standard_mode(*, server_mode: ServerMode, detail: str) -> None:
-    """Raise a 409 when an endpoint is disabled in free-play mode."""
-    if server_mode != "standard":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
-
-
-def require_standard_mode_from_request(request: Request, *, detail: str) -> None:
-    """Ensure an HTTP endpoint is only used while the server runs in standard mode."""
-    require_standard_mode(server_mode=get_server_mode_from_request(request), detail=detail)
 
 
 def require_remote_management_from_request(request: Request, *, detail: str) -> None:

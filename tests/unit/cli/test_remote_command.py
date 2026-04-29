@@ -110,7 +110,6 @@ def test_remote_deploy_command_passes_targeted_apps(monkeypatch: pytest.MonkeyPa
     assert result.exit_code == 0
     deploy.assert_called_once()
     assert deploy.call_args.kwargs["deploy_apps"] == {"ui"}
-    assert deploy.call_args.kwargs["free_play"] is False
     assert deploy.call_args.kwargs["mongo_seed_path"] == seed_path
 
 

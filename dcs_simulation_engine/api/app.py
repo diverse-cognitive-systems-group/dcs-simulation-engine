@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dcs_simulation_engine.api.auth import build_server_config
-from dcs_simulation_engine.api.models import ServerConfigResponse, ServerMode, StatusResponse
+from dcs_simulation_engine.api.models import ServerConfigResponse, StatusResponse
 from dcs_simulation_engine.api.registry import SessionRegistry
 from dcs_simulation_engine.api.routers import (
     catalog_router,
@@ -44,7 +44,6 @@ def create_app(
     shutdown_dump_dir: Path | None = None,
     run_config: RunConfig | None = None,
     run_config_path: Path | None = None,
-    server_mode: ServerMode = "standard",
     default_experiment_name: str | None = None,
     remote_management_enabled: bool = False,
     bootstrap_token: str | None = None,
@@ -92,7 +91,6 @@ def create_app(
     )
     app.state.provider = provider
     app.state.registry = registry
-    app.state.server_mode = server_mode
     app.state.run_config = active_run_config
     app.state.engine_run_manager = engine_run_manager
     app.state.mongo_uri = mongo_uri
@@ -111,7 +109,6 @@ def create_app(
     def server_config() -> ServerConfigResponse:
         """Expose server capabilities so clients can adapt to the active mode."""
         return build_server_config(
-            server_mode=server_mode,
             default_experiment_name=active_run_config.name,
             registration_required=active_run_config.registration_required,
         )

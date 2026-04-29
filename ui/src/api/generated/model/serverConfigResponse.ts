@@ -4,13 +4,12 @@
  * DCS Server
  * OpenAPI spec version: 0.1.0
  */
-import type { ServerConfigResponseMode } from './serverConfigResponseMode';
 
 /**
  * Response payload describing server capabilities for the active mode.
  */
 export interface ServerConfigResponse {
-  mode: ServerConfigResponseMode;
+  mode: 'standard';
   authentication_required: boolean;
   registration_enabled: boolean;
   experiments_enabled: boolean;

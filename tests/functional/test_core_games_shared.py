@@ -195,24 +195,26 @@ async def test_no_bracket_rendering_in_system_responses(game, patch_llm_client, 
 def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Session resumes with history replay after WebSocket disconnect.
 
-    Uses explore (ungated) since free-play mode passes player_id=None, which
-    would fail consent checks for gated games. Resume behavior is game-agnostic —
-    registry.pause() / _send_replay() applies equally to all games.
+    Uses explore because resume behavior is game-agnostic: registry.pause() and
+    replay apply equally to all games.
     """
     from dcs_simulation_engine.api.app import create_app
     from fastapi.testclient import TestClient
 
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="free_play",
+        run_config=_run_config(),
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
 
     with TestClient(app) as client:
+        auth_resp = client.post("/api/player/anonymous")
+        assert auth_resp.status_code == 200, auth_resp.text
+        api_key = auth_resp.json()["api_key"]
         resp = client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": "NA", "npc_choice": "FW", "source": "api"},
+            json={"api_key": api_key, "game": "explore", "pc_choice": "NA", "npc_choice": "FW", "source": "api"},
         )
         assert resp.status_code == 200, f"Game creation failed: {resp.text}"
         session_id = resp.json()["session_id"]
@@ -221,6 +223,7 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
         # Exiting the context without a close frame triggers WebSocketDisconnect on the
         # server side → registry.pause(session_id) is called.
         with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+            ws.send_json({"type": "auth", "api_key": api_key})
             ws.receive_json()  # session_meta
             ws.receive_json()  # opening event (type="event")
             turn_end = ws.receive_json()  # turn_end
@@ -229,6 +232,7 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
         # Second connection: resume path — server detects entry.status == "paused"
         # and sends replay_start → (events) → replay_end before normal play resumes.
         with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+            ws.send_json({"type": "auth", "api_key": api_key})
             ws.receive_json()  # session_meta (always sent first)
             replay_start = ws.receive_json()
             replay_end = ws.receive_json()

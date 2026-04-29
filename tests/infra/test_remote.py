@@ -100,7 +100,7 @@ def test_ensure_volume_creates_new_region_specific_volume(monkeypatch: pytest.Mo
     monkeypatch.setattr(remote_infra, "_run_flyctl", _capture_run)
 
     remote_infra._ensure_volume(
-        app_name="dcs-free-play-db",
+        app_name="dcs-usability-ca-db",
         region="lax",
         fly_api_token="fly-token",
     )
@@ -112,7 +112,7 @@ def test_ensure_volume_creates_new_region_specific_volume(monkeypatch: pytest.Mo
                 "create",
                 remote_infra.REMOTE_DB_VOLUME_NAME,
                 "--app",
-                "dcs-free-play-db",
+                "dcs-usability-ca-db",
                 "--size",
                 str(remote_infra.REMOTE_DB_VOLUME_SIZE_GB),
                 "--yes",
@@ -202,8 +202,12 @@ def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Remote deploy should support the anonymous demo run config without a custom config."""
+    """Remote deploy should support anonymous run configs through the normal config path."""
+    config_path = tmp_path / "demo.yaml"
     seed_path = tmp_path / "seed.json"
+    _write_run_config(config_path, name="anonymous-demo")
+    config_text = config_path.read_text(encoding="utf-8")
+    config_path.write_text(config_text.replace("registration_required: true", "registration_required: false"), encoding="utf-8")
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
@@ -234,25 +238,25 @@ def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
     monkeypatch.setattr(remote_infra, "_deploy_from_config", _capture_deploy)
 
     result = remote_infra.deploy_remote_experiment(
-        config=None,
-        free_play=True,
+        config=config_path,
         openrouter_key="or-key",
         mongo_seed_path=seed_path,
         fly_api_token="fly-token",
         region="sjc",
     )
 
-    assert result.experiment_name == "free-play"
-    assert result.api_app == "dcs-free-play-api"
-    assert result.ui_app == "dcs-free-play-ui"
-    assert result.db_app == "dcs-free-play-db"
-    assert "free-play.tar.gz" in result.save_command
+    assert result.experiment_name == "anonymous-demo"
+    assert result.api_app == "dcs-anonymous-demo-api"
+    assert result.ui_app == "dcs-anonymous-demo-ui"
+    assert result.db_app == "dcs-anonymous-demo-db"
+    assert "anonymous-demo.tar.gz" in result.save_command
     assert len(deploy_calls) == 3
 
-    api_fly = (artifacts_root / "deployments" / "free-play" / "dcs-free-play-api.fly.toml").read_text(encoding="utf-8")
-    assert "--config /app/examples/run_configs/demo.yml" in api_fly
-    assert "--default-experiment" not in api_fly
-    assert not (artifacts_root / "deployments" / "free-play" / "run_configs").exists()
+    deployment_dir = artifacts_root / "deployments" / "anonymous-demo"
+    api_fly = (deployment_dir / "dcs-anonymous-demo-api.fly.toml").read_text(encoding="utf-8")
+    copied_run_config = (deployment_dir / "run_configs" / "run_config.yml").read_text(encoding="utf-8")
+    assert "--config /app/deployments/anonymous-demo/run_configs/run_config.yml" in api_fly
+    assert "registration_required: false" in copied_run_config
 
 
 @pytest.mark.unit
@@ -444,7 +448,7 @@ def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch
 
 
 @pytest.mark.unit
-def test_fetch_remote_status_returns_remote_status_payload_for_free_play(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fetch_remote_status_returns_remote_status_payload_without_experiment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remote status should fall back to the remote status payload when no experiment is hosted."""
 
     class _Response:
@@ -473,7 +477,7 @@ def test_fetch_remote_status_returns_remote_status_payload_for_free_play(monkeyp
                 return _Response(
                     {
                         "status": "ok",
-                        "mode": "free_play",
+                        "mode": "standard",
                         "experiment_name": None,
                         "uptime": 12,
                     }
@@ -483,15 +487,15 @@ def test_fetch_remote_status_returns_remote_status_payload_for_free_play(monkeyp
     monkeypatch.setattr(remote_infra.httpx, "Client", _Client)
 
     result = remote_infra.fetch_remote_status(
-        uri="https://dcs-free-play-api.fly.dev",
+        uri="https://dcs-standard-api.fly.dev",
         admin_key="admin-key",
     )
 
-    assert result.mode == "free_play"
+    assert result.mode == "standard"
     assert result.experiment_name is None
     assert result.experiment_status == {
         "status": "ok",
-        "mode": "free_play",
+        "mode": "standard",
         "experiment_name": None,
         "uptime": 12,
     }

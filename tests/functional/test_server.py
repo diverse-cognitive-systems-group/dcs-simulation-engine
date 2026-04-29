@@ -172,12 +172,11 @@ def client(mock_provider: MagicMock) -> TestClient:
 
 
 @pytest.fixture
-def free_play_client(mock_provider: MagicMock) -> TestClient:
-    """Build a TestClient configured for anonymous free-play mode."""
+def anonymous_client(mock_provider: MagicMock) -> TestClient:
+    """Build a TestClient configured for a run that allows anonymous players."""
     app = create_app(
         provider=mock_provider,
         run_config=_run_config(registration_required=False),
-        server_mode="free_play",
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
@@ -186,12 +185,19 @@ def free_play_client(mock_provider: MagicMock) -> TestClient:
 
 
 @pytest.fixture
+def anonymous_auth(anonymous_client: TestClient) -> dict[str, str]:
+    """Create an anonymous player and return its issued auth payload."""
+    response = anonymous_client.post("/api/player/anonymous")
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+@pytest.fixture
 def remote_managed_client(mock_provider: MagicMock) -> TestClient:
     """Build a TestClient configured for remote-managed experiment hosting."""
     app = create_app(
         provider=mock_provider,
         run_config=_run_config(),
-        server_mode="standard",
         mongo_uri="mongodb://example",
         remote_management_enabled=True,
         bootstrap_token="bootstrap-secret",
@@ -296,13 +302,13 @@ def test_server_config_reports_standard_mode(client: TestClient) -> None:
 
 
 @pytest.mark.unit
-def test_server_config_reports_free_play_mode(free_play_client: TestClient) -> None:
-    """Server config should advertise anonymous capabilities in free-play mode."""
-    response = free_play_client.get("/api/server/config")
+def test_server_config_reports_anonymous_run_capabilities(anonymous_client: TestClient) -> None:
+    """Server config should advertise automatic anonymous-auth capabilities."""
+    response = anonymous_client.get("/api/server/config")
 
     assert response.status_code == 200
     assert response.json() == {
-        "mode": "free_play",
+        "mode": "standard",
         "authentication_required": False,
         "registration_enabled": False,
         "experiments_enabled": True,
@@ -403,8 +409,11 @@ def test_branch_session_flushes_live_root_and_returns_paused_child(
 
 
 @pytest.mark.unit
-def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestClient) -> None:
-    """Free-play setup should not require an Authorization header."""
+def test_anonymous_setup_options_use_issued_access_key(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
+) -> None:
+    """Anonymous setup should use the access key issued by anonymous player creation."""
     setup_config = SimpleNamespace(
         name="Explore",
         get_valid_characters=lambda **_kwargs: ([("PC Alpha", "pc-1")], [("NPC Beta", "npc-2")]),
@@ -414,7 +423,10 @@ def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestCl
         "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
         return_value=setup_config,
     ):
-        response = free_play_client.get("/api/play/setup/explore")
+        response = anonymous_client.get(
+            "/api/play/setup/explore",
+            headers={"Authorization": f"Bearer {anonymous_auth['api_key']}"},
+        )
 
     assert response.status_code == 200
     assert response.json()["can_start"] is True
@@ -422,16 +434,20 @@ def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestCl
 
 
 @pytest.mark.unit
-def test_free_play_create_game_and_websocket_without_auth(free_play_client: TestClient) -> None:
-    """Free-play should support anonymous session creation and websocket play."""
+def test_anonymous_create_game_and_websocket_with_issued_access_key(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
+) -> None:
+    """Anonymous players should create sessions and play using their issued access key."""
     manager = DummySessionManager()
     with patch(
         "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
         new=AsyncMock(return_value=manager),
     ):
-        create_resp = free_play_client.post(
+        create_resp = anonymous_client.post(
             "/api/play/game",
             json={
+                "api_key": anonymous_auth["api_key"],
                 "game": "explore",
                 "pc_choice": None,
                 "npc_choice": None,
@@ -442,7 +458,8 @@ def test_free_play_create_game_and_websocket_without_auth(free_play_client: Test
     assert create_resp.status_code == 200
     session_id = create_resp.json()["session_id"]
 
-    with free_play_client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+    with anonymous_client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+        ws.send_json({"type": "auth", "api_key": anonymous_auth["api_key"]})
         meta_frame = ws.receive_json()
         assert meta_frame["type"] == "session_meta"
 
@@ -748,11 +765,12 @@ def test_session_event_feedback_clear_flushes_live_session_and_persists(
 
 
 @pytest.mark.unit
-def test_free_play_feedback_submit_flushes_live_session_and_persists(
-    free_play_client: TestClient,
+def test_anonymous_feedback_submit_flushes_live_session_and_persists(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
     mock_provider: MagicMock,
 ) -> None:
-    """Free-play sessions should still expose per-message feedback controls."""
+    """Anonymous sessions should still expose per-message feedback controls."""
     manager = DummySessionManager()
     mock_provider.set_session_event_feedback = AsyncMock(
         return_value={
@@ -768,15 +786,22 @@ def test_free_play_feedback_submit_flushes_live_session_and_persists(
         "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
         new=AsyncMock(return_value=manager),
     ):
-        create_resp = free_play_client.post(
+        create_resp = anonymous_client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": None, "npc_choice": None, "source": "api"},
+            json={
+                "api_key": anonymous_auth["api_key"],
+                "game": "explore",
+                "pc_choice": None,
+                "npc_choice": None,
+                "source": "api",
+            },
         )
 
     session_id = create_resp.json()["session_id"]
 
-    response = free_play_client.post(
+    response = anonymous_client.post(
         f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": f"Bearer {anonymous_auth['api_key']}"},
         json={
             "liked": False,
             "comment": "This felt out of character.",
@@ -792,7 +817,7 @@ def test_free_play_feedback_submit_flushes_live_session_and_persists(
 
     kwargs = mock_provider.set_session_event_feedback.await_args.kwargs
     assert kwargs["session_id"] == session_id
-    assert kwargs["player_id"] is None
+    assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
 
 
@@ -843,11 +868,12 @@ def test_session_event_feedback_submit_clears_issue_flags_for_likes(
 
 
 @pytest.mark.unit
-def test_free_play_feedback_clear_flushes_live_session_and_persists(
-    free_play_client: TestClient,
+def test_anonymous_feedback_clear_flushes_live_session_and_persists(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
     mock_provider: MagicMock,
 ) -> None:
-    """Free-play feedback clearing should work without a player auth key."""
+    """Anonymous feedback clearing should work with the issued player auth key."""
     manager = DummySessionManager()
     mock_provider.clear_session_event_feedback = AsyncMock(return_value=True)
 
@@ -855,14 +881,23 @@ def test_free_play_feedback_clear_flushes_live_session_and_persists(
         "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
         new=AsyncMock(return_value=manager),
     ):
-        create_resp = free_play_client.post(
+        create_resp = anonymous_client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": None, "npc_choice": None, "source": "api"},
+            json={
+                "api_key": anonymous_auth["api_key"],
+                "game": "explore",
+                "pc_choice": None,
+                "npc_choice": None,
+                "source": "api",
+            },
         )
 
     session_id = create_resp.json()["session_id"]
 
-    response = free_play_client.delete(f"/api/sessions/{session_id}/events/evt-opening/feedback")
+    response = anonymous_client.delete(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": f"Bearer {anonymous_auth['api_key']}"},
+    )
 
     assert response.status_code == 200
     assert response.json()["cleared"] is True
@@ -870,7 +905,7 @@ def test_free_play_feedback_clear_flushes_live_session_and_persists(
 
     kwargs = mock_provider.clear_session_event_feedback.await_args.kwargs
     assert kwargs["session_id"] == session_id
-    assert kwargs["player_id"] is None
+    assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
 
 
@@ -1421,7 +1456,6 @@ def test_remote_export_requires_admin_role(async_mongo_provider) -> None:
     app = create_app(
         provider=async_mongo_provider,
         run_config=_run_config(),
-        server_mode="standard",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1447,7 +1481,6 @@ def test_remote_export_streams_tarball_for_admin(async_mongo_provider) -> None:
     app = create_app(
         provider=async_mongo_provider,
         run_config=_run_config(),
-        server_mode="standard",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1480,7 +1513,6 @@ def test_remote_export_streams_zip_for_admin(async_mongo_provider) -> None:
 
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="standard",
         default_experiment_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
@@ -1507,7 +1539,6 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
     app = create_app(
         provider=async_mongo_provider,
         run_config=_run_config(),
-        server_mode="standard",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,

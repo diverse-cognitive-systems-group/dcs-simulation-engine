@@ -99,7 +99,6 @@ def server(
             mongo_uri=mongo_uri,
             shutdown_dump_dir=dump_dir,
             run_config_path=config,
-            server_mode="standard",
             remote_management_enabled=remote_managed,
             bootstrap_token=bootstrap_token,
             session_ttl_seconds=ttl_seconds,

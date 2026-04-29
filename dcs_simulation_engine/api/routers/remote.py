@@ -14,7 +14,6 @@ from dcs_simulation_engine.api.auth import (
     api_key_from_request,
     get_default_experiment_name_from_request,
     get_provider_from_request,
-    get_server_mode_from_request,
     has_remote_admin_async,
     require_remote_admin_async,
     require_remote_management_from_request,
@@ -279,7 +278,6 @@ async def remote_status(request: Request) -> RemoteStatusResponse:
 
     return RemoteStatusResponse(
         mode=resolve_remote_deployment_mode(
-            server_mode=get_server_mode_from_request(request),
             default_experiment_name=default_experiment_name,
         ),
         started_at=started_at,

@@ -4,10 +4,8 @@ from dcs_simulation_engine.api.auth import (
     api_key_from_request,
     get_provider_from_request,
     get_registry_from_request,
-    get_server_mode_from_request,
     maybe_await,
     require_player_async,
-    require_standard_mode_from_request,
 )
 from dcs_simulation_engine.api.models import (
     BranchSessionResponse,
@@ -73,26 +71,15 @@ async def _flush_live_session_branch_source(
 
 
 async def _resolve_session_player_id(*, request: Request, session_id: str) -> str | None:
-    """Resolve the session owner for standard or anonymous free-play sessions."""
+    """Resolve the authenticated owner of a session."""
     provider = get_provider_from_request(request)
-    if get_server_mode_from_request(request) == "standard":
-        player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-        return player.id
-
-    registry = get_registry_from_request(request)
-    entry = registry.get(session_id)
-    if entry is not None:
-        return entry.player_id
-
-    session_record = await maybe_await(provider.get_session(session_id=session_id, player_id=None))
-    if session_record is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    return session_record.player_id
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    return player.id
 
 
 @router.get("/{session_id}/status")
 async def get_session_status(session_id: str, request: Request) -> dict:
-    """Return the current status of a session. Works in both standard and free-play modes.
+    """Return the current status of a live session.
 
     Used by the frontend to verify a stored session_id is still paused and resumable.
     """
@@ -147,10 +134,6 @@ async def branch_session(session_id: str, request: Request) -> BranchSessionResp
 @router.get("/list", response_model=SessionsListResponse)
 async def list_sessions(request: Request) -> SessionsListResponse:
     """List active in-memory sessions for the player tied to the provided API key."""
-    require_standard_mode_from_request(
-        request,
-        detail="Session endpoints are disabled when the server is running in free play mode.",
-    )
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
 
@@ -179,10 +162,6 @@ async def list_sessions(request: Request) -> SessionsListResponse:
 @router.get("/{session_id}/reconstruction")
 async def get_session_reconstruction(session_id: str, request: Request) -> dict:
     """Return complete persisted metadata + event stream for transcript replay."""
-    require_standard_mode_from_request(
-        request,
-        detail="Session endpoints are disabled when the server is running in free play mode.",
-    )
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
 

@@ -37,7 +37,6 @@ REMOTE_MONGO_READY_TIMEOUT_S = 120
 REMOTE_FLY_CONFIG_DOCKER_DIR = "../../docker"
 REMOTE_DEPLOYMENTS_DIRNAME = "deployments"
 REMOTE_ADMIN_KEY_PLACEHOLDER = "<saved-admin-key>"
-REMOTE_FREE_PLAY_NAME = "free-play"
 
 _deployment_template_env = SandboxedEnvironment(undefined=StrictUndefined)
 
@@ -349,7 +348,6 @@ def _api_process_command(
     deployment_name: str,
     bootstrap_token: str,
     ui_url: str,
-    free_play: bool = False,
 ) -> str:
     """Build the remote-managed API server command string."""
     parts = [
@@ -360,11 +358,9 @@ def _api_process_command(
         "--port",
         str(REMOTE_API_PORT),
         "--remote-managed",
+        "--config",
+        "/app/deployments/" + deployment_name + "/run_configs/run_config.yml",
     ]
-    if free_play:
-        parts.extend(["--config", "/app/examples/run_configs/demo.yml"])
-    else:
-        parts.extend(["--config", "/app/deployments/" + deployment_name + "/run_configs/run_config.yml"])
     parts.extend(
         [
             "--bootstrap-token",
@@ -569,16 +565,10 @@ def load_run_config(config: str | Path) -> tuple[Path, RunConfig]:
 def _resolve_remote_deployment_target(
     *,
     config: str | Path | None,
-    free_play: bool,
-) -> tuple[str, Path | None]:
-    """Return the deployment name and optional source run config path."""
-    if free_play:
-        if config is not None:
-            raise RemoteLifecycleError("Use either config or free_play, not both.")
-        return REMOTE_FREE_PLAY_NAME, None
-
+) -> tuple[str, Path]:
+    """Return the deployment name and source run config path."""
     if config is None:
-        raise RemoteLifecycleError("config is required unless free_play=True.")
+        raise RemoteLifecycleError("config is required.")
 
     config_path, experiment = load_run_config(config)
     return experiment.name, config_path
@@ -587,7 +577,6 @@ def _resolve_remote_deployment_target(
 def deploy_remote_experiment(
     *,
     config: str | Path | None = None,
-    free_play: bool = False,
     openrouter_key: str,
     mongo_seed_path: str | Path,
     admin_key: str | None = None,
@@ -602,7 +591,7 @@ def deploy_remote_experiment(
     mongo_seed_path = _validate_mongo_seed_path(Path(mongo_seed_path))
     if admin_key is not None:
         admin_key = validate_access_key(admin_key)
-    deployment_name, config_path = _resolve_remote_deployment_target(config=config, free_play=free_play)
+    deployment_name, config_path = _resolve_remote_deployment_target(config=config)
     selected_apps = _normalize_deploy_apps(deploy_apps)
     is_full_deploy = selected_apps == list(REMOTE_DEPLOY_APP_ORDER)
     names = derive_remote_app_names(
@@ -623,7 +612,6 @@ def deploy_remote_experiment(
                 deployment_name=deployment_name,
                 bootstrap_token=bootstrap_token,
                 ui_url=ui_url,
-                free_play=free_play,
             ),
         ),
         ui_toml=_render_ui_fly_toml(app_name=names.ui_app, region=region),
@@ -635,12 +623,11 @@ def deploy_remote_experiment(
         names=names,
         rendered_configs=rendered_configs,
     )
-    if config_path is not None:
-        _write_deployment_run_config(
-            output_dir=artifact_dir,
-            experiment_name=deployment_name,
-            source_path=config_path,
-        )
+    _write_deployment_run_config(
+        output_dir=artifact_dir,
+        experiment_name=deployment_name,
+        source_path=config_path,
+    )
 
     repo_root = _repo_root()
     if "db" in selected_apps:

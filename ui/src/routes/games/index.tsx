@@ -15,7 +15,7 @@ import { requireAuth, rootRoute } from '../__root'
 function GamesPage() {
   const navigate = useNavigate()
   const fullName = getFullName()
-  const freePlay = !peekServerConfig()?.authentication_required
+  const anonymousRun = !peekServerConfig()?.authentication_required
 
   async function handleLogout() {
     clearAuth()
@@ -49,13 +49,13 @@ function GamesPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            {!freePlay && fullName && (
+            {!anonymousRun && fullName && (
               <p className="text-muted-foreground mb-1">Hello, {fullName}!</p>
             )}
             <h1 className="text-2xl font-semibold">Games</h1>
           </div>
           <div className="flex items-center gap-2">
-            {!freePlay && (
+            {!anonymousRun && (
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Logout
               </Button>

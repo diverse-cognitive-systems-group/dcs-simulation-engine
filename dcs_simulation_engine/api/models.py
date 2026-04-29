@@ -6,8 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
-ServerMode = Literal["standard", "free_play"]
-RemoteDeploymentMode = Literal["standard", "free_play", "experiment"]
+ServerMode = Literal["standard"]
+RemoteDeploymentMode = Literal["standard", "experiment"]
 SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]

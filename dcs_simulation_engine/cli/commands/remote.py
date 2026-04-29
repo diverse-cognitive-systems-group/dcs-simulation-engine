@@ -58,7 +58,6 @@ def _deploy_with_region_fallback(
     *,
     ctx: typer.Context,
     config: Path | None,
-    free_play: bool,
     openrouter_key: str,
     mongo_seed_path: Path,
     admin_key: str | None,
@@ -77,7 +76,6 @@ def _deploy_with_region_fallback(
         try:
             return deploy_remote_experiment(
                 config=config,
-                free_play=free_play,
                 openrouter_key=openrouter_key,
                 mongo_seed_path=mongo_seed_path,
                 admin_key=admin_key,
@@ -162,7 +160,6 @@ def deploy(
             result = _deploy_with_region_fallback(
                 ctx=ctx,
                 config=config,
-                free_play=False,
                 openrouter_key=openrouter_key,
                 mongo_seed_path=mongo_seed_path,
                 admin_key=admin_key,
@@ -179,7 +176,6 @@ def deploy(
                 result = _deploy_with_region_fallback(
                     ctx=ctx,
                     config=config,
-                    free_play=False,
                     openrouter_key=openrouter_key,
                     mongo_seed_path=mongo_seed_path,
                     admin_key=admin_key,

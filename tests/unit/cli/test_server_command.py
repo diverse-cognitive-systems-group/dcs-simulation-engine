@@ -37,7 +37,6 @@ def test_server_wires_fake_ai_response(monkeypatch: pytest.MonkeyPatch) -> None:
 
     set_fake.assert_called_once_with('{"type":"ai","content":"test"}')
     validate_config.assert_called_once_with()
-    assert create_app.call_args.kwargs["server_mode"] == "standard"
     assert create_app.call_args.kwargs["shutdown_dump_dir"] is None
     run_server.assert_called_once_with(app, host="127.0.0.1", port=9000, loop="uvloop", workers=1)
 
@@ -66,7 +65,6 @@ def test_server_wires_run_config(monkeypatch: pytest.MonkeyPatch) -> None:
         config=Path("examples/run_configs/usability.yml"),
     )
 
-    assert create_app.call_args.kwargs["server_mode"] == "standard"
     assert create_app.call_args.kwargs["run_config_path"] == Path("examples/run_configs/usability.yml")
 
 
