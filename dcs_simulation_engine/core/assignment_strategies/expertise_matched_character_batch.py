@@ -32,7 +32,12 @@ class ExpertiseMatchedCharacterBatchAssignmentStrategy(CandidateAssignmentStrate
 
         active_batch_npc = self._active_batch_npc(config=config, assignments=player_assignments)
         characters_by_hid = await self._character_map(provider=provider)
-        matched_npc_hids = self._expertise_match_hids(player=player, characters_by_hid=characters_by_hid)
+        matched_npc_hids = await self._expertise_match_hids(
+            provider=provider,
+            config=config,
+            player=player,
+            characters_by_hid=characters_by_hid,
+        )
         game_order = {game_name: index for index, game_name in enumerate(config.game_names)}
         npc_order = self._ordered_npcs(
             candidates=candidates,

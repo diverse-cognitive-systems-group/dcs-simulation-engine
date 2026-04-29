@@ -1,7 +1,7 @@
 # METADATA
 name: Select Characters
 description: |
-  An engine run configuration used for internal purposes where only specific characters are allowed.
+  A DCS-SE internal utility for running the engine with specific characters selections.
 
 seed: 42
 
@@ -42,6 +42,7 @@ games:
 next_game_strategy:
   strategy:
     id: full_character_access
+    max_assignments_per_player: 10
     allow_choice_if_multiple: true
     require_completion: false
 

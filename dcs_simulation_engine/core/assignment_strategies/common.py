@@ -311,16 +311,20 @@ class CandidateAssignmentStrategy:
             return None
         return completed[-1]
 
-    def _expertise_match_hids(
+    async def _expertise_match_hids(
         self,
         *,
+        provider: Any,
+        config: "RunConfig",
         player: "PlayerRecord",
         characters_by_hid: dict[str, CharacterRecord],
     ) -> set[str]:
-        expertise = str(player.data.get("expertise") or "").strip()
-        if not expertise:
+        expertise_values = await self._expertise_values(provider=provider, config=config, player=player)
+        if not expertise_values:
             return set()
-        expertise_tokens = _tokenize(expertise)
+        expertise_tokens: set[str] = set()
+        for value in expertise_values:
+            expertise_tokens.update(_tokenize(str(value)))
         if not expertise_tokens:
             return set()
         matched_hids: set[str] = set()
@@ -332,6 +336,35 @@ class CandidateAssignmentStrategy:
             if expertise_tokens & label_tokens:
                 matched_hids.add(hid)
         return matched_hids
+
+    async def _expertise_values(self, *, provider: Any, config: "RunConfig", player: "PlayerRecord") -> list[str]:
+        values: list[str] = []
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player.id, experiment_name=config.name))
+        for form_payload in (player_forms.data if player_forms else {}).values():
+            if not isinstance(form_payload, dict):
+                continue
+            answers = form_payload.get("answers", {})
+            if not isinstance(answers, dict):
+                continue
+            answer_payload = answers.get("expertise")
+            if isinstance(answer_payload, dict):
+                values.extend(self._flatten_expertise_values(answer_payload.get("answer")))
+        return values
+
+    def _flatten_expertise_values(self, value: Any) -> list[str]:
+        if value in (None, ""):
+            return []
+        if isinstance(value, dict):
+            if "answer" in value:
+                return self._flatten_expertise_values(value["answer"])
+            return []
+        if isinstance(value, (list, tuple, set)):
+            values: list[str] = []
+            for item in value:
+                values.extend(self._flatten_expertise_values(item))
+            return values
+        text = str(value).strip()
+        return [text] if text else []
 
     def _sort_with_expertise_priority(
         self,

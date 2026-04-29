@@ -142,15 +142,12 @@ class EngineRunManager:
             assignment
             for assignment in player_assignments
             if any(
-                group["trigger"]["event"] == "after_assignment"
-                and group.get("assignment_id") == assignment.assignment_id
+                group["trigger"]["event"] == "after_assignment" and group.get("assignment_id") == assignment.assignment_id
                 for group in pending_form_groups
             )
         ]
         pending_post_play = pending_post_play_items[-1] if pending_post_play_items else None
-        has_submitted_before_forms = not any(
-            group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups
-        )
+        has_submitted_before_forms = not any(group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups)
 
         return {
             "active_assignment": active_assignment,
@@ -409,7 +406,7 @@ class EngineRunManager:
     def _game_shows_simulator_details(cls, *, game_config: Any) -> bool:
         game_cls = game_config.get_game_class()
         overrides = game_cls.parse_overrides(getattr(game_config, "overrides", {}) or {})
-        return bool(getattr(overrides, "show_npc_details", False))
+        return bool(getattr(overrides, "show_npc_details", True))
 
     @classmethod
     def _assignment_doc_for_candidate(
