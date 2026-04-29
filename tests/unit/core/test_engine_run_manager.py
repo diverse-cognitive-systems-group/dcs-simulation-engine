@@ -40,7 +40,7 @@ async def _submit_entry_forms(async_mongo_provider, config: RunConfig, player_id
 
 
 async def test_submit_form_group_stores_entry_form_in_forms_collection(async_mongo_provider, cached_usability_experiment) -> None:
-    """Submitting before-play answers should persist the form in the forms collection, not on the assignment."""
+    """Submitting player-scoped form answers should persist in the forms collection, not on the assignment."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Ada Lovelace"}})
     await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
     assignment = await EngineRunManager.get_or_create_assignment_async(
@@ -137,10 +137,10 @@ async def test_completed_assignment_blocks_further_assignment_when_max_is_one(as
     assert blocked is None
 
 
-async def test_post_play_completion_marks_experiment_finished_after_single_assignment(
+async def test_assignment_feedback_completion_marks_experiment_finished_after_single_assignment(
     async_mongo_provider, cached_usability_experiment
 ) -> None:
-    """Once post-play feedback is complete, single-game participants should be marked finished."""
+    """Once assignment feedback is complete, single-game participants should be marked finished."""
     player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "Dana"}})
     await _submit_entry_forms(async_mongo_provider, cached_usability_experiment, player.id)
     first = await EngineRunManager.get_or_create_assignment_async(
@@ -175,7 +175,7 @@ async def test_post_play_completion_marks_experiment_finished_after_single_assig
         experiment_name=cached_usability_experiment.name,
         player_id=player.id,
     )
-    assert state["pending_post_play"] is None
+    assert state["pending_assignment_form_ids"] == []
     assert state["active_assignment"] is None
     assert state["has_finished_experiment"] is True
 
@@ -860,7 +860,7 @@ async def test_completed_assignment_reflected_in_player_state_after_multi_assign
         status="completed",
     )
 
-    # Submit post-play so pending_post_play is cleared.
+    # Submit assignment feedback so the pending form group is cleared.
     await EngineRunManager.submit_form_group_async(
         provider=async_mongo_provider,
         experiment_name=cached_multi_assignment_experiment.name,

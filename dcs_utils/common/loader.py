@@ -365,12 +365,14 @@ def _build_feedback(assignments_df: pd.DataFrame) -> pd.DataFrame:
                     continue
                 if isinstance(answer, list):
                     answer = "; ".join(str(a) for a in answer)
+                trigger = form_data.get("trigger")
+                trigger_event = trigger.get("event") if isinstance(trigger, dict) else None
                 rows.append({
                     "player_id":       row.get("player_id"),
                     "game_name":       row.get("game_name"),
                     "experiment_name": row.get("experiment_name"),
                     "form_name":       form_name,
-                    "before_or_after": form_data.get("before_or_after"),
+                    "trigger_event":   trigger_event,
                     "submitted_at":    submitted_at,
                     "question_key":    key,
                     "question_prompt": ans_obj.get("prompt"),

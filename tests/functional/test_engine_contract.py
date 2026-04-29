@@ -87,8 +87,8 @@ def test_expert_evaluation_run_config_contract() -> None:
     """Expert evaluation must collect expertise before resolving matched assignments."""
     config = load_run_config("expert-evaluation")
 
-    before_forms = config.forms_for_trigger(event="before_all_assignments")
-    question_keys = {question.key for form in before_forms for question in form.questions}
+    initial_forms = config.forms_for_trigger(event="before_all_assignments")
+    question_keys = {question.key for form in initial_forms for question in form.questions}
 
     assert "expertise" in question_keys
     assert config.assignment_strategy.strategy == "expertise_matched_character_batch"

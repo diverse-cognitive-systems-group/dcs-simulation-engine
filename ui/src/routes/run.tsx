@@ -69,7 +69,7 @@ interface ExperimentAssignmentSummary {
   npc_hid: string
   status: 'assigned' | 'in_progress' | 'completed' | 'interrupted'
   active_session_id?: string | null
-  needs_post_play?: boolean
+  has_pending_forms?: boolean
   game_description: string
   player_character_name: string
   player_character_description: string
@@ -109,13 +109,10 @@ interface ExperimentSetupResponse {
   pending_form_groups: PendingFormGroup[]
   progress: ExperimentProgressResponse
   current_assignment: ExperimentAssignmentSummary | null
-  pending_post_play: boolean
-  before_play_complete?: boolean
   assignment_completed: boolean
   next_assignment: NextAssignmentState | null
   allow_choice_if_multiple: boolean
   require_completion: boolean
-  has_submitted_before_forms: boolean
   eligible_assignment_options: EligibleAssignmentOption[]
   assignments: ExperimentAssignmentSummary[]
   resumable_session_id?: string | null
@@ -702,6 +699,8 @@ function RunPage() {
   const needsSelection = nextAssignment?.mode === 'choice'
   const needsBeforeForms =
     nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'pending_forms'
+  const hasPendingAssignmentForms =
+    nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'pending_assignment_forms'
   const noAssignmentsAvailable =
     nextAssignment?.mode === 'none' &&
     (nextAssignment.reason === 'unavailable' || nextAssignment.reason === 'quota_closed')
@@ -947,7 +946,7 @@ function RunPage() {
               </Alert>
             )}
 
-            {data.pending_post_play && (
+            {hasPendingAssignmentForms && (
               <Alert>
                 <AlertDescription>
                   Complete the required feedback form before starting another gameplay session.
@@ -971,7 +970,7 @@ function RunPage() {
               </Alert>
             )}
 
-            {!data.pending_post_play &&
+            {!hasPendingAssignmentForms &&
               !data.assignment_completed &&
               !data.is_open &&
               !noAssignmentsAvailable && (

@@ -927,10 +927,8 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
             new=AsyncMock(
                 return_value={
                     "active_assignment": assignment,
-                    "pending_post_play": None,
-                    "pending_post_play_ids": [],
+                    "pending_assignment_form_ids": [],
                     "has_finished_experiment": False,
-                    "has_submitted_before_forms": True,
                     "eligible_assignment_options": [],
                     "pending_form_groups": [],
                     "assignments": [assignment],
@@ -952,10 +950,8 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     assert payload["experiment_name"] == "usability"
     assert payload["current_assignment"]["assignment_id"] == "asg-1"
     assert payload["progress"] == {"total": 20, "completed": 4, "is_complete": False}
-    assert payload["pending_post_play"] is False
     assert payload["allow_choice_if_multiple"] is False
     assert payload["require_completion"] is True
-    assert payload["has_submitted_before_forms"] is True
     assert payload["eligible_assignment_options"] == []
     assert payload["pending_form_groups"] == []
     assert "character_hid" not in payload["current_assignment"]
@@ -1140,12 +1136,12 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
     }
 
     with TestClient(app) as client:
-        before_play = client.post(
+        form_submit = client.post(
             "/api/run/forms/submit",
             headers=headers,
             json=entry_payload,
         )
-        assert before_play.status_code == 200, before_play.text
+        assert form_submit.status_code == 200, form_submit.text
 
         setup = client.get("/api/run/setup", headers=headers)
         assert setup.status_code == 200, setup.text

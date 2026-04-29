@@ -165,31 +165,6 @@ async def test_invalid_form_field_type_fails(write_yaml) -> None:
         RunConfig.load(path)
 
 
-async def test_legacy_before_or_after_form_key_is_rejected(write_yaml) -> None:
-    """Forms must use canonical trigger objects."""
-    path = write_yaml(
-        "legacy-form-trigger.yaml",
-        """
-        name: legacy-form-trigger
-        description: Broken
-        games:
-          - name: Explore
-        next_game_strategy:
-          strategy:
-            id: random_unique_game
-            quota_per_game: 1
-            max_assignments_per_player: 1
-        forms:
-          - name: intake
-            before_or_after: before
-            questions: []
-        """,
-    )
-
-    with pytest.raises(ValueError, match="trigger"):
-        RunConfig.load(path)
-
-
 async def test_unknown_form_trigger_event_is_rejected(write_yaml) -> None:
     """Only registered form trigger events are accepted."""
     path = write_yaml(

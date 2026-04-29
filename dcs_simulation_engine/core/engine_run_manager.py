@@ -139,7 +139,7 @@ class EngineRunManager:
                     has_finished_experiment=has_finished_experiment,
                 )
 
-        pending_post_play_items = [
+        pending_assignment_form_items = [
             assignment
             for assignment in player_assignments
             if any(
@@ -147,15 +147,11 @@ class EngineRunManager:
                 for group in pending_form_groups
             )
         ]
-        pending_post_play = pending_post_play_items[-1] if pending_post_play_items else None
-        has_submitted_before_forms = not any(group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups)
 
         return {
             "active_assignment": active_assignment,
-            "pending_post_play": pending_post_play,
-            "pending_post_play_ids": [item.assignment_id for item in pending_post_play_items],
+            "pending_assignment_form_ids": [item.assignment_id for item in pending_assignment_form_items],
             "has_finished_experiment": has_finished_experiment,
-            "has_submitted_before_forms": has_submitted_before_forms,
             "eligible_assignment_options": eligible_assignment_options,
             "pending_form_groups": pending_form_groups,
             "assignments": await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id)),
@@ -642,7 +638,7 @@ class EngineRunManager:
         experiment_name: str,
         forms_payload: dict[str, dict[str, Any]],
     ) -> None:
-        """Store one or more named before-play form payloads on the player forms record."""
+        """Store one or more named player-scoped form payloads on the forms record."""
         for form_key, payload in forms_payload.items():
             await maybe_await(
                 provider.set_player_form_response(

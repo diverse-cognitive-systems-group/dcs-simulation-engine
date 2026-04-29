@@ -30,13 +30,11 @@ def test_usability_run_forms_assignments_and_sessions_flow(patch_llm_client, asy
         setup_payload = run_setup(client, headers)
         assert setup_payload["next_assignment"]["mode"] == "blocked"
         assert setup_payload["next_assignment"]["reason"] == "pending_forms"
-        assert setup_payload["has_submitted_before_forms"] is False
         assert {group["trigger"]["event"] for group in setup_payload["pending_form_groups"]} == {"before_all_assignments"}
 
         submit_pending_group(client, headers, setup_payload, event="before_all_assignments")
 
         setup_payload = run_setup(client, headers)
-        assert setup_payload["has_submitted_before_forms"] is True
         assert setup_payload["next_assignment"]["mode"] == "choice"
         assert setup_payload["eligible_assignment_options"]
 
@@ -56,7 +54,8 @@ def test_usability_run_forms_assignments_and_sessions_flow(patch_llm_client, asy
             completed += 1
 
             setup_payload = run_setup(client, headers)
-            assert setup_payload["pending_post_play"] is True
+            assert setup_payload["next_assignment"]["mode"] == "blocked"
+            assert setup_payload["next_assignment"]["reason"] == "pending_assignment_forms"
             assert "after_assignment" in {group["trigger"]["event"] for group in setup_payload["pending_form_groups"]}
             submit_pending_group(client, headers, setup_payload, event="after_assignment")
 

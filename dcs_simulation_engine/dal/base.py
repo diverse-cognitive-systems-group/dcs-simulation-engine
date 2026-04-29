@@ -286,7 +286,7 @@ class DataProvider:
         form_key: str,
         response: dict[str, Any],
     ) -> PlayerFormsRecord | None:
-        """Store one before-play form response in the forms collection."""
+        """Store one player-scoped form response in the forms collection."""
         raise NotImplementedError
 
     def get_player_forms(
@@ -295,5 +295,5 @@ class DataProvider:
         player_id: str,
         experiment_name: str,
     ) -> PlayerFormsRecord | None:
-        """Return the before-play form responses for a player in an experiment."""
+        """Return player-scoped form responses for a player in an experiment."""
         raise NotImplementedError

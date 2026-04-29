@@ -37,7 +37,7 @@ async def _assignment_summary(
     provider,
     assignment,
     *,
-    pending_post_play_ids: set[str] | None = None,
+    pending_assignment_form_ids: set[str] | None = None,
 ) -> ExperimentAssignmentSummary | None:
     if assignment is None:
         return None
@@ -55,7 +55,7 @@ async def _assignment_summary(
         npc_hid=assignment.npc_hid,
         status=assignment.status,
         active_session_id=assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None,
-        needs_post_play=assignment.assignment_id in (pending_post_play_ids or set()),
+        has_pending_forms=assignment.assignment_id in (pending_assignment_form_ids or set()),
         **metadata,
     )
 
@@ -64,11 +64,11 @@ async def _assignment_summaries(
     provider,
     assignments,
     *,
-    pending_post_play_ids: set[str] | None = None,
+    pending_assignment_form_ids: set[str] | None = None,
 ) -> list[ExperimentAssignmentSummary]:
     summaries = []
     for assignment in assignments:
-        summary = await _assignment_summary(provider, assignment, pending_post_play_ids=pending_post_play_ids)
+        summary = await _assignment_summary(provider, assignment, pending_assignment_form_ids=pending_assignment_form_ids)
         if summary is not None:
             summaries.append(summary)
     return summaries
@@ -96,19 +96,19 @@ async def _next_assignment_state(
     *,
     current_assignment,
     eligible_options,
-    pending_post_play: bool,
+    has_pending_assignment_forms: bool,
     assignment_completed: bool,
     is_open: bool,
-    has_submitted_before_forms: bool,
-    pending_post_play_ids: set[str] | None = None,
+    has_pending_initial_forms: bool,
+    pending_assignment_form_ids: set[str] | None = None,
 ) -> NextAssignmentState:
-    if pending_post_play:
-        return NextAssignmentState(mode="blocked", reason="pending_post_play")
+    if has_pending_assignment_forms:
+        return NextAssignmentState(mode="blocked", reason="pending_assignment_forms")
     if current_assignment is not None:
         summary = await _assignment_summary(
             provider,
             current_assignment,
-            pending_post_play_ids=pending_post_play_ids,
+            pending_assignment_form_ids=pending_assignment_form_ids,
         )
         reason = current_assignment.status
         if current_assignment.status == "assigned":
@@ -124,7 +124,7 @@ async def _next_assignment_state(
         return NextAssignmentState(mode="none", reason="complete")
     if not is_open:
         return NextAssignmentState(mode="none", reason="quota_closed")
-    if not has_submitted_before_forms:
+    if has_pending_initial_forms:
         return NextAssignmentState(mode="blocked", reason="pending_forms")
     return NextAssignmentState(mode="none", reason="unavailable")
 
@@ -167,8 +167,8 @@ async def run_setup(request: Request) -> ExperimentSetupResponse:
         player_id=player.id,
     )
     current_assignment = player_state["active_assignment"]
-    pending_post_play_ids = set(player_state.get("pending_post_play_ids", []))
-    pending_post_play = bool(pending_post_play_ids)
+    pending_assignment_form_ids = set(player_state.get("pending_assignment_form_ids", []))
+    has_pending_assignment_forms = bool(pending_assignment_form_ids)
     pending_form_groups = player_state.get("pending_form_groups", [])
     assignment_completed = bool(player_state["has_finished_experiment"])
     eligible_options = player_state.get("eligible_assignment_options", [])
@@ -181,7 +181,7 @@ async def run_setup(request: Request) -> ExperimentSetupResponse:
 
     progress = await manager.compute_progress_async(provider=provider, experiment_name=config.name)
     is_open = not progress["is_complete"]
-    has_submitted_before_forms = bool(player_state.get("has_submitted_before_forms"))
+    has_pending_initial_forms = any(group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups)
     return ExperimentSetupResponse(
         experiment_name=config.name,
         description=config.description,
@@ -192,29 +192,26 @@ async def run_setup(request: Request) -> ExperimentSetupResponse:
         current_assignment=await _assignment_summary(
             provider,
             current_assignment,
-            pending_post_play_ids=pending_post_play_ids,
+            pending_assignment_form_ids=pending_assignment_form_ids,
         ),
-        pending_post_play=pending_post_play,
-        before_play_complete=bool(player_state["has_submitted_before_forms"]),
         assignment_completed=assignment_completed,
         next_assignment=await _next_assignment_state(
             provider,
             current_assignment=current_assignment,
             eligible_options=eligible_options,
-            pending_post_play=pending_post_play,
+            has_pending_assignment_forms=has_pending_assignment_forms,
             assignment_completed=assignment_completed,
             is_open=is_open,
-            has_submitted_before_forms=has_submitted_before_forms,
-            pending_post_play_ids=pending_post_play_ids,
+            has_pending_initial_forms=has_pending_initial_forms,
+            pending_assignment_form_ids=pending_assignment_form_ids,
         ),
         allow_choice_if_multiple=config.assignment_strategy.allow_choice_if_multiple,
         require_completion=config.assignment_strategy.require_completion,
-        has_submitted_before_forms=has_submitted_before_forms,
         eligible_assignment_options=await _eligible_assignment_options(provider, eligible_options),
         assignments=await _assignment_summaries(
             provider,
             player_state.get("assignments", []),
-            pending_post_play_ids=pending_post_play_ids,
+            pending_assignment_form_ids=pending_assignment_form_ids,
         ),
         resumable_session_id=resumable_session_id,
     )

@@ -146,7 +146,7 @@ class ExperimentAssignmentSummary(BaseModel):
     npc_hid: str
     status: AssignmentStatus
     active_session_id: str | None = None
-    needs_post_play: bool = False
+    has_pending_forms: bool = False
     game_description: str = ""
     player_character_name: str = ""
     player_character_description: str = ""
@@ -214,14 +214,11 @@ class ExperimentSetupResponse(BaseModel):
     pending_form_groups: list[PendingFormGroupResponse] = Field(default_factory=list)
     progress: ExperimentProgressResponse
     current_assignment: ExperimentAssignmentSummary | None = None
-    pending_post_play: bool = False
-    before_play_complete: bool = False
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
     next_assignment: NextAssignmentState | None = None
     allow_choice_if_multiple: bool = False
     require_completion: bool = True
-    has_submitted_before_forms: bool = False
     eligible_assignment_options: list["EligibleAssignmentOption"] = Field(default_factory=list)
     assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
     # Set when the current assignment has a paused session the player can resume.
