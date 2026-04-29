@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from dcs_simulation_engine.dal.base import AssignmentRecord, PlayerRecord
 
 
+DEFAULT_MAX_ASSIGNMENTS_PER_PLAYER = 3
+
+
 def _tokenize(text: str) -> set[str]:
     return {token for token in re.split(r"[^a-z0-9]+", text.lower()) if token}
 
@@ -49,7 +52,7 @@ class CandidateAssignmentStrategy:
         """Return the configured per-player assignment cap for this strategy."""
         configured = config.assignment_strategy.max_assignments_per_player
         if configured is None:
-            return len(config.game_names)
+            return DEFAULT_MAX_ASSIGNMENTS_PER_PLAYER
         return max(0, int(configured))
 
     async def compute_progress_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:

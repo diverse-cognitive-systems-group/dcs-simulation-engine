@@ -1,6 +1,8 @@
 """Unit tests for run config schema behavior."""
 
 import pytest
+from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
+from dcs_simulation_engine.core.assignment_strategies.common import DEFAULT_MAX_ASSIGNMENTS_PER_PLAYER
 from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config_references
 from pydantic import ValidationError
 
@@ -46,6 +48,27 @@ def test_run_config_preserves_strategy_specific_params() -> None:
     dumped = config.next_game_strategy.strategy.model_dump()
     assert dumped["allow_choice_if_multiple"] is True
     assert dumped["require_completion"] is False
+
+
+def test_assignment_strategy_default_max_assignments_per_player_is_constant() -> None:
+    """Omitted max_assignments_per_player should not depend on configured game count."""
+    payload = _minimal_config()
+    payload["games"] = [{"name": "Teamwork"}]
+    config = RunConfig.model_validate(payload)
+    strategy = get_assignment_strategy(config.assignment_strategy.strategy)
+
+    assert strategy.max_assignments_per_player(config=config) == DEFAULT_MAX_ASSIGNMENTS_PER_PLAYER
+
+
+def test_assignment_strategy_explicit_max_assignments_per_player_wins() -> None:
+    """Explicit max_assignments_per_player should override the default."""
+    payload = _minimal_config()
+    payload["games"] = [{"name": "Teamwork"}]
+    payload["next_game_strategy"]["strategy"]["max_assignments_per_player"] = 7
+    config = RunConfig.model_validate(payload)
+    strategy = get_assignment_strategy(config.assignment_strategy.strategy)
+
+    assert strategy.max_assignments_per_player(config=config) == 7
 
 
 def test_run_config_null_forms_normalize_to_empty_list() -> None:

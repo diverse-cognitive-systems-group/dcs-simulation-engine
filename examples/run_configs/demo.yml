@@ -1,7 +1,7 @@
 # METADATA
 name: Demo
 description: |
-  An engine run configuration used for demonstration purposes. Players can bypass registration and select any games with any player and non player characters the game defaults allow. No additional data collection forms.
+  A DCS-SE demo where players choose a gameplay setup and play for a limited time to get a feel for the experience. No registration, forms, or data collection.
 
 # USER INTERFACE OPTIONS
 ui:
