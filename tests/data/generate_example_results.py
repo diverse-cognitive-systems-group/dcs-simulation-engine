@@ -7,8 +7,14 @@ import hashlib
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-OUT = "test/data/example_results"
+from dcs_simulation_engine.core.game_config import GameConfig
+from dcs_simulation_engine.core.session_manager import SessionManager
+
+ROOT = Path(__file__).resolve().parents[2]
+OUT = ROOT / "tests" / "data" / "example_results"
+SEED_CHARACTERS_PATH = ROOT / "database_seeds" / "dev" / "characters.json"
 
 
 def oid(seed: str) -> dict:
@@ -32,6 +38,19 @@ def suuid(seed: str) -> str:
     """Return a deterministic UUID derived from a seed string via MD5."""
     h = hashlib.md5(seed.encode()).hexdigest()
     return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
+
+
+def current_game_configs() -> dict[str, dict]:
+    """Return current built-in game config snapshots keyed by canonical game name."""
+    return {
+        game_cls.GAME_NAME: GameConfig.from_game_class(game_cls).model_dump(mode="json")
+        for game_cls in SessionManager._builtin_game_classes().values()
+    }
+
+
+def current_seed_characters() -> list[dict]:
+    """Return current dev seed characters for example result fixtures."""
+    return json.loads(SEED_CHARACTERS_PATH.read_text(encoding="utf-8"))
 
 
 # ── Players ──────────────────────────────────────────────────────────────────
@@ -77,93 +96,36 @@ PLAYERS = [
 # (player_index, game, start_iso, duration_min, pc_hid, npc_hid, turns, term_reason)
 SESSIONS_DEF = [
     # Explore ×5
-    (0, "Explore", "2026-03-17T09:15:00Z", 8, "NA", "biological cell", 4, "user_exit_command"),
-    (1, "Explore", "2026-03-18T14:30:00Z", 11, "human-low-vision", "human-anxiety", 6, "stopping_condition_met:_runtime_seconds_>=600"),
-    (2, "Explore", "2026-03-20T10:05:00Z", 5, "human-synesthetic-tactile", "eye-makeup-machine", 3, "user_exit_command"),
-    (
-        3,
-        "Explore",
-        "2026-03-25T11:40:00Z",
-        10,
-        "human-gestural-improv",
-        "biological cell",
-        5,
-        "stopping_condition_met:_runtime_seconds_>=600",
-    ),
-    (4, "Explore", "2026-03-29T16:20:00Z", 7, "NA", "human-anxiety", 4, "user_exit_command"),
+    (0, "Explore", "2026-03-17T09:15:00Z", 8, "NA", "BC", 4, "user_exit_command"),
+    (1, "Explore", "2026-03-18T14:30:00Z", 11, "DV", "WS", 6, "stopping_condition_met:_runtime_seconds_>=600"),
+    (2, "Explore", "2026-03-20T10:05:00Z", 5, "DST", "KPW", 3, "user_exit_command"),
+    (3, "Explore", "2026-03-25T11:40:00Z", 10, "GES", "BC", 5, "stopping_condition_met:_runtime_seconds_>=600"),
+    (4, "Explore", "2026-03-29T16:20:00Z", 7, "NA", "WS", 4, "user_exit_command"),
     # Goal Horizon ×5
-    (0, "Goal Horizon", "2026-03-21T09:30:00Z", 14, "human-synesthetic-tactile", "eye-makeup-machine", 5, "game_completed"),
-    (1, "Goal Horizon", "2026-03-22T13:00:00Z", 18, "human-low-vision", "human-anxiety", 6, "game_completed"),
-    (2, "Goal Horizon", "2026-03-26T09:10:00Z", 12, "NA", "eye-makeup-machine", 4, "game_completed"),
-    (3, "Goal Horizon", "2026-03-19T11:20:00Z", 20, "human-low-vision", "eye-makeup-machine", 7, "game_completed"),
-    (4, "Goal Horizon", "2026-03-24T14:20:00Z", 25, "NA", "human-anxiety", 5, "game_completed"),
+    (0, "Goal Horizon", "2026-03-21T09:30:00Z", 14, "DST", "KPW", 5, "game_completed"),
+    (1, "Goal Horizon", "2026-03-22T13:00:00Z", 18, "DV", "WS", 6, "game_completed"),
+    (2, "Goal Horizon", "2026-03-26T09:10:00Z", 12, "NA", "KPW", 4, "game_completed"),
+    (3, "Goal Horizon", "2026-03-19T11:20:00Z", 20, "DV", "FW", 7, "game_completed"),
+    (4, "Goal Horizon", "2026-03-24T14:20:00Z", 25, "NA", "WS", 5, "game_completed"),
     # Infer Intent ×5
-    (1, "Infer Intent", "2026-03-18T15:00:00Z", 9, "NA", "human-anxiety", 2, "game_completed"),
-    (0, "Infer Intent", "2026-03-21T14:00:00Z", 7, "human-gestural-improv", "biological cell", 3, "game_completed"),
-    (4, "Infer Intent", "2026-03-24T10:30:00Z", 6, "human-synesthetic-tactile", "biological cell", 2, "game_completed"),
-    (2, "Infer Intent", "2026-03-28T15:45:00Z", 10, "human-low-vision", "eye-makeup-machine", 4, "game_completed"),
-    (3, "Infer Intent", "2026-03-30T14:00:00Z", 8, "NA", "human-anxiety", 2, "game_completed"),
+    (1, "Infer Intent", "2026-03-18T15:00:00Z", 9, "NA", "WS", 2, "game_completed"),
+    (0, "Infer Intent", "2026-03-21T14:00:00Z", 7, "GES", "BC", 3, "game_completed"),
+    (4, "Infer Intent", "2026-03-24T10:30:00Z", 6, "DST", "BC", 2, "game_completed"),
+    (2, "Infer Intent", "2026-03-28T15:45:00Z", 10, "DV", "KPW", 4, "game_completed"),
+    (3, "Infer Intent", "2026-03-30T14:00:00Z", 8, "NA", "FW", 2, "game_completed"),
     # Foresight ×5
-    (
-        2,
-        "Foresight",
-        "2026-03-17T10:00:00Z",
-        12,
-        "human-gestural-improv",
-        "human-gestural-improv",
-        3,
-        "stopping_condition_met:_runtime_seconds_>=600",
-    ),
-    (4, "Foresight", "2026-03-20T15:00:00Z", 11, "NA", "biological cell", 2, "stopping_condition_met:_turns_>=10"),
-    (
-        0,
-        "Foresight",
-        "2026-03-25T11:00:00Z",
-        10,
-        "human-synesthetic-tactile",
-        "eye-makeup-machine",
-        3,
-        "stopping_condition_met:_runtime_seconds_>=600",
-    ),
-    (1, "Foresight", "2026-03-26T13:15:00Z", 6, "human-low-vision", "human-anxiety", 2, "user_exit_command"),
-    (3, "Foresight", "2026-03-31T13:00:00Z", 13, "human-gestural-improv", "biological cell", 3, "stopping_condition_met:_turns_>=10"),
+    (2, "Foresight", "2026-03-17T10:00:00Z", 12, "GES", "RD", 3, "stopping_condition_met:_runtime_seconds_>=600"),
+    (4, "Foresight", "2026-03-20T15:00:00Z", 11, "NA", "BC", 2, "stopping_condition_met:_turns_>=10"),
+    (0, "Foresight", "2026-03-25T11:00:00Z", 10, "DST", "KPW", 3, "stopping_condition_met:_runtime_seconds_>=600"),
+    (1, "Foresight", "2026-03-26T13:15:00Z", 6, "DV", "WS", 2, "user_exit_command"),
+    (3, "Foresight", "2026-03-31T13:00:00Z", 13, "GES", "BC", 3, "stopping_condition_met:_turns_>=10"),
+    # Teamwork ×5
+    (0, "Teamwork", "2026-03-18T10:30:00Z", 14, "NA", "FW", 4, "game_completed"),
+    (1, "Teamwork", "2026-03-21T12:45:00Z", 16, "DV", "RD", 5, "game_completed"),
+    (2, "Teamwork", "2026-03-23T09:20:00Z", 11, "DST", "KPW", 3, "game_completed"),
+    (3, "Teamwork", "2026-03-27T16:10:00Z", 13, "GES", "BC", 4, "game_completed"),
+    (4, "Teamwork", "2026-03-30T11:50:00Z", 15, "NB", "WS", 5, "game_completed"),
 ]
-
-# ── Game configs ─────────────────────────────────────────────────────────────
-GAME_CONFIGS = {
-    "Explore": {
-        "name": "Explore",
-        "description": "A lightweight interaction sandbox that allows users/players to freely explore and interact with characters.\nThere are no goals and no extra mechanics. Useful for demos and open-ended play.\n",
-        "version": "1.0.0",
-        "authors": ["DCS"],
-        "stopping_conditions": {"runtime_seconds": [">=600"], "turns": [">=50"]},
-        "game_class": "dcs_simulation_engine.games.explore.ExploreGame",
-    },
-    "Goal Horizon": {
-        "name": "Goal Horizon",
-        "description": "A game where players engage with a character over multiple interactions and report on their understanding\nof the character including their goal types/bounds and structure. Useful for studying how well a player\ncan understand the bounds of another character's goals.\n",
-        "version": "1.0.0",
-        "authors": ["DCS"],
-        "stopping_conditions": {"runtime_seconds": [">=3600"], "turns": [">=500"]},
-        "game_class": "dcs_simulation_engine.games.goal_horizon.GoalHorizonGame",
-    },
-    "Infer Intent": {
-        "name": "Infer Intent",
-        "description": "A game where players engage with a character and then report what goal the NPC was trying to communicate.\nUseful for measuring how quickly a player can understand the intention of another character.\n",
-        "version": "1.0.0",
-        "authors": ["DCS"],
-        "stopping_conditions": {"runtime_seconds": [">=600"], "turns": [">=50"]},
-        "game_class": "dcs_simulation_engine.games.infer_intent.InferIntentGame",
-    },
-    "Foresight": {
-        "name": "Foresight",
-        "description": "A game where players interact with another character and learn to predict their responses.\nPlayers may optionally include predictions alongside their actions. Useful for measuring\nhow quickly and accurately players learn to model other cognitive systems.\n",
-        "version": "1.0.0",
-        "authors": ["DCS"],
-        "stopping_conditions": {"runtime_seconds": [">=600"], "turns": [">=10"]},
-        "game_class": "dcs_simulation_engine.games.foresight.ForesightGame",
-    },
-}
 
 # ── Character short descriptions ─────────────────────────────────────────────
 CHAR_DESCRIPTIONS = {
@@ -423,6 +385,14 @@ def welcome_msg(game, pc_hid, npc_hid):
             f"- The game ends automatically after 3 predictions, or you can type `/exit` to leave early.\n\n"
             f"Type `/help` for instructions. Type `/predict-next` whenever you want to log another prediction."
         )
+    elif game == "Teamwork":
+        return (
+            f"*Welcome, in this game you collaborate with another character toward a shared goal.*\n\n"
+            f"Coordinate your actions with the simulator character, then use `/finish` when you are ready to reflect on the collaboration.\n\n"
+            f"- You are playing as: {pc_hid} ({pc_desc})\n"
+            f"- The simulator is playing as: {npc_hid} ({npc_desc})\n\n"
+            f"Type `/help` for instructions."
+        )
 
 
 # ── Build session events ──────────────────────────────────────────────────────
@@ -501,7 +471,7 @@ def build_events(sess_id, game, pc_hid, npc_hid, turns, term_reason, start_dt, d
     turn_seconds = (duration_min * 60 - 30) / max(turns, 1)
 
     # ── Game-specific turn loops ─────────────────────────────────────────────
-    if game in ("Explore", "Goal Horizon"):
+    if game in ("Explore", "Goal Horizon", "Teamwork"):
         for turn_i in range(1, turns + 1):
             advance(turn_seconds * 0.6)
             user_action, npc_resp, feedback = get_turn(npc_hid, turn_i)
@@ -545,6 +515,34 @@ def build_events(sess_id, game, pc_hid, npc_hid, turns, term_reason, start_dt, d
                 "The character appears to have a limited range of responses, mostly reactive rather than proactive. It cannot communicate verbally and seems to operate within narrow behavioral bounds.",
             )
             evt("inbound", "message", "user", answer, "plain_text", turns + 2)
+            advance(1)
+            evt("outbound", "info", "system", "Thank you. Game complete.", "markdown", turns + 2)
+            advance(0)
+            evt("internal", "session_end", "system", "session_end: game_completed", "plain_text", turns + 1)
+
+        elif game == "Teamwork":
+            advance(10)
+            evt("inbound", "command", "user", "/finish", "plain_text", turns + 2, command_name="finish", command_args="")
+            advance(1)
+            evt(
+                "outbound",
+                "command",
+                "system",
+                "What was most challenging about coordinating with the other character?",
+                "markdown",
+                turns + 2,
+                command_name="finish",
+                command_args="",
+            )
+            advance(8)
+            evt(
+                "inbound",
+                "message",
+                "user",
+                "The hardest part was timing our actions around different ways of sensing the situation.",
+                "plain_text",
+                turns + 2,
+            )
             advance(1)
             evt("outbound", "info", "system", "Thank you. Game complete.", "markdown", turns + 2)
             advance(0)
@@ -681,6 +679,7 @@ def main():
     import os
 
     os.makedirs(OUT, exist_ok=True)
+    game_configs = current_game_configs()
 
     # manifest
     with open(f"{OUT}/__manifest__.json", "w") as f:
@@ -698,6 +697,11 @@ def main():
             f,
             indent=2,
         )
+
+    # characters.json
+    with open(f"{OUT}/characters.json", "w") as f:
+        json.dump(current_seed_characters(), f, indent=2)
+        f.write("\n")
 
     # players.json
     player_records = []
@@ -797,7 +801,7 @@ def main():
                 "validator_model": "openai/gpt-5-mini",
                 "scorer_model": None,
             },
-            "game_config_snapshot": GAME_CONFIGS[game],
+            "game_config_snapshot": game_configs[game],
             "last_seq": 0,  # will update
             "created_at": dt(fmt(start_dt)),
             "updated_at": dt(fmt(end_dt)),
