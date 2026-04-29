@@ -37,14 +37,14 @@ interface ExperimentQuestion {
   key: string
   prompt: string
   answer_type:
-    | 'string'
-    | 'bool'
-    | 'single_choice'
-    | 'multi_choice'
-    | 'number'
-    | 'email'
-    | 'phone'
-    | null
+  | 'string'
+  | 'bool'
+  | 'single_choice'
+  | 'multi_choice'
+  | 'number'
+  | 'email'
+  | 'phone'
+  | null
   options?: Array<string | number> | null
   required?: boolean
 }
@@ -53,10 +53,10 @@ interface ExperimentFormSchema {
   name: string
   trigger: {
     event:
-      | 'before_all_assignments'
-      | 'before_assignment'
-      | 'after_assignment'
-      | 'after_all_assignments'
+    | 'before_all_assignments'
+    | 'before_assignment'
+    | 'after_assignment'
+    | 'after_all_assignments'
     match: null
   }
   questions: ExperimentQuestion[]
@@ -142,10 +142,10 @@ function titleCase(value: string): string {
 }
 
 function triggerLabel(trigger: ExperimentFormSchema['trigger']): string {
-  if (trigger.event === 'before_all_assignments') return 'Before Study'
-  if (trigger.event === 'before_assignment') return 'Before Gameplay'
-  if (trigger.event === 'after_assignment') return 'After Gameplay'
-  return 'After Study'
+  if (trigger.event === 'before_all_assignments') return 'Before All Gameplay'
+  if (trigger.event === 'before_assignment') return 'Pre-Gameplay'
+  if (trigger.event === 'after_assignment') return 'Post-Gameplay'
+  return 'After All Gameplay'
 }
 
 function emptyResponses(forms: ExperimentFormSchema[]): FormResponseMap {
@@ -575,7 +575,7 @@ function AssignmentChooser(props: {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
       <div>
-        <div className="font-medium">Select an gameplay setup</div>
+        <div className="font-medium">Select next gameplay setup</div>
         <p className="mt-1 text-sm text-muted-foreground">
           Choose one available game and character pairing.
         </p>
@@ -1036,7 +1036,7 @@ function RunPage() {
       {pendingFormGroup && (
         <FormOverlay
           title={triggerLabel(pendingFormGroup.trigger)}
-          description="Complete the required form before continuing."
+          description="Complete the form."
           forms={pendingForms}
           responses={formResponses}
           errors={formErrors}
