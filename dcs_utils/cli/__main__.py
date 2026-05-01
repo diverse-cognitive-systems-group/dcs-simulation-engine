@@ -201,10 +201,10 @@ def _report_results_cmd(
     _console.print(f"[green]✔[/green] Loaded results from: {results_dir}", style="dim")
 
     if title is None:
-        run_config = data.experiment.get("run_config") or {}
+        run_config = data.run.get("run_config") or {}
         title = (
             (run_config.get("name") if isinstance(run_config, dict) else None)
-            or data.experiment.get("name")
+            or data.run.get("name")
             or "Results Report"
         )
 

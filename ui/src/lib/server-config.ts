@@ -2,11 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { resolveApiUrl } from './api-url'
 
 export interface ServerConfig {
-  mode: 'standard'
   authentication_required: boolean
   registration_enabled: boolean
-  experiments_enabled: boolean
-  default_experiment_name: string | null
+  run_name: string
+}
+
+interface ServerConfigPayload {
+  authentication_required: boolean
+  registration_enabled: boolean
+  run_name: string
 }
 
 let cachedServerConfig: ServerConfig | null = null
@@ -17,7 +21,12 @@ async function fetchServerConfig(): Promise<ServerConfig> {
   if (!response.ok) {
     throw new Error(`Unable to load server config (HTTP ${response.status})`)
   }
-  const config = (await response.json()) as ServerConfig
+  const payload = (await response.json()) as ServerConfigPayload
+  const config: ServerConfig = {
+    authentication_required: payload.authentication_required,
+    registration_enabled: payload.registration_enabled,
+    run_name: payload.run_name,
+  }
   cachedServerConfig = config
   return config
 }

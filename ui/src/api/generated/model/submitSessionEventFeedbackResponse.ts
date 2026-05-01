@@ -10,7 +10,7 @@ import type { SessionEventFeedback } from './sessionEventFeedback';
  * Response payload after feedback is stored on a session event.
  */
 export interface SubmitSessionEventFeedbackResponse {
-  session_id: string;
   event_id: string;
   feedback: SessionEventFeedback;
+  session_id: string;
 }

@@ -685,7 +685,7 @@ def main():
     with open(f"{OUT}/__manifest__.json", "w") as f:
         json.dump(
             {
-                "collections": ["assignments", "characters", "experiments", "pii", "players", "session_events", "sessions"],
+                "collections": ["assignments", "characters", "runs", "pii", "players", "session_events", "sessions"],
                 "created_at": "2026-04-01T20:00:00.000000+00:00",
                 "db_name": "dcs-db",
                 "format": {

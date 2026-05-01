@@ -6,11 +6,11 @@ from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config
 pytestmark = [pytest.mark.unit, pytest.mark.anyio]
 
 
-async def test_load_valid_usability_experiment_config(usability_experiment_config) -> None:
+async def test_load_valid_usability_run_config(usability_run_config) -> None:
     """The stable usability-style fixture should load cleanly."""
-    config = usability_experiment_config
+    config = usability_run_config
 
-    assert config.name == "test-usability-exp"
+    assert config.name == "test-usability-run"
     assert config.assignment_strategy.strategy == "random_unique_game"
     assert config.assignment_strategy.quota_per_game == 5
     assert config.assignment_strategy.max_assignments_per_player == 1
@@ -25,7 +25,7 @@ async def test_load_valid_usability_experiment_config(usability_experiment_confi
 async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
     """Configs must use next_game_strategy and should not accept the old key."""
     path = write_yaml(
-        "legacy-experiment.yaml",
+        "legacy-run.yaml",
         """
         name: legacy-exp
         description: Broken
@@ -45,7 +45,7 @@ async def test_legacy_assignment_protocol_key_is_rejected(write_yaml) -> None:
 async def test_invalid_game_name_fails(write_yaml) -> None:
     """Unknown games should be rejected by static reference validation."""
     path = write_yaml(
-        "bad-experiment.yaml",
+        "bad-run.yaml",
         """
         name: bad-exp
         description: Broken
@@ -135,7 +135,7 @@ async def test_max_assignments_cannot_exceed_game_count(write_yaml) -> None:
 
 
 async def test_invalid_form_field_type_fails(write_yaml) -> None:
-    """Experiment question types must use the new answer_type enum."""
+    """Run question types must use the new answer_type enum."""
     path = write_yaml(
         "bad-form.yaml",
         """
@@ -220,12 +220,12 @@ async def test_form_trigger_match_must_be_null(write_yaml) -> None:
         RunConfig.load(path)
 
 
-async def test_experiment_config_snapshot_is_serializable(usability_experiment_config) -> None:
-    """Experiment config snapshots should be JSON-friendly for DB storage."""
-    config = usability_experiment_config
+async def test_run_config_snapshot_is_serializable(usability_run_config) -> None:
+    """Run config snapshots should be JSON-friendly for DB storage."""
+    config = usability_run_config
     snapshot = config.model_dump(mode="json")
 
-    assert snapshot["name"] == "test-usability-exp"
+    assert snapshot["name"] == "test-usability-run"
     assert snapshot["next_game_strategy"]["strategy"]["max_assignments_per_player"] == 1
     assert snapshot["forms"][0]["name"] == "intake"
     assert snapshot["forms"][0]["trigger"] == {"event": "before_all_assignments", "match": None}

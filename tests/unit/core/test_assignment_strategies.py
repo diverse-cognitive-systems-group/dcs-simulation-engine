@@ -104,7 +104,6 @@ def _patch_auto_pick_first(monkeypatch: pytest.MonkeyPatch) -> None:
 async def _create_assignment(
     provider,
     *,
-    experiment_name: str,
     player_id: str,
     game_name: str,
     pc_hid: str,
@@ -113,7 +112,6 @@ async def _create_assignment(
     metadata: dict[str, Any] | None = None,
 ) -> None:
     assignment_doc = {
-        MongoColumns.EXPERIMENT_NAME: experiment_name,
         MongoColumns.PLAYER_ID: player_id,
         MongoColumns.GAME_NAME: game_name,
         MongoColumns.PC_HID: pc_hid,
@@ -196,7 +194,6 @@ class TestUnplayedCombinationChoice(_StrategyTestBase):
         player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -260,7 +257,6 @@ class TestNextIncompleteCombination(_StrategyTestBase):
         player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -297,7 +293,6 @@ class TestLeastPlayedCombinationNext(_StrategyTestBase):
         other, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "B"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=other.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -333,7 +328,6 @@ class TestProgressiveDivergenceAssignment(_StrategyTestBase):
         player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -426,7 +420,6 @@ class TestExpertiseMatchedCharacterBatch(_StrategyTestBase):
         )
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",

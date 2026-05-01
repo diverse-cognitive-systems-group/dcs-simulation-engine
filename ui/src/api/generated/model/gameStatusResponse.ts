@@ -6,10 +6,10 @@
  */
 
 /**
- * Per-game status counts for an experiment.
+ * Per-game status counts for a run.
  */
-export interface ExperimentGameStatusResponse {
-  total: number;
+export interface GameStatusResponse {
   completed: number;
   in_progress: number;
+  total: number;
 }

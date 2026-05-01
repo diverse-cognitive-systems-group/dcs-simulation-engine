@@ -114,7 +114,7 @@ async def anonymous_user(request: Request) -> RegistrationResponse:
     provider = get_provider_from_request(request)
     record, api_key = await maybe_await(
         provider.create_player(
-            player_data={"anonymous": True, "run_name": run_config.name},
+            player_data={"anonymous": True},
             issue_access_key=True,
         )
     )

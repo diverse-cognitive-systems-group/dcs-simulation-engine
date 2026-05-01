@@ -36,8 +36,8 @@ def _write_run_config(path: Path, *, name: str = "usability-ca") -> None:
 
 @pytest.mark.unit
 def test_derive_remote_app_names_uses_default_prefix() -> None:
-    """Remote app names should be derived from the normalized experiment slug."""
-    names = remote_infra.derive_remote_app_names(experiment_name="Usability CA")
+    """Remote app names should be derived from the normalized run slug."""
+    names = remote_infra.derive_remote_app_names(run_name="Usability CA")
 
     assert names.api_app == "dcs-usability-ca-api"
     assert names.ui_app == "dcs-usability-ca-ui"
@@ -125,12 +125,12 @@ def test_ensure_volume_creates_new_region_specific_volume(monkeypatch: pytest.Mo
 
 
 @pytest.mark.unit
-def test_deploy_remote_experiment_generates_configs_and_commands(
+def test_deploy_remote_run_generates_configs_and_commands(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     """Remote deploy should render temp Fly configs and return concrete follow-up commands."""
-    config_path = tmp_path / "experiment.yaml"
+    config_path = tmp_path / "run.yaml"
     seed_path = tmp_path / "seed.json"
     _write_run_config(config_path)
     seed_path.write_text("[]", encoding="utf-8")
@@ -163,7 +163,7 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
 
     monkeypatch.setattr(remote_infra, "_deploy_from_config", _capture_deploy)
 
-    result = remote_infra.deploy_remote_experiment(
+    result = remote_infra.deploy_remote_run(
         config=config_path,
         openrouter_key="or-key",
         mongo_seed_path=seed_path,
@@ -171,7 +171,7 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
         region="sea",
     )
 
-    assert result.experiment_name == "usability-ca"
+    assert result.run_name == "usability-ca"
     assert result.deployed_apps == ["db", "api", "ui"]
     assert result.api_app == "dcs-usability-ca-api"
     assert result.ui_app == "dcs-usability-ca-ui"
@@ -198,7 +198,7 @@ def test_deploy_remote_experiment_generates_configs_and_commands(
 
 
 @pytest.mark.unit
-def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
+def test_deploy_remote_run_supports_anonymous_demo_run_config(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -237,7 +237,7 @@ def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
 
     monkeypatch.setattr(remote_infra, "_deploy_from_config", _capture_deploy)
 
-    result = remote_infra.deploy_remote_experiment(
+    result = remote_infra.deploy_remote_run(
         config=config_path,
         openrouter_key="or-key",
         mongo_seed_path=seed_path,
@@ -245,7 +245,7 @@ def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
         region="sjc",
     )
 
-    assert result.experiment_name == "anonymous-demo"
+    assert result.run_name == "anonymous-demo"
     assert result.api_app == "dcs-anonymous-demo-api"
     assert result.ui_app == "dcs-anonymous-demo-ui"
     assert result.db_app == "dcs-anonymous-demo-db"
@@ -260,12 +260,12 @@ def test_deploy_remote_experiment_supports_anonymous_demo_run_config(
 
 
 @pytest.mark.unit
-def test_deploy_remote_experiment_can_target_one_app(
+def test_deploy_remote_run_can_target_one_app(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     """Targeted remote deploys should only redeploy the requested app and skip bootstrap."""
-    config_path = tmp_path / "experiment.yaml"
+    config_path = tmp_path / "run.yaml"
     seed_path = tmp_path / "seed.json"
     _write_run_config(config_path)
     seed_path.write_text("[]", encoding="utf-8")
@@ -296,7 +296,7 @@ def test_deploy_remote_experiment_can_target_one_app(
 
     monkeypatch.setattr(remote_infra, "_deploy_from_config", _capture_deploy)
 
-    result = remote_infra.deploy_remote_experiment(
+    result = remote_infra.deploy_remote_run(
         config=config_path,
         openrouter_key="or-key",
         mongo_seed_path=seed_path,
@@ -318,12 +318,12 @@ def test_deploy_remote_experiment_can_target_one_app(
 
 
 @pytest.mark.unit
-def test_deploy_remote_experiment_api_only_does_not_redeploy_ui(
+def test_deploy_remote_run_api_only_does_not_redeploy_ui(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     """Targeted API deploys should not implicitly redeploy the UI app."""
-    config_path = tmp_path / "experiment.yaml"
+    config_path = tmp_path / "run.yaml"
     seed_path = tmp_path / "seed.json"
     _write_run_config(config_path)
     seed_path.write_text("[]", encoding="utf-8")
@@ -347,7 +347,7 @@ def test_deploy_remote_experiment_api_only_does_not_redeploy_ui(
 
     monkeypatch.setattr(remote_infra, "_deploy_from_config", _capture_deploy)
 
-    result = remote_infra.deploy_remote_experiment(
+    result = remote_infra.deploy_remote_run(
         config=config_path,
         openrouter_key="or-key",
         mongo_seed_path=seed_path,
@@ -394,8 +394,8 @@ def test_fetch_remote_status_reports_destroyed_when_api_app_is_missing(
 
 
 @pytest.mark.unit
-def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Remote status should use the saved admin key to fetch experiment status payloads."""
+def test_fetch_remote_status_uses_authenticated_run_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remote status should use the saved admin key to fetch run status payloads."""
     calls: list[tuple[str, dict[str, str] | None]] = []
 
     class _Response:
@@ -423,8 +423,7 @@ def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch
             if path == "/api/remote/status":
                 return _Response(
                     {
-                        "mode": "experiment",
-                        "experiment_name": "usability-ca",
+                        "run_name": "usability-ca",
                     }
                 )
             if path == "/api/run/status":
@@ -438,9 +437,8 @@ def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch
         admin_key="admin-key",
     )
 
-    assert result.mode == "experiment"
-    assert result.experiment_name == "usability-ca"
-    assert result.experiment_status == {"is_open": True, "total": 4, "completed": 2, "per_game": {}}
+    assert result.run_name == "usability-ca"
+    assert result.run_status == {"is_open": True, "total": 4, "completed": 2, "per_game": {}}
     assert calls[1] == (
         "/api/run/status",
         {"Authorization": "Bearer admin-key"},
@@ -448,8 +446,8 @@ def test_fetch_remote_status_uses_authenticated_experiment_endpoints(monkeypatch
 
 
 @pytest.mark.unit
-def test_fetch_remote_status_returns_remote_status_payload_without_experiment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Remote status should fall back to the remote status payload when no experiment is hosted."""
+def test_fetch_remote_status_requires_run_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remote status should fail loudly when the API omits the singleton run name."""
 
     class _Response:
         def __init__(self, payload: dict):
@@ -477,8 +475,7 @@ def test_fetch_remote_status_returns_remote_status_payload_without_experiment(mo
                 return _Response(
                     {
                         "status": "ok",
-                        "mode": "standard",
-                        "experiment_name": None,
+                        "run_name": None,
                         "uptime": 12,
                     }
                 )
@@ -486,19 +483,11 @@ def test_fetch_remote_status_returns_remote_status_payload_without_experiment(mo
 
     monkeypatch.setattr(remote_infra.httpx, "Client", _Client)
 
-    result = remote_infra.fetch_remote_status(
-        uri="https://dcs-standard-api.fly.dev",
-        admin_key="admin-key",
-    )
-
-    assert result.mode == "standard"
-    assert result.experiment_name is None
-    assert result.experiment_status == {
-        "status": "ok",
-        "mode": "standard",
-        "experiment_name": None,
-        "uptime": 12,
-    }
+    with pytest.raises(remote_infra.RemoteLifecycleError, match="run name"):
+        remote_infra.fetch_remote_status(
+            uri="https://dcs-standard-api.fly.dev",
+            admin_key="admin-key",
+        )
 
 
 @pytest.mark.unit
@@ -552,7 +541,7 @@ def test_save_remote_database_requests_zip_export(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.unit
-def test_stop_remote_experiment_saves_before_destroying(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_stop_remote_run_saves_before_destroying(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Remote stop should not destroy anything until the save step succeeds."""
     save_path = tmp_path / "export.tar.gz"
     call_order: list[str] = []
@@ -568,7 +557,7 @@ def test_stop_remote_experiment_saves_before_destroying(monkeypatch: pytest.Monk
     monkeypatch.setattr(remote_infra, "save_remote_database", _save)
     monkeypatch.setattr(remote_infra, "_destroy_app", _destroy)
 
-    result = remote_infra.stop_remote_experiment(
+    result = remote_infra.stop_remote_run(
         uri="https://dcs-usability-ca-api.fly.dev",
         admin_key="admin-key",
         save_db_path=save_path,

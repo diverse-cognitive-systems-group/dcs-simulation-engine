@@ -19,12 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  clearAuth,
-  ensureAnonymousAuth,
-  isAuthenticated,
-  setActiveExperimentName,
-} from '@/lib/auth'
+import { clearAuth, ensureAnonymousAuth, isAuthenticated, setActiveRunName } from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { cn } from '@/lib/utils'
 import { rootRoute } from './__root'
@@ -33,7 +28,7 @@ type ScalarValue = string | boolean
 type FieldValue = ScalarValue | string[]
 type FormResponseMap = Record<string, Record<string, FieldValue>>
 
-interface ExperimentQuestion {
+interface FormQuestion {
   key: string
   prompt: string
   answer_type:
@@ -49,7 +44,7 @@ interface ExperimentQuestion {
   required?: boolean
 }
 
-interface ExperimentFormSchema {
+interface FormSchema {
   name: string
   trigger: {
     event:
@@ -59,10 +54,10 @@ interface ExperimentFormSchema {
       | 'after_all_assignments'
     match: null
   }
-  questions: ExperimentQuestion[]
+  questions: FormQuestion[]
 }
 
-interface ExperimentAssignmentSummary {
+interface AssignmentSummary {
   assignment_id: string
   game_name: string
   pc_hid: string
@@ -77,7 +72,7 @@ interface ExperimentAssignmentSummary {
   simulator_character_details_visible: boolean
 }
 
-interface ExperimentProgressResponse {
+interface ProgressResponse {
   total: number
   completed: number
   is_complete: boolean
@@ -97,37 +92,37 @@ interface EligibleAssignmentOption {
 interface NextAssignmentState {
   mode: 'locked' | 'choice' | 'blocked' | 'none'
   reason: string
-  assignment: ExperimentAssignmentSummary | null
+  assignment: AssignmentSummary | null
   options: EligibleAssignmentOption[]
 }
 
-interface ExperimentSetupResponse {
-  experiment_name: string
+interface SetupResponse {
+  run_name: string
   description: string
   is_open: boolean
-  forms: ExperimentFormSchema[]
+  forms: FormSchema[]
   pending_form_groups: PendingFormGroup[]
-  progress: ExperimentProgressResponse
-  current_assignment: ExperimentAssignmentSummary | null
+  progress: ProgressResponse
+  current_assignment: AssignmentSummary | null
   assignment_completed: boolean
   next_assignment: NextAssignmentState | null
   allow_choice_if_multiple: boolean
   require_completion: boolean
   eligible_assignment_options: EligibleAssignmentOption[]
-  assignments: ExperimentAssignmentSummary[]
+  assignments: AssignmentSummary[]
   resumable_session_id?: string | null
 }
 
 interface PendingFormGroup {
   group_id: string
-  trigger: ExperimentFormSchema['trigger']
-  forms: ExperimentFormSchema[]
+  trigger: FormSchema['trigger']
+  forms: FormSchema[]
   assignment_id?: string | null
 }
 
-interface ExperimentFormSubmitResponse {
+interface FormSubmitResponse {
   group_id: string
-  trigger: ExperimentFormSchema['trigger']
+  trigger: FormSchema['trigger']
   assignment_id?: string | null
 }
 
@@ -138,14 +133,14 @@ function titleCase(value: string): string {
     .replace(/\b\w/g, (match) => match.toUpperCase())
 }
 
-function triggerLabel(trigger: ExperimentFormSchema['trigger']): string {
+function triggerLabel(trigger: FormSchema['trigger']): string {
   if (trigger.event === 'before_all_assignments') return 'Before All Gameplay'
   if (trigger.event === 'before_assignment') return 'Pre-Gameplay'
   if (trigger.event === 'after_assignment') return 'Post-Gameplay'
   return 'After All Gameplay'
 }
 
-function emptyResponses(forms: ExperimentFormSchema[]): FormResponseMap {
+function emptyResponses(forms: FormSchema[]): FormResponseMap {
   const next: FormResponseMap = {}
   for (const form of forms) {
     next[form.name] = {}
@@ -166,7 +161,7 @@ function emptyResponses(forms: ExperimentFormSchema[]): FormResponseMap {
 }
 
 function validateResponses(
-  forms: ExperimentFormSchema[],
+  forms: FormSchema[],
   responses: FormResponseMap,
 ): Record<string, Record<string, string>> {
   const errors: Record<string, Record<string, string>> = {}
@@ -230,7 +225,7 @@ function QuestionPrompt(props: { prompt: string; required?: boolean; invalid?: b
 
 function QuestionField(props: {
   formName: string
-  question: ExperimentQuestion
+  question: FormQuestion
   value: FieldValue | undefined
   error?: string
   onChange: (formName: string, key: string, value: FieldValue) => void
@@ -409,7 +404,7 @@ function QuestionField(props: {
 }
 
 function FormSection(props: {
-  form: ExperimentFormSchema
+  form: FormSchema
   responses: FormResponseMap
   errors: Record<string, Record<string, string>>
   onChange: (formName: string, key: string, value: FieldValue) => void
@@ -443,27 +438,25 @@ function OptionDescription({ children }: { children: string }) {
   return <span className="block max-w-xl truncate text-xs text-muted-foreground">{children}</span>
 }
 
-function playerCharacterLabel(
-  item: Pick<ExperimentAssignmentSummary, 'player_character_name' | 'pc_hid'>,
-) {
+function playerCharacterLabel(item: Pick<AssignmentSummary, 'player_character_name' | 'pc_hid'>) {
   if (item.player_character_name && item.player_character_name !== item.pc_hid) {
     return `${item.player_character_name} (${item.pc_hid})`
   }
   return item.pc_hid
 }
 
-function isAssignmentContinuable(status: ExperimentAssignmentSummary['status']) {
+function isAssignmentContinuable(status: AssignmentSummary['status']) {
   return status !== 'completed'
 }
 
-function assignmentActionLabel(_status: ExperimentAssignmentSummary['status']) {
+function assignmentActionLabel(_status: AssignmentSummary['status']) {
   return 'Continue'
 }
 
 function FormOverlay(props: {
   title: string
   description: string
-  forms: ExperimentFormSchema[]
+  forms: FormSchema[]
   responses: FormResponseMap
   errors: Record<string, Record<string, string>>
   submitError: string | null
@@ -682,12 +675,14 @@ function RunPage() {
     queryKey: ['run-setup', authenticated],
     enabled: authenticated,
     refetchOnMount: 'always',
-    queryFn: () => httpClient<ExperimentSetupResponse>('/api/run/setup'),
+    queryFn: () => httpClient<SetupResponse>('/api/run/setup'),
   })
 
+  const activeRunName = data?.run_name ?? ''
+
   useEffect(() => {
-    setActiveExperimentName(data?.experiment_name ?? '')
-  }, [data?.experiment_name])
+    setActiveRunName(activeRunName)
+  }, [activeRunName])
 
   const nextAssignment = data?.next_assignment ?? null
   const pendingFormGroup = data?.pending_form_groups?.[0] ?? null
@@ -746,7 +741,7 @@ function RunPage() {
     setSubmitError(null)
     setSubmitting('form')
     try {
-      await httpClient<ExperimentFormSubmitResponse>('/api/run/forms/submit', {
+      await httpClient<FormSubmitResponse>('/api/run/forms/submit', {
         method: 'POST',
         body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
       })
@@ -758,9 +753,7 @@ function RunPage() {
     }
   }
 
-  async function handleStartSession(
-    assignment: ExperimentAssignmentSummary | null = lockedAssignment,
-  ) {
+  async function handleStartSession(assignment: AssignmentSummary | null = lockedAssignment) {
     setSubmitError(null)
     if (!assignment) return
     setSubmitting('session')
@@ -777,7 +770,7 @@ function RunPage() {
         params: { sessionId: response.session_id },
         search: {
           gameName: assignment?.game_name ?? '',
-          experimentName: data?.experiment_name ?? '',
+          runName: activeRunName,
         },
       })
     } catch (submitErr) {
@@ -818,7 +811,7 @@ function RunPage() {
         </div>
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>{titleCase(data?.experiment_name ?? 'Run')}</CardTitle>
+            <CardTitle>{titleCase(activeRunName || 'Run')}</CardTitle>
             <CardDescription>
               Sign in with your access key or register before viewing study details.
             </CardDescription>
@@ -849,7 +842,7 @@ function RunPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-lg">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Loading experiment setup…</p>
+            <p className="text-sm text-muted-foreground">Loading setup...</p>
           </CardContent>
         </Card>
       </div>
@@ -862,7 +855,7 @@ function RunPage() {
         ? error.message
         : error instanceof Error
           ? error.message
-          : 'Unable to load the experiment right now.'
+          : 'Unable to load the run right now.'
     return (
       <div className="min-h-screen bg-background">
         <FatalErrorOverlay message={message} onReturn={() => navigate({ to: '/login' })} />
@@ -892,9 +885,7 @@ function RunPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight">
-                {titleCase(data.experiment_name)}
-              </h1>
+              <h1 className="text-3xl font-semibold tracking-tight">{titleCase(activeRunName)}</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                 {data.description}
               </p>

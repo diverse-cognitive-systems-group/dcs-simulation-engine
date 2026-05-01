@@ -26,11 +26,11 @@ def test_example_run_config_boots_api_and_persists_run(config_path: Path, async_
         assert response.status_code == 200, response.text
         server_config = response.json()
 
-    assert server_config["default_experiment_name"] == config.name
+    assert server_config["run_name"] == config.name
     assert server_config["registration_enabled"] is config.registration_required
     assert server_config["authentication_required"] is config.registration_required
 
-    persisted = asyncio.run(async_mongo_provider.get_experiment(experiment_name=config.name))
+    persisted = asyncio.run(async_mongo_provider.get_run())
     assert persisted is not None
     config_snapshot = persisted.data["config_snapshot"]
     assert config_snapshot["name"] == config.name

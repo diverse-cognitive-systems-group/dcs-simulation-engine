@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING, Any
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
 from dcs_simulation_engine.core.assignment_strategies.base import AssignmentCandidate
 from dcs_simulation_engine.core.forms import (
-    ExperimentForm,
-    ExperimentFormQuestion,
+    Form,
+    FormQuestion,
     FormTriggerEvent,
 )
 from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import (
     AssignmentRecord,
-    ExperimentRecord,
     PlayerRecord,
+    RunRecord,
 )
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 from dcs_simulation_engine.utils.async_utils import maybe_await
@@ -43,35 +43,17 @@ class EngineRunManager:
         return cls._run_config
 
     @classmethod
-    def get_experiment_config_cached(cls, experiment: str | None = None) -> RunConfig:
-        """Compatibility alias while assignment storage still uses experiment_name fields."""
-        _ = experiment
-        return cls.get_run_config()
-
-    async def ensure_run_async(self, *, provider: Any | None = None) -> ExperimentRecord:
-        """Persist the active run config snapshot."""
-        provider = provider or self.provider
-        if provider is None:
-            raise ValueError("provider is required to persist an engine run")
-        return await self.ensure_experiment_async(provider=provider, experiment_name=self.run_config.name)
-
-    @classmethod
-    async def ensure_experiment_async(cls, *, provider: Any, experiment_name: str) -> ExperimentRecord:
-        """Persist the experiment config snapshot if it is not already stored."""
-        config = cls.get_experiment_config_cached(experiment_name)
-        existing = await maybe_await(provider.get_experiment(experiment_name=config.name))
-        progress = await cls.compute_progress_async(provider=provider, experiment_name=config.name)
+    async def ensure_run_async(cls, *, provider: Any) -> RunRecord:
+        """Persist the run config snapshot if it is not already stored."""
+        config = cls.get_run_config()
+        existing = await maybe_await(provider.get_run())
+        progress = await cls.compute_progress_async(provider=provider)
         if existing is not None:
-            updated = await maybe_await(
-                provider.set_experiment_progress(
-                    experiment_name=config.name,
-                    progress=progress,
-                )
-            )
+            updated = await maybe_await(provider.set_run_progress(progress=progress))
             return updated or existing
         return await maybe_await(
-            provider.upsert_experiment(
-                experiment_name=config.name,
+            provider.upsert_run(
+                name=config.name,
                 description=config.description,
                 config_snapshot=config.model_dump(mode="json"),
                 progress=progress,
@@ -79,16 +61,16 @@ class EngineRunManager:
         )
 
     @classmethod
-    async def compute_progress_async(cls, *, provider: Any, experiment_name: str) -> dict[str, Any]:
+    async def compute_progress_async(cls, *, provider: Any) -> dict[str, Any]:
         """Compute finite usability progress from assignment state."""
-        config = cls.get_experiment_config_cached(experiment_name)
+        config = cls.get_run_config()
         strategy = cls._strategy_for(config=config)
         return await maybe_await(strategy.compute_progress_async(provider=provider, config=config))
 
     @classmethod
-    async def compute_status_async(cls, *, provider: Any, experiment_name: str) -> dict[str, Any]:
-        """Compute quota-centric status counts for an experiment."""
-        config = cls.get_experiment_config_cached(experiment_name)
+    async def compute_status_async(cls, *, provider: Any) -> dict[str, Any]:
+        """Compute quota-centric status counts for a run."""
+        config = cls.get_run_config()
         strategy = cls._strategy_for(config=config)
         return await maybe_await(strategy.compute_status_async(provider=provider, config=config))
 
@@ -97,16 +79,15 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player_id: str,
     ) -> dict[str, Any]:
         """Return the assignment state visible to one authenticated player."""
-        config = cls.get_experiment_config_cached(experiment_name)
-        player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
-        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=experiment_name, player_id=player_id))
+        config = cls.get_run_config()
+        player_assignments = await maybe_await(provider.list_assignments(player_id=player_id))
+        active_assignment = await maybe_await(provider.get_active_assignment(player_id=player_id))
         completed_assignments = [item for item in player_assignments if item.status == "completed"]
         strategy = cls._strategy_for(config=config)
-        has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
+        has_finished_run = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
         eligible_assignment_options: list[dict[str, str]] = []
         pending_form_groups = await cls.pending_form_groups_async(
             provider=provider,
@@ -114,29 +95,28 @@ class EngineRunManager:
             player_id=player_id,
             assignments=player_assignments,
             active_assignment=active_assignment,
-            has_finished_experiment=has_finished_experiment,
+            has_finished_run=has_finished_run,
         )
 
-        if not cls._blocks_assignment_resolution(pending_form_groups) and not has_finished_experiment:
+        if not cls._blocks_assignment_resolution(pending_form_groups) and not has_finished_run:
             player_record = await maybe_await(provider.get_player(player_id=player_id))
             if player_record is not None:
                 active_assignment, eligible_assignment_options = await cls.resolve_assignment_state_async(
                     provider=provider,
-                    experiment_name=config.name,
                     player=player_record,
                     player_assignments=player_assignments,
                     active_assignment=active_assignment,
                 )
-                player_assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id))
+                player_assignments = await maybe_await(provider.list_assignments(player_id=player_id))
                 completed_assignments = [item for item in player_assignments if item.status == "completed"]
-                has_finished_experiment = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
+                has_finished_run = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
                 pending_form_groups = await cls.pending_form_groups_async(
                     provider=provider,
                     config=config,
                     player_id=player_id,
                     assignments=player_assignments,
                     active_assignment=active_assignment,
-                    has_finished_experiment=has_finished_experiment,
+                    has_finished_run=has_finished_run,
                 )
 
         pending_assignment_form_items = [
@@ -151,10 +131,10 @@ class EngineRunManager:
         return {
             "active_assignment": active_assignment,
             "pending_assignment_form_ids": [item.assignment_id for item in pending_assignment_form_items],
-            "has_finished_experiment": has_finished_experiment,
+            "has_finished_run": has_finished_run,
             "eligible_assignment_options": eligible_assignment_options,
             "pending_form_groups": pending_form_groups,
-            "assignments": await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id)),
+            "assignments": await maybe_await(provider.list_assignments(player_id=player_id)),
         }
 
     @classmethod
@@ -166,20 +146,20 @@ class EngineRunManager:
         player_id: str,
         assignments: list[AssignmentRecord] | None = None,
         active_assignment: AssignmentRecord | None = None,
-        has_finished_experiment: bool | None = None,
+        has_finished_run: bool | None = None,
     ) -> list[dict[str, Any]]:
         """Return actionable form groups still required for a player."""
         if assignments is None:
-            assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player_id))
+            assignments = await maybe_await(provider.list_assignments(player_id=player_id))
         if active_assignment is None:
-            active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player_id))
-        if has_finished_experiment is None:
+            active_assignment = await maybe_await(provider.get_active_assignment(player_id=player_id))
+        if has_finished_run is None:
             strategy = cls._strategy_for(config=config)
             completed_count = sum(1 for item in assignments if item.status == "completed")
-            has_finished_experiment = completed_count >= strategy.max_assignments_per_player(config=config)
+            has_finished_run = completed_count >= strategy.max_assignments_per_player(config=config)
 
         groups: list[dict[str, Any]] = []
-        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, experiment_name=config.name))
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id))
         submitted_player_form_names = set((player_forms.data if player_forms else {}).keys())
         groups.extend(
             cls._pending_player_form_group(
@@ -195,7 +175,7 @@ class EngineRunManager:
             if assignment.status == "completed":
                 groups.extend(cls._pending_assignment_form_group(config=config, event="after_assignment", assignment=assignment))
 
-        if has_finished_experiment:
+        if has_finished_run:
             groups.extend(
                 cls._pending_player_form_group(
                     config=config,
@@ -272,17 +252,16 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player: PlayerRecord,
         player_assignments: list[AssignmentRecord] | None = None,
         active_assignment: AssignmentRecord | None = None,
     ) -> tuple[AssignmentRecord | None, list[dict[str, str]]]:
         """Return the current assignment or selectable next options for a player."""
-        config = cls.get_experiment_config_cached(experiment_name)
+        config = cls.get_run_config()
         strategy = cls._strategy_for(config=config)
         assignments = player_assignments
         if assignments is None:
-            assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+            assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         pending_groups = await cls.pending_form_groups_async(
             provider=provider,
             config=config,
@@ -414,7 +393,6 @@ class EngineRunManager:
         candidate: AssignmentCandidate,
     ) -> dict[str, Any]:
         assignment_doc: dict[str, Any] = {
-            MongoColumns.EXPERIMENT_NAME: config.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: candidate.game_name,
             MongoColumns.PC_HID: candidate.pc_hid,
@@ -431,13 +409,12 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player_id: str,
         group_id: str,
         responses: dict[str, Any],
     ) -> dict[str, Any]:
         """Store responses for one currently pending form group."""
-        config = cls.get_experiment_config_cached(experiment_name)
+        config = cls.get_run_config()
         pending_groups = await cls.pending_form_groups_async(
             provider=provider,
             config=config,
@@ -454,7 +431,6 @@ class EngineRunManager:
             await cls.store_player_form_payloads_async(
                 provider=provider,
                 player_id=player_id,
-                experiment_name=config.name,
                 forms_payload=normalized,
             )
             return group
@@ -476,13 +452,11 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player: PlayerRecord,
     ) -> AssignmentRecord | None:
         """Return the active assignment for a player or create one on demand."""
         assignment, _options = await cls.resolve_assignment_state_async(
             provider=provider,
-            experiment_name=experiment_name,
             player=player,
         )
         return assignment
@@ -493,9 +467,8 @@ class EngineRunManager:
         *,
         provider: Any,
         registry: "SessionRegistry",
-        experiment_name: str,
         player: PlayerRecord,
-        source: str = "experiment",
+        source: str = "run",
         assignment_id: str | None = None,
     ) -> tuple["SessionEntry", AssignmentRecord]:
         """Start or resume gameplay for the requested assignment."""
@@ -505,19 +478,18 @@ class EngineRunManager:
         if assignment_id is not None:
             assignment = await cls.get_assignment_for_player_async(
                 provider=provider,
-                experiment_name=experiment_name,
                 player_id=player.id,
                 assignment_id=assignment_id,
             )
         else:
-            state = await cls.get_player_state_async(provider=provider, experiment_name=experiment_name, player_id=player.id)
+            state = await cls.get_player_state_async(provider=provider, player_id=player.id)
             assignment = state["active_assignment"]
         if assignment is None:
             raise ValueError("No matching assignment is available for this player.")
         if assignment.status == "completed":
             raise ValueError("Completed assignments cannot be resumed.")
-        config = cls.get_experiment_config_cached(experiment_name)
-        assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        config = cls.get_run_config()
+        assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         pending_groups = await cls.pending_form_groups_async(
             provider=provider,
             config=config,
@@ -558,7 +530,6 @@ class EngineRunManager:
             player_id=player.id,
             game_name=assignment.game_name,
             manager=manager,
-            experiment_name=experiment_name,
             assignment_id=assignment.assignment_id,
         )
         start_hook = getattr(manager, "start_persistence", None)
@@ -573,7 +544,7 @@ class EngineRunManager:
             )
         )
         if updated_assignment is None:
-            raise ValueError("Failed to mark experiment assignment as in progress.")
+            raise ValueError("Failed to mark run assignment as in progress.")
         return entry, updated_assignment
 
     @classmethod
@@ -581,15 +552,14 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player_id: str,
         assignment_id: str,
     ) -> AssignmentRecord | None:
-        """Return one assignment if it belongs to the requested player+experiment."""
+        """Return one assignment if it belongs to the requested player."""
         assignment = await maybe_await(provider.get_assignment(assignment_id=assignment_id))
         if assignment is None:
             return None
-        if assignment.player_id != player_id or assignment.experiment_name != experiment_name:
+        if assignment.player_id != player_id:
             return None
         return assignment
 
@@ -598,7 +568,6 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         assignment_id: str,
         exit_reason: str,
     ) -> AssignmentRecord | None:
@@ -606,7 +575,7 @@ class EngineRunManager:
         status = "completed" if cls._is_completion_reason(exit_reason) else "interrupted"
         updated = await maybe_await(provider.update_assignment_status(assignment_id=assignment_id, status=status))
         if status == "completed":
-            await cls.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
+            await cls.ensure_run_async(provider=provider)
         return updated
 
     @classmethod
@@ -635,7 +604,6 @@ class EngineRunManager:
         *,
         provider: Any,
         player_id: str,
-        experiment_name: str,
         forms_payload: dict[str, dict[str, Any]],
     ) -> None:
         """Store one or more named player-scoped form payloads on the forms record."""
@@ -643,7 +611,6 @@ class EngineRunManager:
             await maybe_await(
                 provider.set_player_form_response(
                     player_id=player_id,
-                    experiment_name=experiment_name,
                     form_key=form_key,
                     response=payload,
                 )
@@ -651,8 +618,8 @@ class EngineRunManager:
 
     @classmethod
     async def get_latest_assignment_for_player_async(cls, *, provider: Any, player_id: str) -> AssignmentRecord | None:
-        """Return the latest experiment assignment for a player across all experiments."""
-        getter = getattr(provider, "get_latest_experiment_assignment_for_player", None)
+        """Return the latest assignment for a player."""
+        getter = getattr(provider, "get_latest_assignment_for_player", None)
         if getter is None:
             return None
         return await maybe_await(getter(player_id=player_id))
@@ -661,7 +628,7 @@ class EngineRunManager:
     def normalize_form_submissions(
         cls,
         *,
-        forms: list[ExperimentForm],
+        forms: list[Form],
         responses: dict[str, Any],
     ) -> dict[str, dict[str, Any]]:
         """Validate and normalize submitted answers for one or more named forms."""
@@ -699,7 +666,7 @@ class EngineRunManager:
         return normalized
 
     @classmethod
-    def _normalize_question_answer(cls, *, question: ExperimentFormQuestion, raw_value: Any) -> Any:
+    def _normalize_question_answer(cls, *, question: FormQuestion, raw_value: Any) -> Any:
         answer_type = question.answer_type
         if answer_type is None:
             return None
@@ -768,11 +735,10 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player: PlayerRecord,
     ) -> list[dict[str, str]]:
         """Return selectable {game_name, pc_hid, npc_hid} options for the player."""
-        state = await cls.get_player_state_async(provider=provider, experiment_name=experiment_name, player_id=player.id)
+        state = await cls.get_player_state_async(provider=provider, player_id=player.id)
         return list(state.get("eligible_assignment_options", []))
 
     @classmethod
@@ -780,29 +746,26 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        experiment_name: str,
         player: PlayerRecord,
         game_name: str,
         pc_hid: str,
         npc_hid: str,
     ) -> AssignmentRecord:
         """Create a specific assignment for a player who selected one explicit candidate."""
-        config = cls.get_experiment_config_cached(experiment_name)
+        config = cls.get_run_config()
         if not config.assignment_strategy.allow_choice_if_multiple:
-            raise ValueError("This experiment is not configured for participant assignment choice.")
+            raise ValueError("This run is not configured for participant assignment choice.")
         eligible = await cls.get_eligible_options_async(
             provider=provider,
-            experiment_name=experiment_name,
             player=player,
         )
         eligible_set = {(opt["game_name"], opt["pc_hid"], opt["npc_hid"]) for opt in eligible}
         if (game_name, pc_hid, npc_hid) not in eligible_set:
             raise ValueError("The selected game, PC, and NPC are not available for assignment.")
-        player_assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        player_assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         assignment = await maybe_await(
             provider.create_assignment(
                 assignment_doc={
-                    MongoColumns.EXPERIMENT_NAME: config.name,
                     MongoColumns.PLAYER_ID: player.id,
                     MongoColumns.GAME_NAME: game_name,
                     MongoColumns.PC_HID: pc_hid,
@@ -819,7 +782,7 @@ class EngineRunManager:
 
     @classmethod
     def _strategy_for(cls, *, config: RunConfig):
-        """Resolve the configured assignment strategy for one experiment."""
+        """Resolve the configured assignment strategy for one run."""
         return get_assignment_strategy(config.assignment_strategy.strategy)
 
     @classmethod

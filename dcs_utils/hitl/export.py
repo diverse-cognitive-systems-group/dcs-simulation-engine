@@ -2,7 +2,7 @@
 
 The output directory has the same structure that ``dcs-utils generate report``
 expects: sessions.json, session_events.json, characters.json, players.json,
-assignments.json, experiments.json, and __manifest__.json.
+assignments.json, runs.json, and __manifest__.json.
 
 Each Scenario becomes one session; each Attempt within a scenario becomes an
 inbound player message plus one or more outbound simulator/system events.
@@ -233,10 +233,10 @@ def export_results(
         }
     ]
 
-    # experiments.json
-    experiments = [
+    # runs.json
+    runs_metadata = [
         {
-            "experiment_id": str(uuid.uuid4()),
+            "run_id": str(uuid.uuid4()),
             "name": f"{npc_hid} HITL Scenario Test",
             "run_config": {"source": "hitl", "npc_hid": npc_hid},
             "created_at": generated_at,
@@ -269,7 +269,7 @@ def export_results(
     _write("session_events.json", session_events)
     _write("characters.json", characters)
     _write("players.json", players)
-    _write("experiments.json", experiments)
+    _write("runs.json", runs_metadata)
     _write("assignments.json", [])
 
     return output_dir

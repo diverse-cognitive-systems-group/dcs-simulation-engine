@@ -2,7 +2,7 @@
   "collections": [
     "assignments",
     "characters",
-    "experiments",
+    "runs",
     "pii",
     "players",
     "session_events",

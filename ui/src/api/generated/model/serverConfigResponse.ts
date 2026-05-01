@@ -6,12 +6,10 @@
  */
 
 /**
- * Response payload describing server capabilities for the active mode.
+ * Response payload describing server capabilities.
  */
 export interface ServerConfigResponse {
-  mode: 'standard';
   authentication_required: boolean;
   registration_enabled: boolean;
-  experiments_enabled: boolean;
-  default_experiment_name?: string | null;
+  run_name: string;
 }

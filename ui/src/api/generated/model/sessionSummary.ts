@@ -10,11 +10,11 @@ import type { SessionSummaryStatus } from './sessionSummaryStatus';
  * A single in-memory session summary for list responses.
  */
 export interface SessionSummary {
-  session_id: string;
-  game: string;
-  status: SessionSummaryStatus;
   created_at: string;
-  last_active: string;
-  turns: number;
   exited: boolean;
+  game: string;
+  last_active: string;
+  session_id: string;
+  status: SessionSummaryStatus;
+  turns: number;
 }

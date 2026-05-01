@@ -7,20 +7,20 @@ from dcs_simulation_engine.api.auth import (
     require_player_async,
 )
 from dcs_simulation_engine.api.models import (
+    AssignmentSessionRequest,
+    AssignmentSummary,
     CreateGameResponse,
     EligibleAssignmentOption,
     EligibleAssignmentOptionsResponse,
-    ExperimentAssignmentSummary,
-    ExperimentFormSubmitRequest,
-    ExperimentFormSubmitResponse,
-    ExperimentGameStatusResponse,
-    ExperimentProgressResponse,
-    ExperimentSessionRequest,
-    ExperimentSetupResponse,
-    ExperimentStatusResponse,
+    FormSubmitRequest,
+    FormSubmitResponse,
+    GameStatusResponse,
     NextAssignmentState,
     PendingFormGroupResponse,
+    ProgressResponse,
+    RunStatusResponse,
     SelectAssignmentRequest,
+    SetupResponse,
 )
 from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
@@ -38,7 +38,7 @@ async def _assignment_summary(
     assignment,
     *,
     pending_assignment_form_ids: set[str] | None = None,
-) -> ExperimentAssignmentSummary | None:
+) -> AssignmentSummary | None:
     if assignment is None:
         return None
     assignment_data = getattr(assignment, "data", {}) or {}
@@ -48,7 +48,7 @@ async def _assignment_summary(
         pc_hid=assignment.pc_hid,
         npc_hid=assignment.npc_hid,
     )
-    return ExperimentAssignmentSummary(
+    return AssignmentSummary(
         assignment_id=assignment.assignment_id,
         game_name=assignment.game_name,
         pc_hid=assignment.pc_hid,
@@ -65,7 +65,7 @@ async def _assignment_summaries(
     assignments,
     *,
     pending_assignment_form_ids: set[str] | None = None,
-) -> list[ExperimentAssignmentSummary]:
+) -> list[AssignmentSummary]:
     summaries = []
     for assignment in assignments:
         summary = await _assignment_summary(provider, assignment, pending_assignment_form_ids=pending_assignment_form_ids)
@@ -129,21 +129,21 @@ async def _next_assignment_state(
     return NextAssignmentState(mode="none", reason="unavailable")
 
 
-def _progress_response(progress: dict) -> ExperimentProgressResponse:
-    return ExperimentProgressResponse(
+def _progress_response(progress: dict) -> ProgressResponse:
+    return ProgressResponse(
         total=int(progress["total"]),
         completed=int(progress["completed"]),
         is_complete=bool(progress["is_complete"]),
     )
 
 
-def _status_response(status_payload: dict) -> ExperimentStatusResponse:
-    return ExperimentStatusResponse(
+def _status_response(status_payload: dict) -> RunStatusResponse:
+    return RunStatusResponse(
         is_open=bool(status_payload["is_open"]),
         total=int(status_payload["total"]),
         completed=int(status_payload["completed"]),
         per_game={
-            str(game_name): ExperimentGameStatusResponse(
+            str(game_name): GameStatusResponse(
                 total=int(counts["total"]),
                 completed=int(counts["completed"]),
                 in_progress=int(counts["in_progress"]),
@@ -153,8 +153,8 @@ def _status_response(status_payload: dict) -> ExperimentStatusResponse:
     )
 
 
-@router.get("/setup", response_model=ExperimentSetupResponse)
-async def run_setup(request: Request) -> ExperimentSetupResponse:
+@router.get("/setup", response_model=SetupResponse)
+async def run_setup(request: Request) -> SetupResponse:
     """Return run metadata, form schemas, and current player assignment state."""
     manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
@@ -163,14 +163,13 @@ async def run_setup(request: Request) -> ExperimentSetupResponse:
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     player_state = await manager.get_player_state_async(
         provider=provider,
-        experiment_name=config.name,
         player_id=player.id,
     )
     current_assignment = player_state["active_assignment"]
     pending_assignment_form_ids = set(player_state.get("pending_assignment_form_ids", []))
     has_pending_assignment_forms = bool(pending_assignment_form_ids)
     pending_form_groups = player_state.get("pending_form_groups", [])
-    assignment_completed = bool(player_state["has_finished_experiment"])
+    assignment_completed = bool(player_state["has_finished_run"])
     eligible_options = player_state.get("eligible_assignment_options", [])
 
     # Surface resumable_session_id so the frontend can show a Resume CTA.
@@ -179,11 +178,11 @@ async def run_setup(request: Request) -> ExperimentSetupResponse:
         current_assignment_data = getattr(current_assignment, "data", {}) or {}
         resumable_session_id = current_assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None
 
-    progress = await manager.compute_progress_async(provider=provider, experiment_name=config.name)
+    progress = await manager.compute_progress_async(provider=provider)
     is_open = not progress["is_complete"]
     has_pending_initial_forms = any(group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups)
-    return ExperimentSetupResponse(
-        experiment_name=config.name,
+    return SetupResponse(
+        run_name=config.name,
         description=config.description,
         is_open=is_open,
         forms=[form.model_dump(mode="json") for form in config.forms],
@@ -217,20 +216,18 @@ async def run_setup(request: Request) -> ExperimentSetupResponse:
     )
 
 
-@router.post("/forms/submit", response_model=ExperimentFormSubmitResponse)
+@router.post("/forms/submit", response_model=FormSubmitResponse)
 async def submit_run_form_group(
-    body: ExperimentFormSubmitRequest,
+    body: FormSubmitRequest,
     request: Request,
-) -> ExperimentFormSubmitResponse:
+) -> FormSubmitResponse:
     """Store responses for one pending run form group."""
     manager = _get_run_manager(request)
-    config = manager.run_config
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     try:
         group = await manager.submit_form_group_async(
             provider=provider,
-            experiment_name=config.name,
             player_id=player.id,
             group_id=body.group_id,
             responses=body.responses,
@@ -238,7 +235,7 @@ async def submit_run_form_group(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    return ExperimentFormSubmitResponse(
+    return FormSubmitResponse(
         group_id=group["group_id"],
         trigger=group["trigger"],
         assignment_id=group.get("assignment_id"),
@@ -247,12 +244,11 @@ async def submit_run_form_group(
 
 @router.post("/sessions", response_model=CreateGameResponse)
 async def create_run_session(
-    body: ExperimentSessionRequest,
+    body: AssignmentSessionRequest,
     request: Request,
 ) -> CreateGameResponse:
     """Create or resume a session for one run assignment."""
     manager = _get_run_manager(request)
-    config = manager.run_config
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
@@ -261,7 +257,6 @@ async def create_run_session(
         entry, _assignment = await manager.start_assignment_session_async(
             provider=provider,
             registry=registry,
-            experiment_name=config.name,
             player=player,
             source=body.source,
             assignment_id=body.assignment_id,
@@ -278,13 +273,13 @@ async def create_run_session(
     )
 
 
-@router.get("/progress", response_model=ExperimentProgressResponse)
-async def run_progress(request: Request) -> ExperimentProgressResponse:
+@router.get("/progress", response_model=ProgressResponse)
+async def run_progress(request: Request) -> ProgressResponse:
     """Return the current finite progress for the run."""
     manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    progress = await manager.compute_progress_async(provider=provider, experiment_name=manager.run_config.name)
+    progress = await manager.compute_progress_async(provider=provider)
     await manager.ensure_run_async(provider=provider)
     return _progress_response(progress)
 
@@ -297,17 +292,16 @@ async def get_eligible_options(request: Request) -> EligibleAssignmentOptionsRes
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     options = await manager.get_eligible_options_async(
         provider=provider,
-        experiment_name=manager.run_config.name,
         player=player,
     )
     return EligibleAssignmentOptionsResponse(options=[option for option in await _eligible_assignment_options(provider, options)])
 
 
-@router.post("/assignments/select", response_model=ExperimentAssignmentSummary)
+@router.post("/assignments/select", response_model=AssignmentSummary)
 async def select_assignment(
     body: SelectAssignmentRequest,
     request: Request,
-) -> ExperimentAssignmentSummary:
+) -> AssignmentSummary:
     """Create an assignment for the authenticated player based on their explicit triplet selection."""
     manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
@@ -315,7 +309,6 @@ async def select_assignment(
     try:
         assignment = await manager.create_player_choice_assignment_async(
             provider=provider,
-            experiment_name=manager.run_config.name,
             player=player,
             game_name=body.game_name,
             pc_hid=body.pc_hid,
@@ -326,12 +319,12 @@ async def select_assignment(
     return await _assignment_summary(provider, assignment)
 
 
-@router.get("/status", response_model=ExperimentStatusResponse)
-async def run_status(request: Request) -> ExperimentStatusResponse:
+@router.get("/status", response_model=RunStatusResponse)
+async def run_status(request: Request) -> RunStatusResponse:
     """Return the current aggregate status for the run."""
     manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
     await manager.ensure_run_async(provider=provider)
-    status_payload = await manager.compute_status_async(provider=provider, experiment_name=manager.run_config.name)
+    status_payload = await manager.compute_status_async(provider=provider)
     return _status_response(status_payload)

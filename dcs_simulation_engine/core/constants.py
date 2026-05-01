@@ -18,7 +18,7 @@ To participate in our research, you'll need to *sign a consent form to receive
 an access token*.
 
 With a token, you can start in Benchmarking Mode, which lets us run an
-experiment and collect anonymous data about how you engaged with the other
+run and collect anonymous data about how you engaged with the other
 beings you encountered in the simulator.
 
 Alternatively, you can play around in Demo Mode (lower fidelity) without any

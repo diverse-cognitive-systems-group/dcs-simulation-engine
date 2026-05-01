@@ -79,7 +79,7 @@ function formatElapsed(seconds: number): string {
 
 function PlayPage() {
   const { sessionId } = useParams({ from: '/play/$sessionId' })
-  const { gameName, experimentName } = useSearch({ from: '/play/$sessionId' })
+  const { gameName, runName } = useSearch({ from: '/play/$sessionId' })
   const navigate = useNavigate()
   // useSessionWebSocket opens the WebSocket connection and returns reactive state plus
   // action callbacks; see hooks/use-session-websocket.ts for the protocol details.
@@ -201,7 +201,7 @@ function PlayPage() {
   }
 
   async function handleClose() {
-    if (experimentName) {
+    if (runName) {
       await navigate({ to: '/run' })
       return
     }
@@ -441,7 +441,7 @@ export const playRoute = createRoute({
   path: '/play/$sessionId',
   validateSearch: (search: Record<string, unknown>) => ({
     gameName: typeof search.gameName === 'string' ? search.gameName : '',
-    experimentName: typeof search.experimentName === 'string' ? search.experimentName : '',
+    runName: typeof search.runName === 'string' ? search.runName : '',
   }),
   beforeLoad: async () => {
     const serverConfig = await getServerConfig()

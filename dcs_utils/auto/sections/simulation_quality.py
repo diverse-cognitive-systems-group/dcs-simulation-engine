@@ -259,7 +259,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     char_data = AnalysisData(
         results_dir=data.results_dir,
         manifest=data.manifest,
-        experiment=data.experiment,
+        run=data.run,
         runs_df=_filter(data.runs_df),
         players_df=data.players_df,
         transcripts_df=_filter(data.transcripts_df),

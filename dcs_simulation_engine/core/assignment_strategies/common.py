@@ -56,16 +56,14 @@ class CandidateAssignmentStrategy:
         return max(0, int(configured))
 
     async def compute_progress_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
-        """Compute quota-based experiment progress for the configured games."""
+        """Compute quota-based run progress for the configured games."""
         quota = config.assignment_strategy.quota_per_game
         completed_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["completed"],
         )
         counted_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress", "completed"],
         )
         completed_total = sum(len(players) for players in completed_players_by_game.values())
@@ -83,21 +81,18 @@ class CandidateAssignmentStrategy:
         }
 
     async def compute_status_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
-        """Compute per-game status counts and overall experiment openness."""
+        """Compute per-game status counts and overall run openness."""
         quota = config.assignment_strategy.quota_per_game
         completed_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["completed"],
         )
         in_progress_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress"],
         )
         counted_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress", "completed"],
         )
 
@@ -181,7 +176,7 @@ class CandidateAssignmentStrategy:
         config: "RunConfig",
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
-        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
+        active_assignment = await maybe_await(provider.get_active_assignment(player_id=player.id))
         if active_assignment is None:
             return None
         if config.assignment_strategy.require_completion:
@@ -198,7 +193,6 @@ class CandidateAssignmentStrategy:
         candidate: AssignmentCandidate,
     ) -> dict[str, Any]:
         assignment_doc: dict[str, Any] = {
-            MongoColumns.EXPERIMENT_NAME: config.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: candidate.game_name,
             MongoColumns.PC_HID: candidate.pc_hid,
@@ -219,7 +213,6 @@ class CandidateAssignmentStrategy:
     ) -> list[AssignmentCandidate]:
         counted_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress", "completed"],
         )
         quota = config.assignment_strategy.quota_per_game
@@ -259,16 +252,15 @@ class CandidateAssignmentStrategy:
         config: "RunConfig",
         player: "PlayerRecord",
     ) -> list["AssignmentRecord"]:
-        return await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        return await maybe_await(provider.list_assignments(player_id=player.id))
 
     async def _players_by_game(
         self,
         *,
         provider: Any,
-        experiment_name: str,
         statuses: list[str],
     ) -> dict[str, set[str]]:
-        assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, statuses=statuses))
+        assignments = await maybe_await(provider.list_assignments(statuses=statuses))
         players_by_game: dict[str, set[str]] = defaultdict(set)
         for assignment in assignments:
             players_by_game[assignment.game_name].add(assignment.player_id)
@@ -281,7 +273,7 @@ class CandidateAssignmentStrategy:
         config: "RunConfig",
         statuses: list[str],
     ) -> dict[tuple[str, str], int]:
-        assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, statuses=statuses))
+        assignments = await maybe_await(provider.list_assignments(statuses=statuses))
         counts: dict[tuple[str, str], int] = defaultdict(int)
         for assignment in assignments:
             counts[(assignment.game_name, assignment.npc_hid)] += 1
@@ -339,7 +331,7 @@ class CandidateAssignmentStrategy:
 
     async def _expertise_values(self, *, provider: Any, config: "RunConfig", player: "PlayerRecord") -> list[str]:
         values: list[str] = []
-        player_forms = await maybe_await(provider.get_player_forms(player_id=player.id, experiment_name=config.name))
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player.id))
         for form_payload in (player_forms.data if player_forms else {}).values():
             if not isinstance(form_payload, dict):
                 continue

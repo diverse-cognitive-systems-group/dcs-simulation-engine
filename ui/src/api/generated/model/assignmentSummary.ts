@@ -4,17 +4,22 @@
  * DCS Server
  * OpenAPI spec version: 0.1.0
  */
+import type { AssignmentSummaryStatus } from './assignmentSummaryStatus';
 
 /**
- * One eligible game+PC+NPC option returned when assignment choice is allowed.
+ * Assignment summary returned by run endpoints.
  */
-export interface EligibleAssignmentOption {
+export interface AssignmentSummary {
+  active_session_id?: string | null;
+  assignment_id: string;
   game_description?: string;
   game_name: string;
+  has_pending_forms?: boolean;
   npc_hid: string;
   pc_hid: string;
   player_character_description?: string;
   player_character_name?: string;
   simulator_character_description?: string;
   simulator_character_details_visible?: boolean;
+  status: AssignmentSummaryStatus;
 }
