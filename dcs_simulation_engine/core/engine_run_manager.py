@@ -1,17 +1,15 @@
-"""Experiment orchestration for assignment-driven study flows."""
+"""Engine-run orchestration for assignment-driven flows."""
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import yaml
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
 from dcs_simulation_engine.core.assignment_strategies.base import AssignmentCandidate
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
 from dcs_simulation_engine.core.forms import (
     ExperimentForm,
     ExperimentFormQuestion,
     FormTriggerEvent,
 )
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import (
     AssignmentRecord,
@@ -19,68 +17,43 @@ from dcs_simulation_engine.dal.base import (
     PlayerRecord,
 )
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
-from dcs_simulation_engine.helpers.experiment_helpers import get_experiment_config
 from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.time import utc_now
-from loguru import logger
 
 if TYPE_CHECKING:
     from dcs_simulation_engine.api.registry import SessionEntry, SessionRegistry
 
 
-class ExperimentManager:
-    """Loads experiment configs and resolves experiment assignment workflows."""
+class EngineRunManager:
+    """Resolves assignment workflows for the single configured engine run."""
 
-    _experiment_config_cache: dict[str, ExperimentConfig] = {}
+    _run_config: RunConfig | None = None
 
-    @classmethod
-    def _cache_key(cls, experiment: str) -> str:
-        return experiment.strip().lower()
-
-    @classmethod
-    def _load_experiment_config_into_cache(cls, experiment: str) -> bool:
-        cache_key = cls._cache_key(experiment)
-        if cache_key in cls._experiment_config_cache:
-            return False
-        experiment_config_fpath = get_experiment_config(experiment)
-        cls._experiment_config_cache[cache_key] = ExperimentConfig.load(experiment_config_fpath)
-        return True
+    def __init__(self, run_config: RunConfig, provider: Any | None = None) -> None:
+        """Initialize the manager with the active run config and optional provider."""
+        self.run_config = run_config
+        self.provider = provider
+        type(self)._run_config = run_config
 
     @classmethod
-    def get_experiment_config_cached(cls, experiment: str) -> ExperimentConfig:
-        """Return a defensive copy of a cached experiment config."""
-        cls._load_experiment_config_into_cache(experiment)
-        return cls._experiment_config_cache[cls._cache_key(experiment)].model_copy(deep=True)
+    def get_run_config(cls) -> RunConfig:
+        """Return the active run config."""
+        if cls._run_config is None:
+            raise RuntimeError("EngineRunManager has not been configured with a RunConfig.")
+        return cls._run_config
 
     @classmethod
-    def preload_experiment_configs(cls) -> int:
-        """Load all valid experiment configs from disk into the in-memory cache."""
-        experiments_dir = Path(__file__).resolve().parents[2] / "experiments"
-        if not experiments_dir.exists() or not experiments_dir.is_dir():
-            return 0
+    def get_experiment_config_cached(cls, experiment: str | None = None) -> RunConfig:
+        """Compatibility alias while assignment storage still uses experiment_name fields."""
+        _ = experiment
+        return cls.get_run_config()
 
-        discovered_names: set[str] = set()
-        for path in experiments_dir.glob("*.y*ml"):
-            try:
-                with path.open("r", encoding="utf-8") as handle:
-                    doc = yaml.safe_load(handle) or {}
-                raw_name = doc.get("name")
-                if isinstance(raw_name, str) and raw_name.strip():
-                    discovered_names.add(raw_name.strip())
-            except Exception:
-                logger.debug("Skipping unreadable experiment config while preloading: {}", path, exc_info=True)
-
-        loaded = 0
-        for name in discovered_names:
-            try:
-                if cls._load_experiment_config_into_cache(name):
-                    loaded += 1
-            except Exception:
-                logger.debug("Skipping invalid experiment config '{}' during preload", name, exc_info=True)
-
-        if loaded > 0:
-            logger.info("Preloaded {} experiment config(s) into ExperimentManager cache.", loaded)
-        return loaded
+    async def ensure_run_async(self, *, provider: Any | None = None) -> ExperimentRecord:
+        """Persist the active run config snapshot."""
+        provider = provider or self.provider
+        if provider is None:
+            raise ValueError("provider is required to persist an engine run")
+        return await self.ensure_experiment_async(provider=provider, experiment_name=self.run_config.name)
 
     @classmethod
     async def ensure_experiment_async(cls, *, provider: Any, experiment_name: str) -> ExperimentRecord:
@@ -166,26 +139,19 @@ class ExperimentManager:
                     has_finished_experiment=has_finished_experiment,
                 )
 
-        pending_post_play_items = [
+        pending_assignment_form_items = [
             assignment
             for assignment in player_assignments
             if any(
-                group["trigger"]["event"] == "after_assignment"
-                and group.get("assignment_id") == assignment.assignment_id
+                group["trigger"]["event"] == "after_assignment" and group.get("assignment_id") == assignment.assignment_id
                 for group in pending_form_groups
             )
         ]
-        pending_post_play = pending_post_play_items[-1] if pending_post_play_items else None
-        has_submitted_before_forms = not any(
-            group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups
-        )
 
         return {
             "active_assignment": active_assignment,
-            "pending_post_play": pending_post_play,
-            "pending_post_play_ids": [item.assignment_id for item in pending_post_play_items],
+            "pending_assignment_form_ids": [item.assignment_id for item in pending_assignment_form_items],
             "has_finished_experiment": has_finished_experiment,
-            "has_submitted_before_forms": has_submitted_before_forms,
             "eligible_assignment_options": eligible_assignment_options,
             "pending_form_groups": pending_form_groups,
             "assignments": await maybe_await(provider.list_assignments(experiment_name=experiment_name, player_id=player_id)),
@@ -196,7 +162,7 @@ class ExperimentManager:
         cls,
         *,
         provider: Any,
-        config: ExperimentConfig,
+        config: RunConfig,
         player_id: str,
         assignments: list[AssignmentRecord] | None = None,
         active_assignment: AssignmentRecord | None = None,
@@ -244,7 +210,7 @@ class ExperimentManager:
     def _pending_player_form_group(
         cls,
         *,
-        config: ExperimentConfig,
+        config: RunConfig,
         event: FormTriggerEvent,
         submitted_form_names: set[str],
     ) -> list[dict[str, Any]]:
@@ -266,7 +232,7 @@ class ExperimentManager:
     def _pending_assignment_form_group(
         cls,
         *,
-        config: ExperimentConfig,
+        config: RunConfig,
         event: FormTriggerEvent,
         assignment: AssignmentRecord,
     ) -> list[dict[str, Any]]:
@@ -357,7 +323,7 @@ class ExperimentManager:
     def _current_assignment_from_policy(
         cls,
         *,
-        config: ExperimentConfig,
+        config: RunConfig,
         assignments: list[AssignmentRecord],
         active_assignment: AssignmentRecord | None,
     ) -> AssignmentRecord | None:
@@ -381,7 +347,7 @@ class ExperimentManager:
         return None
 
     @classmethod
-    def _allow_concurrent_assignment(cls, *, config: ExperimentConfig, assignments: list[AssignmentRecord]) -> bool:
+    def _allow_concurrent_assignment(cls, *, config: RunConfig, assignments: list[AssignmentRecord]) -> bool:
         return not config.assignment_strategy.require_completion
 
     @classmethod
@@ -436,14 +402,14 @@ class ExperimentManager:
     @classmethod
     def _game_shows_simulator_details(cls, *, game_config: Any) -> bool:
         game_cls = game_config.get_game_class()
-        overrides = game_cls.parse_overrides({})
-        return bool(getattr(overrides, "show_npc_details", False))
+        overrides = game_cls.parse_overrides(getattr(game_config, "overrides", {}) or {})
+        return bool(getattr(overrides, "show_npc_details", True))
 
     @classmethod
     def _assignment_doc_for_candidate(
         cls,
         *,
-        config: ExperimentConfig,
+        config: RunConfig,
         player: PlayerRecord,
         candidate: AssignmentCandidate,
     ) -> dict[str, Any]:
@@ -672,7 +638,7 @@ class ExperimentManager:
         experiment_name: str,
         forms_payload: dict[str, dict[str, Any]],
     ) -> None:
-        """Store one or more named before-play form payloads on the player forms record."""
+        """Store one or more named player-scoped form payloads on the forms record."""
         for form_key, payload in forms_payload.items():
             await maybe_await(
                 provider.set_player_form_response(
@@ -852,7 +818,7 @@ class ExperimentManager:
         return assignment
 
     @classmethod
-    def _strategy_for(cls, *, config: ExperimentConfig):
+    def _strategy_for(cls, *, config: RunConfig):
         """Resolve the configured assignment strategy for one experiment."""
         return get_assignment_strategy(config.assignment_strategy.strategy)
 

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { createRoute, redirect, useNavigate, useParams } from '@tanstack/react-router'
+import { createRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { HttpError, httpClient } from '@/api/http'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
@@ -19,10 +19,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { clearAuth, isAuthenticated, setActiveExperimentName } from '@/lib/auth'
+import {
+  clearAuth,
+  ensureAnonymousAuth,
+  isAuthenticated,
+  setActiveExperimentName,
+} from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { cn } from '@/lib/utils'
-import { rootRoute } from '../__root'
+import { rootRoute } from './__root'
 
 type ScalarValue = string | boolean
 type FieldValue = ScalarValue | string[]
@@ -64,7 +69,7 @@ interface ExperimentAssignmentSummary {
   npc_hid: string
   status: 'assigned' | 'in_progress' | 'completed' | 'interrupted'
   active_session_id?: string | null
-  needs_post_play?: boolean
+  has_pending_forms?: boolean
   game_description: string
   player_character_name: string
   player_character_description: string
@@ -104,13 +109,10 @@ interface ExperimentSetupResponse {
   pending_form_groups: PendingFormGroup[]
   progress: ExperimentProgressResponse
   current_assignment: ExperimentAssignmentSummary | null
-  pending_post_play: boolean
-  before_play_complete?: boolean
   assignment_completed: boolean
   next_assignment: NextAssignmentState | null
   allow_choice_if_multiple: boolean
   require_completion: boolean
-  has_submitted_before_forms: boolean
   eligible_assignment_options: EligibleAssignmentOption[]
   assignments: ExperimentAssignmentSummary[]
   resumable_session_id?: string | null
@@ -137,10 +139,10 @@ function titleCase(value: string): string {
 }
 
 function triggerLabel(trigger: ExperimentFormSchema['trigger']): string {
-  if (trigger.event === 'before_all_assignments') return 'Before Study'
-  if (trigger.event === 'before_assignment') return 'Before Gameplay'
-  if (trigger.event === 'after_assignment') return 'After Gameplay'
-  return 'After Study'
+  if (trigger.event === 'before_all_assignments') return 'Before All Gameplay'
+  if (trigger.event === 'before_assignment') return 'Pre-Gameplay'
+  if (trigger.event === 'after_assignment') return 'Post-Gameplay'
+  return 'After All Gameplay'
 }
 
 function emptyResponses(forms: ExperimentFormSchema[]): FormResponseMap {
@@ -570,7 +572,7 @@ function AssignmentChooser(props: {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-5 space-y-4">
       <div>
-        <div className="font-medium">Select an gameplay setup</div>
+        <div className="font-medium">Select next gameplay setup</div>
         <p className="mt-1 text-sm text-muted-foreground">
           Choose one available game and character pairing.
         </p>
@@ -665,8 +667,7 @@ function AssignmentChooser(props: {
   )
 }
 
-function ExperimentPage() {
-  const { experimentName } = useParams({ from: '/experiments/$experimentName' })
+function RunPage() {
   const navigate = useNavigate()
   const authenticated = isAuthenticated()
   const [formResponses, setFormResponses] = useState<FormResponseMap>({})
@@ -677,19 +678,16 @@ function ExperimentPage() {
   const [selectedPc, setSelectedPc] = useState<string | null>(null)
   const [selectedNpc, setSelectedNpc] = useState<string | null>(null)
 
-  useEffect(() => {
-    setActiveExperimentName(experimentName)
-  }, [experimentName])
-
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['experiment-setup', experimentName, authenticated],
+    queryKey: ['run-setup', authenticated],
     enabled: authenticated,
     refetchOnMount: 'always',
-    queryFn: () =>
-      httpClient<ExperimentSetupResponse>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/setup`,
-      ),
+    queryFn: () => httpClient<ExperimentSetupResponse>('/api/run/setup'),
   })
+
+  useEffect(() => {
+    setActiveExperimentName(data?.experiment_name ?? '')
+  }, [data?.experiment_name])
 
   const nextAssignment = data?.next_assignment ?? null
   const pendingFormGroup = data?.pending_form_groups?.[0] ?? null
@@ -701,6 +699,8 @@ function ExperimentPage() {
   const needsSelection = nextAssignment?.mode === 'choice'
   const needsBeforeForms =
     nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'pending_forms'
+  const hasPendingAssignmentForms =
+    nextAssignment?.mode === 'blocked' && nextAssignment.reason === 'pending_assignment_forms'
   const noAssignmentsAvailable =
     nextAssignment?.mode === 'none' &&
     (nextAssignment.reason === 'unavailable' || nextAssignment.reason === 'quota_closed')
@@ -746,13 +746,10 @@ function ExperimentPage() {
     setSubmitError(null)
     setSubmitting('form')
     try {
-      await httpClient<ExperimentFormSubmitResponse>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/forms/submit`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
-        },
-      )
+      await httpClient<ExperimentFormSubmitResponse>('/api/run/forms/submit', {
+        method: 'POST',
+        body: JSON.stringify({ group_id: pendingFormGroup.group_id, responses: formResponses }),
+      })
       await refetch()
     } catch (submitErr) {
       setSubmitError(submitErr instanceof Error ? submitErr.message : 'Unable to submit form.')
@@ -768,22 +765,19 @@ function ExperimentPage() {
     if (!assignment) return
     setSubmitting('session')
     try {
-      const response = await httpClient<{ session_id: string }>(
-        `/api/experiments/${encodeURIComponent(experimentName)}/sessions`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            source: 'experiment',
-            assignment_id: assignment.assignment_id,
-          }),
-        },
-      )
+      const response = await httpClient<{ session_id: string }>('/api/run/sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          source: 'run',
+          assignment_id: assignment.assignment_id,
+        }),
+      })
       await navigate({
         to: '/play/$sessionId',
         params: { sessionId: response.session_id },
         search: {
           gameName: assignment?.game_name ?? '',
-          experimentName,
+          experimentName: data?.experiment_name ?? '',
         },
       })
     } catch (submitErr) {
@@ -799,13 +793,10 @@ function ExperimentPage() {
     setSubmitError(null)
     setSubmitting('select')
     try {
-      await httpClient(
-        `/api/experiments/${encodeURIComponent(experimentName)}/assignments/select`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ game_name: gameName, pc_hid: pcHid, npc_hid: npcHid }),
-        },
-      )
+      await httpClient('/api/run/assignments/select', {
+        method: 'POST',
+        body: JSON.stringify({ game_name: gameName, pc_hid: pcHid, npc_hid: npcHid }),
+      })
       setSelectedGame(null)
       setSelectedPc(null)
       setSelectedNpc(null)
@@ -827,7 +818,7 @@ function ExperimentPage() {
         </div>
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>{titleCase(experimentName)}</CardTitle>
+            <CardTitle>{titleCase(data?.experiment_name ?? 'Run')}</CardTitle>
             <CardDescription>
               Sign in with your access key or register before viewing study details.
             </CardDescription>
@@ -955,7 +946,7 @@ function ExperimentPage() {
               </Alert>
             )}
 
-            {data.pending_post_play && (
+            {hasPendingAssignmentForms && (
               <Alert>
                 <AlertDescription>
                   Complete the required feedback form before starting another gameplay session.
@@ -979,7 +970,7 @@ function ExperimentPage() {
               </Alert>
             )}
 
-            {!data.pending_post_play &&
+            {!hasPendingAssignmentForms &&
               !data.assignment_completed &&
               !data.is_open &&
               !noAssignmentsAvailable && (
@@ -1035,7 +1026,7 @@ function ExperimentPage() {
       {pendingFormGroup && (
         <FormOverlay
           title={triggerLabel(pendingFormGroup.trigger)}
-          description="Complete the required form before continuing."
+          description="Complete the form."
           forms={pendingForms}
           responses={formResponses}
           errors={formErrors}
@@ -1051,14 +1042,18 @@ function ExperimentPage() {
   )
 }
 
-export const experimentRoute = createRoute({
+export const runRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/experiments/$experimentName',
+  path: '/run',
   beforeLoad: async () => {
     const serverConfig = await getServerConfig()
-    if (serverConfig.mode === 'free_play') {
-      throw redirect({ to: '/games' })
+    if (serverConfig.authentication_required) {
+      if (!isAuthenticated()) {
+        throw redirect({ to: '/login' })
+      }
+      return
     }
+    await ensureAnonymousAuth()
   },
-  component: ExperimentPage,
+  component: RunPage,
 })

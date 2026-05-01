@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getActiveExperimentName, getApiKey } from '@/lib/auth'
+import { getApiKey } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
 import { getServerConfig } from '@/lib/server-config'
 import { requireAuth, rootRoute } from '../__root'
@@ -377,16 +377,7 @@ export const gameSetupRoute = createRoute({
     if (serverConfig.authentication_required) {
       await requireAuth()
     }
-    if (serverConfig.mode === 'free_play') {
-      return
-    }
-    const experimentName = getActiveExperimentName()
-    if (experimentName) {
-      throw redirect({
-        to: '/experiments/$experimentName',
-        params: { experimentName },
-      })
-    }
+    throw redirect({ to: '/run' })
   },
   component: GameSetupPage,
 })

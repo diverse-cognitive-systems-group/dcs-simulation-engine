@@ -110,50 +110,6 @@ def test_remote_deploy_command_passes_targeted_apps(monkeypatch: pytest.MonkeyPa
     assert result.exit_code == 0
     deploy.assert_called_once()
     assert deploy.call_args.kwargs["deploy_apps"] == {"ui"}
-    assert deploy.call_args.kwargs["free_play"] is False
-    assert deploy.call_args.kwargs["mongo_seed_path"] == seed_path
-
-
-@pytest.mark.unit
-def test_remote_deploy_command_supports_free_play_without_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Remote deploy should allow free-play mode without an experiment config."""
-    seed_path = tmp_path / "seed.json"
-    seed_path.write_text("[]", encoding="utf-8")
-    deploy = MagicMock(
-        return_value=RemoteDeploymentResult(
-            experiment_name="free-play",
-            deployed_apps=["db", "api", "ui"],
-            api_app="dcs-free-play-api",
-            ui_app="dcs-free-play-ui",
-            db_app="dcs-free-play-db",
-            api_url="https://dcs-free-play-api.fly.dev",
-            ui_url="https://dcs-free-play-ui.fly.dev",
-            admin_api_key="admin-key",
-            status_command="dcs remote status ...",
-            save_command="dcs remote save ...",
-            stop_command="dcs remote stop ...",
-        )
-    )
-    monkeypatch.setattr(remote_command, "deploy_remote_experiment", deploy)
-
-    runner = CliRunner()
-    result = runner.invoke(
-        app,
-        [
-            "remote",
-            "deploy",
-            "--free-play",
-            "--openrouter-key",
-            "or-key",
-            "--mongo-seed-path",
-            str(seed_path),
-        ],
-    )
-
-    assert result.exit_code == 0
-    deploy.assert_called_once()
-    assert deploy.call_args.kwargs["config"] is None
-    assert deploy.call_args.kwargs["free_play"] is True
     assert deploy.call_args.kwargs["mongo_seed_path"] == seed_path
 
 

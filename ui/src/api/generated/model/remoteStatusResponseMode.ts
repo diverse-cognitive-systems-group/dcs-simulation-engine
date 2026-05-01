@@ -10,6 +10,5 @@ export type RemoteStatusResponseMode = typeof RemoteStatusResponseMode[keyof typ
 
 export const RemoteStatusResponseMode = {
   standard: 'standard',
-  free_play: 'free_play',
   experiment: 'experiment',
 } as const;

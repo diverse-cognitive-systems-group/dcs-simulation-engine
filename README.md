@@ -4,8 +4,8 @@
 
 *A playground for engaging with diverse cognitive systems.*
 
-[![Web Demo](https://img.shields.io/badge/Web%20Demo-blue)](https://dcs-free-play-ui.fly.dev)
-[![API Demo](https://img.shields.io/badge/API%20Demo-blue)](https://dcs-free-play-api.fly.dev/docs)
+[![Web Demo](https://img.shields.io/badge/Web%20Demo-blue)](https://dcs-demo-ui.fly.dev)
+[![API Demo](https://img.shields.io/badge/API%20Demo-blue)](https://dcs-demo-api.fly.dev/docs)
 [![Documentation](https://img.shields.io/badge/Docs-blue)](https://diverse-cognitive-systems-group.github.io/dcs-simulation-engine/)
 [![Build Status](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/actions/workflows/ci.yml)
 
@@ -22,7 +22,7 @@ Within a collaborative, improv arena, player characters (PCs) and simulated char
 ### Try web demo instantly (no setup)
 Anybody can play the core games via the live web demo for free *(the demo has limits, so it may be slower—run it locally with your own API keys for full speed and features).*
 
-[👉 Web Demo](https://dcs-free-play-ui.fly.dev)
+[👉 Web Demo](https://dcs-demo-ui.fly.dev)
 
 ### Run locally with Docker (quickstart)
 Anybody can run the full stack locally with Docker and their own API keys. 

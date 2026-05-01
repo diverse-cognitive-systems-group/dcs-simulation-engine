@@ -2,7 +2,7 @@
 
 import pytest
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 
 pytestmark = [pytest.mark.unit, pytest.mark.anyio]
@@ -17,28 +17,29 @@ def _load_strategy_config(
     max_assignments_per_player: int = 1,
     allow_choice_if_multiple: bool = False,
     require_completion: bool = True,
-) -> ExperimentConfig:
-    games_yaml = "\n".join(f"    - {game}" for game in games)
+) -> RunConfig:
+    games_yaml = "\n".join(f"  - name: {game}" for game in games)
     path = write_yaml(
         f"{name}.yaml",
         "\n".join(
             [
                 f"name: {name}",
                 "description: Strategy test fixture",
-                "assignment_strategy:",
-                "  strategy: random_unique_game",
-                "  games:",
+                "games:",
                 games_yaml,
-                f"  quota_per_game: {quota_per_game}",
-                f"  max_assignments_per_player: {max_assignments_per_player}",
-                f"  seed: {name}-seed",
-                f"  allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
-                f"  require_completion: {str(require_completion).lower()}",
+                "next_game_strategy:",
+                "  strategy:",
+                "    id: random_unique_game",
+                f"    quota_per_game: {quota_per_game}",
+                f"    max_assignments_per_player: {max_assignments_per_player}",
+                f"    seed: {name}-seed",
+                f"    allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
+                f"    require_completion: {str(require_completion).lower()}",
             ]
         )
         + "\n",
     )
-    return ExperimentConfig.load(path)
+    return RunConfig.load(path)
 
 
 async def _create_assignment(

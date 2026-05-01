@@ -2,12 +2,12 @@
 // Add new routes here after creating them.
 
 import { rootRoute } from './__root'
-import { experimentRoute } from './experiments/$experimentName'
 import { gameSetupRoute } from './games/$gameName'
 import { gamesRoute } from './games/index'
 import { indexRoute } from './index'
 import { loginRoute } from './login'
 import { playRoute } from './play/$sessionId'
+import { runRoute } from './run'
 import { signupRoute } from './signup'
 import { termsRoute } from './terms'
 
@@ -16,7 +16,7 @@ export const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
   termsRoute,
-  experimentRoute,
+  runRoute,
   gamesRoute,
   gameSetupRoute,
   playRoute,

@@ -21,8 +21,13 @@ class ExpertiseMatchedCharacterNextAssignmentStrategy(CandidateAssignmentStrateg
         """Return allowed triplets ordered with expertise-matching NPCs first."""
         candidates = await self._build_candidate_pool(provider=provider, config=config, player=player)
         characters_by_hid = await self._character_map(provider=provider)
-        matched_npc_hids = self._expertise_match_hids(player=player, characters_by_hid=characters_by_hid)
-        game_order = {game_name: index for index, game_name in enumerate(config.games)}
+        matched_npc_hids = await self._expertise_match_hids(
+            provider=provider,
+            config=config,
+            player=player,
+            characters_by_hid=characters_by_hid,
+        )
+        game_order = {game_name: index for index, game_name in enumerate(config.game_names)}
         return self._sort_with_expertise_priority(
             candidates=candidates,
             matched_npc_hids=matched_npc_hids,

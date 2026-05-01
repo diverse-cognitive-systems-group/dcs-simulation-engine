@@ -58,7 +58,6 @@ def _deploy_with_region_fallback(
     *,
     ctx: typer.Context,
     config: Path | None,
-    free_play: bool,
     openrouter_key: str,
     mongo_seed_path: Path,
     admin_key: str | None,
@@ -77,7 +76,6 @@ def _deploy_with_region_fallback(
         try:
             return deploy_remote_experiment(
                 config=config,
-                free_play=free_play,
                 openrouter_key=openrouter_key,
                 mongo_seed_path=mongo_seed_path,
                 admin_key=admin_key,
@@ -101,20 +99,15 @@ def _deploy_with_region_fallback(
 @remote_app.command("deploy", context_settings={"allow_extra_args": True})
 def deploy(
     ctx: typer.Context,
-    config: Optional[Path] = typer.Option(
-        None,
+    config: Path = typer.Option(
+        Path("examples/run_configs/demo.yml"),
         "--config",
         exists=True,
         dir_okay=False,
         file_okay=True,
         readable=True,
         resolve_path=True,
-        help="Experiment YAML config to deploy. Omit when using --free-play.",
-    ),
-    free_play: bool = typer.Option(
-        False,
-        "--free-play",
-        help="Deploy the stack in anonymous free-play mode instead of experiment mode.",
+        help="Run config YAML to deploy.",
     ),
     openrouter_key: str = typer.Option(
         ...,
@@ -162,16 +155,11 @@ def deploy(
 ) -> None:
     """Deploy one remote-managed stack to Fly as API, UI, and Mongo apps."""
     try:
-        if free_play and config is not None:
-            raise ValueError("Use either --config or --free-play, not both.")
-        if not free_play and config is None:
-            raise ValueError("--config is required unless --free-play is set.")
         region_candidates = _parse_region_candidates(ctx, region)
         if json_output:
             result = _deploy_with_region_fallback(
                 ctx=ctx,
                 config=config,
-                free_play=free_play,
                 openrouter_key=openrouter_key,
                 mongo_seed_path=mongo_seed_path,
                 admin_key=admin_key,
@@ -188,7 +176,6 @@ def deploy(
                 result = _deploy_with_region_fallback(
                     ctx=ctx,
                     config=config,
-                    free_play=free_play,
                     openrouter_key=openrouter_key,
                     mongo_seed_path=mongo_seed_path,
                     admin_key=admin_key,

@@ -424,8 +424,8 @@ export const signupRoute = createRoute({
   path: '/signup',
   beforeLoad: async () => {
     const serverConfig = await getServerConfig()
-    if (serverConfig.mode === 'free_play') {
-      throw redirect({ to: '/games' })
+    if (!serverConfig.registration_enabled) {
+      throw redirect({ to: '/run' })
     }
   },
   component: SignupPage,

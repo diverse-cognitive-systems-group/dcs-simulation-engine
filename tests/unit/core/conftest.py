@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from typing import Callable, Iterator
 
 import pytest
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
+from dcs_simulation_engine.core.run_config import RunConfig
 
 
 @pytest.fixture
@@ -32,16 +32,17 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
         """
         name: test-usability-exp
         description: Stable fixture for experiment tests.
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-            - Infer Intent
-            - Foresight
-            - Goal Horizon
-          quota_per_game: 5
-          max_assignments_per_player: 1
-          seed: test-usability-seed
+        games:
+          - name: Explore
+          - name: Infer Intent
+          - name: Foresight
+          - name: Goal Horizon
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 5
+            max_assignments_per_player: 1
+            seed: test-usability-seed
         forms:
           - name: intake
             trigger:
@@ -103,22 +104,20 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
 
 
 @pytest.fixture
-def usability_experiment_config(usability_experiment_config_path: Path) -> ExperimentConfig:
+def usability_experiment_config(usability_experiment_config_path: Path) -> RunConfig:
     """Load the stable experiment config fixture."""
-    return ExperimentConfig.load(usability_experiment_config_path)
+    return RunConfig.load(usability_experiment_config_path)
 
 
 @pytest.fixture
-def cached_usability_experiment(usability_experiment_config: ExperimentConfig) -> Iterator[ExperimentConfig]:
-    """Register the stable experiment config in the ExperimentManager cache."""
-    original_cache = ExperimentManager._experiment_config_cache.copy()
-    ExperimentManager._experiment_config_cache = {
-        ExperimentManager._cache_key(usability_experiment_config.name): usability_experiment_config
-    }
+def cached_usability_experiment(usability_experiment_config: RunConfig) -> Iterator[RunConfig]:
+    """Register the stable run config in the EngineRunManager."""
+    original_config = EngineRunManager._run_config
+    EngineRunManager._run_config = usability_experiment_config
     try:
         yield usability_experiment_config
     finally:
-        ExperimentManager._experiment_config_cache = original_cache
+        EngineRunManager._run_config = original_config
 
 
 @pytest.fixture
@@ -129,15 +128,16 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
         """
         name: test-multi-assignment-exp
         description: Fixture for multi-assignment progress tests.
-        assignment_strategy:
-          strategy: random_unique_game
-          games:
-            - Explore
-            - Infer Intent
-            - Foresight
-          quota_per_game: 10
-          max_assignments_per_player: 3
-          seed: test-multi-seed
+        games:
+          - name: Explore
+          - name: Infer Intent
+          - name: Foresight
+        next_game_strategy:
+          strategy:
+            id: random_unique_game
+            quota_per_game: 10
+            max_assignments_per_player: 3
+            seed: test-multi-seed
         forms:
           - name: intake
             trigger:
@@ -175,12 +175,12 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
 @pytest.fixture
 def cached_multi_assignment_experiment(
     multi_assignment_experiment_config_path: Path,
-) -> Iterator[ExperimentConfig]:
-    """Register the multi-assignment experiment config in the ExperimentManager cache."""
-    config = ExperimentConfig.load(multi_assignment_experiment_config_path)
-    original_cache = ExperimentManager._experiment_config_cache.copy()
-    ExperimentManager._experiment_config_cache = {ExperimentManager._cache_key(config.name): config}
+) -> Iterator[RunConfig]:
+    """Register the multi-assignment run config in the EngineRunManager."""
+    config = RunConfig.load(multi_assignment_experiment_config_path)
+    original_config = EngineRunManager._run_config
+    EngineRunManager._run_config = config
     try:
         yield config
     finally:
-        ExperimentManager._experiment_config_cache = original_cache
+        EngineRunManager._run_config = original_config

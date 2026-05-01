@@ -13,8 +13,6 @@ from dcs_simulation_engine.api.auth import (
     get_provider_from_websocket,
     get_registry_from_request,
     get_registry_from_websocket,
-    get_server_mode_from_request,
-    get_server_mode_from_websocket,
     is_remote_management_enabled_from_request,
     maybe_await,
     require_player_async,
@@ -39,7 +37,7 @@ from dcs_simulation_engine.api.models import (
     parse_ws_request,
 )
 from dcs_simulation_engine.api.registry import hydrate_session_async
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.core.session_manager import SessionManager
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from loguru import logger
@@ -67,7 +65,7 @@ def _require_generic_play_enabled(request: Request) -> None:
 
 async def _reject_if_experiment_gated(*, provider: Any, player_id: str) -> None:
     """Block generic play endpoints for players who are inside an experiment flow."""
-    latest_assignment = await ExperimentManager.get_latest_assignment_for_player_async(
+    latest_assignment = await EngineRunManager.get_latest_assignment_for_player_async(
         provider=provider,
         player_id=player_id,
     )
@@ -82,11 +80,11 @@ async def _reject_if_experiment_gated(*, provider: Any, player_id: str) -> None:
     )
 
 
-async def _sync_experiment_assignment_if_needed(*, provider: Any, entry: Any) -> None:
+async def _sync_run_assignment_if_needed(*, provider: Any, entry: Any) -> None:
     """Update experiment assignment state when a session reaches a terminal state."""
     if entry.experiment_name is None or entry.assignment_id is None:
         return
-    await ExperimentManager.handle_session_terminal_state_async(
+    await EngineRunManager.handle_session_terminal_state_async(
         provider=provider,
         experiment_name=entry.experiment_name,
         assignment_id=entry.assignment_id,
@@ -210,12 +208,9 @@ async def setup_options(game_name: str, request: Request) -> GameSetupOptionsRes
     """Return setup-ready authorization and valid character choices for a game."""
     _require_generic_play_enabled(request)
     provider = get_provider_from_request(request)
-    server_mode = get_server_mode_from_request(request)
-    player_id: str | None = None
-    if server_mode == "standard":
-        player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
-        player_id = player.id
-        await _reject_if_experiment_gated(provider=provider, player_id=player.id)
+    player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
+    player_id = player.id
+    await _reject_if_experiment_gated(provider=provider, player_id=player.id)
 
     try:
         game_config = SessionManager.get_game_config_cached(game_name)
@@ -270,12 +265,9 @@ async def create_game(body: CreateGameRequest, request: Request) -> CreateGameRe
     _require_generic_play_enabled(request)
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
-    server_mode = get_server_mode_from_request(request)
-    player_id: str | None = None
-    if server_mode == "standard":
-        player = await require_player_async(provider=provider, api_key=body.api_key)
-        player_id = player.id
-        await _reject_if_experiment_gated(provider=provider, player_id=player.id)
+    player = await require_player_async(provider=provider, api_key=body.api_key)
+    player_id = player.id
+    await _reject_if_experiment_gated(provider=provider, player_id=player.id)
 
     try:
         manager = await SessionManager.create_async(
@@ -313,18 +305,25 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
     provider = get_provider_from_websocket(websocket)
     registry = get_registry_from_websocket(websocket)
-    server_mode = get_server_mode_from_websocket(websocket)
 
     try:
+        # Try header-based auth first (Python client), then first-message auth (browser).
+        api_key = api_key_from_websocket(websocket)
+        if api_key is None:
+            raw = await websocket.receive_text()
+            auth_frame = parse_ws_auth(raw)
+            if auth_frame is not None:
+                api_key = auth_frame.api_key
+
+        player = await require_player_async(provider=provider, api_key=api_key)
+
         entry = registry.get(session_id)
         if entry is None:
             # Session may be dormant after a process restart — attempt to
             # hydrate it from the persisted runtime snapshot before giving up.
-            # Auth hasn't run yet, so pass player_id=None; the ownership check
-            # below will still enforce it once we have the player record.
             entry = await hydrate_session_async(
                 session_id=session_id,
-                player_id=None,
+                player_id=player.id,
                 provider=provider,
                 registry=registry,
             )
@@ -339,20 +338,10 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             await websocket.close()
             return
 
-        if server_mode == "standard":
-            # Try header-based auth first (Python client), then first-message auth (browser).
-            api_key = api_key_from_websocket(websocket)
-            if api_key is None:
-                raw = await websocket.receive_text()
-                auth_frame = parse_ws_auth(raw)
-                if auth_frame is not None:
-                    api_key = auth_frame.api_key
-
-            player = await require_player_async(provider=provider, api_key=api_key)
-            if entry.player_id != player.id:
-                await _send_error(websocket, "Unauthorized for this session")
-                await websocket.close()
-                return
+        if entry.player_id != player.id:
+            await _send_error(websocket, "Unauthorized for this session")
+            await websocket.close()
+            return
 
         is_resume = entry.status == "paused"
         if is_resume:
@@ -384,7 +373,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             registry.touch(session_id)
             if entry.manager.exited:
                 registry.close(session_id)
-                await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                await _sync_run_assignment_if_needed(provider=provider, entry=entry)
 
             await _send_events(websocket, session_id, opening_events)
             await _send_turn_end(
@@ -413,7 +402,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                 registry.touch(session_id)
                 if entry.manager.exited:
                     registry.close(session_id)
-                    await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                    await _sync_run_assignment_if_needed(provider=provider, entry=entry)
 
                 await _send_events(websocket, session_id, events)
                 await _send_turn_end(
@@ -451,7 +440,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                         )
                 registry.set_ws_connected(session_id, False)
                 registry.close(session_id)
-                await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                await _sync_run_assignment_if_needed(provider=provider, entry=entry)
                 await websocket.send_json({"type": "closed", "session_id": session_id})
                 await websocket.close()
                 return
@@ -489,7 +478,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                         session_id=session_id,
                     )
                     registry.close(session_id)
-                    await _sync_experiment_assignment_if_needed(provider=provider, entry=entry)
+                    await _sync_run_assignment_if_needed(provider=provider, entry=entry)
                 except Exception:
                     logger.exception("Failed to finalize session after internal websocket error: {}", session_id)
         logger.exception("Unhandled websocket error for session {}", session_id)

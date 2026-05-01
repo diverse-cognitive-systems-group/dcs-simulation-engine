@@ -1,8 +1,8 @@
 // Login page at /login. Accepts an access key, validates it against the API,
-// and on success stores credentials in sessionStorage and navigates to /games.
+// and on success stores credentials in sessionStorage and navigates to /run.
 
 import { createRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { extractDetail, NETWORK_UNAVAILABLE, SIGNIN_UNAVAILABLE } from '@/lib/api-errors'
 import { resolveApiUrl } from '@/lib/api-url'
-import { getActiveExperimentName, setAuth } from '@/lib/auth'
+import { setAuth } from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
@@ -50,22 +50,6 @@ function LoginPage() {
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [defaultExperimentName, setDefaultExperimentName] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getServerConfig()
-      .then((serverConfig) => {
-        if (!cancelled) {
-          setDefaultExperimentName(serverConfig.default_experiment_name)
-        }
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault()
     setError(null)
@@ -73,22 +57,7 @@ function LoginPage() {
     try {
       const data = await authPlayer(apiKey.trim())
       setAuth(apiKey.trim(), data.player_id, data.full_name)
-      const experimentName = getActiveExperimentName()
-      if (experimentName) {
-        await navigate({
-          to: '/experiments/$experimentName',
-          params: { experimentName },
-        })
-        return
-      }
-      if (defaultExperimentName) {
-        await navigate({
-          to: '/experiments/$experimentName',
-          params: { experimentName: defaultExperimentName },
-        })
-        return
-      }
-      await navigate({ to: '/games' })
+      await navigate({ to: '/run' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -154,8 +123,8 @@ export const loginRoute = createRoute({
   path: '/login',
   beforeLoad: async () => {
     const serverConfig = await getServerConfig()
-    if (serverConfig.mode === 'free_play') {
-      throw redirect({ to: '/games' })
+    if (!serverConfig.authentication_required) {
+      throw redirect({ to: '/run' })
     }
   },
   component: LoginPage,

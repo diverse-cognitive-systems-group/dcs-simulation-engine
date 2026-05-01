@@ -44,31 +44,31 @@ Services:
 - API docs: `http://localhost:8000/docs`
 - MongoDB: `mongodb://localhost:27017`
 
-The compose file always seeds Mongo from `/app/database_seeds/dev` and can run
-in either standard mode or anonymous free-play mode:
+The compose file always seeds Mongo from `/app/database_seeds/dev` and starts
+the API with the run config selected by `DCS_RUN_CONFIG`:
 
 ```yaml
 command:
   [
     "/bin/sh",
     "-c",
-    "exec /app/.venv/bin/dcs server --mongo-seed-dir /app/database_seeds/dev ${DCS_FREE_PLAY:+--free-play}",
+    "exec /app/.venv/bin/dcs server --mongo-seed-dir /app/database_seeds/dev --config ${DCS_RUN_CONFIG:-/app/examples/run_configs/demo.yml} --dump ./runs",
   ]
 ```
 
 The API service bind-mounts `./runs` to `/app/runs`, so shutdown dumps written
 with `--dump ./runs` appear in the repo's local `runs/` directory on the host.
 
-Use standard mode by default:
+Use the default anonymous demo run:
 
 ```sh
 OPENROUTER_API_KEY=... docker compose up --build
 ```
 
-Enable free-play mode by setting `DCS_FREE_PLAY=1`:
+Choose a registration-required run by setting `DCS_RUN_CONFIG`:
 
 ```sh
-OPENROUTER_API_KEY=... DCS_FREE_PLAY=1 docker compose up --build
+OPENROUTER_API_KEY=... DCS_RUN_CONFIG=/app/examples/run_configs/usability.yml docker compose up --build
 ```
 
 ## Environment

@@ -882,7 +882,7 @@ class AsyncMongoProvider:
         form_key: str,
         response: dict[str, Any],
     ) -> PlayerFormsRecord | None:
-        """Upsert one before-play form response into the forms collection."""
+        """Upsert one player-scoped form response into the forms collection."""
         now = utc_now()
         await maybe_await(
             self._db[MongoColumns.FORMS].update_one(
@@ -906,7 +906,7 @@ class AsyncMongoProvider:
         player_id: str,
         experiment_name: str,
     ) -> PlayerFormsRecord | None:
-        """Return the before-play form responses for a player in an experiment."""
+        """Return player-scoped form responses for a player in an experiment."""
         doc = await maybe_await(
             self._db[MongoColumns.FORMS].find_one({MongoColumns.PLAYER_ID: player_id, MongoColumns.EXPERIMENT_NAME: experiment_name})
         )

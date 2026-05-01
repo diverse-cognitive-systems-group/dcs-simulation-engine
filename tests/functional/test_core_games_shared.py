@@ -6,10 +6,15 @@ Validates behaviors that every game must exhibit:
 - No unrendered template brackets appear in any system output
 """
 
+from datetime import timedelta
+from typing import Any
+
 import pytest
 from bson import ObjectId
+from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config_references
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.utils.time import utc_now
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 
@@ -33,12 +38,41 @@ _REQUIRED_HELP_SECTIONS = [
 ]
 
 
+def _run_config(*, overrides_by_game: dict[str, dict[str, Any]] | None = None) -> RunConfig:
+    """Return a compact run config covering all shared functional-test games."""
+    overrides_by_game = overrides_by_game or {}
+    return RunConfig.model_validate(
+        {
+            "name": "shared-core-games",
+            "description": "Shared core game functional test run",
+            "ui": {"registration_required": False},
+            "players": {"humans": {"all": True}},
+            "games": [
+                {
+                    "name": game,
+                    "overrides": dict(overrides_by_game.get(game, {})),
+                }
+                for game in ALL_GAMES
+            ],
+            "next_game_strategy": {
+                "strategy": {
+                    "id": "full_character_access",
+                    "allow_choice_if_multiple": True,
+                    "require_completion": False,
+                }
+            },
+            "forms": [],
+        }
+    )
+
+
 @pytest.fixture(autouse=True)
 def _seed_consenting_player(_isolate_db_state, async_mongo_provider):
     """Seed a consenting player record for gated games.
 
     Explore is ungated and ignores player_id; having the record is harmless.
     """
+    SessionManager.configure_run_config(_run_config())
     db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
@@ -49,6 +83,7 @@ def _seed_consenting_player(_isolate_db_state, async_mongo_provider):
         }
     )
     yield
+    SessionManager.configure_run_config(_run_config())
 
 
 async def _make_session(game: str, async_mongo_provider):
@@ -160,24 +195,26 @@ async def test_no_bracket_rendering_in_system_responses(game, patch_llm_client, 
 def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Session resumes with history replay after WebSocket disconnect.
 
-    Uses explore (ungated) since free-play mode passes player_id=None, which
-    would fail consent checks for gated games. Resume behavior is game-agnostic —
-    registry.pause() / _send_replay() applies equally to all games.
+    Uses explore because resume behavior is game-agnostic: registry.pause() and
+    replay apply equally to all games.
     """
     from dcs_simulation_engine.api.app import create_app
     from fastapi.testclient import TestClient
 
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="free_play",
+        run_config=_run_config(),
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
 
     with TestClient(app) as client:
+        auth_resp = client.post("/api/player/anonymous")
+        assert auth_resp.status_code == 200, auth_resp.text
+        api_key = auth_resp.json()["api_key"]
         resp = client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": "NA", "npc_choice": "FW", "source": "api"},
+            json={"api_key": api_key, "game": "explore", "pc_choice": "NA", "npc_choice": "FW", "source": "api"},
         )
         assert resp.status_code == 200, f"Game creation failed: {resp.text}"
         session_id = resp.json()["session_id"]
@@ -186,6 +223,7 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
         # Exiting the context without a close frame triggers WebSocketDisconnect on the
         # server side → registry.pause(session_id) is called.
         with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+            ws.send_json({"type": "auth", "api_key": api_key})
             ws.receive_json()  # session_meta
             ws.receive_json()  # opening event (type="event")
             turn_end = ws.receive_json()  # turn_end
@@ -194,6 +232,7 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
         # Second connection: resume path — server detects entry.status == "paused"
         # and sends replay_start → (events) → replay_end before normal play resumes.
         with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+            ws.send_json({"type": "auth", "api_key": api_key})
             ws.receive_json()  # session_meta (always sent first)
             replay_start = ws.receive_json()
             replay_end = ws.receive_json()
@@ -215,29 +254,62 @@ def test_save_resume_when_leaving(patch_llm_client, _isolate_db_state, async_mon
             )
 
 
-@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_max_turns_override_stops_game(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should stop when max_turns run config override is reached."""
-    assert False
+    SessionManager.configure_run_config(_run_config(overrides_by_game={game: {"max_turns": 1}}))
+    session = await _make_session(game, async_mongo_provider)
+
+    enter_events = await session.step_async("")
+    assert [event["type"] for event in enter_events] == ["info", "ai"]
+    assert session.turns == 1
+
+    stop_events = await session.step_async("I look around.")
+
+    assert [event["type"] for event in stop_events] == ["info"]
+    assert session.exited is True
+    assert session.exit_reason == "stopping condition met: turns >=1"
+    assert "turns >=1" in stop_events[0]["content"]
 
 
-@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_max_runtime_override_stops_game(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Game should stop when max_runtime_seconds run config override is reached."""
-    assert False
+    """Game should stop when max_playtime run config override is reached."""
+    SessionManager.configure_run_config(_run_config(overrides_by_game={game: {"max_playtime": 1}}))
+    session = await _make_session(game, async_mongo_provider)
+
+    enter_events = await session.step_async("")
+    assert [event["type"] for event in enter_events] == ["info", "ai"]
+    session.start_ts = utc_now() - timedelta(seconds=2)
+
+    stop_events = await session.step_async("I look around.")
+
+    assert [event["type"] for event in stop_events] == ["info"]
+    assert session.exited is True
+    assert session.exit_reason == "stopping condition met: runtime_seconds >=1"
+    assert "runtime_seconds >=1" in stop_events[0]["content"]
 
 
-@pytest.mark.xfail(reason="pending run config refactoring")
-@pytest.mark.parametrize("game", ALL_GAMES)
-async def test_player_triggered_evals_configurable(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Player-triggered evaluations should be enabled/disabled per run config."""
-    assert False
-
-
-@pytest.mark.xfail(reason="pending run config refactoring")
 @pytest.mark.parametrize("game", ALL_GAMES)
 async def test_expose_overrides_available(game, patch_llm_client, _isolate_db_state, async_mongo_provider):
     """Game should expose all documented overrides via the run config interface."""
-    assert False
+    _ = patch_llm_client, _isolate_db_state, async_mongo_provider
+    game_cls = SessionManager.get_game_config_cached(game).get_game_class()
+    safe_values = {
+        "max_turns": 2,
+        "max_playtime": 2,
+        "player_retry_budget": 1,
+        "max_input_length": 80,
+        "pcs_allowed": "human-normative",
+        "npcs_allowed": "all",
+        "show_npc_details": False,
+        "show_final_score": False,
+    }
+    overrides = {field_name: safe_values[field_name] for field_name in game_cls.Overrides.model_fields}
+    run_config = _run_config(overrides_by_game={game: overrides})
+
+    SessionManager.configure_run_config(run_config)
+    validate_run_config_references(run_config)
+    game_config = SessionManager.get_game_config_cached(game)
+
+    assert game_config.overrides == overrides

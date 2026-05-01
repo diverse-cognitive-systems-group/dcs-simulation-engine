@@ -14,6 +14,7 @@ from dcs_simulation_engine.core.forms import (
     ExperimentForm,
     ExperimentFormQuestion,
 )
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.dal.base import (
     PlayerRecord,
     SessionRecord,
@@ -28,6 +29,40 @@ ASSIGNMENT_DISPLAY_METADATA = {
     "simulator_character_description": "Details hidden",
     "simulator_character_details_visible": False,
 }
+
+
+def _run_config(
+    *,
+    name: str = "usability",
+    registration_required: bool = True,
+    allow_choice_if_multiple: bool = False,
+    require_completion: bool = True,
+    max_assignments_per_player: int = 3,
+) -> RunConfig:
+    """Return a compact run config for API tests."""
+    return RunConfig.model_validate(
+        {
+            "name": name,
+            "description": "Usability study",
+            "ui": {"registration_required": registration_required},
+            "games": [{"name": "Explore"}],
+            "next_game_strategy": {
+                "strategy": {
+                    "id": "full_character_access",
+                    "allow_choice_if_multiple": allow_choice_if_multiple,
+                    "require_completion": require_completion,
+                    "max_assignments_per_player": max_assignments_per_player,
+                }
+            },
+            "forms": [
+                {
+                    "name": "intake",
+                    "trigger": {"event": "before_all_assignments", "match": None},
+                    "questions": [],
+                }
+            ],
+        }
+    )
 
 
 class DummySessionManager:
@@ -128,6 +163,7 @@ def client(mock_provider: MagicMock) -> TestClient:
     """Build a TestClient over the API app with mocked provider wiring."""
     app = create_app(
         provider=mock_provider,
+        run_config=_run_config(),
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
@@ -136,16 +172,24 @@ def client(mock_provider: MagicMock) -> TestClient:
 
 
 @pytest.fixture
-def free_play_client(mock_provider: MagicMock) -> TestClient:
-    """Build a TestClient configured for anonymous free-play mode."""
+def anonymous_client(mock_provider: MagicMock) -> TestClient:
+    """Build a TestClient configured for a run that allows anonymous players."""
     app = create_app(
         provider=mock_provider,
-        server_mode="free_play",
+        run_config=_run_config(registration_required=False),
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def anonymous_auth(anonymous_client: TestClient) -> dict[str, str]:
+    """Create an anonymous player and return its issued auth payload."""
+    response = anonymous_client.post("/api/player/anonymous")
+    assert response.status_code == 200, response.text
+    return response.json()
 
 
 @pytest.fixture
@@ -153,9 +197,8 @@ def remote_managed_client(mock_provider: MagicMock) -> TestClient:
     """Build a TestClient configured for remote-managed experiment hosting."""
     app = create_app(
         provider=mock_provider,
-        server_mode="standard",
+        run_config=_run_config(),
         mongo_uri="mongodb://example",
-        default_experiment_name="usability",
         remote_management_enabled=True,
         bootstrap_token="bootstrap-secret",
         session_ttl_seconds=3600,
@@ -166,80 +209,24 @@ def remote_managed_client(mock_provider: MagicMock) -> TestClient:
 
 
 @pytest.mark.unit
-def test_remote_managed_free_play_status_reports_free_play_mode(mock_provider: MagicMock) -> None:
-    """Remote-managed free-play deployments should report free-play mode without an experiment."""
-    app = create_app(
-        provider=mock_provider,
-        server_mode="free_play",
-        mongo_uri="mongodb://example",
-        remote_management_enabled=True,
-        bootstrap_token="bootstrap-secret",
-        session_ttl_seconds=3600,
-        sweep_interval_seconds=3600,
-    )
-    with TestClient(app) as client:
-        response = client.get("/api/remote/status")
-
-    assert response.status_code == 200
-    assert response.json()["mode"] == "free_play"
-    assert response.json()["experiment_name"] is None
-
-
-@pytest.mark.unit
-def test_remote_bootstrap_in_free_play_returns_admin_without_experiment(mock_provider: MagicMock) -> None:
-    """Remote bootstrap should still issue an admin key for free-play remote deployments."""
-    seed_admin = MagicMock()
-
-    app = create_app(
-        provider=mock_provider,
-        server_mode="free_play",
-        mongo_uri="mongodb://example",
-        remote_management_enabled=True,
-        bootstrap_token="bootstrap-secret",
-        session_ttl_seconds=3600,
-        sweep_interval_seconds=3600,
-    )
-    with TestClient(app) as client:
-        with patch(
-            "dcs_simulation_engine.api.routers.remote.create_provider_admin",
-            return_value=SimpleNamespace(seed_database=seed_admin),
-        ):
-            response = client.post(
-                "/api/remote/bootstrap",
-                headers={
-                    "X-DCS-Bootstrap-Token": "bootstrap-secret",
-                    "X-DCS-Mongo-Seed-Filename": "players.json",
-                    "Content-Type": "application/json",
-                },
-                content=b"[]",
-            )
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "player_id": "player-owner",
-        "admin_api_key": "valid-key",
-        "experiment_name": None,
-    }
-
-
-@pytest.mark.unit
 def test_app_lifespan_preloads_game_configs(mock_provider: MagicMock) -> None:
-    """App startup should preload game configs into SessionManager cache."""
+    """App startup should ensure the active run and preload game configs."""
     app = create_app(
         provider=mock_provider,
+        run_config=_run_config(),
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
 
     with (
         patch("dcs_simulation_engine.api.app.SessionManager.preload_game_configs") as preload_mock,
-        patch("dcs_simulation_engine.api.app.ExperimentManager.preload_experiment_configs") as preload_experiments_mock,
+        patch("dcs_simulation_engine.api.app.EngineRunManager.ensure_run_async", new=AsyncMock()) as ensure_run_mock,
     ):
         with TestClient(app):
             pass
 
     preload_mock.assert_called_once_with()
-    preload_experiments_mock.assert_called_once_with()
+    ensure_run_mock.assert_awaited_once()
 
 
 @pytest.mark.unit
@@ -310,22 +297,22 @@ def test_server_config_reports_standard_mode(client: TestClient) -> None:
         "authentication_required": True,
         "registration_enabled": True,
         "experiments_enabled": True,
-        "default_experiment_name": None,
+        "default_experiment_name": "usability",
     }
 
 
 @pytest.mark.unit
-def test_server_config_reports_free_play_mode(free_play_client: TestClient) -> None:
-    """Server config should advertise anonymous capabilities in free-play mode."""
-    response = free_play_client.get("/api/server/config")
+def test_server_config_reports_anonymous_run_capabilities(anonymous_client: TestClient) -> None:
+    """Server config should advertise automatic anonymous-auth capabilities."""
+    response = anonymous_client.get("/api/server/config")
 
     assert response.status_code == 200
     assert response.json() == {
-        "mode": "free_play",
+        "mode": "standard",
         "authentication_required": False,
         "registration_enabled": False,
-        "experiments_enabled": False,
-        "default_experiment_name": None,
+        "experiments_enabled": True,
+        "default_experiment_name": "usability",
     }
 
 
@@ -422,8 +409,11 @@ def test_branch_session_flushes_live_root_and_returns_paused_child(
 
 
 @pytest.mark.unit
-def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestClient) -> None:
-    """Free-play setup should not require an Authorization header."""
+def test_anonymous_setup_options_use_issued_access_key(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
+) -> None:
+    """Anonymous setup should use the access key issued by anonymous player creation."""
     setup_config = SimpleNamespace(
         name="Explore",
         get_valid_characters=lambda **_kwargs: ([("PC Alpha", "pc-1")], [("NPC Beta", "npc-2")]),
@@ -433,7 +423,10 @@ def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestCl
         "dcs_simulation_engine.api.routers.play.SessionManager.get_game_config_cached",
         return_value=setup_config,
     ):
-        response = free_play_client.get("/api/play/setup/explore")
+        response = anonymous_client.get(
+            "/api/play/setup/explore",
+            headers={"Authorization": f"Bearer {anonymous_auth['api_key']}"},
+        )
 
     assert response.status_code == 200
     assert response.json()["can_start"] is True
@@ -441,16 +434,20 @@ def test_free_play_setup_options_allow_anonymous_access(free_play_client: TestCl
 
 
 @pytest.mark.unit
-def test_free_play_create_game_and_websocket_without_auth(free_play_client: TestClient) -> None:
-    """Free-play should support anonymous session creation and websocket play."""
+def test_anonymous_create_game_and_websocket_with_issued_access_key(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
+) -> None:
+    """Anonymous players should create sessions and play using their issued access key."""
     manager = DummySessionManager()
     with patch(
         "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
         new=AsyncMock(return_value=manager),
     ):
-        create_resp = free_play_client.post(
+        create_resp = anonymous_client.post(
             "/api/play/game",
             json={
+                "api_key": anonymous_auth["api_key"],
                 "game": "explore",
                 "pc_choice": None,
                 "npc_choice": None,
@@ -461,7 +458,8 @@ def test_free_play_create_game_and_websocket_without_auth(free_play_client: Test
     assert create_resp.status_code == 200
     session_id = create_resp.json()["session_id"]
 
-    with free_play_client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+    with anonymous_client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+        ws.send_json({"type": "auth", "api_key": anonymous_auth["api_key"]})
         meta_frame = ws.receive_json()
         assert meta_frame["type"] == "session_meta"
 
@@ -482,30 +480,6 @@ def test_free_play_create_game_and_websocket_without_auth(free_play_client: Test
 
         ws.send_json({"type": "close"})
         assert ws.receive_json() == {"type": "closed", "session_id": session_id}
-
-
-@pytest.mark.unit
-def test_free_play_disables_player_experiment_and_session_prefixes(
-    free_play_client: TestClient,
-) -> None:
-    """Free-play should reject registration, experiments, and session APIs with 409s."""
-    registration = free_play_client.post(
-        "/api/player/registration",
-        json={
-            "full_name": "Ada Lovelace",
-            "email": "ada@example.com",
-            "phone_number": "+1 555 123 4567",
-            "consent_to_followup": True,
-            "consent_signature": "Ada",
-        },
-    )
-    experiment = free_play_client.get("/api/experiments/usability/setup")
-    sessions = free_play_client.get("/api/sessions/list")
-
-    assert registration.status_code == 409
-    assert "free play mode" in registration.json()["detail"].lower()
-    assert experiment.status_code == 409
-    assert sessions.status_code == 409
 
 
 @pytest.mark.unit
@@ -791,11 +765,12 @@ def test_session_event_feedback_clear_flushes_live_session_and_persists(
 
 
 @pytest.mark.unit
-def test_free_play_feedback_submit_flushes_live_session_and_persists(
-    free_play_client: TestClient,
+def test_anonymous_feedback_submit_flushes_live_session_and_persists(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
     mock_provider: MagicMock,
 ) -> None:
-    """Free-play sessions should still expose per-message feedback controls."""
+    """Anonymous sessions should still expose per-message feedback controls."""
     manager = DummySessionManager()
     mock_provider.set_session_event_feedback = AsyncMock(
         return_value={
@@ -811,15 +786,22 @@ def test_free_play_feedback_submit_flushes_live_session_and_persists(
         "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
         new=AsyncMock(return_value=manager),
     ):
-        create_resp = free_play_client.post(
+        create_resp = anonymous_client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": None, "npc_choice": None, "source": "api"},
+            json={
+                "api_key": anonymous_auth["api_key"],
+                "game": "explore",
+                "pc_choice": None,
+                "npc_choice": None,
+                "source": "api",
+            },
         )
 
     session_id = create_resp.json()["session_id"]
 
-    response = free_play_client.post(
+    response = anonymous_client.post(
         f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": f"Bearer {anonymous_auth['api_key']}"},
         json={
             "liked": False,
             "comment": "This felt out of character.",
@@ -835,7 +817,7 @@ def test_free_play_feedback_submit_flushes_live_session_and_persists(
 
     kwargs = mock_provider.set_session_event_feedback.await_args.kwargs
     assert kwargs["session_id"] == session_id
-    assert kwargs["player_id"] is None
+    assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
 
 
@@ -886,11 +868,12 @@ def test_session_event_feedback_submit_clears_issue_flags_for_likes(
 
 
 @pytest.mark.unit
-def test_free_play_feedback_clear_flushes_live_session_and_persists(
-    free_play_client: TestClient,
+def test_anonymous_feedback_clear_flushes_live_session_and_persists(
+    anonymous_client: TestClient,
+    anonymous_auth: dict[str, str],
     mock_provider: MagicMock,
 ) -> None:
-    """Free-play feedback clearing should work without a player auth key."""
+    """Anonymous feedback clearing should work with the issued player auth key."""
     manager = DummySessionManager()
     mock_provider.clear_session_event_feedback = AsyncMock(return_value=True)
 
@@ -898,14 +881,23 @@ def test_free_play_feedback_clear_flushes_live_session_and_persists(
         "dcs_simulation_engine.api.routers.play.SessionManager.create_async",
         new=AsyncMock(return_value=manager),
     ):
-        create_resp = free_play_client.post(
+        create_resp = anonymous_client.post(
             "/api/play/game",
-            json={"game": "explore", "pc_choice": None, "npc_choice": None, "source": "api"},
+            json={
+                "api_key": anonymous_auth["api_key"],
+                "game": "explore",
+                "pc_choice": None,
+                "npc_choice": None,
+                "source": "api",
+            },
         )
 
     session_id = create_resp.json()["session_id"]
 
-    response = free_play_client.delete(f"/api/sessions/{session_id}/events/evt-opening/feedback")
+    response = anonymous_client.delete(
+        f"/api/sessions/{session_id}/events/evt-opening/feedback",
+        headers={"Authorization": f"Bearer {anonymous_auth['api_key']}"},
+    )
 
     assert response.status_code == 200
     assert response.json()["cleared"] is True
@@ -913,7 +905,7 @@ def test_free_play_feedback_clear_flushes_live_session_and_persists(
 
     kwargs = mock_provider.clear_session_event_feedback.await_args.kwargs
     assert kwargs["session_id"] == session_id
-    assert kwargs["player_id"] is None
+    assert kwargs["player_id"] == "player-owner"
     assert kwargs["event_id"] == "evt-opening"
 
 
@@ -942,26 +934,21 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
         npc_hid="npc-1",
         status="assigned",
     )
+    run_config = SimpleNamespace(
+        name="usability",
+        description="Usability study",
+        forms=[form],
+        assignment_strategy=SimpleNamespace(
+            allow_choice_if_multiple=False,
+            require_completion=True,
+        ),
+    )
 
     with (
+        patch.object(client.app.state.engine_run_manager, "run_config", run_config),
+        patch("dcs_simulation_engine.api.routers.runs.EngineRunManager.ensure_run_async", new=AsyncMock()),
         patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.get_experiment_config_cached",
-            return_value=SimpleNamespace(
-                name="usability",
-                description="Usability study",
-                forms=[form],
-                assignment_strategy=SimpleNamespace(
-                    allow_choice_if_multiple=False,
-                    require_completion=True,
-                ),
-            ),
-        ),
-        patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.ensure_experiment_async",
-            new=AsyncMock(),
-        ),
-        patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.compute_progress_async",
+            "dcs_simulation_engine.api.routers.runs.EngineRunManager.compute_progress_async",
             new=AsyncMock(
                 return_value={
                     "total": 20,
@@ -971,13 +958,12 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
             ),
         ),
         patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.get_player_state_async",
+            "dcs_simulation_engine.api.routers.runs.EngineRunManager.get_player_state_async",
             new=AsyncMock(
                 return_value={
                     "active_assignment": assignment,
-                    "pending_post_play": None,
+                    "pending_assignment_form_ids": [],
                     "has_finished_experiment": False,
-                    "has_submitted_before_forms": True,
                     "eligible_assignment_options": [],
                     "pending_form_groups": [],
                     "assignments": [assignment],
@@ -985,12 +971,12 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
             ),
         ),
         patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.assignment_display_metadata_async",
+            "dcs_simulation_engine.api.routers.runs.EngineRunManager.assignment_display_metadata_async",
             new=AsyncMock(return_value=ASSIGNMENT_DISPLAY_METADATA),
         ),
     ):
         response = client.get(
-            "/api/experiments/usability/setup",
+            "/api/run/setup",
             headers={"Authorization": "Bearer valid-key"},
         )
 
@@ -999,10 +985,8 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
     assert payload["experiment_name"] == "usability"
     assert payload["current_assignment"]["assignment_id"] == "asg-1"
     assert payload["progress"] == {"total": 20, "completed": 4, "is_complete": False}
-    assert payload["pending_post_play"] is False
     assert payload["allow_choice_if_multiple"] is False
     assert payload["require_completion"] is True
-    assert payload["has_submitted_before_forms"] is True
     assert payload["eligible_assignment_options"] == []
     assert payload["pending_form_groups"] == []
     assert "character_hid" not in payload["current_assignment"]
@@ -1021,11 +1005,11 @@ def test_experiment_form_group_submission_returns_group(
     }
 
     with patch(
-        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_form_group_async",
+        "dcs_simulation_engine.api.routers.runs.EngineRunManager.submit_form_group_async",
         new=AsyncMock(return_value=group),
     ) as submit_mock:
         response = client.post(
-            "/api/experiments/usability/forms/submit",
+            "/api/run/forms/submit",
             headers={"Authorization": "Bearer valid-key"},
             json={"group_id": "before_all_assignments", "responses": {"intake": {"full_name": "Ada"}}},
         )
@@ -1038,7 +1022,7 @@ def test_experiment_form_group_submission_returns_group(
 @pytest.mark.unit
 def test_experiment_setup_requires_auth(client: TestClient) -> None:
     """Experiment setup should not expose progress or state without authentication."""
-    response = client.get("/api/experiments/usability/setup")
+    response = client.get("/api/run/setup")
 
     assert response.status_code == 401
 
@@ -1053,11 +1037,11 @@ def test_experiment_session_creation_returns_ws_path(
     start_mock = AsyncMock(return_value=(entry, assignment))
 
     with patch(
-        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.start_assignment_session_async",
+        "dcs_simulation_engine.api.routers.runs.EngineRunManager.start_assignment_session_async",
         new=start_mock,
     ):
         response = client.post(
-            "/api/experiments/usability/sessions",
+            "/api/run/sessions",
             headers={"Authorization": "Bearer valid-key"},
             json={"source": "experiment", "assignment_id": "asg-3"},
         )
@@ -1107,16 +1091,16 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
 
     with (
         patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.start_assignment_session_async",
+            "dcs_simulation_engine.api.routers.runs.EngineRunManager.start_assignment_session_async",
             new=AsyncMock(side_effect=_start_session),
         ),
         patch(
-            "dcs_simulation_engine.api.routers.play.ExperimentManager.handle_session_terminal_state_async",
+            "dcs_simulation_engine.api.routers.play.EngineRunManager.handle_session_terminal_state_async",
             new=AsyncMock(),
         ) as handle_terminal_mock,
     ):
         create_resp = client.post(
-            "/api/experiments/usability/sessions",
+            "/api/run/sessions",
             headers={"Authorization": "Bearer valid-key"},
             json={"source": "experiment"},
         )
@@ -1165,6 +1149,11 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
 
     app = create_app(
         provider=async_mongo_provider,
+        run_config=_run_config(
+            allow_choice_if_multiple=True,
+            require_completion=False,
+            max_assignments_per_player=2,
+        ),
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
@@ -1182,14 +1171,14 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
     }
 
     with TestClient(app) as client:
-        before_play = client.post(
-            "/api/experiments/usability/forms/submit",
+        form_submit = client.post(
+            "/api/run/forms/submit",
             headers=headers,
             json=entry_payload,
         )
-        assert before_play.status_code == 200, before_play.text
+        assert form_submit.status_code == 200, form_submit.text
 
-        setup = client.get("/api/experiments/usability/setup", headers=headers)
+        setup = client.get("/api/run/setup", headers=headers)
         assert setup.status_code == 200, setup.text
 
         paused_session_ids: dict[str, str] = {}
@@ -1200,7 +1189,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
             option = next(item for item in options if (item["game_name"], item["pc_hid"], item["npc_hid"]) not in used_options)
             used_options.add((option["game_name"], option["pc_hid"], option["npc_hid"]))
             select_resp = client.post(
-                "/api/experiments/usability/assignments/select",
+                "/api/run/assignments/select",
                 headers=headers,
                 json={
                     "game_name": option["game_name"],
@@ -1211,7 +1200,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
             assert select_resp.status_code == 200, select_resp.text
             assignment = select_resp.json()
             create_resp = client.post(
-                "/api/experiments/usability/sessions",
+                "/api/run/sessions",
                 headers=headers,
                 json={
                     "source": "experiment",
@@ -1228,10 +1217,10 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
                 opening_frames = _receive_until(ws, "turn_end")
                 assert any(frame.get("type") == "event" for frame in opening_frames)
 
-            setup = client.get("/api/experiments/usability/setup", headers=headers)
+            setup = client.get("/api/run/setup", headers=headers)
             assert setup.status_code == 200, setup.text
 
-        paused_setup = client.get("/api/experiments/usability/setup", headers=headers)
+        paused_setup = client.get("/api/run/setup", headers=headers)
         assert paused_setup.status_code == 200, paused_setup.text
         paused_assignments = {assignment["assignment_id"]: assignment for assignment in paused_setup.json()["assignments"]}
 
@@ -1241,7 +1230,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
             assert assignment["active_session_id"] == session_id
 
             resume_resp = client.post(
-                "/api/experiments/usability/sessions",
+                "/api/run/sessions",
                 headers=headers,
                 json={
                     "source": "experiment",
@@ -1270,11 +1259,11 @@ def test_experiment_assignment_form_group_submission_persists_response(client: T
     }
 
     with patch(
-        "dcs_simulation_engine.api.routers.experiments.ExperimentManager.submit_form_group_async",
+        "dcs_simulation_engine.api.routers.runs.EngineRunManager.submit_form_group_async",
         new=AsyncMock(return_value=group),
     ):
         response = client.post(
-            "/api/experiments/usability/forms/submit",
+            "/api/run/forms/submit",
             headers={"Authorization": "Bearer valid-key"},
             json={
                 "group_id": "after_assignment:asg-complete-1",
@@ -1291,11 +1280,11 @@ def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
     """Experiment status should return only the aggregate status fields."""
     with (
         patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.ensure_experiment_async",
+            "dcs_simulation_engine.api.routers.runs.EngineRunManager.ensure_run_async",
             new=AsyncMock(),
         ),
         patch(
-            "dcs_simulation_engine.api.routers.experiments.ExperimentManager.compute_status_async",
+            "dcs_simulation_engine.api.routers.runs.EngineRunManager.compute_status_async",
             new=AsyncMock(
                 return_value={
                     "is_open": True,
@@ -1310,7 +1299,7 @@ def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
         ),
     ):
         response = client.get(
-            "/api/experiments/usability/status",
+            "/api/run/status",
             headers={"Authorization": "Bearer valid-key"},
         )
 
@@ -1329,7 +1318,7 @@ def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
 @pytest.mark.unit
 def test_experiment_status_requires_auth(client: TestClient) -> None:
     """Experiment status should not be exposed without authentication."""
-    response = client.get("/api/experiments/usability/status")
+    response = client.get("/api/run/status")
 
     assert response.status_code == 401
 
@@ -1420,15 +1409,15 @@ def test_remote_status_is_public_and_reports_experiment_progress(
     """Remote status should expose experiment-oriented progress without authentication."""
     with (
         patch(
-            "dcs_simulation_engine.api.routers.remote.ExperimentManager.ensure_experiment_async",
+            "dcs_simulation_engine.api.routers.remote.EngineRunManager.ensure_experiment_async",
             new=AsyncMock(),
         ),
         patch(
-            "dcs_simulation_engine.api.routers.remote.ExperimentManager.compute_progress_async",
+            "dcs_simulation_engine.api.routers.remote.EngineRunManager.compute_progress_async",
             new=AsyncMock(return_value={"total": 4, "completed": 1, "is_complete": False}),
         ),
         patch(
-            "dcs_simulation_engine.api.routers.remote.ExperimentManager.compute_status_async",
+            "dcs_simulation_engine.api.routers.remote.EngineRunManager.compute_status_async",
             new=AsyncMock(
                 return_value={
                     "is_open": True,
@@ -1466,8 +1455,7 @@ def test_remote_export_requires_admin_role(async_mongo_provider) -> None:
 
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="standard",
-        default_experiment_name="usability",
+        run_config=_run_config(),
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1492,8 +1480,7 @@ def test_remote_export_streams_tarball_for_admin(async_mongo_provider) -> None:
 
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="standard",
-        default_experiment_name="usability",
+        run_config=_run_config(),
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1526,7 +1513,6 @@ def test_remote_export_streams_zip_for_admin(async_mongo_provider) -> None:
 
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="standard",
         default_experiment_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
@@ -1552,8 +1538,7 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
     """The first remotely registered user should receive the remote admin role."""
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="standard",
-        default_experiment_name="usability",
+        run_config=_run_config(),
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1562,11 +1547,11 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
         response = client.post(
             "/api/player/registration",
             json={
-                "full_name": "Ada Lovelace",
-                "email": "ada@example.com",
+                "full_name": "First Remote Admin",
+                "email": "first-admin@example.com",
                 "phone_number": "+1 555 123 4567",
                 "consent_to_followup": True,
-                "consent_signature": "Ada",
+                "consent_signature": "First Remote Admin",
             },
         )
 

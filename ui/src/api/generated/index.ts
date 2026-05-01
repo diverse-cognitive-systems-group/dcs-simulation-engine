@@ -26,6 +26,7 @@ import type {
 import type {
   AuthRequest,
   AuthResponse,
+  BranchSessionResponse,
   CharactersListResponse,
   ClearSessionEventFeedbackResponse,
   CreateGameRequest,
@@ -33,9 +34,8 @@ import type {
   DeleteCharacterResponse,
   EligibleAssignmentOptionsResponse,
   ExperimentAssignmentSummary,
-  ExperimentPlayerRequest,
-  ExperimentPlayerResponse,
-  ExperimentPostPlayRequest,
+  ExperimentFormSubmitRequest,
+  ExperimentFormSubmitResponse,
   ExperimentProgressResponse,
   ExperimentSessionRequest,
   ExperimentSetupResponse,
@@ -158,6 +158,89 @@ export const useRegisterUserApiPlayerRegistrationPost = <TError = HTTPValidation
     }
     
 /**
+ * Create an ephemeral anonymous player for runs that do not require registration.
+ * @summary Anonymous User
+ */
+export type anonymousUserApiPlayerAnonymousPostResponse200 = {
+  data: RegistrationResponse
+  status: 200
+}
+
+export type anonymousUserApiPlayerAnonymousPostResponseSuccess = (anonymousUserApiPlayerAnonymousPostResponse200) & {
+  headers: Headers;
+};
+;
+
+export type anonymousUserApiPlayerAnonymousPostResponse = (anonymousUserApiPlayerAnonymousPostResponseSuccess)
+
+export const getAnonymousUserApiPlayerAnonymousPostUrl = () => {
+
+
+  
+
+  return `/api/player/anonymous`
+}
+
+export const anonymousUserApiPlayerAnonymousPost = async ( options?: RequestInit): Promise<anonymousUserApiPlayerAnonymousPostResponse> => {
+  
+  return httpClient<anonymousUserApiPlayerAnonymousPostResponse>(getAnonymousUserApiPlayerAnonymousPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getAnonymousUserApiPlayerAnonymousPostMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof anonymousUserApiPlayerAnonymousPost>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof anonymousUserApiPlayerAnonymousPost>>, TError,void, TContext> => {
+
+const mutationKey = ['anonymousUserApiPlayerAnonymousPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof anonymousUserApiPlayerAnonymousPost>>, void> = () => {
+          
+
+          return  anonymousUserApiPlayerAnonymousPost(requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnonymousUserApiPlayerAnonymousPostMutationResult = NonNullable<Awaited<ReturnType<typeof anonymousUserApiPlayerAnonymousPost>>>
+    
+    export type AnonymousUserApiPlayerAnonymousPostMutationError = unknown
+
+    /**
+ * @summary Anonymous User
+ */
+export const useAnonymousUserApiPlayerAnonymousPost = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof anonymousUserApiPlayerAnonymousPost>>, TError,void, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof anonymousUserApiPlayerAnonymousPost>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAnonymousUserApiPlayerAnonymousPostMutationOptions(options), queryClient);
+    }
+    
+/**
  * Authenticate a user API key and return the associated player id.
  * @summary Auth User
  */
@@ -249,7 +332,7 @@ export const useAuthUserApiPlayerAuthPost = <TError = HTTPValidationError,
     }
     
 /**
- * Return the current status of a session. Works in both standard and free-play modes.
+ * Return the current status of a live session.
 
 Used by the frontend to verify a stored session_id is still paused and resumable.
  * @summary Get Session Status
@@ -369,6 +452,96 @@ export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited
 
 
 
+/**
+ * Clone a persisted paused child session from an existing root session.
+ * @summary Branch Session
+ */
+export type branchSessionApiSessionsSessionIdBranchPostResponse200 = {
+  data: BranchSessionResponse
+  status: 200
+}
+
+export type branchSessionApiSessionsSessionIdBranchPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type branchSessionApiSessionsSessionIdBranchPostResponseSuccess = (branchSessionApiSessionsSessionIdBranchPostResponse200) & {
+  headers: Headers;
+};
+export type branchSessionApiSessionsSessionIdBranchPostResponseError = (branchSessionApiSessionsSessionIdBranchPostResponse422) & {
+  headers: Headers;
+};
+
+export type branchSessionApiSessionsSessionIdBranchPostResponse = (branchSessionApiSessionsSessionIdBranchPostResponseSuccess | branchSessionApiSessionsSessionIdBranchPostResponseError)
+
+export const getBranchSessionApiSessionsSessionIdBranchPostUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/branch`
+}
+
+export const branchSessionApiSessionsSessionIdBranchPost = async (sessionId: string, options?: RequestInit): Promise<branchSessionApiSessionsSessionIdBranchPostResponse> => {
+  
+  return httpClient<branchSessionApiSessionsSessionIdBranchPostResponse>(getBranchSessionApiSessionsSessionIdBranchPostUrl(sessionId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getBranchSessionApiSessionsSessionIdBranchPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['branchSessionApiSessionsSessionIdBranchPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  branchSessionApiSessionsSessionIdBranchPost(sessionId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BranchSessionApiSessionsSessionIdBranchPostMutationResult = NonNullable<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>>
+    
+    export type BranchSessionApiSessionsSessionIdBranchPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Branch Session
+ */
+export const useBranchSessionApiSessionsSessionIdBranchPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getBranchSessionApiSessionsSessionIdBranchPostMutationOptions(options), queryClient);
+    }
+    
 /**
  * List active in-memory sessions for the player tied to the provided API key.
  * @summary List Sessions
@@ -997,39 +1170,32 @@ export const useCreateGameApiPlayGamePost = <TError = HTTPValidationError,
     }
     
 /**
- * Return experiment metadata, form schemas, and current player assignment state.
- * @summary Experiment Setup
+ * Return run metadata, form schemas, and current player assignment state.
+ * @summary Run Setup
  */
-export type experimentSetupApiExperimentsExperimentNameSetupGetResponse200 = {
+export type runSetupApiRunSetupGetResponse200 = {
   data: ExperimentSetupResponse
   status: 200
 }
 
-export type experimentSetupApiExperimentsExperimentNameSetupGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type experimentSetupApiExperimentsExperimentNameSetupGetResponseSuccess = (experimentSetupApiExperimentsExperimentNameSetupGetResponse200) & {
+export type runSetupApiRunSetupGetResponseSuccess = (runSetupApiRunSetupGetResponse200) & {
   headers: Headers;
 };
-export type experimentSetupApiExperimentsExperimentNameSetupGetResponseError = (experimentSetupApiExperimentsExperimentNameSetupGetResponse422) & {
-  headers: Headers;
-};
+;
 
-export type experimentSetupApiExperimentsExperimentNameSetupGetResponse = (experimentSetupApiExperimentsExperimentNameSetupGetResponseSuccess | experimentSetupApiExperimentsExperimentNameSetupGetResponseError)
+export type runSetupApiRunSetupGetResponse = (runSetupApiRunSetupGetResponseSuccess)
 
-export const getExperimentSetupApiExperimentsExperimentNameSetupGetUrl = (experimentName: string,) => {
+export const getRunSetupApiRunSetupGetUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/setup`
+  return `/api/run/setup`
 }
 
-export const experimentSetupApiExperimentsExperimentNameSetupGet = async (experimentName: string, options?: RequestInit): Promise<experimentSetupApiExperimentsExperimentNameSetupGetResponse> => {
+export const runSetupApiRunSetupGet = async ( options?: RequestInit): Promise<runSetupApiRunSetupGetResponse> => {
   
-  return httpClient<experimentSetupApiExperimentsExperimentNameSetupGetResponse>(getExperimentSetupApiExperimentsExperimentNameSetupGetUrl(experimentName),
+  return httpClient<runSetupApiRunSetupGetResponse>(getRunSetupApiRunSetupGetUrl(),
   {      
     ...options,
     method: 'GET'
@@ -1042,69 +1208,69 @@ export const experimentSetupApiExperimentsExperimentNameSetupGet = async (experi
 
 
 
-export const getExperimentSetupApiExperimentsExperimentNameSetupGetQueryKey = (experimentName: string,) => {
+export const getRunSetupApiRunSetupGetQueryKey = () => {
     return [
-    `/api/experiments/${experimentName}/setup`
+    `/api/run/setup`
     ] as const;
     }
 
     
-export const getExperimentSetupApiExperimentsExperimentNameSetupGetQueryOptions = <TData = Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError = HTTPValidationError>(experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getRunSetupApiRunSetupGetQueryOptions = <TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getExperimentSetupApiExperimentsExperimentNameSetupGetQueryKey(experimentName);
+  const queryKey =  queryOptions?.queryKey ?? getRunSetupApiRunSetupGetQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>> = ({ signal }) => experimentSetupApiExperimentsExperimentNameSetupGet(experimentName, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>> = ({ signal }) => runSetupApiRunSetupGet({ signal, ...requestOptions });
 
       
 
       
 
-   return  { queryKey, queryFn, enabled: !!(experimentName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ExperimentSetupApiExperimentsExperimentNameSetupGetQueryResult = NonNullable<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>>
-export type ExperimentSetupApiExperimentsExperimentNameSetupGetQueryError = HTTPValidationError
+export type RunSetupApiRunSetupGetQueryResult = NonNullable<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>>
+export type RunSetupApiRunSetupGetQueryError = unknown
 
 
-export function useExperimentSetupApiExperimentsExperimentNameSetupGet<TData = Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError = HTTPValidationError>(
- experimentName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError, TData>> & Pick<
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>,
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>,
           TError,
-          Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useExperimentSetupApiExperimentsExperimentNameSetupGet<TData = Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError, TData>> & Pick<
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>,
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>,
           TError,
-          Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useExperimentSetupApiExperimentsExperimentNameSetupGet<TData = Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Experiment Setup
+ * @summary Run Setup
  */
 
-export function useExperimentSetupApiExperimentsExperimentNameSetupGet<TData = Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentSetupApiExperimentsExperimentNameSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getExperimentSetupApiExperimentsExperimentNameSetupGetQueryOptions(experimentName,options)
+  const queryOptions = getRunSetupApiRunSetupGetQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1116,57 +1282,56 @@ export function useExperimentSetupApiExperimentsExperimentNameSetupGet<TData = A
 
 
 /**
- * Store before-play experiment forms for the authenticated participant and generate an assignment.
- * @summary Register Experiment Player
+ * Store responses for one pending run form group.
+ * @summary Submit Run Form Group
  */
-export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse200 = {
-  data: ExperimentPlayerResponse
+export type submitRunFormGroupApiRunFormsSubmitPostResponse200 = {
+  data: ExperimentFormSubmitResponse
   status: 200
 }
 
-export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse422 = {
+export type submitRunFormGroupApiRunFormsSubmitPostResponse422 = {
   data: HTTPValidationError
   status: 422
 }
 
-export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponseSuccess = (registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse200) & {
+export type submitRunFormGroupApiRunFormsSubmitPostResponseSuccess = (submitRunFormGroupApiRunFormsSubmitPostResponse200) & {
   headers: Headers;
 };
-export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponseError = (registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse422) & {
+export type submitRunFormGroupApiRunFormsSubmitPostResponseError = (submitRunFormGroupApiRunFormsSubmitPostResponse422) & {
   headers: Headers;
 };
 
-export type registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse = (registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponseSuccess | registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponseError)
+export type submitRunFormGroupApiRunFormsSubmitPostResponse = (submitRunFormGroupApiRunFormsSubmitPostResponseSuccess | submitRunFormGroupApiRunFormsSubmitPostResponseError)
 
-export const getRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostUrl = (experimentName: string,) => {
+export const getSubmitRunFormGroupApiRunFormsSubmitPostUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/players`
+  return `/api/run/forms/submit`
 }
 
-export const registerExperimentPlayerApiExperimentsExperimentNamePlayersPost = async (experimentName: string,
-    experimentPlayerRequest: ExperimentPlayerRequest, options?: RequestInit): Promise<registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse> => {
+export const submitRunFormGroupApiRunFormsSubmitPost = async (experimentFormSubmitRequest: ExperimentFormSubmitRequest, options?: RequestInit): Promise<submitRunFormGroupApiRunFormsSubmitPostResponse> => {
   
-  return httpClient<registerExperimentPlayerApiExperimentsExperimentNamePlayersPostResponse>(getRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostUrl(experimentName),
+  return httpClient<submitRunFormGroupApiRunFormsSubmitPostResponse>(getSubmitRunFormGroupApiRunFormsSubmitPostUrl(),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      experimentPlayerRequest,)
+      experimentFormSubmitRequest,)
   }
 );}
   
 
 
 
-export const getRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerExperimentPlayerApiExperimentsExperimentNamePlayersPost>>, TError,{experimentName: string;data: ExperimentPlayerRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof registerExperimentPlayerApiExperimentsExperimentNamePlayersPost>>, TError,{experimentName: string;data: ExperimentPlayerRequest}, TContext> => {
+export const getSubmitRunFormGroupApiRunFormsSubmitPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: ExperimentFormSubmitRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: ExperimentFormSubmitRequest}, TContext> => {
 
-const mutationKey = ['registerExperimentPlayerApiExperimentsExperimentNamePlayersPost'];
+const mutationKey = ['submitRunFormGroupApiRunFormsSubmitPost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1176,10 +1341,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerExperimentPlayerApiExperimentsExperimentNamePlayersPost>>, {experimentName: string;data: ExperimentPlayerRequest}> = (props) => {
-          const {experimentName,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, {data: ExperimentFormSubmitRequest}> = (props) => {
+          const {data} = props ?? {};
 
-          return  registerExperimentPlayerApiExperimentsExperimentNamePlayersPost(experimentName,data,requestOptions)
+          return  submitRunFormGroupApiRunFormsSubmitPost(data,requestOptions)
         }
 
 
@@ -1189,59 +1354,58 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type RegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostMutationResult = NonNullable<Awaited<ReturnType<typeof registerExperimentPlayerApiExperimentsExperimentNamePlayersPost>>>
-    export type RegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostMutationBody = ExperimentPlayerRequest
-    export type RegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostMutationError = HTTPValidationError
+    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>>
+    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationBody = ExperimentFormSubmitRequest
+    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationError = HTTPValidationError
 
     /**
- * @summary Register Experiment Player
+ * @summary Submit Run Form Group
  */
-export const useRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerExperimentPlayerApiExperimentsExperimentNamePlayersPost>>, TError,{experimentName: string;data: ExperimentPlayerRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+export const useSubmitRunFormGroupApiRunFormsSubmitPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: ExperimentFormSubmitRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof registerExperimentPlayerApiExperimentsExperimentNamePlayersPost>>,
+        Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>,
         TError,
-        {experimentName: string;data: ExperimentPlayerRequest},
+        {data: ExperimentFormSubmitRequest},
         TContext
       > => {
-      return useMutation(getRegisterExperimentPlayerApiExperimentsExperimentNamePlayersPostMutationOptions(options), queryClient);
+      return useMutation(getSubmitRunFormGroupApiRunFormsSubmitPostMutationOptions(options), queryClient);
     }
     
 /**
- * Create or resume a session for one experiment assignment.
- * @summary Create Experiment Session
+ * Create or resume a session for one run assignment.
+ * @summary Create Run Session
  */
-export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse200 = {
+export type createRunSessionApiRunSessionsPostResponse200 = {
   data: CreateGameResponse
   status: 200
 }
 
-export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse422 = {
+export type createRunSessionApiRunSessionsPostResponse422 = {
   data: HTTPValidationError
   status: 422
 }
 
-export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponseSuccess = (createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse200) & {
+export type createRunSessionApiRunSessionsPostResponseSuccess = (createRunSessionApiRunSessionsPostResponse200) & {
   headers: Headers;
 };
-export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponseError = (createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse422) & {
+export type createRunSessionApiRunSessionsPostResponseError = (createRunSessionApiRunSessionsPostResponse422) & {
   headers: Headers;
 };
 
-export type createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse = (createExperimentSessionApiExperimentsExperimentNameSessionsPostResponseSuccess | createExperimentSessionApiExperimentsExperimentNameSessionsPostResponseError)
+export type createRunSessionApiRunSessionsPostResponse = (createRunSessionApiRunSessionsPostResponseSuccess | createRunSessionApiRunSessionsPostResponseError)
 
-export const getCreateExperimentSessionApiExperimentsExperimentNameSessionsPostUrl = (experimentName: string,) => {
+export const getCreateRunSessionApiRunSessionsPostUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/sessions`
+  return `/api/run/sessions`
 }
 
-export const createExperimentSessionApiExperimentsExperimentNameSessionsPost = async (experimentName: string,
-    experimentSessionRequest: ExperimentSessionRequest, options?: RequestInit): Promise<createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse> => {
+export const createRunSessionApiRunSessionsPost = async (experimentSessionRequest: ExperimentSessionRequest, options?: RequestInit): Promise<createRunSessionApiRunSessionsPostResponse> => {
   
-  return httpClient<createExperimentSessionApiExperimentsExperimentNameSessionsPostResponse>(getCreateExperimentSessionApiExperimentsExperimentNameSessionsPostUrl(experimentName),
+  return httpClient<createRunSessionApiRunSessionsPostResponse>(getCreateRunSessionApiRunSessionsPostUrl(),
   {      
     ...options,
     method: 'POST',
@@ -1254,11 +1418,11 @@ export const createExperimentSessionApiExperimentsExperimentNameSessionsPost = a
 
 
 
-export const getCreateExperimentSessionApiExperimentsExperimentNameSessionsPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createExperimentSessionApiExperimentsExperimentNameSessionsPost>>, TError,{experimentName: string;data: ExperimentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof createExperimentSessionApiExperimentsExperimentNameSessionsPost>>, TError,{experimentName: string;data: ExperimentSessionRequest}, TContext> => {
+export const getCreateRunSessionApiRunSessionsPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: ExperimentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: ExperimentSessionRequest}, TContext> => {
 
-const mutationKey = ['createExperimentSessionApiExperimentsExperimentNameSessionsPost'];
+const mutationKey = ['createRunSessionApiRunSessionsPost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1268,10 +1432,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createExperimentSessionApiExperimentsExperimentNameSessionsPost>>, {experimentName: string;data: ExperimentSessionRequest}> = (props) => {
-          const {experimentName,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, {data: ExperimentSessionRequest}> = (props) => {
+          const {data} = props ?? {};
 
-          return  createExperimentSessionApiExperimentsExperimentNameSessionsPost(experimentName,data,requestOptions)
+          return  createRunSessionApiRunSessionsPost(data,requestOptions)
         }
 
 
@@ -1281,150 +1445,51 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type CreateExperimentSessionApiExperimentsExperimentNameSessionsPostMutationResult = NonNullable<Awaited<ReturnType<typeof createExperimentSessionApiExperimentsExperimentNameSessionsPost>>>
-    export type CreateExperimentSessionApiExperimentsExperimentNameSessionsPostMutationBody = ExperimentSessionRequest
-    export type CreateExperimentSessionApiExperimentsExperimentNameSessionsPostMutationError = HTTPValidationError
+    export type CreateRunSessionApiRunSessionsPostMutationResult = NonNullable<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>>
+    export type CreateRunSessionApiRunSessionsPostMutationBody = ExperimentSessionRequest
+    export type CreateRunSessionApiRunSessionsPostMutationError = HTTPValidationError
 
     /**
- * @summary Create Experiment Session
+ * @summary Create Run Session
  */
-export const useCreateExperimentSessionApiExperimentsExperimentNameSessionsPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createExperimentSessionApiExperimentsExperimentNameSessionsPost>>, TError,{experimentName: string;data: ExperimentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+export const useCreateRunSessionApiRunSessionsPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: ExperimentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createExperimentSessionApiExperimentsExperimentNameSessionsPost>>,
+        Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>,
         TError,
-        {experimentName: string;data: ExperimentSessionRequest},
+        {data: ExperimentSessionRequest},
         TContext
       > => {
-      return useMutation(getCreateExperimentSessionApiExperimentsExperimentNameSessionsPostMutationOptions(options), queryClient);
+      return useMutation(getCreateRunSessionApiRunSessionsPostMutationOptions(options), queryClient);
     }
     
 /**
- * Store the experiment post-play form on one completed assignment.
- * @summary Submit Experiment Post Play
+ * Return the current finite progress for the run.
+ * @summary Run Progress
  */
-export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse200 = {
-  data: ExperimentAssignmentSummary
-  status: 200
-}
-
-export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponseSuccess = (submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse200) & {
-  headers: Headers;
-};
-export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponseError = (submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse422) & {
-  headers: Headers;
-};
-
-export type submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse = (submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponseSuccess | submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponseError)
-
-export const getSubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostUrl = (experimentName: string,) => {
-
-
-  
-
-  return `/api/experiments/${experimentName}/post-play`
-}
-
-export const submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost = async (experimentName: string,
-    experimentPostPlayRequest: ExperimentPostPlayRequest, options?: RequestInit): Promise<submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse> => {
-  
-  return httpClient<submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostResponse>(getSubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostUrl(experimentName),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      experimentPostPlayRequest,)
-  }
-);}
-  
-
-
-
-export const getSubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost>>, TError,{experimentName: string;data: ExperimentPostPlayRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost>>, TError,{experimentName: string;data: ExperimentPostPlayRequest}, TContext> => {
-
-const mutationKey = ['submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost>>, {experimentName: string;data: ExperimentPostPlayRequest}> = (props) => {
-          const {experimentName,data} = props ?? {};
-
-          return  submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost(experimentName,data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost>>>
-    export type SubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostMutationBody = ExperimentPostPlayRequest
-    export type SubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostMutationError = HTTPValidationError
-
-    /**
- * @summary Submit Experiment Post Play
- */
-export const useSubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost>>, TError,{experimentName: string;data: ExperimentPostPlayRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof submitExperimentPostPlayApiExperimentsExperimentNamePostPlayPost>>,
-        TError,
-        {experimentName: string;data: ExperimentPostPlayRequest},
-        TContext
-      > => {
-      return useMutation(getSubmitExperimentPostPlayApiExperimentsExperimentNamePostPlayPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Return the current finite progress for the usability experiment.
- * @summary Experiment Progress
- */
-export type experimentProgressApiExperimentsExperimentNameProgressGetResponse200 = {
+export type runProgressApiRunProgressGetResponse200 = {
   data: ExperimentProgressResponse
   status: 200
 }
 
-export type experimentProgressApiExperimentsExperimentNameProgressGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type experimentProgressApiExperimentsExperimentNameProgressGetResponseSuccess = (experimentProgressApiExperimentsExperimentNameProgressGetResponse200) & {
+export type runProgressApiRunProgressGetResponseSuccess = (runProgressApiRunProgressGetResponse200) & {
   headers: Headers;
 };
-export type experimentProgressApiExperimentsExperimentNameProgressGetResponseError = (experimentProgressApiExperimentsExperimentNameProgressGetResponse422) & {
-  headers: Headers;
-};
+;
 
-export type experimentProgressApiExperimentsExperimentNameProgressGetResponse = (experimentProgressApiExperimentsExperimentNameProgressGetResponseSuccess | experimentProgressApiExperimentsExperimentNameProgressGetResponseError)
+export type runProgressApiRunProgressGetResponse = (runProgressApiRunProgressGetResponseSuccess)
 
-export const getExperimentProgressApiExperimentsExperimentNameProgressGetUrl = (experimentName: string,) => {
+export const getRunProgressApiRunProgressGetUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/progress`
+  return `/api/run/progress`
 }
 
-export const experimentProgressApiExperimentsExperimentNameProgressGet = async (experimentName: string, options?: RequestInit): Promise<experimentProgressApiExperimentsExperimentNameProgressGetResponse> => {
+export const runProgressApiRunProgressGet = async ( options?: RequestInit): Promise<runProgressApiRunProgressGetResponse> => {
   
-  return httpClient<experimentProgressApiExperimentsExperimentNameProgressGetResponse>(getExperimentProgressApiExperimentsExperimentNameProgressGetUrl(experimentName),
+  return httpClient<runProgressApiRunProgressGetResponse>(getRunProgressApiRunProgressGetUrl(),
   {      
     ...options,
     method: 'GET'
@@ -1437,69 +1502,69 @@ export const experimentProgressApiExperimentsExperimentNameProgressGet = async (
 
 
 
-export const getExperimentProgressApiExperimentsExperimentNameProgressGetQueryKey = (experimentName: string,) => {
+export const getRunProgressApiRunProgressGetQueryKey = () => {
     return [
-    `/api/experiments/${experimentName}/progress`
+    `/api/run/progress`
     ] as const;
     }
 
     
-export const getExperimentProgressApiExperimentsExperimentNameProgressGetQueryOptions = <TData = Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError = HTTPValidationError>(experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getRunProgressApiRunProgressGetQueryOptions = <TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getExperimentProgressApiExperimentsExperimentNameProgressGetQueryKey(experimentName);
+  const queryKey =  queryOptions?.queryKey ?? getRunProgressApiRunProgressGetQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>> = ({ signal }) => experimentProgressApiExperimentsExperimentNameProgressGet(experimentName, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>> = ({ signal }) => runProgressApiRunProgressGet({ signal, ...requestOptions });
 
       
 
       
 
-   return  { queryKey, queryFn, enabled: !!(experimentName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ExperimentProgressApiExperimentsExperimentNameProgressGetQueryResult = NonNullable<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>>
-export type ExperimentProgressApiExperimentsExperimentNameProgressGetQueryError = HTTPValidationError
+export type RunProgressApiRunProgressGetQueryResult = NonNullable<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>>
+export type RunProgressApiRunProgressGetQueryError = unknown
 
 
-export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TData = Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError = HTTPValidationError>(
- experimentName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError, TData>> & Pick<
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>,
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>,
           TError,
-          Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TData = Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError, TData>> & Pick<
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>,
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>,
           TError,
-          Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TData = Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Experiment Progress
+ * @summary Run Progress
  */
 
-export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TData = Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentProgressApiExperimentsExperimentNameProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getExperimentProgressApiExperimentsExperimentNameProgressGetQueryOptions(experimentName,options)
+  const queryOptions = getRunProgressApiRunProgressGetQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1514,36 +1579,29 @@ export function useExperimentProgressApiExperimentsExperimentNameProgressGet<TDa
  * Return eligible game/PC/NPC triplets for the authenticated player.
  * @summary Get Eligible Options
  */
-export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse200 = {
+export type getEligibleOptionsApiRunEligibleOptionsGetResponse200 = {
   data: EligibleAssignmentOptionsResponse
   status: 200
 }
 
-export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseSuccess = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse200) & {
+export type getEligibleOptionsApiRunEligibleOptionsGetResponseSuccess = (getEligibleOptionsApiRunEligibleOptionsGetResponse200) & {
   headers: Headers;
 };
-export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseError = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse422) & {
-  headers: Headers;
-};
+;
 
-export type getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse = (getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseSuccess | getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponseError)
+export type getEligibleOptionsApiRunEligibleOptionsGetResponse = (getEligibleOptionsApiRunEligibleOptionsGetResponseSuccess)
 
-export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetUrl = (experimentName: string,) => {
+export const getGetEligibleOptionsApiRunEligibleOptionsGetUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/eligible-options`
+  return `/api/run/eligible-options`
 }
 
-export const getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet = async (experimentName: string, options?: RequestInit): Promise<getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse> => {
+export const getEligibleOptionsApiRunEligibleOptionsGet = async ( options?: RequestInit): Promise<getEligibleOptionsApiRunEligibleOptionsGetResponse> => {
   
-  return httpClient<getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetResponse>(getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetUrl(experimentName),
+  return httpClient<getEligibleOptionsApiRunEligibleOptionsGetResponse>(getGetEligibleOptionsApiRunEligibleOptionsGetUrl(),
   {      
     ...options,
     method: 'GET'
@@ -1556,69 +1614,69 @@ export const getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet = 
 
 
 
-export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryKey = (experimentName: string,) => {
+export const getGetEligibleOptionsApiRunEligibleOptionsGetQueryKey = () => {
     return [
-    `/api/experiments/${experimentName}/eligible-options`
+    `/api/run/eligible-options`
     ] as const;
     }
 
     
-export const getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryOptions = <TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getGetEligibleOptionsApiRunEligibleOptionsGetQueryOptions = <TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryKey(experimentName);
+  const queryKey =  queryOptions?.queryKey ?? getGetEligibleOptionsApiRunEligibleOptionsGetQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>> = ({ signal }) => getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet(experimentName, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>> = ({ signal }) => getEligibleOptionsApiRunEligibleOptionsGet({ signal, ...requestOptions });
 
       
 
       
 
-   return  { queryKey, queryFn, enabled: !!(experimentName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryResult = NonNullable<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>>
-export type GetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryError = HTTPValidationError
+export type GetEligibleOptionsApiRunEligibleOptionsGetQueryResult = NonNullable<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>>
+export type GetEligibleOptionsApiRunEligibleOptionsGetQueryError = unknown
 
 
-export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
- experimentName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>> & Pick<
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>,
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>,
           TError,
-          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>> & Pick<
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>,
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>,
           TError,
-          Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary Get Eligible Options
  */
 
-export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetEligibleOptionsApiExperimentsExperimentNameEligibleOptionsGetQueryOptions(experimentName,options)
+  const queryOptions = getGetEligibleOptionsApiRunEligibleOptionsGetQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1633,37 +1691,36 @@ export function useGetEligibleOptionsApiExperimentsExperimentNameEligibleOptions
  * Create an assignment for the authenticated player based on their explicit triplet selection.
  * @summary Select Assignment
  */
-export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse200 = {
+export type selectAssignmentApiRunAssignmentsSelectPostResponse200 = {
   data: ExperimentAssignmentSummary
   status: 200
 }
 
-export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse422 = {
+export type selectAssignmentApiRunAssignmentsSelectPostResponse422 = {
   data: HTTPValidationError
   status: 422
 }
 
-export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseSuccess = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse200) & {
+export type selectAssignmentApiRunAssignmentsSelectPostResponseSuccess = (selectAssignmentApiRunAssignmentsSelectPostResponse200) & {
   headers: Headers;
 };
-export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseError = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse422) & {
+export type selectAssignmentApiRunAssignmentsSelectPostResponseError = (selectAssignmentApiRunAssignmentsSelectPostResponse422) & {
   headers: Headers;
 };
 
-export type selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse = (selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseSuccess | selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponseError)
+export type selectAssignmentApiRunAssignmentsSelectPostResponse = (selectAssignmentApiRunAssignmentsSelectPostResponseSuccess | selectAssignmentApiRunAssignmentsSelectPostResponseError)
 
-export const getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostUrl = (experimentName: string,) => {
+export const getSelectAssignmentApiRunAssignmentsSelectPostUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/assignments/select`
+  return `/api/run/assignments/select`
 }
 
-export const selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost = async (experimentName: string,
-    selectAssignmentRequest: SelectAssignmentRequest, options?: RequestInit): Promise<selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse> => {
+export const selectAssignmentApiRunAssignmentsSelectPost = async (selectAssignmentRequest: SelectAssignmentRequest, options?: RequestInit): Promise<selectAssignmentApiRunAssignmentsSelectPostResponse> => {
   
-  return httpClient<selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostResponse>(getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostUrl(experimentName),
+  return httpClient<selectAssignmentApiRunAssignmentsSelectPostResponse>(getSelectAssignmentApiRunAssignmentsSelectPostUrl(),
   {      
     ...options,
     method: 'POST',
@@ -1676,11 +1733,11 @@ export const selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost =
 
 
 
-export const getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, TError,{experimentName: string;data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, TError,{experimentName: string;data: SelectAssignmentRequest}, TContext> => {
+export const getSelectAssignmentApiRunAssignmentsSelectPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext> => {
 
-const mutationKey = ['selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost'];
+const mutationKey = ['selectAssignmentApiRunAssignmentsSelectPost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1690,10 +1747,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, {experimentName: string;data: SelectAssignmentRequest}> = (props) => {
-          const {experimentName,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, {data: SelectAssignmentRequest}> = (props) => {
+          const {data} = props ?? {};
 
-          return  selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost(experimentName,data,requestOptions)
+          return  selectAssignmentApiRunAssignmentsSelectPost(data,requestOptions)
         }
 
 
@@ -1703,58 +1760,51 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type SelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationResult = NonNullable<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>>
-    export type SelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationBody = SelectAssignmentRequest
-    export type SelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationError = HTTPValidationError
+    export type SelectAssignmentApiRunAssignmentsSelectPostMutationResult = NonNullable<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>>
+    export type SelectAssignmentApiRunAssignmentsSelectPostMutationBody = SelectAssignmentRequest
+    export type SelectAssignmentApiRunAssignmentsSelectPostMutationError = HTTPValidationError
 
     /**
  * @summary Select Assignment
  */
-export const useSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>, TError,{experimentName: string;data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+export const useSelectAssignmentApiRunAssignmentsSelectPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof selectAssignmentApiExperimentsExperimentNameAssignmentsSelectPost>>,
+        Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>,
         TError,
-        {experimentName: string;data: SelectAssignmentRequest},
+        {data: SelectAssignmentRequest},
         TContext
       > => {
-      return useMutation(getSelectAssignmentApiExperimentsExperimentNameAssignmentsSelectPostMutationOptions(options), queryClient);
+      return useMutation(getSelectAssignmentApiRunAssignmentsSelectPostMutationOptions(options), queryClient);
     }
     
 /**
- * Return the current aggregate status for one experiment.
- * @summary Experiment Status
+ * Return the current aggregate status for the run.
+ * @summary Run Status
  */
-export type experimentStatusApiExperimentsExperimentNameStatusGetResponse200 = {
+export type runStatusApiRunStatusGetResponse200 = {
   data: ExperimentStatusResponse
   status: 200
 }
 
-export type experimentStatusApiExperimentsExperimentNameStatusGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type experimentStatusApiExperimentsExperimentNameStatusGetResponseSuccess = (experimentStatusApiExperimentsExperimentNameStatusGetResponse200) & {
+export type runStatusApiRunStatusGetResponseSuccess = (runStatusApiRunStatusGetResponse200) & {
   headers: Headers;
 };
-export type experimentStatusApiExperimentsExperimentNameStatusGetResponseError = (experimentStatusApiExperimentsExperimentNameStatusGetResponse422) & {
-  headers: Headers;
-};
+;
 
-export type experimentStatusApiExperimentsExperimentNameStatusGetResponse = (experimentStatusApiExperimentsExperimentNameStatusGetResponseSuccess | experimentStatusApiExperimentsExperimentNameStatusGetResponseError)
+export type runStatusApiRunStatusGetResponse = (runStatusApiRunStatusGetResponseSuccess)
 
-export const getExperimentStatusApiExperimentsExperimentNameStatusGetUrl = (experimentName: string,) => {
+export const getRunStatusApiRunStatusGetUrl = () => {
 
 
   
 
-  return `/api/experiments/${experimentName}/status`
+  return `/api/run/status`
 }
 
-export const experimentStatusApiExperimentsExperimentNameStatusGet = async (experimentName: string, options?: RequestInit): Promise<experimentStatusApiExperimentsExperimentNameStatusGetResponse> => {
+export const runStatusApiRunStatusGet = async ( options?: RequestInit): Promise<runStatusApiRunStatusGetResponse> => {
   
-  return httpClient<experimentStatusApiExperimentsExperimentNameStatusGetResponse>(getExperimentStatusApiExperimentsExperimentNameStatusGetUrl(experimentName),
+  return httpClient<runStatusApiRunStatusGetResponse>(getRunStatusApiRunStatusGetUrl(),
   {      
     ...options,
     method: 'GET'
@@ -1767,69 +1817,69 @@ export const experimentStatusApiExperimentsExperimentNameStatusGet = async (expe
 
 
 
-export const getExperimentStatusApiExperimentsExperimentNameStatusGetQueryKey = (experimentName: string,) => {
+export const getRunStatusApiRunStatusGetQueryKey = () => {
     return [
-    `/api/experiments/${experimentName}/status`
+    `/api/run/status`
     ] as const;
     }
 
     
-export const getExperimentStatusApiExperimentsExperimentNameStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError = HTTPValidationError>(experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getRunStatusApiRunStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getExperimentStatusApiExperimentsExperimentNameStatusGetQueryKey(experimentName);
+  const queryKey =  queryOptions?.queryKey ?? getRunStatusApiRunStatusGetQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>> = ({ signal }) => experimentStatusApiExperimentsExperimentNameStatusGet(experimentName, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>> = ({ signal }) => runStatusApiRunStatusGet({ signal, ...requestOptions });
 
       
 
       
 
-   return  { queryKey, queryFn, enabled: !!(experimentName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ExperimentStatusApiExperimentsExperimentNameStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>>
-export type ExperimentStatusApiExperimentsExperimentNameStatusGetQueryError = HTTPValidationError
+export type RunStatusApiRunStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>>
+export type RunStatusApiRunStatusGetQueryError = unknown
 
 
-export function useExperimentStatusApiExperimentsExperimentNameStatusGet<TData = Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError = HTTPValidationError>(
- experimentName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError, TData>> & Pick<
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>,
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>,
           TError,
-          Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useExperimentStatusApiExperimentsExperimentNameStatusGet<TData = Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError, TData>> & Pick<
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>,
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>,
           TError,
-          Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useExperimentStatusApiExperimentsExperimentNameStatusGet<TData = Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Experiment Status
+ * @summary Run Status
  */
 
-export function useExperimentStatusApiExperimentsExperimentNameStatusGet<TData = Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError = HTTPValidationError>(
- experimentName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof experimentStatusApiExperimentsExperimentNameStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getExperimentStatusApiExperimentsExperimentNameStatusGetQueryOptions(experimentName,options)
+  const queryOptions = getRunStatusApiRunStatusGetQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

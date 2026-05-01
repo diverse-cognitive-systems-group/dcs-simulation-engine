@@ -452,13 +452,13 @@ async def test_clear_session_event_feedback_removes_existing_feedback(async_mong
     assert event_doc[MongoColumns.UPDATED_AT] is not None
 
 
-async def test_set_session_event_feedback_accepts_free_play_session_owner_none(async_mongo_provider):
-    """Anonymous free-play sessions should still accept NPC message feedback."""
+async def test_set_session_event_feedback_accepts_legacy_owner_none(async_mongo_provider):
+    """Historical ownerless sessions should still accept NPC message feedback."""
     db = async_mongo_provider.get_db()
     created_at = datetime.now(timezone.utc)
     db[MongoColumns.SESSIONS].insert_one(
         {
-            "session_id": "s-feedback-free-play",
+            "session_id": "s-feedback-ownerless",
             "player_id": None,
             "game_name": "Explore",
             "status": "active",
@@ -468,9 +468,9 @@ async def test_set_session_event_feedback_accepts_free_play_session_owner_none(a
     )
     db[MongoColumns.SESSION_EVENTS].insert_one(
         {
-            "session_id": "s-feedback-free-play",
+            "session_id": "s-feedback-ownerless",
             "seq": 1,
-            "event_id": "evt-ai-free-play",
+            "event_id": "evt-ai-ownerless",
             "event_ts": created_at,
             "direction": "outbound",
             "event_type": "message",
@@ -480,12 +480,12 @@ async def test_set_session_event_feedback_accepts_free_play_session_owner_none(a
     )
 
     stored = await async_mongo_provider.set_session_event_feedback(
-        session_id="s-feedback-free-play",
+        session_id="s-feedback-ownerless",
         player_id=None,
-        event_id="evt-ai-free-play",
+        event_id="evt-ai-ownerless",
         feedback={
             "liked": False,
-            "comment": "Anonymous free-play feedback.",
+            "comment": "Anonymous ownerless feedback.",
             "doesnt_make_sense": True,
             "out_of_character": False,
             "submitted_at": created_at,
@@ -493,8 +493,8 @@ async def test_set_session_event_feedback_accepts_free_play_session_owner_none(a
     )
 
     assert stored is not None
-    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-free-play"})
-    assert event_doc[MongoColumns.FEEDBACK]["comment"] == "Anonymous free-play feedback."
+    event_doc = db[MongoColumns.SESSION_EVENTS].find_one({"event_id": "evt-ai-ownerless"})
+    assert event_doc[MongoColumns.FEEDBACK]["comment"] == "Anonymous ownerless feedback."
     assert event_doc[MongoColumns.FEEDBACK]["doesnt_make_sense"] is True
 
 

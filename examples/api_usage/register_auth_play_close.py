@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manual smoke script for standard-mode registration, auth, play, and close."""
+"""Manual smoke script for registration-required auth, play, and close."""
 
 import argparse
 import json
@@ -34,9 +34,9 @@ def main() -> None:
     with APIClient(url=base_url, timeout=60.0) as api:
         print("1) Fetch server config")
         config = api.server_config()
-        if config.mode != "standard":
-            raise RuntimeError("register_auth_play_close.py requires a standard-mode server.")
-        print(f"   mode={config.mode}")
+        if not config.registration_enabled:
+            raise RuntimeError("register_auth_play_close.py requires registration_required: true.")
+        print(f"   registration_required={config.registration_enabled}")
 
         print("2) Register user")
         reg = api.register_player(

@@ -1,36 +1,27 @@
-"""Tests that all game configs in the games/ directory are valid.
-
-This module discovers every YAML file under ./games and verifies that each
-one can be loaded by `GameConfig.load_from_yaml(...)`. Each file is shown
-as a separate pytest case (pass/fail) via parametrization.
-"""
-
-from pathlib import Path
+"""Tests that all built-in game configs are valid."""
 
 import pytest
-from dcs_simulation_engine.core.game_config import (
-    GameConfig,
-)
-from helpers import discover_yaml_files
+from dcs_simulation_engine.core.game_config import GameConfig
+from dcs_simulation_engine.core.session_manager import SessionManager
 from loguru import logger
 
-YAML_FILES = discover_yaml_files()
+BUILTIN_GAME_CLASSES = list(SessionManager._builtin_game_classes().values())
 
 
 @pytest.mark.unit
-def test_games_directory_not_empty() -> None:
-    """Test that there is at least one YAML file under ./games."""
-    logger.debug(f"Discovered game config files: {YAML_FILES!r}")
-    assert YAML_FILES, "No YAML files found under ./games. Add configs to test."
+def test_builtin_games_not_empty() -> None:
+    """Test that there is at least one built-in game class."""
+    logger.debug(f"Discovered built-in game classes: {BUILTIN_GAME_CLASSES!r}")
+    assert BUILTIN_GAME_CLASSES, "No built-in game classes found. Add games to test."
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("cfg_path", YAML_FILES, ids=[p.name for p in YAML_FILES])
-def test_game_config_loads_without_error(cfg_path: Path) -> None:
-    """Test that a game config YAML file can be loaded without error."""
+@pytest.mark.parametrize("game_cls", BUILTIN_GAME_CLASSES, ids=[game.GAME_NAME for game in BUILTIN_GAME_CLASSES])
+def test_game_config_loads_without_error(game_cls) -> None:
+    """Test that a built-in game class can produce a valid GameConfig."""
     try:
-        logger.debug(f"Loading game config from: {cfg_path}")
-        cfg = GameConfig.load(str(cfg_path))
+        logger.debug(f"Loading game config from built-in class: {game_cls}")
+        cfg = GameConfig.from_game_class(game_cls)
         logger.debug(f"Loaded game config: {cfg.name}")
     except Exception as exc:
-        pytest.fail(f"Failed to load game config: {cfg_path}\n{exc!r}")
+        pytest.fail(f"Failed to load game config from built-in class: {game_cls}\n{exc!r}")

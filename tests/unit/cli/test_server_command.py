@@ -1,5 +1,6 @@
 """Unit tests for CLI server command wiring."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -31,19 +32,18 @@ def test_server_wires_fake_ai_response(monkeypatch: pytest.MonkeyPatch) -> None:
         mongo_seed_dir=None,
         dump_dir=None,
         fake_ai_response='{"type":"ai","content":"test"}',
-        free_play=False,
+        config=Path("examples/run_configs/demo.yml"),
     )
 
     set_fake.assert_called_once_with('{"type":"ai","content":"test"}')
     validate_config.assert_called_once_with()
-    assert create_app.call_args.kwargs["server_mode"] == "standard"
     assert create_app.call_args.kwargs["shutdown_dump_dir"] is None
     run_server.assert_called_once_with(app, host="127.0.0.1", port=9000, loop="uvloop", workers=1)
 
 
 @pytest.mark.unit
-def test_server_wires_free_play_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Server command should pass free-play mode through to the app factory."""
+def test_server_wires_run_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Server command should pass the selected run config path through to the app factory."""
     app = object()
     create_app = MagicMock(return_value=app)
 
@@ -62,10 +62,10 @@ def test_server_wires_free_play_mode(monkeypatch: pytest.MonkeyPatch) -> None:
         mongo_seed_dir=None,
         dump_dir=None,
         fake_ai_response=None,
-        free_play=True,
+        config=Path("examples/run_configs/usability.yml"),
     )
 
-    assert create_app.call_args.kwargs["server_mode"] == "free_play"
+    assert create_app.call_args.kwargs["run_config_path"] == Path("examples/run_configs/usability.yml")
 
 
 @pytest.mark.unit
@@ -89,7 +89,7 @@ def test_server_wires_shutdown_dump_dir(monkeypatch: pytest.MonkeyPatch, tmp_pat
         mongo_seed_dir=None,
         dump_dir=tmp_path,
         fake_ai_response=None,
-        free_play=False,
+        config=Path("examples/run_configs/demo.yml"),
     )
 
     assert create_app.call_args.kwargs["shutdown_dump_dir"] == tmp_path
@@ -116,14 +116,13 @@ def test_server_wires_remote_management_settings(monkeypatch: pytest.MonkeyPatch
         mongo_seed_dir=None,
         dump_dir=None,
         fake_ai_response=None,
-        free_play=False,
+        config=Path("examples/run_configs/demo.yml"),
         remote_managed=True,
-        default_experiment="usability-ca",
         bootstrap_token="bootstrap-secret",
         cors_origin=["https://ui.example"],
     )
 
     assert create_app.call_args.kwargs["remote_management_enabled"] is True
-    assert create_app.call_args.kwargs["default_experiment_name"] == "usability-ca"
+    assert create_app.call_args.kwargs["run_config_path"] == Path("examples/run_configs/demo.yml")
     assert create_app.call_args.kwargs["bootstrap_token"] == "bootstrap-secret"
     assert create_app.call_args.kwargs["cors_origins"] == ["https://ui.example"]
