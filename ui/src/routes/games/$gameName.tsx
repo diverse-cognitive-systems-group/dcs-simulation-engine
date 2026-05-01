@@ -157,7 +157,7 @@ function GameSetupPage() {
         await navigate({
           to: '/play/$sessionId',
           params: { sessionId: result.session_id },
-          search: { gameName, experimentName: '' },
+          search: { gameName, runName: '' },
         })
       },
       onError: (err) => {
@@ -179,7 +179,7 @@ function GameSetupPage() {
     await navigate({
       to: '/play/$sessionId',
       params: { sessionId: resumableSessionId },
-      search: { gameName, experimentName: '' },
+      search: { gameName, runName: '' },
     })
   }
 

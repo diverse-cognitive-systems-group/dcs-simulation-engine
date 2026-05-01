@@ -88,7 +88,7 @@ The API image runs from the source tree instead of a wheel-only install. That
 keeps repo-relative assets available inside the container:
 
 - `games/`
-- `experiments/`
+- `examples/`
 - `database_seeds/`
 
 ### UI image

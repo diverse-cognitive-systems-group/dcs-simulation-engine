@@ -1,7 +1,7 @@
 """Section 1 — Metadata.
 
-Renders a Bootstrap card with key facts about the experiment and links to
-raw result artifacts when available.
+Renders a Bootstrap card with key facts about the run and links to raw result
+artifacts when available.
 """
 
 
@@ -13,8 +13,8 @@ from dcs_utils.common.loader import AnalysisData
 
 
 def render(data: AnalysisData) -> str:
-    exp = data.experiment
-    cfg = exp.get("config_snapshot") or {}
+    run = data.run
+    cfg = run.get("config_snapshot") or {}
     games = (cfg.get("assignment_strategy") or {}).get("games") or []
     games_str = ", ".join(games) if games else "—"
 
@@ -43,8 +43,8 @@ def render(data: AnalysisData) -> str:
     )
 
     rows = [
-        ("Experiment",    _esc(exp.get("name") or "—")),
-        ("Description",   _esc(cfg.get("description") or exp.get("description") or "—")),
+        ("Run",           _esc(run.get("name") or "—")),
+        ("Description",   _esc(cfg.get("description") or run.get("description") or "—")),
         ("Players",       str(n_players)),
         ("Games Played",  str(n_games_played)),
         ("Assignments",   assignments_str),

@@ -1,6 +1,6 @@
 ## High-Level Overview
 
-This codebase is a full-stack simulation platform centered on a Python backend package, with a React frontend and Mongo-backed persistence. Reporting, analysis, and admin tooling lives in `dcs_utils`, and run/game/experiment configuration is primarily YAML-driven.
+This codebase is a full-stack simulation platform centered on a Python backend package, with a React frontend and Mongo-backed persistence. Reporting, analysis, and admin tooling lives in `dcs_utils`, and configuration is primarily YAML-driven.
 
 The main runtime entry point is the Typer CLI and the FastAPI app factory in `dcs_simulation_engine/api/app.py`. The React frontend is optional; the engine runtime is the API server.
 

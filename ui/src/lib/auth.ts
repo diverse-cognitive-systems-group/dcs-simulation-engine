@@ -6,7 +6,7 @@ import { resolveApiUrl } from './api-url'
 const KEY = 'dcs_api_key'
 const PLAYER_ID_KEY = 'dcs_player_id'
 const FULL_NAME_KEY = 'dcs_full_name'
-const EXPERIMENT_NAME_KEY = 'dcs_experiment_name'
+const RUN_NAME_KEY = 'dcs_run_name'
 
 export function getApiKey(): string | null {
   return sessionStorage.getItem(KEY)
@@ -36,12 +36,12 @@ export function isAuthenticated(): boolean {
   return getApiKey() !== null
 }
 
-export function getActiveExperimentName(): string | null {
-  return sessionStorage.getItem(EXPERIMENT_NAME_KEY)
+export function getActiveRunName(): string | null {
+  return sessionStorage.getItem(RUN_NAME_KEY)
 }
 
-export function setActiveExperimentName(experimentName: string): void {
-  sessionStorage.setItem(EXPERIMENT_NAME_KEY, experimentName)
+export function setActiveRunName(runName: string): void {
+  sessionStorage.setItem(RUN_NAME_KEY, runName)
 }
 
 export async function ensureAnonymousAuth(): Promise<void> {

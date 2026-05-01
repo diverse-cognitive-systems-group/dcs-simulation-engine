@@ -120,7 +120,7 @@ class AnalysisData:
 
     # Raw metadata
     manifest: dict
-    experiment: dict  # first record from experiments.json, or {}
+    run: dict  # first record from runs.json, or {}
 
     # Core DataFrames
     runs_df: pd.DataFrame        # sessions — one row per run
@@ -155,7 +155,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
     results_dir = Path(results_dir).resolve()
 
     manifest = _load_manifest(results_dir)
-    experiment = _load_experiment(results_dir)
+    run = _load_run(results_dir)
     runs_df = _load_runs(results_dir)
     players_df = _load_players(results_dir)
     transcripts_df = _load_transcripts(results_dir)
@@ -169,7 +169,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
     return AnalysisData(
         results_dir=results_dir,
         manifest=manifest,
-        experiment=experiment,
+        run=run,
         runs_df=runs_df,
         players_df=players_df,
         transcripts_df=transcripts_df,
@@ -230,14 +230,14 @@ def _load_manifest(results_dir: Path) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def _load_experiment(results_dir: Path) -> dict:
-    records = _load_json_array(results_dir / "experiments.json")
+def _load_run(results_dir: Path) -> dict:
+    records = _load_json_array(results_dir / "runs.json")
     if not records:
         return {}
-    exp = records[0]
+    run = records[0]
     # Unwrap _id
-    exp["_id"] = _unwrap_oid(exp.get("_id"))
-    return exp
+    run["_id"] = _unwrap_oid(run.get("_id"))
+    return run
 
 
 def _load_runs(results_dir: Path) -> pd.DataFrame:

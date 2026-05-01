@@ -23,7 +23,7 @@ Each remote deployment creates three Fly apps: `db`, `api`, and `ui`.
 - `flyctl` installed
 - Fly.io account access
 - `OPENROUTER_API_KEY`
-- Experiment config YAML file
+- Run config YAML file
 - `dcs` CLI available (or use `uv run dcs` from this repo)
 
 #### 2) Authenticate and set keys

@@ -11,7 +11,7 @@ without touching any rendering or section code.
 
 SECTION_DESCRIPTIONS: dict[str, str] = {
     "metadata": (
-        "Experiment configuration and participant counts at a glance. "
+        "Run configuration and participant counts at a glance. "
         "Confirms the right games, players, and assignment settings were used."
     ),
     "simulation_quality": (
@@ -47,7 +47,7 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "(Not yet implemented.)"
     ),
     "system_errors": (
-        "Three views of errors across the experiment: a summary card, "
+        "Three views of errors across the run: a summary card, "
         "in-game error events delivered to players (from session events), "
         "and filtered engine log entries. Use this section to distinguish "
         "player-visible failures from internal warnings, and to spot "
@@ -89,7 +89,7 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "across the study window."
         ),
         "exit_reasons": (
-            "Breakdown of how sessions ended. A healthy experiment shows most "
+            "Breakdown of how sessions ended. A healthy run shows most "
             "sessions completing normally; elevated timeouts, errors, or "
             "abandoned counts point to UX or stability issues worth investigating."
         ),

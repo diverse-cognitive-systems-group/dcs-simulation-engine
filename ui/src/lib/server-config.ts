@@ -5,6 +5,14 @@ export interface ServerConfig {
   mode: 'standard'
   authentication_required: boolean
   registration_enabled: boolean
+  runs_enabled: boolean
+  default_run_name: string | null
+}
+
+interface ServerConfigPayload {
+  mode: 'standard'
+  authentication_required: boolean
+  registration_enabled: boolean
   experiments_enabled: boolean
   default_experiment_name: string | null
 }
@@ -17,7 +25,14 @@ async function fetchServerConfig(): Promise<ServerConfig> {
   if (!response.ok) {
     throw new Error(`Unable to load server config (HTTP ${response.status})`)
   }
-  const config = (await response.json()) as ServerConfig
+  const payload = (await response.json()) as ServerConfigPayload
+  const config: ServerConfig = {
+    mode: payload.mode,
+    authentication_required: payload.authentication_required,
+    registration_enabled: payload.registration_enabled,
+    runs_enabled: payload.experiments_enabled,
+    default_run_name: payload.default_experiment_name,
+  }
   cachedServerConfig = config
   return config
 }
