@@ -13,7 +13,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.anyio]
 async def test_upsert_run_persists_snapshot(async_mongo_provider) -> None:
     """Run metadata and config snapshots should persist in the runs collection."""
     record = await async_mongo_provider.upsert_run(
-        run_name="usability-ca",
+        name="usability-ca",
         description="Usability study",
         config_snapshot={"name": "usability-ca", "games": ["Explore"]},
         progress={"total": 5, "completed": 0, "is_complete": False},
@@ -22,7 +22,7 @@ async def test_upsert_run_persists_snapshot(async_mongo_provider) -> None:
     assert isinstance(record, RunRecord)
     assert record.name == "usability-ca"
 
-    stored = await async_mongo_provider.get_run(run_name="usability-ca")
+    stored = await async_mongo_provider.get_run()
     assert stored is not None
     assert stored.data[MongoColumns.CONFIG_SNAPSHOT]["games"] == ["Explore"]
 
@@ -31,7 +31,6 @@ async def test_create_assignment_and_store_form_responses(async_mongo_provider) 
     """Assignments should persist with lifecycle metadata and nested form responses."""
     assignment = await async_mongo_provider.create_assignment(
         assignment_doc={
-            MongoColumns.RUN_NAME: "usability-ca",
             MongoColumns.PLAYER_ID: "player-1",
             MongoColumns.GAME_NAME: "Explore",
             MongoColumns.PC_HID: "test-pc",
@@ -56,7 +55,6 @@ async def test_active_assignment_reuses_interrupted_and_clears_on_completion(asy
     """Interrupted assignments remain active; completed ones do not."""
     assignment = await async_mongo_provider.create_assignment(
         assignment_doc={
-            MongoColumns.RUN_NAME: "usability-ca",
             MongoColumns.PLAYER_ID: "player-2",
             MongoColumns.GAME_NAME: "Foresight",
             MongoColumns.PC_HID: "test-pc",
@@ -81,7 +79,6 @@ async def test_active_assignment_reuses_interrupted_and_clears_on_completion(asy
     assert interrupted.status == "interrupted"
 
     active = await async_mongo_provider.get_active_assignment(
-        run_name="usability-ca",
         player_id="player-2",
     )
     assert active is not None
@@ -96,7 +93,6 @@ async def test_active_assignment_reuses_interrupted_and_clears_on_completion(asy
 
     assert (
         await async_mongo_provider.get_active_assignment(
-            run_name="usability-ca",
             player_id="player-2",
         )
         is None

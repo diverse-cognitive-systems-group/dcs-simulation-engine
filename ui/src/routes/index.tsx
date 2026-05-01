@@ -1,4 +1,4 @@
-// Index route for "/". Never renders UI — immediately redirects based on server mode.
+// Index route for "/". Never renders UI; it immediately redirects.
 
 import { createRoute, redirect } from '@tanstack/react-router'
 import { isAuthenticated } from '@/lib/auth'

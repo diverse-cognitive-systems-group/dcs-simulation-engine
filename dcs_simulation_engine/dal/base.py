@@ -56,20 +56,18 @@ class RunRecord(NamedTuple):
 
 
 class PlayerFormsRecord(NamedTuple):
-    """Before-play form responses for a player in a specific run."""
+    """Before-play form responses for a player."""
 
     player_id: str
-    run_name: str
     data: dict[str, Any]
     created_at: Any
     updated_at: Any
 
 
 class AssignmentRecord(NamedTuple):
-    """A persisted run assignment row."""
+    """A persisted assignment row."""
 
     assignment_id: str
-    run_name: str
     player_id: str
     game_name: str
     pc_hid: str
@@ -207,14 +205,14 @@ class DataProvider:
         """Remove feedback from a persisted NPC-message event."""
         raise NotImplementedError
 
-    def get_run(self, *, run_name: str) -> RunRecord | None:
-        """Return a persisted run record by name."""
+    def get_run(self) -> RunRecord | None:
+        """Return the singleton persisted run record."""
         raise NotImplementedError
 
     def upsert_run(
         self,
         *,
-        run_name: str,
+        name: str,
         description: str,
         config_snapshot: dict[str, Any],
         progress: dict[str, Any],
@@ -225,7 +223,6 @@ class DataProvider:
     def set_run_progress(
         self,
         *,
-        run_name: str,
         progress: dict[str, Any],
     ) -> RunRecord | None:
         """Persist the latest run progress snapshot."""
@@ -239,18 +236,17 @@ class DataProvider:
         """Return one assignment row by assignment id."""
         raise NotImplementedError
 
-    def get_active_assignment(self, *, run_name: str, player_id: str) -> AssignmentRecord | None:
-        """Return the current active assignment for one player in one run."""
+    def get_active_assignment(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the current active assignment for one player."""
         raise NotImplementedError
 
-    def get_latest_run_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
-        """Return the newest run assignment for one player across runs."""
+    def get_latest_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the newest assignment for one player."""
         raise NotImplementedError
 
     def list_assignments(
         self,
         *,
-        run_name: str,
         player_id: str | None = None,
         statuses: list[str] | None = None,
         game_name: str | None = None,
@@ -282,7 +278,6 @@ class DataProvider:
         self,
         *,
         player_id: str,
-        run_name: str,
         form_key: str,
         response: dict[str, Any],
     ) -> PlayerFormsRecord | None:
@@ -293,7 +288,6 @@ class DataProvider:
         self,
         *,
         player_id: str,
-        run_name: str,
     ) -> PlayerFormsRecord | None:
-        """Return player-scoped form responses for a player in a run."""
+        """Return player-scoped form responses for a player."""
         raise NotImplementedError

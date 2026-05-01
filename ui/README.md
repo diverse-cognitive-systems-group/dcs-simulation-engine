@@ -75,9 +75,9 @@ src/
 ├── routes/
 │   ├── routeTree.ts          # Assembles all routes into the tree passed to createRouter
 │   ├── __root.tsx            # Root route (renders <Outlet />) and requireAuth guard
-│   ├── index.tsx             # "/" — redirects based on server mode and auth state
-│   ├── login.tsx             # "/login" — access-key login form (standard mode only)
-│   ├── signup.tsx            # "/signup" — participant registration form (standard mode only)
+│   ├── index.tsx             # "/" — redirects based on auth state
+│   ├── login.tsx             # "/login" — access-key login form
+│   ├── signup.tsx            # "/signup" — participant registration form
 │   ├── games/
 │   │   ├── index.tsx         # "/games" — grid of available games
 │   │   └── $gameName.tsx     # "/games/:gameName" — character selection and session creation

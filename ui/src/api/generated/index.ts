@@ -2081,7 +2081,7 @@ export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof ru
 
 
 /**
- * Expose server capabilities so clients can adapt to the active mode.
+ * Expose server capabilities so clients can adapt to this deployment.
  * @summary Server Config
  */
 export type serverConfigApiServerConfigGetResponse200 = {

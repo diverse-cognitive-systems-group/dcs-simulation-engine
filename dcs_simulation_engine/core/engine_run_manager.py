@@ -43,28 +43,17 @@ class EngineRunManager:
         return cls._run_config
 
     @classmethod
-    def get_run_config_cached(cls, run: str | None = None) -> RunConfig:
-        """Compatibility alias while assignment storage uses run_name fields."""
-        _ = run
-        return cls.get_run_config()
-
-    @classmethod
-    async def ensure_run_async(cls, *, provider: Any, run_name: str | None = None) -> RunRecord:
+    async def ensure_run_async(cls, *, provider: Any) -> RunRecord:
         """Persist the run config snapshot if it is not already stored."""
-        config = cls.get_run_config_cached(run_name)
-        existing = await maybe_await(provider.get_run(run_name=config.name))
-        progress = await cls.compute_progress_async(provider=provider, run_name=config.name)
+        config = cls.get_run_config()
+        existing = await maybe_await(provider.get_run())
+        progress = await cls.compute_progress_async(provider=provider)
         if existing is not None:
-            updated = await maybe_await(
-                provider.set_run_progress(
-                    run_name=config.name,
-                    progress=progress,
-                )
-            )
+            updated = await maybe_await(provider.set_run_progress(progress=progress))
             return updated or existing
         return await maybe_await(
             provider.upsert_run(
-                run_name=config.name,
+                name=config.name,
                 description=config.description,
                 config_snapshot=config.model_dump(mode="json"),
                 progress=progress,
@@ -72,16 +61,16 @@ class EngineRunManager:
         )
 
     @classmethod
-    async def compute_progress_async(cls, *, provider: Any, run_name: str) -> dict[str, Any]:
+    async def compute_progress_async(cls, *, provider: Any) -> dict[str, Any]:
         """Compute finite usability progress from assignment state."""
-        config = cls.get_run_config_cached(run_name)
+        config = cls.get_run_config()
         strategy = cls._strategy_for(config=config)
         return await maybe_await(strategy.compute_progress_async(provider=provider, config=config))
 
     @classmethod
-    async def compute_status_async(cls, *, provider: Any, run_name: str) -> dict[str, Any]:
+    async def compute_status_async(cls, *, provider: Any) -> dict[str, Any]:
         """Compute quota-centric status counts for a run."""
-        config = cls.get_run_config_cached(run_name)
+        config = cls.get_run_config()
         strategy = cls._strategy_for(config=config)
         return await maybe_await(strategy.compute_status_async(provider=provider, config=config))
 
@@ -90,13 +79,12 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player_id: str,
     ) -> dict[str, Any]:
         """Return the assignment state visible to one authenticated player."""
-        config = cls.get_run_config_cached(run_name)
-        player_assignments = await maybe_await(provider.list_assignments(run_name=run_name, player_id=player_id))
-        active_assignment = await maybe_await(provider.get_active_assignment(run_name=run_name, player_id=player_id))
+        config = cls.get_run_config()
+        player_assignments = await maybe_await(provider.list_assignments(player_id=player_id))
+        active_assignment = await maybe_await(provider.get_active_assignment(player_id=player_id))
         completed_assignments = [item for item in player_assignments if item.status == "completed"]
         strategy = cls._strategy_for(config=config)
         has_finished_run = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
@@ -115,12 +103,11 @@ class EngineRunManager:
             if player_record is not None:
                 active_assignment, eligible_assignment_options = await cls.resolve_assignment_state_async(
                     provider=provider,
-                    run_name=config.name,
                     player=player_record,
                     player_assignments=player_assignments,
                     active_assignment=active_assignment,
                 )
-                player_assignments = await maybe_await(provider.list_assignments(run_name=run_name, player_id=player_id))
+                player_assignments = await maybe_await(provider.list_assignments(player_id=player_id))
                 completed_assignments = [item for item in player_assignments if item.status == "completed"]
                 has_finished_run = len(completed_assignments) >= strategy.max_assignments_per_player(config=config)
                 pending_form_groups = await cls.pending_form_groups_async(
@@ -147,7 +134,7 @@ class EngineRunManager:
             "has_finished_run": has_finished_run,
             "eligible_assignment_options": eligible_assignment_options,
             "pending_form_groups": pending_form_groups,
-            "assignments": await maybe_await(provider.list_assignments(run_name=run_name, player_id=player_id)),
+            "assignments": await maybe_await(provider.list_assignments(player_id=player_id)),
         }
 
     @classmethod
@@ -163,16 +150,16 @@ class EngineRunManager:
     ) -> list[dict[str, Any]]:
         """Return actionable form groups still required for a player."""
         if assignments is None:
-            assignments = await maybe_await(provider.list_assignments(run_name=config.name, player_id=player_id))
+            assignments = await maybe_await(provider.list_assignments(player_id=player_id))
         if active_assignment is None:
-            active_assignment = await maybe_await(provider.get_active_assignment(run_name=config.name, player_id=player_id))
+            active_assignment = await maybe_await(provider.get_active_assignment(player_id=player_id))
         if has_finished_run is None:
             strategy = cls._strategy_for(config=config)
             completed_count = sum(1 for item in assignments if item.status == "completed")
             has_finished_run = completed_count >= strategy.max_assignments_per_player(config=config)
 
         groups: list[dict[str, Any]] = []
-        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id, run_name=config.name))
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player_id))
         submitted_player_form_names = set((player_forms.data if player_forms else {}).keys())
         groups.extend(
             cls._pending_player_form_group(
@@ -265,17 +252,16 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player: PlayerRecord,
         player_assignments: list[AssignmentRecord] | None = None,
         active_assignment: AssignmentRecord | None = None,
     ) -> tuple[AssignmentRecord | None, list[dict[str, str]]]:
         """Return the current assignment or selectable next options for a player."""
-        config = cls.get_run_config_cached(run_name)
+        config = cls.get_run_config()
         strategy = cls._strategy_for(config=config)
         assignments = player_assignments
         if assignments is None:
-            assignments = await maybe_await(provider.list_assignments(run_name=config.name, player_id=player.id))
+            assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         pending_groups = await cls.pending_form_groups_async(
             provider=provider,
             config=config,
@@ -407,7 +393,6 @@ class EngineRunManager:
         candidate: AssignmentCandidate,
     ) -> dict[str, Any]:
         assignment_doc: dict[str, Any] = {
-            MongoColumns.RUN_NAME: config.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: candidate.game_name,
             MongoColumns.PC_HID: candidate.pc_hid,
@@ -424,13 +409,12 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player_id: str,
         group_id: str,
         responses: dict[str, Any],
     ) -> dict[str, Any]:
         """Store responses for one currently pending form group."""
-        config = cls.get_run_config_cached(run_name)
+        config = cls.get_run_config()
         pending_groups = await cls.pending_form_groups_async(
             provider=provider,
             config=config,
@@ -447,7 +431,6 @@ class EngineRunManager:
             await cls.store_player_form_payloads_async(
                 provider=provider,
                 player_id=player_id,
-                run_name=config.name,
                 forms_payload=normalized,
             )
             return group
@@ -469,13 +452,11 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player: PlayerRecord,
     ) -> AssignmentRecord | None:
         """Return the active assignment for a player or create one on demand."""
         assignment, _options = await cls.resolve_assignment_state_async(
             provider=provider,
-            run_name=run_name,
             player=player,
         )
         return assignment
@@ -486,7 +467,6 @@ class EngineRunManager:
         *,
         provider: Any,
         registry: "SessionRegistry",
-        run_name: str,
         player: PlayerRecord,
         source: str = "run",
         assignment_id: str | None = None,
@@ -498,19 +478,18 @@ class EngineRunManager:
         if assignment_id is not None:
             assignment = await cls.get_assignment_for_player_async(
                 provider=provider,
-                run_name=run_name,
                 player_id=player.id,
                 assignment_id=assignment_id,
             )
         else:
-            state = await cls.get_player_state_async(provider=provider, run_name=run_name, player_id=player.id)
+            state = await cls.get_player_state_async(provider=provider, player_id=player.id)
             assignment = state["active_assignment"]
         if assignment is None:
             raise ValueError("No matching assignment is available for this player.")
         if assignment.status == "completed":
             raise ValueError("Completed assignments cannot be resumed.")
-        config = cls.get_run_config_cached(run_name)
-        assignments = await maybe_await(provider.list_assignments(run_name=config.name, player_id=player.id))
+        config = cls.get_run_config()
+        assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         pending_groups = await cls.pending_form_groups_async(
             provider=provider,
             config=config,
@@ -551,7 +530,6 @@ class EngineRunManager:
             player_id=player.id,
             game_name=assignment.game_name,
             manager=manager,
-            run_name=run_name,
             assignment_id=assignment.assignment_id,
         )
         start_hook = getattr(manager, "start_persistence", None)
@@ -574,15 +552,14 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player_id: str,
         assignment_id: str,
     ) -> AssignmentRecord | None:
-        """Return one assignment if it belongs to the requested player+run."""
+        """Return one assignment if it belongs to the requested player."""
         assignment = await maybe_await(provider.get_assignment(assignment_id=assignment_id))
         if assignment is None:
             return None
-        if assignment.player_id != player_id or assignment.run_name != run_name:
+        if assignment.player_id != player_id:
             return None
         return assignment
 
@@ -591,7 +568,6 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         assignment_id: str,
         exit_reason: str,
     ) -> AssignmentRecord | None:
@@ -599,7 +575,7 @@ class EngineRunManager:
         status = "completed" if cls._is_completion_reason(exit_reason) else "interrupted"
         updated = await maybe_await(provider.update_assignment_status(assignment_id=assignment_id, status=status))
         if status == "completed":
-            await cls.ensure_run_async(provider=provider, run_name=run_name)
+            await cls.ensure_run_async(provider=provider)
         return updated
 
     @classmethod
@@ -628,7 +604,6 @@ class EngineRunManager:
         *,
         provider: Any,
         player_id: str,
-        run_name: str,
         forms_payload: dict[str, dict[str, Any]],
     ) -> None:
         """Store one or more named player-scoped form payloads on the forms record."""
@@ -636,7 +611,6 @@ class EngineRunManager:
             await maybe_await(
                 provider.set_player_form_response(
                     player_id=player_id,
-                    run_name=run_name,
                     form_key=form_key,
                     response=payload,
                 )
@@ -644,8 +618,8 @@ class EngineRunManager:
 
     @classmethod
     async def get_latest_assignment_for_player_async(cls, *, provider: Any, player_id: str) -> AssignmentRecord | None:
-        """Return the latest run assignment for a player across all runs."""
-        getter = getattr(provider, "get_latest_run_assignment_for_player", None)
+        """Return the latest assignment for a player."""
+        getter = getattr(provider, "get_latest_assignment_for_player", None)
         if getter is None:
             return None
         return await maybe_await(getter(player_id=player_id))
@@ -761,11 +735,10 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player: PlayerRecord,
     ) -> list[dict[str, str]]:
         """Return selectable {game_name, pc_hid, npc_hid} options for the player."""
-        state = await cls.get_player_state_async(provider=provider, run_name=run_name, player_id=player.id)
+        state = await cls.get_player_state_async(provider=provider, player_id=player.id)
         return list(state.get("eligible_assignment_options", []))
 
     @classmethod
@@ -773,29 +746,26 @@ class EngineRunManager:
         cls,
         *,
         provider: Any,
-        run_name: str,
         player: PlayerRecord,
         game_name: str,
         pc_hid: str,
         npc_hid: str,
     ) -> AssignmentRecord:
         """Create a specific assignment for a player who selected one explicit candidate."""
-        config = cls.get_run_config_cached(run_name)
+        config = cls.get_run_config()
         if not config.assignment_strategy.allow_choice_if_multiple:
             raise ValueError("This run is not configured for participant assignment choice.")
         eligible = await cls.get_eligible_options_async(
             provider=provider,
-            run_name=run_name,
             player=player,
         )
         eligible_set = {(opt["game_name"], opt["pc_hid"], opt["npc_hid"]) for opt in eligible}
         if (game_name, pc_hid, npc_hid) not in eligible_set:
             raise ValueError("The selected game, PC, and NPC are not available for assignment.")
-        player_assignments = await maybe_await(provider.list_assignments(run_name=config.name, player_id=player.id))
+        player_assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         assignment = await maybe_await(
             provider.create_assignment(
                 assignment_doc={
-                    MongoColumns.RUN_NAME: config.name,
                     MongoColumns.PLAYER_ID: player.id,
                     MongoColumns.GAME_NAME: game_name,
                     MongoColumns.PC_HID: pc_hid,

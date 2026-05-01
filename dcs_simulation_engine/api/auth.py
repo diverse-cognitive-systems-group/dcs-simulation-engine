@@ -2,7 +2,7 @@
 
 from typing import Any, cast
 
-from dcs_simulation_engine.api.models import RemoteDeploymentMode, ServerConfigResponse
+from dcs_simulation_engine.api.models import ServerConfigResponse
 from dcs_simulation_engine.api.registry import SessionRegistry
 from dcs_simulation_engine.dal.base import DataProvider, PlayerRecord
 from dcs_simulation_engine.utils.async_utils import maybe_await
@@ -31,48 +31,27 @@ def get_registry_from_websocket(websocket: WebSocket) -> SessionRegistry:
     return cast(SessionRegistry, websocket.app.state.registry)
 
 
-def get_default_run_name_from_request(request: Request) -> str | None:
-    """Fetch the configured default run name from app state for an HTTP request."""
-    return cast(str | None, getattr(request.app.state, "default_run_name", None))
-
-
-def get_default_run_name_from_websocket(websocket: WebSocket) -> str | None:
-    """Fetch the configured default run name from app state for a websocket."""
-    return cast(str | None, getattr(websocket.app.state, "default_run_name", None))
-
-
 def is_remote_management_enabled_from_request(request: Request) -> bool:
-    """Return whether the app is running in remote-managed mode for this request."""
+    """Return whether remote management is enabled for this request."""
     return bool(getattr(request.app.state, "remote_management_enabled", False))
 
 
 def is_remote_management_enabled_from_websocket(websocket: WebSocket) -> bool:
-    """Return whether the app is running in remote-managed mode for this websocket."""
+    """Return whether remote management is enabled for this websocket."""
     return bool(getattr(websocket.app.state, "remote_management_enabled", False))
 
 
 def build_server_config(
     *,
-    default_run_name: str | None = None,
+    run_name: str,
     registration_required: bool = True,
 ) -> ServerConfigResponse:
-    """Translate the active mode into frontend-readable capability flags."""
+    """Translate server settings into frontend-readable capability flags."""
     return ServerConfigResponse(
-        mode="standard",
         authentication_required=registration_required,
         registration_enabled=registration_required,
-        runs_enabled=True,
-        default_run_name=default_run_name,
+        run_name=run_name,
     )
-
-
-def resolve_remote_deployment_mode(
-    *,
-    default_run_name: str | None,
-) -> RemoteDeploymentMode:
-    """Collapse app state into a public deployment mode for remote status."""
-    _ = default_run_name
-    return "standard"
 
 
 def require_remote_management_from_request(request: Request, *, detail: str) -> None:

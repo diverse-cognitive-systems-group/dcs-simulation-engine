@@ -423,7 +423,6 @@ def test_fetch_remote_status_uses_authenticated_run_endpoints(monkeypatch: pytes
             if path == "/api/remote/status":
                 return _Response(
                     {
-                        "mode": "run",
                         "run_name": "usability-ca",
                     }
                 )
@@ -438,7 +437,6 @@ def test_fetch_remote_status_uses_authenticated_run_endpoints(monkeypatch: pytes
         admin_key="admin-key",
     )
 
-    assert result.mode == "run"
     assert result.run_name == "usability-ca"
     assert result.run_status == {"is_open": True, "total": 4, "completed": 2, "per_game": {}}
     assert calls[1] == (
@@ -448,8 +446,8 @@ def test_fetch_remote_status_uses_authenticated_run_endpoints(monkeypatch: pytes
 
 
 @pytest.mark.unit
-def test_fetch_remote_status_returns_remote_status_payload_without_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Remote status should fall back to the remote status payload when no run is hosted."""
+def test_fetch_remote_status_requires_run_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remote status should fail loudly when the API omits the singleton run name."""
 
     class _Response:
         def __init__(self, payload: dict):
@@ -477,7 +475,6 @@ def test_fetch_remote_status_returns_remote_status_payload_without_run(monkeypat
                 return _Response(
                     {
                         "status": "ok",
-                        "mode": "standard",
                         "run_name": None,
                         "uptime": 12,
                     }
@@ -486,19 +483,11 @@ def test_fetch_remote_status_returns_remote_status_payload_without_run(monkeypat
 
     monkeypatch.setattr(remote_infra.httpx, "Client", _Client)
 
-    result = remote_infra.fetch_remote_status(
-        uri="https://dcs-standard-api.fly.dev",
-        admin_key="admin-key",
-    )
-
-    assert result.mode == "standard"
-    assert result.run_name is None
-    assert result.run_status == {
-        "status": "ok",
-        "mode": "standard",
-        "run_name": None,
-        "uptime": 12,
-    }
+    with pytest.raises(remote_infra.RemoteLifecycleError, match="run name"):
+        remote_infra.fetch_remote_status(
+            uri="https://dcs-standard-api.fly.dev",
+            admin_key="admin-key",
+        )
 
 
 @pytest.mark.unit

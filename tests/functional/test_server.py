@@ -154,7 +154,7 @@ def mock_provider() -> MagicMock:
 
     provider.get_players.side_effect = _get_players
     provider.create_player.return_value = (owner, "valid-key")
-    provider.get_latest_run_assignment_for_player.return_value = None
+    provider.get_latest_assignment_for_player.return_value = None
     return provider
 
 
@@ -287,17 +287,15 @@ def test_auth_success_and_failure(client: TestClient) -> None:
 
 
 @pytest.mark.unit
-def test_server_config_reports_standard_mode(client: TestClient) -> None:
-    """Server config should advertise standard-mode capabilities by default."""
+def test_server_config_reports_run_name(client: TestClient) -> None:
+    """Server config should advertise auth settings and the active run name."""
     response = client.get("/api/server/config")
 
     assert response.status_code == 200
     assert response.json() == {
-        "mode": "standard",
         "authentication_required": True,
         "registration_enabled": True,
-        "runs_enabled": True,
-        "default_run_name": "usability",
+        "run_name": "usability",
     }
 
 
@@ -308,11 +306,9 @@ def test_server_config_reports_anonymous_run_capabilities(anonymous_client: Test
 
     assert response.status_code == 200
     assert response.json() == {
-        "mode": "standard",
         "authentication_required": False,
         "registration_enabled": False,
-        "runs_enabled": True,
-        "default_run_name": "usability",
+        "run_name": "usability",
     }
 
 
@@ -1061,9 +1057,7 @@ def test_generic_play_blocks_run_gated_players(
     mock_provider: MagicMock,
 ) -> None:
     """Generic play endpoints should reject players who are assigned through a run."""
-    mock_provider.get_latest_run_assignment_for_player.return_value = SimpleNamespace(
-        run_name="usability",
-    )
+    mock_provider.get_latest_assignment_for_player.return_value = SimpleNamespace(assignment_id="asg-1")
 
     response = client.post(
         "/api/play/game",
@@ -1079,12 +1073,11 @@ def test_run_websocket_close_updates_assignment_status(client: TestClient) -> No
     """Closing a run session should sync the assignment terminal state."""
     manager = DummySessionManager()
 
-    def _start_session(*, provider, registry, run_name, player, source, assignment_id=None):
+    def _start_session(*, provider, registry, player, source, assignment_id=None):
         entry = registry.add(
             player_id=player.id,
             game_name="Explore",
             manager=manager,  # type: ignore[arg-type]
-            run_name=run_name,
             assignment_id="asg-live-1",
         )
         return entry, SimpleNamespace(assignment_id="asg-live-1")
@@ -1116,7 +1109,6 @@ def test_run_websocket_close_updates_assignment_status(client: TestClient) -> No
 
     handle_terminal_mock.assert_awaited_once()
     kwargs = handle_terminal_mock.await_args.kwargs
-    assert kwargs["run_name"] == "usability"
     assert kwargs["assignment_id"] == "asg-live-1"
 
 
@@ -1324,17 +1316,15 @@ def test_run_status_requires_auth(client: TestClient) -> None:
 
 
 @pytest.mark.unit
-def test_remote_managed_server_config_reports_default_run(remote_managed_client: TestClient) -> None:
-    """Remote-managed deployments should expose their default run name."""
+def test_remote_managed_server_config_reports_run_name(remote_managed_client: TestClient) -> None:
+    """Remote-managed deployments should expose the active run name."""
     response = remote_managed_client.get("/api/server/config")
 
     assert response.status_code == 200
     assert response.json() == {
-        "mode": "standard",
         "authentication_required": True,
         "registration_enabled": True,
-        "runs_enabled": True,
-        "default_run_name": "usability",
+        "run_name": "usability",
     }
 
 
@@ -1432,7 +1422,6 @@ def test_remote_status_is_public_and_reports_run_progress(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["mode"] == "standard"
     assert payload["run_name"] == "usability"
     assert payload["progress"] == {"total": 4, "completed": 1, "is_complete": False}
     assert payload["run_status"] == {
@@ -1513,7 +1502,6 @@ def test_remote_export_streams_zip_for_admin(async_mongo_provider) -> None:
 
     app = create_app(
         provider=async_mongo_provider,
-        default_run_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1563,8 +1551,8 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
 
 @pytest.mark.unit
 def test_remote_managed_deployment_disables_generic_play(remote_managed_client: TestClient) -> None:
-    """Run-only remote deployments should reject generic play endpoints."""
+    """Remote-managed deployments should reject generic play endpoints."""
     response = remote_managed_client.get("/api/play/setup/explore")
 
     assert response.status_code == 409
-    assert "run-only" in response.json()["detail"].lower()
+    assert "remote-managed" in response.json()["detail"].lower()

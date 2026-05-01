@@ -12,12 +12,10 @@ from typing import Literal
 from dcs_simulation_engine.api.auth import (
     REMOTE_ADMIN_ROLE,
     api_key_from_request,
-    get_default_run_name_from_request,
     get_provider_from_request,
     has_remote_admin_async,
     require_remote_admin_async,
     require_remote_management_from_request,
-    resolve_remote_deployment_mode,
 )
 from dcs_simulation_engine.api.models import (
     GameStatusResponse,
@@ -236,9 +234,8 @@ async def bootstrap_remote_deployment(request: Request) -> RemoteBootstrapRespon
     if api_key is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to issue admin key")
 
-    run_name = get_default_run_name_from_request(request)
-    if run_name:
-        await EngineRunManager.ensure_run_async(provider=provider, run_name=run_name)
+    run_name = request.app.state.run_config.name
+    await EngineRunManager.ensure_run_async(provider=provider)
 
     return RemoteBootstrapResponse(
         player_id=record.id,
@@ -252,37 +249,24 @@ async def remote_status(request: Request) -> RemoteStatusResponse:
     """Return a public status summary for remote-managed run deployments."""
     started_at = request.app.state.started_at
     uptime = int((utc_now() - started_at).total_seconds())
-    default_run_name = get_default_run_name_from_request(request)
+    run_name = request.app.state.run_config.name
     provider = get_provider_from_request(request)
 
-    progress = None
-    run_status = None
-    if default_run_name:
-        try:
-            await EngineRunManager.ensure_run_async(provider=provider, run_name=default_run_name)
-            progress = _progress_response(
-                await EngineRunManager.compute_progress_async(
-                    provider=provider,
-                    run_name=default_run_name,
-                )
-            )
-            run_status = _status_response(
-                await EngineRunManager.compute_status_async(provider=provider, run_name=default_run_name)
-            )
-        except Exception as exc:
-            logger.exception("Failed to compute remote status for {}", default_run_name)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to compute remote status: {exc}",
-            ) from exc
+    try:
+        await EngineRunManager.ensure_run_async(provider=provider)
+        progress = _progress_response(await EngineRunManager.compute_progress_async(provider=provider))
+        run_status = _status_response(await EngineRunManager.compute_status_async(provider=provider))
+    except Exception as exc:
+        logger.exception("Failed to compute remote status for {}", run_name)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to compute remote status: {exc}",
+        ) from exc
 
     return RemoteStatusResponse(
-        mode=resolve_remote_deployment_mode(
-            default_run_name=default_run_name,
-        ),
         started_at=started_at,
         uptime=max(uptime, 0),
-        run_name=default_run_name,
+        run_name=run_name,
         progress=progress,
         run_status=run_status,
     )
@@ -307,7 +291,7 @@ async def export_remote_database(
     archive_path = temp_root / f"{dump_root.name}{archive_suffix}"
     await asyncio.to_thread(_archive_dump_dir, dump_root, archive_path, format)
 
-    run_name = get_default_run_name_from_request(request) or "dcs-db"
+    run_name = request.app.state.run_config.name
     filename = f"{run_name}-{utc_now().strftime('%Y%m%d-%H%M%S')}{archive_suffix}"
     return FileResponse(
         archive_path,

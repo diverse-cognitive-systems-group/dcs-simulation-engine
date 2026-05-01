@@ -6,12 +6,10 @@
  */
 
 /**
- * Response payload describing server capabilities for the active mode.
+ * Response payload describing server capabilities.
  */
 export interface ServerConfigResponse {
   authentication_required: boolean;
-  default_run_name?: string | null;
-  mode: 'standard';
   registration_enabled: boolean;
-  runs_enabled: boolean;
+  run_name: string;
 }

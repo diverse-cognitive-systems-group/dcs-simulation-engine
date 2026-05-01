@@ -6,6 +6,7 @@ import pytest
 from bson import ObjectId, json_util
 from dcs_simulation_engine.dal.mongo import MongoAdmin
 from dcs_simulation_engine.dal.mongo.const import (
+    RUN_METADATA_ID,
     MongoColumns,
 )
 from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json
@@ -20,7 +21,6 @@ async def test_database_is_seeded(async_mongo_provider):
 
     assert "characters" in collections
     assert MongoColumns.PLAYERS in collections
-    assert MongoColumns.RUNS in collections
     assert db["characters"].count_documents({}) > 3
 
 
@@ -32,7 +32,6 @@ async def test_default_indexes_include_pii_and_exclude_removed_indexes(async_mon
     pii_idx = db[MongoColumns.PII].index_information()
     sessions_idx = db[MongoColumns.SESSIONS].index_information()
     session_events_idx = db[MongoColumns.SESSION_EVENTS].index_information()
-    runs_idx = db[MongoColumns.RUNS].index_information()
     assignments_idx = db[MongoColumns.ASSIGNMENTS].index_information()
 
     assert "access_key_1" in players_idx
@@ -52,13 +51,11 @@ async def test_default_indexes_include_pii_and_exclude_removed_indexes(async_mon
     assert "event_id_1" in session_events_idx
     assert session_events_idx["event_id_1"].get("unique") is True
     assert "session_id_1_event_ts_1" in session_events_idx
-    assert "name_1" in runs_idx
-    assert runs_idx["name_1"].get("unique") is True
     assert "assignment_id_1" in assignments_idx
     assert assignments_idx["assignment_id_1"].get("unique") is True
-    assert "run_name_1_player_id_1_updated_at_-1" in assignments_idx
-    assert "run_name_1_status_1_updated_at_-1" in assignments_idx
-    assert "run_name_1_game_name_1_status_1" in assignments_idx
+    assert "player_id_1_updated_at_-1" in assignments_idx
+    assert "status_1_updated_at_-1" in assignments_idx
+    assert "game_name_1_status_1" in assignments_idx
 
 
 async def test_create_player_persists_fields(async_mongo_provider):
@@ -115,11 +112,11 @@ async def test_seed_database_restores_default_indexes_after_drop(async_mongo_pro
         encoding="utf-8",
     )
     (tmp_path / "runs.json").write_text(
-        '[{"name": "usability-ca", "description": "Usability study"}]',
+        f'[{{"_id": "{RUN_METADATA_ID}", "name": "usability-ca", "description": "Usability study"}}]',
         encoding="utf-8",
     )
     (tmp_path / "assignments.json").write_text(
-        '[{"assignment_id": "asg-1", "run_name": "usability-ca", "player_id": "seed-player-id"}]',
+        '[{"assignment_id": "asg-1", "player_id": "seed-player-id"}]',
         encoding="utf-8",
     )
 
@@ -130,7 +127,6 @@ async def test_seed_database_restores_default_indexes_after_drop(async_mongo_pro
     chars_idx = db[MongoColumns.CHARACTERS].index_information()
     sessions_idx = db[MongoColumns.SESSIONS].index_information()
     session_events_idx = db[MongoColumns.SESSION_EVENTS].index_information()
-    runs_idx = db[MongoColumns.RUNS].index_information()
     assignments_idx = db[MongoColumns.ASSIGNMENTS].index_information()
 
     assert "access_key_1" in players_idx
@@ -149,13 +145,11 @@ async def test_seed_database_restores_default_indexes_after_drop(async_mongo_pro
     assert "event_id_1" in session_events_idx
     assert session_events_idx["event_id_1"].get("unique") is True
     assert "session_id_1_event_ts_1" in session_events_idx
-    assert "name_1" in runs_idx
-    assert runs_idx["name_1"].get("unique") is True
     assert "assignment_id_1" in assignments_idx
     assert assignments_idx["assignment_id_1"].get("unique") is True
-    assert "run_name_1_player_id_1_updated_at_-1" in assignments_idx
-    assert "run_name_1_status_1_updated_at_-1" in assignments_idx
-    assert "run_name_1_game_name_1_status_1" in assignments_idx
+    assert "player_id_1_updated_at_-1" in assignments_idx
+    assert "status_1_updated_at_-1" in assignments_idx
+    assert "game_name_1_status_1" in assignments_idx
     assert MongoColumns.RUNS in db.list_collection_names()
 
 

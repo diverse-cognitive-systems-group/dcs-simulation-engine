@@ -277,7 +277,6 @@ def test_remote_status_command_wires_helper(monkeypatch: pytest.MonkeyPatch) -> 
     fetch_status = MagicMock(
         return_value=RemoteStatusResult(
             api_url="https://dcs-usability-ca-api.fly.dev",
-            mode="run",
             run_name="usability-ca",
             run_status={"is_open": True, "total": 4, "completed": 1, "per_game": {}},
         )

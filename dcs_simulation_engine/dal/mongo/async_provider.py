@@ -15,9 +15,7 @@ from dcs_simulation_engine.dal.base import (
     SessionEventRecord,
     SessionRecord,
 )
-from dcs_simulation_engine.dal.mongo.const import (
-    MongoColumns,
-)
+from dcs_simulation_engine.dal.mongo.const import RUN_METADATA_ID, MongoColumns
 from dcs_simulation_engine.dal.mongo.util import (
     player_doc_to_record,
     player_id_variants,
@@ -114,7 +112,6 @@ def _to_assignment_record(doc: dict[str, Any]) -> AssignmentRecord:
     known = {
         MongoColumns.ID,
         MongoColumns.ASSIGNMENT_ID,
-        MongoColumns.RUN_NAME,
         MongoColumns.PLAYER_ID,
         MongoColumns.GAME_NAME,
         MongoColumns.PC_HID,
@@ -124,7 +121,6 @@ def _to_assignment_record(doc: dict[str, Any]) -> AssignmentRecord:
     }
     return AssignmentRecord(
         assignment_id=str(doc.get(MongoColumns.ASSIGNMENT_ID, "")),
-        run_name=str(doc.get(MongoColumns.RUN_NAME, "")),
         player_id=str(doc.get(MongoColumns.PLAYER_ID, "")),
         game_name=str(doc.get(MongoColumns.GAME_NAME, "")),
         pc_hid=str(doc.get(MongoColumns.PC_HID, "")),
@@ -669,9 +665,9 @@ class AsyncMongoProvider:
         )
         return True
 
-    async def get_run(self, *, run_name: str) -> RunRecord | None:
-        """Return one persisted run record."""
-        doc = await maybe_await(self._db[MongoColumns.RUNS].find_one({MongoColumns.NAME: run_name}))
+    async def get_run(self) -> RunRecord | None:
+        """Return the singleton persisted run metadata record."""
+        doc = await maybe_await(self._db[MongoColumns.RUNS].find_one({MongoColumns.ID: RUN_METADATA_ID}))
         if not doc:
             return None
         return _to_run_record(doc)
@@ -679,19 +675,19 @@ class AsyncMongoProvider:
     async def upsert_run(
         self,
         *,
-        run_name: str,
+        name: str,
         description: str,
         config_snapshot: dict[str, Any],
         progress: dict[str, Any],
     ) -> RunRecord:
-        """Create or update a run metadata row."""
+        """Create or update the singleton run metadata row."""
         now = utc_now()
         await maybe_await(
             self._db[MongoColumns.RUNS].update_one(
-                {MongoColumns.NAME: run_name},
+                {MongoColumns.ID: RUN_METADATA_ID},
                 {
                     "$set": {
-                        MongoColumns.NAME: run_name,
+                        MongoColumns.NAME: name,
                         "description": description,
                         MongoColumns.CONFIG_SNAPSHOT: config_snapshot,
                         MongoColumns.PROGRESS: progress,
@@ -702,22 +698,21 @@ class AsyncMongoProvider:
                 upsert=True,
             )
         )
-        record = await self.get_run(run_name=run_name)
+        record = await self.get_run()
         if record is None:
-            raise ValueError(f"Run {run_name!r} was not persisted")
+            raise ValueError(f"Run metadata {name!r} was not persisted")
         return record
 
     async def set_run_progress(
         self,
         *,
-        run_name: str,
         progress: dict[str, Any],
     ) -> RunRecord | None:
         """Persist the latest run progress snapshot."""
         now = utc_now()
         await maybe_await(
             self._db[MongoColumns.RUNS].update_one(
-                {MongoColumns.NAME: run_name},
+                {MongoColumns.ID: RUN_METADATA_ID},
                 {
                     "$set": {
                         MongoColumns.PROGRESS: progress,
@@ -726,19 +721,18 @@ class AsyncMongoProvider:
                 },
             )
         )
-        return await self.get_run(run_name=run_name)
+        return await self.get_run()
 
     async def create_assignment(self, *, assignment_doc: dict[str, Any], allow_concurrent: bool = False) -> AssignmentRecord:
-        """Persist a new run assignment row."""
-        run_name = str(assignment_doc.get(MongoColumns.RUN_NAME) or "")
+        """Persist a new assignment row."""
         player_id = str(assignment_doc.get(MongoColumns.PLAYER_ID) or "")
-        if not run_name or not player_id:
-            raise ValueError("assignment_doc must include run_name and player_id")
+        if not player_id:
+            raise ValueError("assignment_doc must include player_id")
 
         if not allow_concurrent:
-            existing = await self.get_active_assignment(run_name=run_name, player_id=player_id)
+            existing = await self.get_active_assignment(player_id=player_id)
             if existing is not None:
-                raise ValueError("Player already has an active assignment for this run")
+                raise ValueError("Player already has an active assignment")
 
         now = utc_now()
         doc = dict(assignment_doc)
@@ -760,11 +754,10 @@ class AsyncMongoProvider:
             return None
         return _to_assignment_record(doc)
 
-    async def get_active_assignment(self, *, run_name: str, player_id: str) -> AssignmentRecord | None:
-        """Return the current active assignment for one player in one run."""
+    async def get_active_assignment(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the current active assignment for one player."""
         cursor = self._db[MongoColumns.ASSIGNMENTS].find(
             {
-                MongoColumns.RUN_NAME: run_name,
                 MongoColumns.PLAYER_ID: player_id,
                 MongoColumns.STATUS: {"$in": sorted(ACTIVE_ASSIGNMENT_STATUSES)},
             }
@@ -784,8 +777,8 @@ class AsyncMongoProvider:
             return None
         return _to_assignment_record(doc)
 
-    async def get_latest_run_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
-        """Return the newest run assignment for one player."""
+    async def get_latest_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the newest assignment for one player."""
         cursor = self._db[MongoColumns.ASSIGNMENTS].find({MongoColumns.PLAYER_ID: player_id})
         sorter = getattr(cursor, "sort", None)
         if callable(sorter):
@@ -798,13 +791,12 @@ class AsyncMongoProvider:
     async def list_assignments(
         self,
         *,
-        run_name: str,
         player_id: str | None = None,
         statuses: list[str] | None = None,
         game_name: str | None = None,
     ) -> list[AssignmentRecord]:
         """List assignment rows matching the requested filters."""
-        query: dict[str, Any] = {MongoColumns.RUN_NAME: run_name}
+        query: dict[str, Any] = {}
         if player_id is not None:
             query[MongoColumns.PLAYER_ID] = player_id
         if statuses:
@@ -878,7 +870,6 @@ class AsyncMongoProvider:
         self,
         *,
         player_id: str,
-        run_name: str,
         form_key: str,
         response: dict[str, Any],
     ) -> PlayerFormsRecord | None:
@@ -886,35 +877,32 @@ class AsyncMongoProvider:
         now = utc_now()
         await maybe_await(
             self._db[MongoColumns.FORMS].update_one(
-                {MongoColumns.PLAYER_ID: player_id, MongoColumns.RUN_NAME: run_name},
+                {MongoColumns.PLAYER_ID: player_id},
                 {
                     "$set": {f"data.{form_key}": response, MongoColumns.UPDATED_AT: now},
                     "$setOnInsert": {
                         MongoColumns.PLAYER_ID: player_id,
-                        MongoColumns.RUN_NAME: run_name,
                         MongoColumns.CREATED_AT: now,
                     },
                 },
                 upsert=True,
             )
         )
-        return await self.get_player_forms(player_id=player_id, run_name=run_name)
+        return await self.get_player_forms(player_id=player_id)
 
     async def get_player_forms(
         self,
         *,
         player_id: str,
-        run_name: str,
     ) -> PlayerFormsRecord | None:
-        """Return player-scoped form responses for a player in a run."""
+        """Return player-scoped form responses for a player."""
         doc = await maybe_await(
-            self._db[MongoColumns.FORMS].find_one({MongoColumns.PLAYER_ID: player_id, MongoColumns.RUN_NAME: run_name})
+            self._db[MongoColumns.FORMS].find_one({MongoColumns.PLAYER_ID: player_id})
         )
         if not doc:
             return None
         return PlayerFormsRecord(
             player_id=doc[MongoColumns.PLAYER_ID],
-            run_name=doc[MongoColumns.RUN_NAME],
             data=doc.get("data", {}),
             created_at=doc.get(MongoColumns.CREATED_AT),
             updated_at=doc.get(MongoColumns.UPDATED_AT),

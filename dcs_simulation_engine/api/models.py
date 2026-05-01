@@ -6,8 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
-ServerMode = Literal["standard"]
-RemoteDeploymentMode = Literal["standard"]
 SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
@@ -53,13 +51,11 @@ class AuthResponse(BaseModel):
 
 
 class ServerConfigResponse(BaseModel):
-    """Response payload describing server capabilities for the active mode."""
+    """Response payload describing server capabilities."""
 
-    mode: ServerMode
     authentication_required: bool
     registration_enabled: bool
-    runs_enabled: bool
-    default_run_name: str | None = None
+    run_name: str
 
 
 class StatusResponse(BaseModel):
@@ -79,13 +75,12 @@ class RemoteBootstrapResponse(BaseModel):
 
 
 class RemoteStatusResponse(BaseModel):
-    """Public status payload for remote-managed or generic deployments."""
+    """Public status payload for remote-managed deployments."""
 
     status: Literal["ok"] = "ok"
-    mode: RemoteDeploymentMode
     started_at: datetime
     uptime: int
-    run_name: str | None = None
+    run_name: str
     progress: "ProgressResponse | None" = None
     run_status: "RunStatusResponse | None" = None
 

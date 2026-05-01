@@ -8,9 +8,9 @@ DEFAULT_SEEDS_DIR = Path("database_seeds/dev")
 DEFAULT_MONGO_URI = "mongodb://127.0.0.1:27017/"
 INDEX_DEFS: dict[str, list[dict[str, Any]]] = {
     "characters": [{"fields": [("hid", 1)], "unique": True}],
-    "runs": [{"fields": [("name", 1)], "unique": True}],
     "assignments": [{"fields": [("assignment_id", 1)], "unique": True}],
 }
+RUN_METADATA_ID = "current"
 
 
 class MongoColumns:
@@ -31,7 +31,6 @@ class MongoColumns:
     SESSION_ID = "session_id"
     EVENT_ID = "event_id"
     GAME_NAME = "game_name"
-    RUN_NAME = "run_name"
     ACTIVE_SESSION_ID = "active_session_id"
     BRANCH_FROM_SESSION_ID = "branch_from_session_id"
     FORM_RESPONSES = "form_responses"

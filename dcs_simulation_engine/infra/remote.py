@@ -129,8 +129,7 @@ class RemoteStatusResult:
     """Authenticated run status returned for CLI presentation."""
 
     api_url: str
-    mode: str | None
-    run_name: str | None
+    run_name: str
     run_status: dict[str, Any] | None
 
     def model_dump(self) -> dict[str, Any]:
@@ -721,20 +720,17 @@ def fetch_remote_status(
             remote_response.raise_for_status()
             payload = remote_response.json()
             run_name = payload.get("run_name")
-            run_status: dict[str, Any]
-            if run_name:
-                headers = {"Authorization": f"Bearer {admin_key}"}
-                run_response = client.get("/api/run/status", headers=headers)
-                run_response.raise_for_status()
-                run_status = run_response.json()
-            else:
-                run_status = payload
+            if not isinstance(run_name, str) or not run_name:
+                raise RemoteLifecycleError("Remote status response did not include a run name.")
+            headers = {"Authorization": f"Bearer {admin_key}"}
+            run_response = client.get("/api/run/status", headers=headers)
+            run_response.raise_for_status()
+            run_status = run_response.json()
     except httpx.HTTPError as exc:
         raise RemoteLifecycleError(f"Failed to fetch remote deployment status: {exc}") from exc
 
     return RemoteStatusResult(
         api_url=uri,
-        mode=payload.get("mode"),
         run_name=run_name,
         run_status=run_status,
     )

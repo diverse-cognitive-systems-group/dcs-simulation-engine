@@ -8,7 +8,6 @@ from typing import Any
 from dcs_simulation_engine.api.auth import (
     api_key_from_request,
     api_key_from_websocket,
-    get_default_run_name_from_request,
     get_provider_from_request,
     get_provider_from_websocket,
     get_registry_from_request,
@@ -55,11 +54,11 @@ def _session_status(entry_status: str, exited: bool) -> str:
 
 
 def _require_generic_play_enabled(request: Request) -> None:
-    """Reject generic play paths when the server is running as a run-only deployment."""
-    if is_remote_management_enabled_from_request(request) and get_default_run_name_from_request(request):
+    """Reject generic play paths when the server is remote-managed."""
+    if is_remote_management_enabled_from_request(request):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Generic play is disabled on run-only deployments. Use the run flow instead.",
+            detail="Generic play is disabled on remote-managed deployments. Use the run flow instead.",
         )
 
 
@@ -73,20 +72,16 @@ async def _reject_if_run_gated(*, provider: Any, player_id: str) -> None:
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail=(
-            f"Player {player_id} is assigned through run '{latest_assignment.run_name}'. "
-            "Use the run flow instead of the generic play endpoints."
-        ),
+        detail=f"Player {player_id} is assigned through the run flow. Use run endpoints instead of generic play endpoints.",
     )
 
 
 async def _sync_run_assignment_if_needed(*, provider: Any, entry: Any) -> None:
     """Update run assignment state when a session reaches a terminal state."""
-    if entry.run_name is None or entry.assignment_id is None:
+    if entry.assignment_id is None:
         return
     await EngineRunManager.handle_session_terminal_state_async(
         provider=provider,
-        run_name=entry.run_name,
         assignment_id=entry.assignment_id,
         exit_reason=entry.manager.exit_reason,
     )

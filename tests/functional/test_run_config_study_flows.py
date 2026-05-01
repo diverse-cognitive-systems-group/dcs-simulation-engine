@@ -119,6 +119,6 @@ def test_benchmark_ai_boots_without_human_participant_flow(async_mongo_provider)
         server_config = client.get("/api/server/config")
 
     assert server_config.status_code == 200
-    assert server_config.json()["default_run_name"] == config.name
+    assert server_config.json()["run_name"] == config.name
     assert config.has_model_players is True
     assert config.players.humans.all is False

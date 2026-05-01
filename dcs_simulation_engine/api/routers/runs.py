@@ -163,7 +163,6 @@ async def run_setup(request: Request) -> SetupResponse:
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     player_state = await manager.get_player_state_async(
         provider=provider,
-        run_name=config.name,
         player_id=player.id,
     )
     current_assignment = player_state["active_assignment"]
@@ -179,7 +178,7 @@ async def run_setup(request: Request) -> SetupResponse:
         current_assignment_data = getattr(current_assignment, "data", {}) or {}
         resumable_session_id = current_assignment_data.get(MongoColumns.ACTIVE_SESSION_ID) or None
 
-    progress = await manager.compute_progress_async(provider=provider, run_name=config.name)
+    progress = await manager.compute_progress_async(provider=provider)
     is_open = not progress["is_complete"]
     has_pending_initial_forms = any(group["trigger"]["event"] == "before_all_assignments" for group in pending_form_groups)
     return SetupResponse(
@@ -224,13 +223,11 @@ async def submit_run_form_group(
 ) -> FormSubmitResponse:
     """Store responses for one pending run form group."""
     manager = _get_run_manager(request)
-    config = manager.run_config
     provider = get_provider_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     try:
         group = await manager.submit_form_group_async(
             provider=provider,
-            run_name=config.name,
             player_id=player.id,
             group_id=body.group_id,
             responses=body.responses,
@@ -252,7 +249,6 @@ async def create_run_session(
 ) -> CreateGameResponse:
     """Create or resume a session for one run assignment."""
     manager = _get_run_manager(request)
-    config = manager.run_config
     provider = get_provider_from_request(request)
     registry = get_registry_from_request(request)
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
@@ -261,7 +257,6 @@ async def create_run_session(
         entry, _assignment = await manager.start_assignment_session_async(
             provider=provider,
             registry=registry,
-            run_name=config.name,
             player=player,
             source=body.source,
             assignment_id=body.assignment_id,
@@ -284,7 +279,7 @@ async def run_progress(request: Request) -> ProgressResponse:
     manager = _get_run_manager(request)
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
-    progress = await manager.compute_progress_async(provider=provider, run_name=manager.run_config.name)
+    progress = await manager.compute_progress_async(provider=provider)
     await manager.ensure_run_async(provider=provider)
     return _progress_response(progress)
 
@@ -297,7 +292,6 @@ async def get_eligible_options(request: Request) -> EligibleAssignmentOptionsRes
     player = await require_player_async(provider=provider, api_key=api_key_from_request(request))
     options = await manager.get_eligible_options_async(
         provider=provider,
-        run_name=manager.run_config.name,
         player=player,
     )
     return EligibleAssignmentOptionsResponse(options=[option for option in await _eligible_assignment_options(provider, options)])
@@ -315,7 +309,6 @@ async def select_assignment(
     try:
         assignment = await manager.create_player_choice_assignment_async(
             provider=provider,
-            run_name=manager.run_config.name,
             player=player,
             game_name=body.game_name,
             pc_hid=body.pc_hid,
@@ -333,5 +326,5 @@ async def run_status(request: Request) -> RunStatusResponse:
     provider = get_provider_from_request(request)
     await require_player_async(provider=provider, api_key=api_key_from_request(request))
     await manager.ensure_run_async(provider=provider)
-    status_payload = await manager.compute_status_async(provider=provider, run_name=manager.run_config.name)
+    status_payload = await manager.compute_status_async(provider=provider)
     return _status_response(status_payload)
