@@ -104,7 +104,7 @@ The engine exposes an API endpoint, so you do not have to use our text-based Rea
 
 This is useful for non-run-harnessed gameplay, where the client directly interacts with the engine API without using the run harness. This enables custom orchestration, AI-driven control loops, and integration into external systems or apps.
 
-[OpenEvolve](https://github.com/codelion/openevolve) is an evolutionary coding agent: it mutates a small "initial program" file across generations and scores each candidate with an evaluator function. To evolve a program that *plays* a game on the engine, the evaluator drives the engine through `APIClient` directly — no run config, no run harness, just an in-process control loop.
+[OpenEvolve](https://github.com/codelion/openevolve) is an evolutionary coding agent: it mutates a small "initial program" file across generations and scores each candidate with an evaluator function. To evolve a program that *plays* a game on the engine, start the engine without the UI (see [examples/run_configs/benchmark-ai.yml](../../examples/run_configs/benchmark-ai.yml), which sets `launch_gui: false`) and have the candidate program call the API directly (see [examples/api_usage/](../../examples/api_usage/)).
 
 ```plaintext
 [OpenEvolve controller]
@@ -130,6 +130,7 @@ and the returned `SimulationRun` context manager. The first `step()` consumes th
 turn; subsequent `step(text)` calls submit player input.
 
 ```python
+# openevolve-run.py
 from dcs_simulation_engine.api.client import APIClient
 from dcs_simulation_engine.api.models import CreateGameRequest
 
@@ -150,9 +151,6 @@ def play_one_game(strategy_fn, *, max_turns: int = 12) -> dict:
         return {"turns": run.turns, "exited": run.is_complete, "history": run.history}
 ```
 
-Run the engine in free-play mode (`dcs server --free-play`) so no API key is required, or pass
-`api_key=...` on `CreateGameRequest` when running against an authenticated deployment.
-
 #### Step 2 — Make the strategy evolvable
 
 OpenEvolve evolves whatever lives between `EVOLVE-BLOCK-START` / `EVOLVE-BLOCK-END` markers in the
@@ -160,7 +158,8 @@ initial program file. For prompt evolution this can be as small as a strategy sn
 injected into a frozen LLM prompt template; for code evolution it is a callable.
 
 ```python
-# initial_program.py — OpenEvolve will mutate the body of the EVOLVE block.
+# initial_program.py
+# OpenEvolve will mutate the body of the "EVOLVE-.." block.
 
 # EVOLVE-BLOCK-START
 def choose_utterance(history: list) -> str:
@@ -200,9 +199,10 @@ def evaluate(candidate_path: str) -> dict:
 
 #### Step 4 — Run evolution
 
-A minimal `config.yaml` for OpenEvolve, pointing at OpenRouter for the mutation LLM:
+A minimal config file for OpenEvolve, pointing at OpenRouter for the mutation LLM:
 
 ```yaml
+# oe-config.yml
 max_iterations: 50
 llm:
   api_base: "https://openrouter.ai/api/v1/"
@@ -218,16 +218,11 @@ evaluator:
 Then launch evolution from the OpenEvolve CLI against the running engine:
 
 ```bash
-dcs server --free-play &                    # engine on :8000
-python openevolve-run.py initial_program.py evaluator.py --config config.yaml --iterations 50
+dcs run --config path/to/my/dcs-run-config.yml &&
+python openevolve-run.py initial_program.py evaluator.py --config oe-config.yaml --iterations 50
 ```
 
-> A complete reference implementation — including a multi-stage cascading evaluator, a frozen
-> prompt template, and a runtime config that injects an LLM-driven player character — lives in the
-> companion repo [`dcs-interfacing-agents`](https://github.com/diverse-cognitive-systems-group/dcs-interfacing-agents)
-> under `OpenEvolve/examples/llm_prompt/` (NOTE: dcs-interfacing-agents is WIP regarding OpenEvolve example). 
->
-> The comprehensive and complete default `config.yaml` file can be found at OpenEvolve's GitHub page regarding the configs – [page link](https://github.com/algorithmicsuperintelligence/openevolve/blob/main/configs/default_config.yaml).
+> The comprehensive and complete default OpenEvolve config file can be found at OpenEvolve's GitHub page regarding the configs – [page link](https://github.com/algorithmicsuperintelligence/openevolve/blob/main/configs/default_config.yaml).
 
 
 ### Example Unity Integration
