@@ -11,8 +11,8 @@ import type { PendingFormGroupResponseFormsItem } from './pendingFormGroupRespon
  * Actionable group of forms the participant must submit.
  */
 export interface PendingFormGroupResponse {
+  assignment_id?: string | null;
+  forms?: PendingFormGroupResponseFormsItem[];
   group_id: string;
   trigger: FormTriggerResponse;
-  forms?: PendingFormGroupResponseFormsItem[];
-  assignment_id?: string | null;
 }

@@ -9,7 +9,7 @@
  * Bootstrap response containing the newly issued remote admin key.
  */
 export interface RemoteBootstrapResponse {
-  player_id: string;
   admin_api_key: string;
-  experiment_name?: string | null;
+  player_id: string;
+  run_name?: string | null;
 }

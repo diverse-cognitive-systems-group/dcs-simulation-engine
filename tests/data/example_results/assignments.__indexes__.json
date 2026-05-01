@@ -28,10 +28,10 @@
     "unique": true,
     "v": 2
   },
-  "experiment_name_1_game_name_1_status_1": {
+  "run_name_1_game_name_1_status_1": {
     "key": [
       [
-        "experiment_name",
+        "run_name",
         1
       ],
       [
@@ -45,10 +45,10 @@
     ],
     "v": 2
   },
-  "experiment_name_1_player_id_1_updated_at_-1": {
+  "run_name_1_player_id_1_updated_at_-1": {
     "key": [
       [
-        "experiment_name",
+        "run_name",
         1
       ],
       [
@@ -62,10 +62,10 @@
     ],
     "v": 2
   },
-  "experiment_name_1_status_1_updated_at_-1": {
+  "run_name_1_status_1_updated_at_-1": {
     "key": [
       [
-        "experiment_name",
+        "run_name",
         1
       ],
       [

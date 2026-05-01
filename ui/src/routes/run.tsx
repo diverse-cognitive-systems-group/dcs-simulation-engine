@@ -97,7 +97,7 @@ interface NextAssignmentState {
 }
 
 interface SetupResponse {
-  experiment_name: string
+  run_name: string
   description: string
   is_open: boolean
   forms: FormSchema[]
@@ -678,7 +678,7 @@ function RunPage() {
     queryFn: () => httpClient<SetupResponse>('/api/run/setup'),
   })
 
-  const activeRunName = data?.experiment_name ?? ''
+  const activeRunName = data?.run_name ?? ''
 
   useEffect(() => {
     setActiveRunName(activeRunName)

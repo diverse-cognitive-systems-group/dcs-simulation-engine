@@ -5,4 +5,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ExperimentFormSubmitRequestResponses = {[key: string]: { [key: string]: unknown }};
+export type SetupResponseFormsItem = { [key: string]: unknown };

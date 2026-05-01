@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from dcs_simulation_engine.core.forms import ExperimentForm
+from dcs_simulation_engine.core.forms import Form
 from dcs_simulation_engine.utils.serde import SerdeMixin
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -80,7 +80,7 @@ class RunConfig(SerdeMixin, BaseModel):
     players: RunConfigPlayers = Field(default_factory=RunConfigPlayers)
     games: list[RunConfigGame] = Field(default_factory=list)
     next_game_strategy: RunConfigNextGameStrategy
-    forms: list[ExperimentForm] = Field(default_factory=list)
+    forms: list[Form] = Field(default_factory=list)
 
     @field_validator("forms", mode="before")
     @classmethod
@@ -107,7 +107,7 @@ class RunConfig(SerdeMixin, BaseModel):
         """Load a run config from YAML."""
         return cls.from_yaml(path)
 
-    def forms_for_trigger(self, trigger: str | None = None, *, event: str | None = None) -> list[ExperimentForm]:
+    def forms_for_trigger(self, trigger: str | None = None, *, event: str | None = None) -> list[Form]:
         """Return forms matching one trigger event string."""
         event_name = event if event is not None else trigger
         return [form for form in self.forms if form.trigger.event == event_name]

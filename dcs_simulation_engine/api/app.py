@@ -44,7 +44,7 @@ def create_app(
     shutdown_dump_dir: Path | None = None,
     run_config: RunConfig | None = None,
     run_config_path: Path | None = None,
-    default_experiment_name: str | None = None,
+    default_run_name: str | None = None,
     remote_management_enabled: bool = False,
     bootstrap_token: str | None = None,
     session_ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS,
@@ -94,7 +94,7 @@ def create_app(
     app.state.run_config = active_run_config
     app.state.engine_run_manager = engine_run_manager
     app.state.mongo_uri = mongo_uri
-    app.state.default_experiment_name = active_run_config.name
+    app.state.default_run_name = active_run_config.name
     app.state.remote_management_enabled = remote_management_enabled
     app.state.bootstrap_token = bootstrap_token
 
@@ -109,7 +109,7 @@ def create_app(
     def server_config() -> ServerConfigResponse:
         """Expose server capabilities so clients can adapt to the active mode."""
         return build_server_config(
-            default_experiment_name=active_run_config.name,
+            default_run_name=active_run_config.name,
             registration_required=active_run_config.registration_required,
         )
 

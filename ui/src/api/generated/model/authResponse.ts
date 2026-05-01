@@ -9,7 +9,7 @@
  * Response payload for successful API-key auth.
  */
 export interface AuthResponse {
-  player_id: string;
-  full_name?: string;
   authenticated?: boolean;
+  full_name?: string;
+  player_id: string;
 }

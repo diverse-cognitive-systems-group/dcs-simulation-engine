@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from dcs_simulation_engine.api.app import create_app
 from dcs_simulation_engine.core.forms import (
-    ExperimentForm,
-    ExperimentFormQuestion,
+    Form,
+    FormQuestion,
 )
 from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.dal.base import (
@@ -154,7 +154,7 @@ def mock_provider() -> MagicMock:
 
     provider.get_players.side_effect = _get_players
     provider.create_player.return_value = (owner, "valid-key")
-    provider.get_latest_experiment_assignment_for_player.return_value = None
+    provider.get_latest_run_assignment_for_player.return_value = None
     return provider
 
 
@@ -194,7 +194,7 @@ def anonymous_auth(anonymous_client: TestClient) -> dict[str, str]:
 
 @pytest.fixture
 def remote_managed_client(mock_provider: MagicMock) -> TestClient:
-    """Build a TestClient configured for remote-managed experiment hosting."""
+    """Build a TestClient configured for remote-managed run hosting."""
     app = create_app(
         provider=mock_provider,
         run_config=_run_config(),
@@ -296,8 +296,8 @@ def test_server_config_reports_standard_mode(client: TestClient) -> None:
         "mode": "standard",
         "authentication_required": True,
         "registration_enabled": True,
-        "experiments_enabled": True,
-        "default_experiment_name": "usability",
+        "runs_enabled": True,
+        "default_run_name": "usability",
     }
 
 
@@ -311,8 +311,8 @@ def test_server_config_reports_anonymous_run_capabilities(anonymous_client: Test
         "mode": "standard",
         "authentication_required": False,
         "registration_enabled": False,
-        "experiments_enabled": True,
-        "default_experiment_name": "usability",
+        "runs_enabled": True,
+        "default_run_name": "usability",
     }
 
 
@@ -910,16 +910,16 @@ def test_anonymous_feedback_clear_flushes_live_session_and_persists(
 
 
 @pytest.mark.unit
-def test_experiment_setup_returns_metadata_and_assignment_state(
+def test_run_setup_returns_metadata_and_assignment_state(
     client: TestClient,
     mock_provider: MagicMock,
 ) -> None:
-    """Experiment setup should return forms, progress, and the current assignment state."""
-    form = ExperimentForm(
+    """Run setup should return forms, progress, and the current assignment state."""
+    form = Form(
         name="intake",
         trigger={"event": "before_all_assignments", "match": None},
         questions=[
-            ExperimentFormQuestion(
+            FormQuestion(
                 key="full_name",
                 prompt="Full Name",
                 answer_type="string",
@@ -963,7 +963,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
                 return_value={
                     "active_assignment": assignment,
                     "pending_assignment_form_ids": [],
-                    "has_finished_experiment": False,
+                    "has_finished_run": False,
                     "eligible_assignment_options": [],
                     "pending_form_groups": [],
                     "assignments": [assignment],
@@ -982,7 +982,7 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["experiment_name"] == "usability"
+    assert payload["run_name"] == "usability"
     assert payload["current_assignment"]["assignment_id"] == "asg-1"
     assert payload["progress"] == {"total": 20, "completed": 4, "is_complete": False}
     assert payload["allow_choice_if_multiple"] is False
@@ -995,10 +995,10 @@ def test_experiment_setup_returns_metadata_and_assignment_state(
 
 
 @pytest.mark.unit
-def test_experiment_form_group_submission_returns_group(
+def test_run_form_group_submission_returns_group(
     client: TestClient,
 ) -> None:
-    """Experiment form submission should store one pending group."""
+    """Run form submission should store one pending group."""
     group = {
         "group_id": "before_all_assignments",
         "trigger": {"event": "before_all_assignments", "match": None},
@@ -1020,19 +1020,19 @@ def test_experiment_form_group_submission_returns_group(
 
 
 @pytest.mark.unit
-def test_experiment_setup_requires_auth(client: TestClient) -> None:
-    """Experiment setup should not expose progress or state without authentication."""
+def test_run_setup_requires_auth(client: TestClient) -> None:
+    """Run setup should not expose progress or state without authentication."""
     response = client.get("/api/run/setup")
 
     assert response.status_code == 401
 
 
 @pytest.mark.unit
-def test_experiment_session_creation_returns_ws_path(
+def test_run_session_creation_returns_ws_path(
     client: TestClient,
 ) -> None:
-    """Experiment session creation should return the websocket path for the assigned session."""
-    entry = SimpleNamespace(session_id="sess-exp-1")
+    """Run session creation should return the websocket path for the assigned session."""
+    entry = SimpleNamespace(session_id="sess-run-1")
     assignment = SimpleNamespace(assignment_id="asg-3")
     start_mock = AsyncMock(return_value=(entry, assignment))
 
@@ -1043,26 +1043,26 @@ def test_experiment_session_creation_returns_ws_path(
         response = client.post(
             "/api/run/sessions",
             headers={"Authorization": "Bearer valid-key"},
-            json={"source": "experiment", "assignment_id": "asg-3"},
+            json={"source": "run", "assignment_id": "asg-3"},
         )
 
     assert response.status_code == 200
     assert response.json() == {
-        "session_id": "sess-exp-1",
+        "session_id": "sess-run-1",
         "status": "active",
-        "ws_path": "/api/play/game/sess-exp-1/ws",
+        "ws_path": "/api/play/game/sess-run-1/ws",
     }
     assert start_mock.await_args.kwargs["assignment_id"] == "asg-3"
 
 
 @pytest.mark.unit
-def test_generic_play_blocks_experiment_gated_players(
+def test_generic_play_blocks_run_gated_players(
     client: TestClient,
     mock_provider: MagicMock,
 ) -> None:
-    """Generic play endpoints should reject players who are assigned through an experiment."""
-    mock_provider.get_latest_experiment_assignment_for_player.return_value = SimpleNamespace(
-        experiment_name="usability",
+    """Generic play endpoints should reject players who are assigned through a run."""
+    mock_provider.get_latest_run_assignment_for_player.return_value = SimpleNamespace(
+        run_name="usability",
     )
 
     response = client.post(
@@ -1071,20 +1071,20 @@ def test_generic_play_blocks_experiment_gated_players(
     )
 
     assert response.status_code == 403
-    assert "experiment" in response.json()["detail"].lower()
+    assert "run" in response.json()["detail"].lower()
 
 
 @pytest.mark.unit
-def test_experiment_websocket_close_updates_assignment_status(client: TestClient) -> None:
-    """Closing an experiment session should sync the assignment terminal state."""
+def test_run_websocket_close_updates_assignment_status(client: TestClient) -> None:
+    """Closing a run session should sync the assignment terminal state."""
     manager = DummySessionManager()
 
-    def _start_session(*, provider, registry, experiment_name, player, source, assignment_id=None):
+    def _start_session(*, provider, registry, run_name, player, source, assignment_id=None):
         entry = registry.add(
             player_id=player.id,
             game_name="Explore",
             manager=manager,  # type: ignore[arg-type]
-            experiment_name=experiment_name,
+            run_name=run_name,
             assignment_id="asg-live-1",
         )
         return entry, SimpleNamespace(assignment_id="asg-live-1")
@@ -1102,7 +1102,7 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
         create_resp = client.post(
             "/api/run/sessions",
             headers={"Authorization": "Bearer valid-key"},
-            json={"source": "experiment"},
+            json={"source": "run"},
         )
         session_id = create_resp.json()["session_id"]
 
@@ -1116,16 +1116,16 @@ def test_experiment_websocket_close_updates_assignment_status(client: TestClient
 
     handle_terminal_mock.assert_awaited_once()
     kwargs = handle_terminal_mock.await_args.kwargs
-    assert kwargs["experiment_name"] == "usability"
+    assert kwargs["run_name"] == "usability"
     assert kwargs["assignment_id"] == "asg-live-1"
 
 
 @pytest.mark.functional
-def test_experiment_multiple_assignments_can_each_be_resumed(
+def test_run_multiple_assignments_can_each_be_resumed(
     patch_llm_client,
     async_mongo_provider,
 ) -> None:
-    """A player can pause and resume more than one experiment assignment independently."""
+    """A player can pause and resume more than one run assignment independently."""
 
     def _receive_until(ws, frame_type: str) -> list[dict]:
         frames: list[dict] = []
@@ -1203,7 +1203,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
                 "/api/run/sessions",
                 headers=headers,
                 json={
-                    "source": "experiment",
+                    "source": "run",
                     "assignment_id": assignment["assignment_id"],
                 },
             )
@@ -1233,7 +1233,7 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
                 "/api/run/sessions",
                 headers=headers,
                 json={
-                    "source": "experiment",
+                    "source": "run",
                     "assignment_id": assignment_id,
                 },
             )
@@ -1250,8 +1250,8 @@ def test_experiment_multiple_assignments_can_each_be_resumed(
 
 
 @pytest.mark.unit
-def test_experiment_assignment_form_group_submission_persists_response(client: TestClient) -> None:
-    """Experiment form submission should accept assignment-scoped groups."""
+def test_run_assignment_form_group_submission_persists_response(client: TestClient) -> None:
+    """Run form submission should accept assignment-scoped groups."""
     group = {
         "group_id": "after_assignment:asg-complete-1",
         "trigger": {"event": "after_assignment", "match": None},
@@ -1276,8 +1276,8 @@ def test_experiment_assignment_form_group_submission_persists_response(client: T
 
 
 @pytest.mark.unit
-def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
-    """Experiment status should return only the aggregate status fields."""
+def test_run_status_returns_aggregate_counts(client: TestClient) -> None:
+    """Run status should return only the aggregate status fields."""
     with (
         patch(
             "dcs_simulation_engine.api.routers.runs.EngineRunManager.ensure_run_async",
@@ -1316,16 +1316,16 @@ def test_experiment_status_returns_aggregate_counts(client: TestClient) -> None:
 
 
 @pytest.mark.unit
-def test_experiment_status_requires_auth(client: TestClient) -> None:
-    """Experiment status should not be exposed without authentication."""
+def test_run_status_requires_auth(client: TestClient) -> None:
+    """Run status should not be exposed without authentication."""
     response = client.get("/api/run/status")
 
     assert response.status_code == 401
 
 
 @pytest.mark.unit
-def test_remote_managed_server_config_reports_default_experiment(remote_managed_client: TestClient) -> None:
-    """Remote-managed deployments should expose their default experiment name."""
+def test_remote_managed_server_config_reports_default_run(remote_managed_client: TestClient) -> None:
+    """Remote-managed deployments should expose their default run name."""
     response = remote_managed_client.get("/api/server/config")
 
     assert response.status_code == 200
@@ -1333,8 +1333,8 @@ def test_remote_managed_server_config_reports_default_experiment(remote_managed_
         "mode": "standard",
         "authentication_required": True,
         "registration_enabled": True,
-        "experiments_enabled": True,
-        "default_experiment_name": "usability",
+        "runs_enabled": True,
+        "default_run_name": "usability",
     }
 
 
@@ -1364,7 +1364,7 @@ def test_remote_bootstrap_seeds_and_returns_admin_key(
     assert response.json() == {
         "player_id": "player-owner",
         "admin_api_key": "valid-key",
-        "experiment_name": "usability",
+        "run_name": "usability",
     }
     seed_admin.assert_called_once()
     kwargs = mock_provider.create_player.call_args.kwargs
@@ -1403,13 +1403,13 @@ def test_remote_bootstrap_uses_requested_admin_key(
 
 
 @pytest.mark.unit
-def test_remote_status_is_public_and_reports_experiment_progress(
+def test_remote_status_is_public_and_reports_run_progress(
     remote_managed_client: TestClient,
 ) -> None:
-    """Remote status should expose experiment-oriented progress without authentication."""
+    """Remote status should expose run-oriented progress without authentication."""
     with (
         patch(
-            "dcs_simulation_engine.api.routers.remote.EngineRunManager.ensure_experiment_async",
+            "dcs_simulation_engine.api.routers.remote.EngineRunManager.ensure_run_async",
             new=AsyncMock(),
         ),
         patch(
@@ -1432,10 +1432,10 @@ def test_remote_status_is_public_and_reports_experiment_progress(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["mode"] == "experiment"
-    assert payload["experiment_name"] == "usability"
+    assert payload["mode"] == "standard"
+    assert payload["run_name"] == "usability"
     assert payload["progress"] == {"total": 4, "completed": 1, "is_complete": False}
-    assert payload["experiment_status"] == {
+    assert payload["run_status"] == {
         "is_open": True,
         "total": 4,
         "completed": 1,
@@ -1513,7 +1513,7 @@ def test_remote_export_streams_zip_for_admin(async_mongo_provider) -> None:
 
     app = create_app(
         provider=async_mongo_provider,
-        default_experiment_name="usability",
+        default_run_name="usability",
         remote_management_enabled=True,
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
@@ -1563,8 +1563,8 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
 
 @pytest.mark.unit
 def test_remote_managed_deployment_disables_generic_play(remote_managed_client: TestClient) -> None:
-    """Experiment-only remote deployments should reject generic play endpoints."""
+    """Run-only remote deployments should reject generic play endpoints."""
     response = remote_managed_client.get("/api/play/setup/explore")
 
     assert response.status_code == 409
-    assert "experiment-only" in response.json()["detail"].lower()
+    assert "run-only" in response.json()["detail"].lower()

@@ -31,14 +31,14 @@ def get_registry_from_websocket(websocket: WebSocket) -> SessionRegistry:
     return cast(SessionRegistry, websocket.app.state.registry)
 
 
-def get_default_experiment_name_from_request(request: Request) -> str | None:
-    """Fetch the configured default experiment name from app state for an HTTP request."""
-    return cast(str | None, getattr(request.app.state, "default_experiment_name", None))
+def get_default_run_name_from_request(request: Request) -> str | None:
+    """Fetch the configured default run name from app state for an HTTP request."""
+    return cast(str | None, getattr(request.app.state, "default_run_name", None))
 
 
-def get_default_experiment_name_from_websocket(websocket: WebSocket) -> str | None:
-    """Fetch the configured default experiment name from app state for a websocket."""
-    return cast(str | None, getattr(websocket.app.state, "default_experiment_name", None))
+def get_default_run_name_from_websocket(websocket: WebSocket) -> str | None:
+    """Fetch the configured default run name from app state for a websocket."""
+    return cast(str | None, getattr(websocket.app.state, "default_run_name", None))
 
 
 def is_remote_management_enabled_from_request(request: Request) -> bool:
@@ -53,7 +53,7 @@ def is_remote_management_enabled_from_websocket(websocket: WebSocket) -> bool:
 
 def build_server_config(
     *,
-    default_experiment_name: str | None = None,
+    default_run_name: str | None = None,
     registration_required: bool = True,
 ) -> ServerConfigResponse:
     """Translate the active mode into frontend-readable capability flags."""
@@ -61,18 +61,17 @@ def build_server_config(
         mode="standard",
         authentication_required=registration_required,
         registration_enabled=registration_required,
-        experiments_enabled=True,
-        default_experiment_name=default_experiment_name,
+        runs_enabled=True,
+        default_run_name=default_run_name,
     )
 
 
 def resolve_remote_deployment_mode(
     *,
-    default_experiment_name: str | None,
+    default_run_name: str | None,
 ) -> RemoteDeploymentMode:
     """Collapse app state into a public deployment mode for remote status."""
-    if default_experiment_name:
-        return "experiment"
+    _ = default_run_name
     return "standard"
 
 

@@ -370,7 +370,7 @@ def _build_feedback(assignments_df: pd.DataFrame) -> pd.DataFrame:
                 rows.append({
                     "player_id":       row.get("player_id"),
                     "game_name":       row.get("game_name"),
-                    "experiment_name": row.get("experiment_name"),
+                    "run_name":        row.get("run_name"),
                     "form_name":       form_name,
                     "trigger_event":   trigger_event,
                     "submitted_at":    submitted_at,

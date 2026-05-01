@@ -1,4 +1,4 @@
-"""Assignment strategy protocol for experiment workflows."""
+"""Assignment strategy protocol for run workflows."""
 
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
@@ -17,7 +17,7 @@ class AssignmentCandidate(NamedTuple):
 
 
 class AssignmentStrategy(Protocol):
-    """Behavior contract for experiment assignment strategies."""
+    """Behavior contract for run assignment strategies."""
 
     name: str
 
@@ -28,10 +28,10 @@ class AssignmentStrategy(Protocol):
         """Return the maximum number of assignments one player may complete."""
 
     async def compute_progress_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
-        """Return experiment progress payload for the public API."""
+        """Return run progress payload for the public API."""
 
     async def compute_status_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
-        """Return experiment status payload for the public API."""
+        """Return run status payload for the public API."""
 
     async def list_candidate_assignments_async(
         self,

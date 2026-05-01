@@ -190,7 +190,7 @@ def create_run_session(
     response = client.post(
         "/api/run/sessions",
         headers=headers,
-        json={"source": "experiment", "assignment_id": assignment_id},
+        json={"source": "run", "assignment_id": assignment_id},
     )
     assert response.status_code == 200, response.text
     payload = response.json()

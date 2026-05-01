@@ -22,7 +22,7 @@ class SessionEntry:
     player_id: str | None
     game_name: str
     manager: SessionManager
-    experiment_name: str | None = None
+    run_name: str | None = None
     assignment_id: str | None = None
     status: SessionStatus = "active"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -59,7 +59,7 @@ class SessionRegistry:
         player_id: str | None,
         game_name: str,
         manager: SessionManager,
-        experiment_name: str | None = None,
+        run_name: str | None = None,
         assignment_id: str | None = None,
     ) -> SessionEntry:
         """Create and store a new session entry."""
@@ -69,7 +69,7 @@ class SessionRegistry:
             player_id=player_id,
             game_name=game_name,
             manager=manager,
-            experiment_name=experiment_name,
+            run_name=run_name,
             assignment_id=assignment_id,
         )
         with self._lock:
@@ -186,7 +186,7 @@ class SessionRegistry:
         """Async sweep variant that awaits async session finalization when available.
 
         When ``provider`` is given, expired sessions that belong to an
-        experiment assignment are marked ``interrupted`` so the player can
+        run assignment are marked ``interrupted`` so the player can
         start that assignment again.
         """
         from dcs_simulation_engine.utils.async_utils import maybe_await
@@ -313,7 +313,7 @@ async def hydrate_session_async(
             player_id=session_record.player_id,
             game_name=session_record.game_name,
             manager=manager,
-            experiment_name=getattr(assignment_record, "experiment_name", None) if assignment_record else None,
+            run_name=getattr(assignment_record, "run_name", None) if assignment_record else None,
             assignment_id=getattr(assignment_record, "assignment_id", None) if assignment_record else None,
             status="paused",
             opening_sent=True,

@@ -25,13 +25,13 @@ def game_config_minimal(write_yaml: Callable[[Path, str], Path], tmp_path_factor
 
 
 @pytest.fixture
-def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> Path:
-    """Create a stable experiment config fixture for core tests."""
+def usability_run_config_path(write_yaml: Callable[[str, str], Path]) -> Path:
+    """Create a stable run config fixture for core tests."""
     return write_yaml(
-        "test-usability-experiment.yaml",
+        "test-usability-run.yaml",
         """
-        name: test-usability-exp
-        description: Stable fixture for experiment tests.
+        name: test-usability-run
+        description: Stable fixture for run tests.
         games:
           - name: Explore
           - name: Infer Intent
@@ -104,29 +104,29 @@ def usability_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> 
 
 
 @pytest.fixture
-def usability_experiment_config(usability_experiment_config_path: Path) -> RunConfig:
-    """Load the stable experiment config fixture."""
-    return RunConfig.load(usability_experiment_config_path)
+def usability_run_config(usability_run_config_path: Path) -> RunConfig:
+    """Load the stable run config fixture."""
+    return RunConfig.load(usability_run_config_path)
 
 
 @pytest.fixture
-def cached_usability_experiment(usability_experiment_config: RunConfig) -> Iterator[RunConfig]:
+def cached_usability_run(usability_run_config: RunConfig) -> Iterator[RunConfig]:
     """Register the stable run config in the EngineRunManager."""
     original_config = EngineRunManager._run_config
-    EngineRunManager._run_config = usability_experiment_config
+    EngineRunManager._run_config = usability_run_config
     try:
-        yield usability_experiment_config
+        yield usability_run_config
     finally:
         EngineRunManager._run_config = original_config
 
 
 @pytest.fixture
-def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Path]) -> Path:
-    """Experiment config fixture with max_assignments_per_player: 3."""
+def multi_assignment_run_config_path(write_yaml: Callable[[str, str], Path]) -> Path:
+    """Run config fixture with max_assignments_per_player: 3."""
     return write_yaml(
-        "test-multi-assignment-experiment.yaml",
+        "test-multi-assignment-run.yaml",
         """
-        name: test-multi-assignment-exp
+        name: test-multi-assignment-run
         description: Fixture for multi-assignment progress tests.
         games:
           - name: Explore
@@ -173,11 +173,11 @@ def multi_assignment_experiment_config_path(write_yaml: Callable[[str, str], Pat
 
 
 @pytest.fixture
-def cached_multi_assignment_experiment(
-    multi_assignment_experiment_config_path: Path,
+def cached_multi_assignment_run(
+    multi_assignment_run_config_path: Path,
 ) -> Iterator[RunConfig]:
     """Register the multi-assignment run config in the EngineRunManager."""
-    config = RunConfig.load(multi_assignment_experiment_config_path)
+    config = RunConfig.load(multi_assignment_run_config_path)
     original_config = EngineRunManager._run_config
     EngineRunManager._run_config = config
     try:

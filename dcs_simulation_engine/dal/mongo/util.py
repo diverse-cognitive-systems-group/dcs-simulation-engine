@@ -58,32 +58,32 @@ def ensure_default_indexes(db: Database[Any]) -> None:
     )
     db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
     db[MongoColumns.SESSION_EVENTS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)])
-    db[MongoColumns.EXPERIMENTS].create_index(MongoColumns.NAME, unique=True)
+    db[MongoColumns.RUNS].create_index(MongoColumns.NAME, unique=True)
     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ASSIGNMENT_ID, unique=True)
     db[MongoColumns.ASSIGNMENTS].create_index(
         [
-            (MongoColumns.EXPERIMENT_NAME, ASCENDING),
+            (MongoColumns.RUN_NAME, ASCENDING),
             (MongoColumns.PLAYER_ID, ASCENDING),
             (MongoColumns.UPDATED_AT, DESCENDING),
         ]
     )
     db[MongoColumns.ASSIGNMENTS].create_index(
         [
-            (MongoColumns.EXPERIMENT_NAME, ASCENDING),
+            (MongoColumns.RUN_NAME, ASCENDING),
             (MongoColumns.STATUS, ASCENDING),
             (MongoColumns.UPDATED_AT, DESCENDING),
         ]
     )
     db[MongoColumns.ASSIGNMENTS].create_index(
         [
-            (MongoColumns.EXPERIMENT_NAME, ASCENDING),
+            (MongoColumns.RUN_NAME, ASCENDING),
             (MongoColumns.GAME_NAME, ASCENDING),
             (MongoColumns.STATUS, ASCENDING),
         ]
     )
     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
     db[MongoColumns.FORMS].create_index(
-        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
+        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.RUN_NAME, ASCENDING)],
         unique=True,
     )
 
@@ -109,32 +109,32 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
     )
     await db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
     await db[MongoColumns.SESSION_EVENTS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)])
-    await db[MongoColumns.EXPERIMENTS].create_index(MongoColumns.NAME, unique=True)
+    await db[MongoColumns.RUNS].create_index(MongoColumns.NAME, unique=True)
     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ASSIGNMENT_ID, unique=True)
     await db[MongoColumns.ASSIGNMENTS].create_index(
         [
-            (MongoColumns.EXPERIMENT_NAME, ASCENDING),
+            (MongoColumns.RUN_NAME, ASCENDING),
             (MongoColumns.PLAYER_ID, ASCENDING),
             (MongoColumns.UPDATED_AT, DESCENDING),
         ]
     )
     await db[MongoColumns.ASSIGNMENTS].create_index(
         [
-            (MongoColumns.EXPERIMENT_NAME, ASCENDING),
+            (MongoColumns.RUN_NAME, ASCENDING),
             (MongoColumns.STATUS, ASCENDING),
             (MongoColumns.UPDATED_AT, DESCENDING),
         ]
     )
     await db[MongoColumns.ASSIGNMENTS].create_index(
         [
-            (MongoColumns.EXPERIMENT_NAME, ASCENDING),
+            (MongoColumns.RUN_NAME, ASCENDING),
             (MongoColumns.GAME_NAME, ASCENDING),
             (MongoColumns.STATUS, ASCENDING),
         ]
     )
     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ACTIVE_SESSION_ID, sparse=True)
     await db[MongoColumns.FORMS].create_index(
-        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.EXPERIMENT_NAME, ASCENDING)],
+        [(MongoColumns.PLAYER_ID, ASCENDING), (MongoColumns.RUN_NAME, ASCENDING)],
         unique=True,
     )
 

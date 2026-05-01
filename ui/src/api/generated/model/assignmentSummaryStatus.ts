@@ -5,10 +5,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ExperimentAssignmentSummaryStatus = typeof ExperimentAssignmentSummaryStatus[keyof typeof ExperimentAssignmentSummaryStatus];
+export type AssignmentSummaryStatus = typeof AssignmentSummaryStatus[keyof typeof AssignmentSummaryStatus];
 
 
-export const ExperimentAssignmentSummaryStatus = {
+export const AssignmentSummaryStatus = {
   assigned: 'assigned',
   in_progress: 'in_progress',
   completed: 'completed',

@@ -10,9 +10,9 @@ import type { BranchSessionResponseStatus } from './branchSessionResponseStatus'
  * Response payload for a branched paused child session.
  */
 export interface BranchSessionResponse {
-  session_id: string;
   branch_from_session_id: string;
   game_name: string;
+  session_id: string;
   status: BranchSessionResponseStatus;
   ws_path: string;
 }

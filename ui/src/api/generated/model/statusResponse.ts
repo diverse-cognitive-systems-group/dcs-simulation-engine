@@ -9,7 +9,7 @@
  * Response payload describing process liveness and uptime.
  */
 export interface StatusResponse {
-  status?: 'ok';
   started_at: string;
+  status?: 'ok';
   uptime: number;
 }

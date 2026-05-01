@@ -12,8 +12,8 @@ export interface CreateGameRequest {
   api_key?: string | null;
   /** @minLength 1 */
   game: string;
-  pc_choice?: string | null;
   npc_choice?: string | null;
+  pc_choice?: string | null;
   /** @minLength 1 */
   source?: string;
 }

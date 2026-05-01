@@ -3,7 +3,7 @@
 import importlib
 from typing import Annotated, Any, Dict, List, Optional, Tuple
 
-from dcs_simulation_engine.core.forms import ExperimentForm
+from dcs_simulation_engine.core.forms import Form
 from dcs_simulation_engine.dal.base import CharacterRecord, DataProvider
 from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.serde import SerdeMixin
@@ -33,7 +33,7 @@ class GameConfig(SerdeMixin, BaseModel):
     version: VersionStr
     authors: Optional[List[str]] = Field(default_factory=lambda: ["DCS"])
     stopping_conditions: Dict[str, Any] = Field(default_factory=dict)
-    forms: List[ExperimentForm] = Field(default_factory=list)
+    forms: List[Form] = Field(default_factory=list)
     overrides: Dict[str, Any] = Field(default_factory=dict)
 
     # Dotted import path to the game engine class, e.g.

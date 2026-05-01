@@ -6,10 +6,10 @@
  */
 
 /**
- * Finite progress payload for the usability experiment.
+ * Finite progress payload for the usability run.
  */
-export interface ExperimentProgressResponse {
-  total: number;
+export interface ProgressResponse {
   completed: number;
   is_complete: boolean;
+  total: number;
 }

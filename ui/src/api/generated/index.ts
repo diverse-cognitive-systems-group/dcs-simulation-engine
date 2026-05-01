@@ -24,6 +24,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssignmentSessionRequest,
+  AssignmentSummary,
   AuthRequest,
   AuthResponse,
   BranchSessionResponse,
@@ -33,27 +35,25 @@ import type {
   CreateGameResponse,
   DeleteCharacterResponse,
   EligibleAssignmentOptionsResponse,
-  ExperimentAssignmentSummary,
-  ExperimentFormSubmitRequest,
-  ExperimentFormSubmitResponse,
-  ExperimentProgressResponse,
-  ExperimentSessionRequest,
-  ExperimentSetupResponse,
-  ExperimentStatusResponse,
   ExportRemoteDatabaseApiRemoteDbExportGetParams,
+  FormSubmitRequest,
+  FormSubmitResponse,
   GameSetupOptionsResponse,
   GamesListResponse,
   GetSessionReconstructionApiSessionsSessionIdReconstructionGet200,
   GetSessionStatusApiSessionsSessionIdStatusGet200,
   HTTPValidationError,
   HealthHealthzGet200,
+  ProgressResponse,
   RegistrationRequest,
   RegistrationResponse,
   RemoteBootstrapResponse,
   RemoteStatusResponse,
+  RunStatusResponse,
   SelectAssignmentRequest,
   ServerConfigResponse,
   SessionsListResponse,
+  SetupResponse,
   StatusResponse,
   SubmitSessionEventFeedbackRequest,
   SubmitSessionEventFeedbackResponse,
@@ -67,56 +67,56 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * Register a new player record and return a newly issued API key.
- * @summary Register User
+ * Create a new character.
+ * @summary Create Character
  */
-export type registerUserApiPlayerRegistrationPostResponse200 = {
-  data: RegistrationResponse
-  status: 200
+export type createCharacterApiCharactersPostResponse201 = {
+  data: UpsertCharacterResponse
+  status: 201
 }
 
-export type registerUserApiPlayerRegistrationPostResponse422 = {
+export type createCharacterApiCharactersPostResponse422 = {
   data: HTTPValidationError
   status: 422
 }
 
-export type registerUserApiPlayerRegistrationPostResponseSuccess = (registerUserApiPlayerRegistrationPostResponse200) & {
+export type createCharacterApiCharactersPostResponseSuccess = (createCharacterApiCharactersPostResponse201) & {
   headers: Headers;
 };
-export type registerUserApiPlayerRegistrationPostResponseError = (registerUserApiPlayerRegistrationPostResponse422) & {
+export type createCharacterApiCharactersPostResponseError = (createCharacterApiCharactersPostResponse422) & {
   headers: Headers;
 };
 
-export type registerUserApiPlayerRegistrationPostResponse = (registerUserApiPlayerRegistrationPostResponseSuccess | registerUserApiPlayerRegistrationPostResponseError)
+export type createCharacterApiCharactersPostResponse = (createCharacterApiCharactersPostResponseSuccess | createCharacterApiCharactersPostResponseError)
 
-export const getRegisterUserApiPlayerRegistrationPostUrl = () => {
+export const getCreateCharacterApiCharactersPostUrl = () => {
 
 
   
 
-  return `/api/player/registration`
+  return `/api/characters`
 }
 
-export const registerUserApiPlayerRegistrationPost = async (registrationRequest: RegistrationRequest, options?: RequestInit): Promise<registerUserApiPlayerRegistrationPostResponse> => {
+export const createCharacterApiCharactersPost = async (upsertCharacterRequest: UpsertCharacterRequest, options?: RequestInit): Promise<createCharacterApiCharactersPostResponse> => {
   
-  return httpClient<registerUserApiPlayerRegistrationPostResponse>(getRegisterUserApiPlayerRegistrationPostUrl(),
+  return httpClient<createCharacterApiCharactersPostResponse>(getCreateCharacterApiCharactersPostUrl(),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      registrationRequest,)
+      upsertCharacterRequest,)
   }
 );}
   
 
 
 
-export const getRegisterUserApiPlayerRegistrationPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, TError,{data: RegistrationRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, TError,{data: RegistrationRequest}, TContext> => {
+export const getCreateCharacterApiCharactersPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, TError,{data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, TError,{data: UpsertCharacterRequest}, TContext> => {
 
-const mutationKey = ['registerUserApiPlayerRegistrationPost'];
+const mutationKey = ['createCharacterApiCharactersPost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -126,10 +126,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, {data: RegistrationRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, {data: UpsertCharacterRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  registerUserApiPlayerRegistrationPost(data,requestOptions)
+          return  createCharacterApiCharactersPost(data,requestOptions)
         }
 
 
@@ -139,24 +139,640 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type RegisterUserApiPlayerRegistrationPostMutationResult = NonNullable<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>>
-    export type RegisterUserApiPlayerRegistrationPostMutationBody = RegistrationRequest
-    export type RegisterUserApiPlayerRegistrationPostMutationError = HTTPValidationError
+    export type CreateCharacterApiCharactersPostMutationResult = NonNullable<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>>
+    export type CreateCharacterApiCharactersPostMutationBody = UpsertCharacterRequest
+    export type CreateCharacterApiCharactersPostMutationError = HTTPValidationError
 
     /**
- * @summary Register User
+ * @summary Create Character
  */
-export const useRegisterUserApiPlayerRegistrationPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, TError,{data: RegistrationRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+export const useCreateCharacterApiCharactersPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, TError,{data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>,
+        Awaited<ReturnType<typeof createCharacterApiCharactersPost>>,
         TError,
-        {data: RegistrationRequest},
+        {data: UpsertCharacterRequest},
         TContext
       > => {
-      return useMutation(getRegisterUserApiPlayerRegistrationPostMutationOptions(options), queryClient);
+      return useMutation(getCreateCharacterApiCharactersPostMutationOptions(options), queryClient);
     }
     
+/**
+ * List available characters.
+ * @summary List Characters Endpoint
+ */
+export type listCharactersEndpointApiCharactersListGetResponse200 = {
+  data: CharactersListResponse
+  status: 200
+}
+
+export type listCharactersEndpointApiCharactersListGetResponseSuccess = (listCharactersEndpointApiCharactersListGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listCharactersEndpointApiCharactersListGetResponse = (listCharactersEndpointApiCharactersListGetResponseSuccess)
+
+export const getListCharactersEndpointApiCharactersListGetUrl = () => {
+
+
+  
+
+  return `/api/characters/list`
+}
+
+export const listCharactersEndpointApiCharactersListGet = async ( options?: RequestInit): Promise<listCharactersEndpointApiCharactersListGetResponse> => {
+  
+  return httpClient<listCharactersEndpointApiCharactersListGetResponse>(getListCharactersEndpointApiCharactersListGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getListCharactersEndpointApiCharactersListGetQueryKey = () => {
+    return [
+    `/api/characters/list`
+    ] as const;
+    }
+
+    
+export const getListCharactersEndpointApiCharactersListGetQueryOptions = <TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCharactersEndpointApiCharactersListGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>> = ({ signal }) => listCharactersEndpointApiCharactersListGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCharactersEndpointApiCharactersListGetQueryResult = NonNullable<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>>
+export type ListCharactersEndpointApiCharactersListGetQueryError = unknown
+
+
+export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>,
+          TError,
+          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>,
+          TError,
+          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Characters Endpoint
+ */
+
+export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCharactersEndpointApiCharactersListGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Delete a character by id.
+ * @summary Delete Character
+ */
+export type deleteCharacterApiCharactersCharacterIdDeleteResponse200 = {
+  data: DeleteCharacterResponse
+  status: 200
+}
+
+export type deleteCharacterApiCharactersCharacterIdDeleteResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type deleteCharacterApiCharactersCharacterIdDeleteResponseSuccess = (deleteCharacterApiCharactersCharacterIdDeleteResponse200) & {
+  headers: Headers;
+};
+export type deleteCharacterApiCharactersCharacterIdDeleteResponseError = (deleteCharacterApiCharactersCharacterIdDeleteResponse422) & {
+  headers: Headers;
+};
+
+export type deleteCharacterApiCharactersCharacterIdDeleteResponse = (deleteCharacterApiCharactersCharacterIdDeleteResponseSuccess | deleteCharacterApiCharactersCharacterIdDeleteResponseError)
+
+export const getDeleteCharacterApiCharactersCharacterIdDeleteUrl = (characterId: string,) => {
+
+
+  
+
+  return `/api/characters/${characterId}`
+}
+
+export const deleteCharacterApiCharactersCharacterIdDelete = async (characterId: string, options?: RequestInit): Promise<deleteCharacterApiCharactersCharacterIdDeleteResponse> => {
+  
+  return httpClient<deleteCharacterApiCharactersCharacterIdDeleteResponse>(getDeleteCharacterApiCharactersCharacterIdDeleteUrl(characterId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+  
+
+
+
+export const getDeleteCharacterApiCharactersCharacterIdDeleteMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, TError,{characterId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, TError,{characterId: string}, TContext> => {
+
+const mutationKey = ['deleteCharacterApiCharactersCharacterIdDelete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, {characterId: string}> = (props) => {
+          const {characterId} = props ?? {};
+
+          return  deleteCharacterApiCharactersCharacterIdDelete(characterId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCharacterApiCharactersCharacterIdDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>>
+    
+    export type DeleteCharacterApiCharactersCharacterIdDeleteMutationError = HTTPValidationError
+
+    /**
+ * @summary Delete Character
+ */
+export const useDeleteCharacterApiCharactersCharacterIdDelete = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, TError,{characterId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>,
+        TError,
+        {characterId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCharacterApiCharactersCharacterIdDeleteMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Update an existing character.
+ * @summary Update Character
+ */
+export type updateCharacterApiCharactersCharacterIdPutResponse200 = {
+  data: UpsertCharacterResponse
+  status: 200
+}
+
+export type updateCharacterApiCharactersCharacterIdPutResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type updateCharacterApiCharactersCharacterIdPutResponseSuccess = (updateCharacterApiCharactersCharacterIdPutResponse200) & {
+  headers: Headers;
+};
+export type updateCharacterApiCharactersCharacterIdPutResponseError = (updateCharacterApiCharactersCharacterIdPutResponse422) & {
+  headers: Headers;
+};
+
+export type updateCharacterApiCharactersCharacterIdPutResponse = (updateCharacterApiCharactersCharacterIdPutResponseSuccess | updateCharacterApiCharactersCharacterIdPutResponseError)
+
+export const getUpdateCharacterApiCharactersCharacterIdPutUrl = (characterId: string,) => {
+
+
+  
+
+  return `/api/characters/${characterId}`
+}
+
+export const updateCharacterApiCharactersCharacterIdPut = async (characterId: string,
+    upsertCharacterRequest: UpsertCharacterRequest, options?: RequestInit): Promise<updateCharacterApiCharactersCharacterIdPutResponse> => {
+  
+  return httpClient<updateCharacterApiCharactersCharacterIdPutResponse>(getUpdateCharacterApiCharactersCharacterIdPutUrl(characterId),
+  {      
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      upsertCharacterRequest,)
+  }
+);}
+  
+
+
+
+export const getUpdateCharacterApiCharactersCharacterIdPutMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, TError,{characterId: string;data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, TError,{characterId: string;data: UpsertCharacterRequest}, TContext> => {
+
+const mutationKey = ['updateCharacterApiCharactersCharacterIdPut'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, {characterId: string;data: UpsertCharacterRequest}> = (props) => {
+          const {characterId,data} = props ?? {};
+
+          return  updateCharacterApiCharactersCharacterIdPut(characterId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCharacterApiCharactersCharacterIdPutMutationResult = NonNullable<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>>
+    export type UpdateCharacterApiCharactersCharacterIdPutMutationBody = UpsertCharacterRequest
+    export type UpdateCharacterApiCharactersCharacterIdPutMutationError = HTTPValidationError
+
+    /**
+ * @summary Update Character
+ */
+export const useUpdateCharacterApiCharactersCharacterIdPut = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, TError,{characterId: string;data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>,
+        TError,
+        {characterId: string;data: UpsertCharacterRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateCharacterApiCharactersCharacterIdPutMutationOptions(options), queryClient);
+    }
+    
+/**
+ * List available games.
+ * @summary List Games Endpoint
+ */
+export type listGamesEndpointApiGamesListGetResponse200 = {
+  data: GamesListResponse
+  status: 200
+}
+
+export type listGamesEndpointApiGamesListGetResponseSuccess = (listGamesEndpointApiGamesListGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listGamesEndpointApiGamesListGetResponse = (listGamesEndpointApiGamesListGetResponseSuccess)
+
+export const getListGamesEndpointApiGamesListGetUrl = () => {
+
+
+  
+
+  return `/api/games/list`
+}
+
+export const listGamesEndpointApiGamesListGet = async ( options?: RequestInit): Promise<listGamesEndpointApiGamesListGetResponse> => {
+  
+  return httpClient<listGamesEndpointApiGamesListGetResponse>(getListGamesEndpointApiGamesListGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getListGamesEndpointApiGamesListGetQueryKey = () => {
+    return [
+    `/api/games/list`
+    ] as const;
+    }
+
+    
+export const getListGamesEndpointApiGamesListGetQueryOptions = <TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGamesEndpointApiGamesListGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>> = ({ signal }) => listGamesEndpointApiGamesListGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListGamesEndpointApiGamesListGetQueryResult = NonNullable<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>>
+export type ListGamesEndpointApiGamesListGetQueryError = unknown
+
+
+export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>,
+          TError,
+          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>,
+          TError,
+          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Games Endpoint
+ */
+
+export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListGamesEndpointApiGamesListGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Create a session-owned game instance and return websocket connect info.
+ * @summary Create Game
+ */
+export type createGameApiPlayGamePostResponse200 = {
+  data: CreateGameResponse
+  status: 200
+}
+
+export type createGameApiPlayGamePostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type createGameApiPlayGamePostResponseSuccess = (createGameApiPlayGamePostResponse200) & {
+  headers: Headers;
+};
+export type createGameApiPlayGamePostResponseError = (createGameApiPlayGamePostResponse422) & {
+  headers: Headers;
+};
+
+export type createGameApiPlayGamePostResponse = (createGameApiPlayGamePostResponseSuccess | createGameApiPlayGamePostResponseError)
+
+export const getCreateGameApiPlayGamePostUrl = () => {
+
+
+  
+
+  return `/api/play/game`
+}
+
+export const createGameApiPlayGamePost = async (createGameRequest: CreateGameRequest, options?: RequestInit): Promise<createGameApiPlayGamePostResponse> => {
+  
+  return httpClient<createGameApiPlayGamePostResponse>(getCreateGameApiPlayGamePostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createGameRequest,)
+  }
+);}
+  
+
+
+
+export const getCreateGameApiPlayGamePostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, TError,{data: CreateGameRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, TError,{data: CreateGameRequest}, TContext> => {
+
+const mutationKey = ['createGameApiPlayGamePost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, {data: CreateGameRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createGameApiPlayGamePost(data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGameApiPlayGamePostMutationResult = NonNullable<Awaited<ReturnType<typeof createGameApiPlayGamePost>>>
+    export type CreateGameApiPlayGamePostMutationBody = CreateGameRequest
+    export type CreateGameApiPlayGamePostMutationError = HTTPValidationError
+
+    /**
+ * @summary Create Game
+ */
+export const useCreateGameApiPlayGamePost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, TError,{data: CreateGameRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createGameApiPlayGamePost>>,
+        TError,
+        {data: CreateGameRequest},
+        TContext
+      > => {
+      return useMutation(getCreateGameApiPlayGamePostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Return setup-ready authorization and valid character choices for a game.
+ * @summary Setup Options
+ */
+export type setupOptionsApiPlaySetupGameNameGetResponse200 = {
+  data: GameSetupOptionsResponse
+  status: 200
+}
+
+export type setupOptionsApiPlaySetupGameNameGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type setupOptionsApiPlaySetupGameNameGetResponseSuccess = (setupOptionsApiPlaySetupGameNameGetResponse200) & {
+  headers: Headers;
+};
+export type setupOptionsApiPlaySetupGameNameGetResponseError = (setupOptionsApiPlaySetupGameNameGetResponse422) & {
+  headers: Headers;
+};
+
+export type setupOptionsApiPlaySetupGameNameGetResponse = (setupOptionsApiPlaySetupGameNameGetResponseSuccess | setupOptionsApiPlaySetupGameNameGetResponseError)
+
+export const getSetupOptionsApiPlaySetupGameNameGetUrl = (gameName: string,) => {
+
+
+  
+
+  return `/api/play/setup/${gameName}`
+}
+
+export const setupOptionsApiPlaySetupGameNameGet = async (gameName: string, options?: RequestInit): Promise<setupOptionsApiPlaySetupGameNameGetResponse> => {
+  
+  return httpClient<setupOptionsApiPlaySetupGameNameGetResponse>(getSetupOptionsApiPlaySetupGameNameGetUrl(gameName),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getSetupOptionsApiPlaySetupGameNameGetQueryKey = (gameName: string,) => {
+    return [
+    `/api/play/setup/${gameName}`
+    ] as const;
+    }
+
+    
+export const getSetupOptionsApiPlaySetupGameNameGetQueryOptions = <TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSetupOptionsApiPlaySetupGameNameGetQueryKey(gameName);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>> = ({ signal }) => setupOptionsApiPlaySetupGameNameGet(gameName, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(gameName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SetupOptionsApiPlaySetupGameNameGetQueryResult = NonNullable<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>>
+export type SetupOptionsApiPlaySetupGameNameGetQueryError = HTTPValidationError
+
+
+export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
+ gameName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>,
+          TError,
+          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
+ gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>,
+          TError,
+          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
+ gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Setup Options
+ */
+
+export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
+ gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSetupOptionsApiPlaySetupGameNameGetQueryOptions(gameName,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
 /**
  * Create an ephemeral anonymous player for runs that do not require registration.
  * @summary Anonymous User
@@ -332,501 +948,56 @@ export const useAuthUserApiPlayerAuthPost = <TError = HTTPValidationError,
     }
     
 /**
- * Return the current status of a live session.
-
-Used by the frontend to verify a stored session_id is still paused and resumable.
- * @summary Get Session Status
+ * Register a new player record and return a newly issued API key.
+ * @summary Register User
  */
-export type getSessionStatusApiSessionsSessionIdStatusGetResponse200 = {
-  data: GetSessionStatusApiSessionsSessionIdStatusGet200
+export type registerUserApiPlayerRegistrationPostResponse200 = {
+  data: RegistrationResponse
   status: 200
 }
 
-export type getSessionStatusApiSessionsSessionIdStatusGetResponse422 = {
+export type registerUserApiPlayerRegistrationPostResponse422 = {
   data: HTTPValidationError
   status: 422
 }
 
-export type getSessionStatusApiSessionsSessionIdStatusGetResponseSuccess = (getSessionStatusApiSessionsSessionIdStatusGetResponse200) & {
+export type registerUserApiPlayerRegistrationPostResponseSuccess = (registerUserApiPlayerRegistrationPostResponse200) & {
   headers: Headers;
 };
-export type getSessionStatusApiSessionsSessionIdStatusGetResponseError = (getSessionStatusApiSessionsSessionIdStatusGetResponse422) & {
-  headers: Headers;
-};
-
-export type getSessionStatusApiSessionsSessionIdStatusGetResponse = (getSessionStatusApiSessionsSessionIdStatusGetResponseSuccess | getSessionStatusApiSessionsSessionIdStatusGetResponseError)
-
-export const getGetSessionStatusApiSessionsSessionIdStatusGetUrl = (sessionId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/status`
-}
-
-export const getSessionStatusApiSessionsSessionIdStatusGet = async (sessionId: string, options?: RequestInit): Promise<getSessionStatusApiSessionsSessionIdStatusGetResponse> => {
-  
-  return httpClient<getSessionStatusApiSessionsSessionIdStatusGetResponse>(getGetSessionStatusApiSessionsSessionIdStatusGetUrl(sessionId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getGetSessionStatusApiSessionsSessionIdStatusGetQueryKey = (sessionId: string,) => {
-    return [
-    `/api/sessions/${sessionId}/status`
-    ] as const;
-    }
-
-    
-export const getGetSessionStatusApiSessionsSessionIdStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetSessionStatusApiSessionsSessionIdStatusGetQueryKey(sessionId);
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>> = ({ signal }) => getSessionStatusApiSessionsSessionIdStatusGet(sessionId, { signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, enabled: !!(sessionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetSessionStatusApiSessionsSessionIdStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>>
-export type GetSessionStatusApiSessionsSessionIdStatusGetQueryError = HTTPValidationError
-
-
-export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
- sessionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>,
-          TError,
-          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
- sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>,
-          TError,
-          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
- sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get Session Status
- */
-
-export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
- sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetSessionStatusApiSessionsSessionIdStatusGetQueryOptions(sessionId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Clone a persisted paused child session from an existing root session.
- * @summary Branch Session
- */
-export type branchSessionApiSessionsSessionIdBranchPostResponse200 = {
-  data: BranchSessionResponse
-  status: 200
-}
-
-export type branchSessionApiSessionsSessionIdBranchPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type branchSessionApiSessionsSessionIdBranchPostResponseSuccess = (branchSessionApiSessionsSessionIdBranchPostResponse200) & {
-  headers: Headers;
-};
-export type branchSessionApiSessionsSessionIdBranchPostResponseError = (branchSessionApiSessionsSessionIdBranchPostResponse422) & {
+export type registerUserApiPlayerRegistrationPostResponseError = (registerUserApiPlayerRegistrationPostResponse422) & {
   headers: Headers;
 };
 
-export type branchSessionApiSessionsSessionIdBranchPostResponse = (branchSessionApiSessionsSessionIdBranchPostResponseSuccess | branchSessionApiSessionsSessionIdBranchPostResponseError)
+export type registerUserApiPlayerRegistrationPostResponse = (registerUserApiPlayerRegistrationPostResponseSuccess | registerUserApiPlayerRegistrationPostResponseError)
 
-export const getBranchSessionApiSessionsSessionIdBranchPostUrl = (sessionId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/branch`
-}
-
-export const branchSessionApiSessionsSessionIdBranchPost = async (sessionId: string, options?: RequestInit): Promise<branchSessionApiSessionsSessionIdBranchPostResponse> => {
-  
-  return httpClient<branchSessionApiSessionsSessionIdBranchPostResponse>(getBranchSessionApiSessionsSessionIdBranchPostUrl(sessionId),
-  {      
-    ...options,
-    method: 'POST'
-    
-    
-  }
-);}
-  
-
-
-
-export const getBranchSessionApiSessionsSessionIdBranchPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext> => {
-
-const mutationKey = ['branchSessionApiSessionsSessionIdBranchPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, {sessionId: string}> = (props) => {
-          const {sessionId} = props ?? {};
-
-          return  branchSessionApiSessionsSessionIdBranchPost(sessionId,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type BranchSessionApiSessionsSessionIdBranchPostMutationResult = NonNullable<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>>
-    
-    export type BranchSessionApiSessionsSessionIdBranchPostMutationError = HTTPValidationError
-
-    /**
- * @summary Branch Session
- */
-export const useBranchSessionApiSessionsSessionIdBranchPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>,
-        TError,
-        {sessionId: string},
-        TContext
-      > => {
-      return useMutation(getBranchSessionApiSessionsSessionIdBranchPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * List active in-memory sessions for the player tied to the provided API key.
- * @summary List Sessions
- */
-export type listSessionsApiSessionsListGetResponse200 = {
-  data: SessionsListResponse
-  status: 200
-}
-
-export type listSessionsApiSessionsListGetResponseSuccess = (listSessionsApiSessionsListGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type listSessionsApiSessionsListGetResponse = (listSessionsApiSessionsListGetResponseSuccess)
-
-export const getListSessionsApiSessionsListGetUrl = () => {
+export const getRegisterUserApiPlayerRegistrationPostUrl = () => {
 
 
   
 
-  return `/api/sessions/list`
+  return `/api/player/registration`
 }
 
-export const listSessionsApiSessionsListGet = async ( options?: RequestInit): Promise<listSessionsApiSessionsListGetResponse> => {
+export const registerUserApiPlayerRegistrationPost = async (registrationRequest: RegistrationRequest, options?: RequestInit): Promise<registerUserApiPlayerRegistrationPostResponse> => {
   
-  return httpClient<listSessionsApiSessionsListGetResponse>(getListSessionsApiSessionsListGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getListSessionsApiSessionsListGetQueryKey = () => {
-    return [
-    `/api/sessions/list`
-    ] as const;
-    }
-
-    
-export const getListSessionsApiSessionsListGetQueryOptions = <TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListSessionsApiSessionsListGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>> = ({ signal }) => listSessionsApiSessionsListGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListSessionsApiSessionsListGetQueryResult = NonNullable<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>>
-export type ListSessionsApiSessionsListGetQueryError = unknown
-
-
-export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>,
-          TError,
-          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>,
-          TError,
-          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List Sessions
- */
-
-export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListSessionsApiSessionsListGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Return complete persisted metadata + event stream for transcript replay.
- * @summary Get Session Reconstruction
- */
-export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse200 = {
-  data: GetSessionReconstructionApiSessionsSessionIdReconstructionGet200
-  status: 200
-}
-
-export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseSuccess = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse200) & {
-  headers: Headers;
-};
-export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseError = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse422) & {
-  headers: Headers;
-};
-
-export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseSuccess | getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseError)
-
-export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetUrl = (sessionId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/reconstruction`
-}
-
-export const getSessionReconstructionApiSessionsSessionIdReconstructionGet = async (sessionId: string, options?: RequestInit): Promise<getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse> => {
-  
-  return httpClient<getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse>(getGetSessionReconstructionApiSessionsSessionIdReconstructionGetUrl(sessionId),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryKey = (sessionId: string,) => {
-    return [
-    `/api/sessions/${sessionId}/reconstruction`
-    ] as const;
-    }
-
-    
-export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryOptions = <TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryKey(sessionId);
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>> = ({ signal }) => getSessionReconstructionApiSessionsSessionIdReconstructionGet(sessionId, { signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, enabled: !!(sessionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>>
-export type GetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryError = HTTPValidationError
-
-
-export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
- sessionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>,
-          TError,
-          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
- sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>,
-          TError,
-          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
- sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get Session Reconstruction
- */
-
-export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
- sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryOptions(sessionId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Store or overwrite feedback on one persisted NPC-message event.
- * @summary Submit Session Event Feedback
- */
-export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse200 = {
-  data: SubmitSessionEventFeedbackResponse
-  status: 200
-}
-
-export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseSuccess = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse200) & {
-  headers: Headers;
-};
-export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseError = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse422) & {
-  headers: Headers;
-};
-
-export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseSuccess | submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseError)
-
-export const getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostUrl = (sessionId: string,
-    eventId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/events/${eventId}/feedback`
-}
-
-export const submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost = async (sessionId: string,
-    eventId: string,
-    submitSessionEventFeedbackRequest: SubmitSessionEventFeedbackRequest, options?: RequestInit): Promise<submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse> => {
-  
-  return httpClient<submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse>(getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostUrl(sessionId,eventId),
+  return httpClient<registerUserApiPlayerRegistrationPostResponse>(getRegisterUserApiPlayerRegistrationPostUrl(),
   {      
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
-      submitSessionEventFeedbackRequest,)
+      registrationRequest,)
   }
 );}
   
 
 
 
-export const getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext> => {
+export const getRegisterUserApiPlayerRegistrationPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, TError,{data: RegistrationRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, TError,{data: RegistrationRequest}, TContext> => {
 
-const mutationKey = ['submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost'];
+const mutationKey = ['registerUserApiPlayerRegistrationPost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -836,312 +1007,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, {sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}> = (props) => {
-          const {sessionId,eventId,data} = props ?? {};
-
-          return  submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost(sessionId,eventId,data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>>
-    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationBody = SubmitSessionEventFeedbackRequest
-    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationError = HTTPValidationError
-
-    /**
- * @summary Submit Session Event Feedback
- */
-export const useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>,
-        TError,
-        {sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest},
-        TContext
-      > => {
-      return useMutation(getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Remove feedback from one persisted NPC-message event.
- * @summary Clear Session Event Feedback
- */
-export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse200 = {
-  data: ClearSessionEventFeedbackResponse
-  status: 200
-}
-
-export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseSuccess = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse200) & {
-  headers: Headers;
-};
-export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseError = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse422) & {
-  headers: Headers;
-};
-
-export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseSuccess | clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseError)
-
-export const getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteUrl = (sessionId: string,
-    eventId: string,) => {
-
-
-  
-
-  return `/api/sessions/${sessionId}/events/${eventId}/feedback`
-}
-
-export const clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete = async (sessionId: string,
-    eventId: string, options?: RequestInit): Promise<clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse> => {
-  
-  return httpClient<clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse>(getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteUrl(sessionId,eventId),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-);}
-  
-
-
-
-export const getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext> => {
-
-const mutationKey = ['clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, {sessionId: string;eventId: string}> = (props) => {
-          const {sessionId,eventId} = props ?? {};
-
-          return  clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete(sessionId,eventId,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>>
-    
-    export type ClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationError = HTTPValidationError
-
-    /**
- * @summary Clear Session Event Feedback
- */
-export const useClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>,
-        TError,
-        {sessionId: string;eventId: string},
-        TContext
-      > => {
-      return useMutation(getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationOptions(options), queryClient);
-    }
-    
-/**
- * Return setup-ready authorization and valid character choices for a game.
- * @summary Setup Options
- */
-export type setupOptionsApiPlaySetupGameNameGetResponse200 = {
-  data: GameSetupOptionsResponse
-  status: 200
-}
-
-export type setupOptionsApiPlaySetupGameNameGetResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type setupOptionsApiPlaySetupGameNameGetResponseSuccess = (setupOptionsApiPlaySetupGameNameGetResponse200) & {
-  headers: Headers;
-};
-export type setupOptionsApiPlaySetupGameNameGetResponseError = (setupOptionsApiPlaySetupGameNameGetResponse422) & {
-  headers: Headers;
-};
-
-export type setupOptionsApiPlaySetupGameNameGetResponse = (setupOptionsApiPlaySetupGameNameGetResponseSuccess | setupOptionsApiPlaySetupGameNameGetResponseError)
-
-export const getSetupOptionsApiPlaySetupGameNameGetUrl = (gameName: string,) => {
-
-
-  
-
-  return `/api/play/setup/${gameName}`
-}
-
-export const setupOptionsApiPlaySetupGameNameGet = async (gameName: string, options?: RequestInit): Promise<setupOptionsApiPlaySetupGameNameGetResponse> => {
-  
-  return httpClient<setupOptionsApiPlaySetupGameNameGetResponse>(getSetupOptionsApiPlaySetupGameNameGetUrl(gameName),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getSetupOptionsApiPlaySetupGameNameGetQueryKey = (gameName: string,) => {
-    return [
-    `/api/play/setup/${gameName}`
-    ] as const;
-    }
-
-    
-export const getSetupOptionsApiPlaySetupGameNameGetQueryOptions = <TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getSetupOptionsApiPlaySetupGameNameGetQueryKey(gameName);
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>> = ({ signal }) => setupOptionsApiPlaySetupGameNameGet(gameName, { signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, enabled: !!(gameName), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type SetupOptionsApiPlaySetupGameNameGetQueryResult = NonNullable<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>>
-export type SetupOptionsApiPlaySetupGameNameGetQueryError = HTTPValidationError
-
-
-export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
- gameName: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>,
-          TError,
-          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
- gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>,
-          TError,
-          Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
- gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Setup Options
- */
-
-export function useSetupOptionsApiPlaySetupGameNameGet<TData = Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError = HTTPValidationError>(
- gameName: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof setupOptionsApiPlaySetupGameNameGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getSetupOptionsApiPlaySetupGameNameGetQueryOptions(gameName,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Create a session-owned game instance and return websocket connect info.
- * @summary Create Game
- */
-export type createGameApiPlayGamePostResponse200 = {
-  data: CreateGameResponse
-  status: 200
-}
-
-export type createGameApiPlayGamePostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type createGameApiPlayGamePostResponseSuccess = (createGameApiPlayGamePostResponse200) & {
-  headers: Headers;
-};
-export type createGameApiPlayGamePostResponseError = (createGameApiPlayGamePostResponse422) & {
-  headers: Headers;
-};
-
-export type createGameApiPlayGamePostResponse = (createGameApiPlayGamePostResponseSuccess | createGameApiPlayGamePostResponseError)
-
-export const getCreateGameApiPlayGamePostUrl = () => {
-
-
-  
-
-  return `/api/play/game`
-}
-
-export const createGameApiPlayGamePost = async (createGameRequest: CreateGameRequest, options?: RequestInit): Promise<createGameApiPlayGamePostResponse> => {
-  
-  return httpClient<createGameApiPlayGamePostResponse>(getCreateGameApiPlayGamePostUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      createGameRequest,)
-  }
-);}
-  
-
-
-
-export const getCreateGameApiPlayGamePostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, TError,{data: CreateGameRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, TError,{data: CreateGameRequest}, TContext> => {
-
-const mutationKey = ['createGameApiPlayGamePost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, {data: CreateGameRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, {data: RegistrationRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  createGameApiPlayGamePost(data,requestOptions)
+          return  registerUserApiPlayerRegistrationPost(data,requestOptions)
         }
 
 
@@ -1151,1240 +1020,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type CreateGameApiPlayGamePostMutationResult = NonNullable<Awaited<ReturnType<typeof createGameApiPlayGamePost>>>
-    export type CreateGameApiPlayGamePostMutationBody = CreateGameRequest
-    export type CreateGameApiPlayGamePostMutationError = HTTPValidationError
+    export type RegisterUserApiPlayerRegistrationPostMutationResult = NonNullable<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>>
+    export type RegisterUserApiPlayerRegistrationPostMutationBody = RegistrationRequest
+    export type RegisterUserApiPlayerRegistrationPostMutationError = HTTPValidationError
 
     /**
- * @summary Create Game
+ * @summary Register User
  */
-export const useCreateGameApiPlayGamePost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameApiPlayGamePost>>, TError,{data: CreateGameRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+export const useRegisterUserApiPlayerRegistrationPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>, TError,{data: RegistrationRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createGameApiPlayGamePost>>,
+        Awaited<ReturnType<typeof registerUserApiPlayerRegistrationPost>>,
         TError,
-        {data: CreateGameRequest},
+        {data: RegistrationRequest},
         TContext
       > => {
-      return useMutation(getCreateGameApiPlayGamePostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Return run metadata, form schemas, and current player assignment state.
- * @summary Run Setup
- */
-export type runSetupApiRunSetupGetResponse200 = {
-  data: ExperimentSetupResponse
-  status: 200
-}
-
-export type runSetupApiRunSetupGetResponseSuccess = (runSetupApiRunSetupGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type runSetupApiRunSetupGetResponse = (runSetupApiRunSetupGetResponseSuccess)
-
-export const getRunSetupApiRunSetupGetUrl = () => {
-
-
-  
-
-  return `/api/run/setup`
-}
-
-export const runSetupApiRunSetupGet = async ( options?: RequestInit): Promise<runSetupApiRunSetupGetResponse> => {
-  
-  return httpClient<runSetupApiRunSetupGetResponse>(getRunSetupApiRunSetupGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getRunSetupApiRunSetupGetQueryKey = () => {
-    return [
-    `/api/run/setup`
-    ] as const;
-    }
-
-    
-export const getRunSetupApiRunSetupGetQueryOptions = <TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getRunSetupApiRunSetupGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>> = ({ signal }) => runSetupApiRunSetupGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type RunSetupApiRunSetupGetQueryResult = NonNullable<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>>
-export type RunSetupApiRunSetupGetQueryError = unknown
-
-
-export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>,
-          TError,
-          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>,
-          TError,
-          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Run Setup
- */
-
-export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getRunSetupApiRunSetupGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Store responses for one pending run form group.
- * @summary Submit Run Form Group
- */
-export type submitRunFormGroupApiRunFormsSubmitPostResponse200 = {
-  data: ExperimentFormSubmitResponse
-  status: 200
-}
-
-export type submitRunFormGroupApiRunFormsSubmitPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type submitRunFormGroupApiRunFormsSubmitPostResponseSuccess = (submitRunFormGroupApiRunFormsSubmitPostResponse200) & {
-  headers: Headers;
-};
-export type submitRunFormGroupApiRunFormsSubmitPostResponseError = (submitRunFormGroupApiRunFormsSubmitPostResponse422) & {
-  headers: Headers;
-};
-
-export type submitRunFormGroupApiRunFormsSubmitPostResponse = (submitRunFormGroupApiRunFormsSubmitPostResponseSuccess | submitRunFormGroupApiRunFormsSubmitPostResponseError)
-
-export const getSubmitRunFormGroupApiRunFormsSubmitPostUrl = () => {
-
-
-  
-
-  return `/api/run/forms/submit`
-}
-
-export const submitRunFormGroupApiRunFormsSubmitPost = async (experimentFormSubmitRequest: ExperimentFormSubmitRequest, options?: RequestInit): Promise<submitRunFormGroupApiRunFormsSubmitPostResponse> => {
-  
-  return httpClient<submitRunFormGroupApiRunFormsSubmitPostResponse>(getSubmitRunFormGroupApiRunFormsSubmitPostUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      experimentFormSubmitRequest,)
-  }
-);}
-  
-
-
-
-export const getSubmitRunFormGroupApiRunFormsSubmitPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: ExperimentFormSubmitRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: ExperimentFormSubmitRequest}, TContext> => {
-
-const mutationKey = ['submitRunFormGroupApiRunFormsSubmitPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, {data: ExperimentFormSubmitRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  submitRunFormGroupApiRunFormsSubmitPost(data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>>
-    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationBody = ExperimentFormSubmitRequest
-    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationError = HTTPValidationError
-
-    /**
- * @summary Submit Run Form Group
- */
-export const useSubmitRunFormGroupApiRunFormsSubmitPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: ExperimentFormSubmitRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>,
-        TError,
-        {data: ExperimentFormSubmitRequest},
-        TContext
-      > => {
-      return useMutation(getSubmitRunFormGroupApiRunFormsSubmitPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Create or resume a session for one run assignment.
- * @summary Create Run Session
- */
-export type createRunSessionApiRunSessionsPostResponse200 = {
-  data: CreateGameResponse
-  status: 200
-}
-
-export type createRunSessionApiRunSessionsPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type createRunSessionApiRunSessionsPostResponseSuccess = (createRunSessionApiRunSessionsPostResponse200) & {
-  headers: Headers;
-};
-export type createRunSessionApiRunSessionsPostResponseError = (createRunSessionApiRunSessionsPostResponse422) & {
-  headers: Headers;
-};
-
-export type createRunSessionApiRunSessionsPostResponse = (createRunSessionApiRunSessionsPostResponseSuccess | createRunSessionApiRunSessionsPostResponseError)
-
-export const getCreateRunSessionApiRunSessionsPostUrl = () => {
-
-
-  
-
-  return `/api/run/sessions`
-}
-
-export const createRunSessionApiRunSessionsPost = async (experimentSessionRequest: ExperimentSessionRequest, options?: RequestInit): Promise<createRunSessionApiRunSessionsPostResponse> => {
-  
-  return httpClient<createRunSessionApiRunSessionsPostResponse>(getCreateRunSessionApiRunSessionsPostUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      experimentSessionRequest,)
-  }
-);}
-  
-
-
-
-export const getCreateRunSessionApiRunSessionsPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: ExperimentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: ExperimentSessionRequest}, TContext> => {
-
-const mutationKey = ['createRunSessionApiRunSessionsPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, {data: ExperimentSessionRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createRunSessionApiRunSessionsPost(data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateRunSessionApiRunSessionsPostMutationResult = NonNullable<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>>
-    export type CreateRunSessionApiRunSessionsPostMutationBody = ExperimentSessionRequest
-    export type CreateRunSessionApiRunSessionsPostMutationError = HTTPValidationError
-
-    /**
- * @summary Create Run Session
- */
-export const useCreateRunSessionApiRunSessionsPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: ExperimentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>,
-        TError,
-        {data: ExperimentSessionRequest},
-        TContext
-      > => {
-      return useMutation(getCreateRunSessionApiRunSessionsPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Return the current finite progress for the run.
- * @summary Run Progress
- */
-export type runProgressApiRunProgressGetResponse200 = {
-  data: ExperimentProgressResponse
-  status: 200
-}
-
-export type runProgressApiRunProgressGetResponseSuccess = (runProgressApiRunProgressGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type runProgressApiRunProgressGetResponse = (runProgressApiRunProgressGetResponseSuccess)
-
-export const getRunProgressApiRunProgressGetUrl = () => {
-
-
-  
-
-  return `/api/run/progress`
-}
-
-export const runProgressApiRunProgressGet = async ( options?: RequestInit): Promise<runProgressApiRunProgressGetResponse> => {
-  
-  return httpClient<runProgressApiRunProgressGetResponse>(getRunProgressApiRunProgressGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getRunProgressApiRunProgressGetQueryKey = () => {
-    return [
-    `/api/run/progress`
-    ] as const;
-    }
-
-    
-export const getRunProgressApiRunProgressGetQueryOptions = <TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getRunProgressApiRunProgressGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>> = ({ signal }) => runProgressApiRunProgressGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type RunProgressApiRunProgressGetQueryResult = NonNullable<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>>
-export type RunProgressApiRunProgressGetQueryError = unknown
-
-
-export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>,
-          TError,
-          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>,
-          TError,
-          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Run Progress
- */
-
-export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getRunProgressApiRunProgressGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Return eligible game/PC/NPC triplets for the authenticated player.
- * @summary Get Eligible Options
- */
-export type getEligibleOptionsApiRunEligibleOptionsGetResponse200 = {
-  data: EligibleAssignmentOptionsResponse
-  status: 200
-}
-
-export type getEligibleOptionsApiRunEligibleOptionsGetResponseSuccess = (getEligibleOptionsApiRunEligibleOptionsGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type getEligibleOptionsApiRunEligibleOptionsGetResponse = (getEligibleOptionsApiRunEligibleOptionsGetResponseSuccess)
-
-export const getGetEligibleOptionsApiRunEligibleOptionsGetUrl = () => {
-
-
-  
-
-  return `/api/run/eligible-options`
-}
-
-export const getEligibleOptionsApiRunEligibleOptionsGet = async ( options?: RequestInit): Promise<getEligibleOptionsApiRunEligibleOptionsGetResponse> => {
-  
-  return httpClient<getEligibleOptionsApiRunEligibleOptionsGetResponse>(getGetEligibleOptionsApiRunEligibleOptionsGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getGetEligibleOptionsApiRunEligibleOptionsGetQueryKey = () => {
-    return [
-    `/api/run/eligible-options`
-    ] as const;
-    }
-
-    
-export const getGetEligibleOptionsApiRunEligibleOptionsGetQueryOptions = <TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetEligibleOptionsApiRunEligibleOptionsGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>> = ({ signal }) => getEligibleOptionsApiRunEligibleOptionsGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetEligibleOptionsApiRunEligibleOptionsGetQueryResult = NonNullable<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>>
-export type GetEligibleOptionsApiRunEligibleOptionsGetQueryError = unknown
-
-
-export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>,
-          TError,
-          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>,
-          TError,
-          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get Eligible Options
- */
-
-export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetEligibleOptionsApiRunEligibleOptionsGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Create an assignment for the authenticated player based on their explicit triplet selection.
- * @summary Select Assignment
- */
-export type selectAssignmentApiRunAssignmentsSelectPostResponse200 = {
-  data: ExperimentAssignmentSummary
-  status: 200
-}
-
-export type selectAssignmentApiRunAssignmentsSelectPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type selectAssignmentApiRunAssignmentsSelectPostResponseSuccess = (selectAssignmentApiRunAssignmentsSelectPostResponse200) & {
-  headers: Headers;
-};
-export type selectAssignmentApiRunAssignmentsSelectPostResponseError = (selectAssignmentApiRunAssignmentsSelectPostResponse422) & {
-  headers: Headers;
-};
-
-export type selectAssignmentApiRunAssignmentsSelectPostResponse = (selectAssignmentApiRunAssignmentsSelectPostResponseSuccess | selectAssignmentApiRunAssignmentsSelectPostResponseError)
-
-export const getSelectAssignmentApiRunAssignmentsSelectPostUrl = () => {
-
-
-  
-
-  return `/api/run/assignments/select`
-}
-
-export const selectAssignmentApiRunAssignmentsSelectPost = async (selectAssignmentRequest: SelectAssignmentRequest, options?: RequestInit): Promise<selectAssignmentApiRunAssignmentsSelectPostResponse> => {
-  
-  return httpClient<selectAssignmentApiRunAssignmentsSelectPostResponse>(getSelectAssignmentApiRunAssignmentsSelectPostUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      selectAssignmentRequest,)
-  }
-);}
-  
-
-
-
-export const getSelectAssignmentApiRunAssignmentsSelectPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext> => {
-
-const mutationKey = ['selectAssignmentApiRunAssignmentsSelectPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, {data: SelectAssignmentRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  selectAssignmentApiRunAssignmentsSelectPost(data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SelectAssignmentApiRunAssignmentsSelectPostMutationResult = NonNullable<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>>
-    export type SelectAssignmentApiRunAssignmentsSelectPostMutationBody = SelectAssignmentRequest
-    export type SelectAssignmentApiRunAssignmentsSelectPostMutationError = HTTPValidationError
-
-    /**
- * @summary Select Assignment
- */
-export const useSelectAssignmentApiRunAssignmentsSelectPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>,
-        TError,
-        {data: SelectAssignmentRequest},
-        TContext
-      > => {
-      return useMutation(getSelectAssignmentApiRunAssignmentsSelectPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Return the current aggregate status for the run.
- * @summary Run Status
- */
-export type runStatusApiRunStatusGetResponse200 = {
-  data: ExperimentStatusResponse
-  status: 200
-}
-
-export type runStatusApiRunStatusGetResponseSuccess = (runStatusApiRunStatusGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type runStatusApiRunStatusGetResponse = (runStatusApiRunStatusGetResponseSuccess)
-
-export const getRunStatusApiRunStatusGetUrl = () => {
-
-
-  
-
-  return `/api/run/status`
-}
-
-export const runStatusApiRunStatusGet = async ( options?: RequestInit): Promise<runStatusApiRunStatusGetResponse> => {
-  
-  return httpClient<runStatusApiRunStatusGetResponse>(getRunStatusApiRunStatusGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getRunStatusApiRunStatusGetQueryKey = () => {
-    return [
-    `/api/run/status`
-    ] as const;
-    }
-
-    
-export const getRunStatusApiRunStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getRunStatusApiRunStatusGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>> = ({ signal }) => runStatusApiRunStatusGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type RunStatusApiRunStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>>
-export type RunStatusApiRunStatusGetQueryError = unknown
-
-
-export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>,
-          TError,
-          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>,
-          TError,
-          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Run Status
- */
-
-export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getRunStatusApiRunStatusGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * List available games.
- * @summary List Games Endpoint
- */
-export type listGamesEndpointApiGamesListGetResponse200 = {
-  data: GamesListResponse
-  status: 200
-}
-
-export type listGamesEndpointApiGamesListGetResponseSuccess = (listGamesEndpointApiGamesListGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type listGamesEndpointApiGamesListGetResponse = (listGamesEndpointApiGamesListGetResponseSuccess)
-
-export const getListGamesEndpointApiGamesListGetUrl = () => {
-
-
-  
-
-  return `/api/games/list`
-}
-
-export const listGamesEndpointApiGamesListGet = async ( options?: RequestInit): Promise<listGamesEndpointApiGamesListGetResponse> => {
-  
-  return httpClient<listGamesEndpointApiGamesListGetResponse>(getListGamesEndpointApiGamesListGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getListGamesEndpointApiGamesListGetQueryKey = () => {
-    return [
-    `/api/games/list`
-    ] as const;
-    }
-
-    
-export const getListGamesEndpointApiGamesListGetQueryOptions = <TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListGamesEndpointApiGamesListGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>> = ({ signal }) => listGamesEndpointApiGamesListGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListGamesEndpointApiGamesListGetQueryResult = NonNullable<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>>
-export type ListGamesEndpointApiGamesListGetQueryError = unknown
-
-
-export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>,
-          TError,
-          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>,
-          TError,
-          Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List Games Endpoint
- */
-
-export function useListGamesEndpointApiGamesListGet<TData = Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listGamesEndpointApiGamesListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListGamesEndpointApiGamesListGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * List available characters.
- * @summary List Characters Endpoint
- */
-export type listCharactersEndpointApiCharactersListGetResponse200 = {
-  data: CharactersListResponse
-  status: 200
-}
-
-export type listCharactersEndpointApiCharactersListGetResponseSuccess = (listCharactersEndpointApiCharactersListGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type listCharactersEndpointApiCharactersListGetResponse = (listCharactersEndpointApiCharactersListGetResponseSuccess)
-
-export const getListCharactersEndpointApiCharactersListGetUrl = () => {
-
-
-  
-
-  return `/api/characters/list`
-}
-
-export const listCharactersEndpointApiCharactersListGet = async ( options?: RequestInit): Promise<listCharactersEndpointApiCharactersListGetResponse> => {
-  
-  return httpClient<listCharactersEndpointApiCharactersListGetResponse>(getListCharactersEndpointApiCharactersListGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getListCharactersEndpointApiCharactersListGetQueryKey = () => {
-    return [
-    `/api/characters/list`
-    ] as const;
-    }
-
-    
-export const getListCharactersEndpointApiCharactersListGetQueryOptions = <TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListCharactersEndpointApiCharactersListGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>> = ({ signal }) => listCharactersEndpointApiCharactersListGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListCharactersEndpointApiCharactersListGetQueryResult = NonNullable<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>>
-export type ListCharactersEndpointApiCharactersListGetQueryError = unknown
-
-
-export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>,
-          TError,
-          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>,
-          TError,
-          Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List Characters Endpoint
- */
-
-export function useListCharactersEndpointApiCharactersListGet<TData = Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCharactersEndpointApiCharactersListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListCharactersEndpointApiCharactersListGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-/**
- * Create a new character.
- * @summary Create Character
- */
-export type createCharacterApiCharactersPostResponse201 = {
-  data: UpsertCharacterResponse
-  status: 201
-}
-
-export type createCharacterApiCharactersPostResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type createCharacterApiCharactersPostResponseSuccess = (createCharacterApiCharactersPostResponse201) & {
-  headers: Headers;
-};
-export type createCharacterApiCharactersPostResponseError = (createCharacterApiCharactersPostResponse422) & {
-  headers: Headers;
-};
-
-export type createCharacterApiCharactersPostResponse = (createCharacterApiCharactersPostResponseSuccess | createCharacterApiCharactersPostResponseError)
-
-export const getCreateCharacterApiCharactersPostUrl = () => {
-
-
-  
-
-  return `/api/characters`
-}
-
-export const createCharacterApiCharactersPost = async (upsertCharacterRequest: UpsertCharacterRequest, options?: RequestInit): Promise<createCharacterApiCharactersPostResponse> => {
-  
-  return httpClient<createCharacterApiCharactersPostResponse>(getCreateCharacterApiCharactersPostUrl(),
-  {      
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      upsertCharacterRequest,)
-  }
-);}
-  
-
-
-
-export const getCreateCharacterApiCharactersPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, TError,{data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, TError,{data: UpsertCharacterRequest}, TContext> => {
-
-const mutationKey = ['createCharacterApiCharactersPost'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, {data: UpsertCharacterRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createCharacterApiCharactersPost(data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateCharacterApiCharactersPostMutationResult = NonNullable<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>>
-    export type CreateCharacterApiCharactersPostMutationBody = UpsertCharacterRequest
-    export type CreateCharacterApiCharactersPostMutationError = HTTPValidationError
-
-    /**
- * @summary Create Character
- */
-export const useCreateCharacterApiCharactersPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCharacterApiCharactersPost>>, TError,{data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof createCharacterApiCharactersPost>>,
-        TError,
-        {data: UpsertCharacterRequest},
-        TContext
-      > => {
-      return useMutation(getCreateCharacterApiCharactersPostMutationOptions(options), queryClient);
-    }
-    
-/**
- * Update an existing character.
- * @summary Update Character
- */
-export type updateCharacterApiCharactersCharacterIdPutResponse200 = {
-  data: UpsertCharacterResponse
-  status: 200
-}
-
-export type updateCharacterApiCharactersCharacterIdPutResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type updateCharacterApiCharactersCharacterIdPutResponseSuccess = (updateCharacterApiCharactersCharacterIdPutResponse200) & {
-  headers: Headers;
-};
-export type updateCharacterApiCharactersCharacterIdPutResponseError = (updateCharacterApiCharactersCharacterIdPutResponse422) & {
-  headers: Headers;
-};
-
-export type updateCharacterApiCharactersCharacterIdPutResponse = (updateCharacterApiCharactersCharacterIdPutResponseSuccess | updateCharacterApiCharactersCharacterIdPutResponseError)
-
-export const getUpdateCharacterApiCharactersCharacterIdPutUrl = (characterId: string,) => {
-
-
-  
-
-  return `/api/characters/${characterId}`
-}
-
-export const updateCharacterApiCharactersCharacterIdPut = async (characterId: string,
-    upsertCharacterRequest: UpsertCharacterRequest, options?: RequestInit): Promise<updateCharacterApiCharactersCharacterIdPutResponse> => {
-  
-  return httpClient<updateCharacterApiCharactersCharacterIdPutResponse>(getUpdateCharacterApiCharactersCharacterIdPutUrl(characterId),
-  {      
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      upsertCharacterRequest,)
-  }
-);}
-  
-
-
-
-export const getUpdateCharacterApiCharactersCharacterIdPutMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, TError,{characterId: string;data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, TError,{characterId: string;data: UpsertCharacterRequest}, TContext> => {
-
-const mutationKey = ['updateCharacterApiCharactersCharacterIdPut'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, {characterId: string;data: UpsertCharacterRequest}> = (props) => {
-          const {characterId,data} = props ?? {};
-
-          return  updateCharacterApiCharactersCharacterIdPut(characterId,data,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpdateCharacterApiCharactersCharacterIdPutMutationResult = NonNullable<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>>
-    export type UpdateCharacterApiCharactersCharacterIdPutMutationBody = UpsertCharacterRequest
-    export type UpdateCharacterApiCharactersCharacterIdPutMutationError = HTTPValidationError
-
-    /**
- * @summary Update Character
- */
-export const useUpdateCharacterApiCharactersCharacterIdPut = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>, TError,{characterId: string;data: UpsertCharacterRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof updateCharacterApiCharactersCharacterIdPut>>,
-        TError,
-        {characterId: string;data: UpsertCharacterRequest},
-        TContext
-      > => {
-      return useMutation(getUpdateCharacterApiCharactersCharacterIdPutMutationOptions(options), queryClient);
-    }
-    
-/**
- * Delete a character by id.
- * @summary Delete Character
- */
-export type deleteCharacterApiCharactersCharacterIdDeleteResponse200 = {
-  data: DeleteCharacterResponse
-  status: 200
-}
-
-export type deleteCharacterApiCharactersCharacterIdDeleteResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type deleteCharacterApiCharactersCharacterIdDeleteResponseSuccess = (deleteCharacterApiCharactersCharacterIdDeleteResponse200) & {
-  headers: Headers;
-};
-export type deleteCharacterApiCharactersCharacterIdDeleteResponseError = (deleteCharacterApiCharactersCharacterIdDeleteResponse422) & {
-  headers: Headers;
-};
-
-export type deleteCharacterApiCharactersCharacterIdDeleteResponse = (deleteCharacterApiCharactersCharacterIdDeleteResponseSuccess | deleteCharacterApiCharactersCharacterIdDeleteResponseError)
-
-export const getDeleteCharacterApiCharactersCharacterIdDeleteUrl = (characterId: string,) => {
-
-
-  
-
-  return `/api/characters/${characterId}`
-}
-
-export const deleteCharacterApiCharactersCharacterIdDelete = async (characterId: string, options?: RequestInit): Promise<deleteCharacterApiCharactersCharacterIdDeleteResponse> => {
-  
-  return httpClient<deleteCharacterApiCharactersCharacterIdDeleteResponse>(getDeleteCharacterApiCharactersCharacterIdDeleteUrl(characterId),
-  {      
-    ...options,
-    method: 'DELETE'
-    
-    
-  }
-);}
-  
-
-
-
-export const getDeleteCharacterApiCharactersCharacterIdDeleteMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, TError,{characterId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, TError,{characterId: string}, TContext> => {
-
-const mutationKey = ['deleteCharacterApiCharactersCharacterIdDelete'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-      
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, {characterId: string}> = (props) => {
-          const {characterId} = props ?? {};
-
-          return  deleteCharacterApiCharactersCharacterIdDelete(characterId,requestOptions)
-        }
-
-
-
-        
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DeleteCharacterApiCharactersCharacterIdDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>>
-    
-    export type DeleteCharacterApiCharactersCharacterIdDeleteMutationError = HTTPValidationError
-
-    /**
- * @summary Delete Character
- */
-export const useDeleteCharacterApiCharactersCharacterIdDelete = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>, TError,{characterId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteCharacterApiCharactersCharacterIdDelete>>,
-        TError,
-        {characterId: string},
-        TContext
-      > => {
-      return useMutation(getDeleteCharacterApiCharactersCharacterIdDeleteMutationOptions(options), queryClient);
+      return useMutation(getRegisterUserApiPlayerRegistrationPostMutationOptions(options), queryClient);
     }
     
 /**
@@ -2470,118 +1121,6 @@ export const useBootstrapRemoteDeploymentApiRemoteBootstrapPost = <TError = unkn
       return useMutation(getBootstrapRemoteDeploymentApiRemoteBootstrapPostMutationOptions(options), queryClient);
     }
     
-/**
- * Return a public status summary for remote-managed experiment deployments.
- * @summary Remote Status
- */
-export type remoteStatusApiRemoteStatusGetResponse200 = {
-  data: RemoteStatusResponse
-  status: 200
-}
-
-export type remoteStatusApiRemoteStatusGetResponseSuccess = (remoteStatusApiRemoteStatusGetResponse200) & {
-  headers: Headers;
-};
-;
-
-export type remoteStatusApiRemoteStatusGetResponse = (remoteStatusApiRemoteStatusGetResponseSuccess)
-
-export const getRemoteStatusApiRemoteStatusGetUrl = () => {
-
-
-  
-
-  return `/api/remote/status`
-}
-
-export const remoteStatusApiRemoteStatusGet = async ( options?: RequestInit): Promise<remoteStatusApiRemoteStatusGetResponse> => {
-  
-  return httpClient<remoteStatusApiRemoteStatusGetResponse>(getRemoteStatusApiRemoteStatusGetUrl(),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getRemoteStatusApiRemoteStatusGetQueryKey = () => {
-    return [
-    `/api/remote/status`
-    ] as const;
-    }
-
-    
-export const getRemoteStatusApiRemoteStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getRemoteStatusApiRemoteStatusGetQueryKey();
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>> = ({ signal }) => remoteStatusApiRemoteStatusGet({ signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type RemoteStatusApiRemoteStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>>
-export type RemoteStatusApiRemoteStatusGetQueryError = unknown
-
-
-export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>,
-          TError,
-          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>,
-          TError,
-          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Remote Status
- */
-
-export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getRemoteStatusApiRemoteStatusGetQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
 /**
  * Stream an archive of the current database state to the remote admin.
  * @summary Export Remote Database
@@ -2709,6 +1248,839 @@ export function useExportRemoteDatabaseApiRemoteDbExportGet<TData = Awaited<Retu
 
 
 /**
+ * Return a public status summary for remote-managed run deployments.
+ * @summary Remote Status
+ */
+export type remoteStatusApiRemoteStatusGetResponse200 = {
+  data: RemoteStatusResponse
+  status: 200
+}
+
+export type remoteStatusApiRemoteStatusGetResponseSuccess = (remoteStatusApiRemoteStatusGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type remoteStatusApiRemoteStatusGetResponse = (remoteStatusApiRemoteStatusGetResponseSuccess)
+
+export const getRemoteStatusApiRemoteStatusGetUrl = () => {
+
+
+  
+
+  return `/api/remote/status`
+}
+
+export const remoteStatusApiRemoteStatusGet = async ( options?: RequestInit): Promise<remoteStatusApiRemoteStatusGetResponse> => {
+  
+  return httpClient<remoteStatusApiRemoteStatusGetResponse>(getRemoteStatusApiRemoteStatusGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRemoteStatusApiRemoteStatusGetQueryKey = () => {
+    return [
+    `/api/remote/status`
+    ] as const;
+    }
+
+    
+export const getRemoteStatusApiRemoteStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRemoteStatusApiRemoteStatusGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>> = ({ signal }) => remoteStatusApiRemoteStatusGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RemoteStatusApiRemoteStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>>
+export type RemoteStatusApiRemoteStatusGetQueryError = unknown
+
+
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Remote Status
+ */
+
+export function useRemoteStatusApiRemoteStatusGet<TData = Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof remoteStatusApiRemoteStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRemoteStatusApiRemoteStatusGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Create an assignment for the authenticated player based on their explicit triplet selection.
+ * @summary Select Assignment
+ */
+export type selectAssignmentApiRunAssignmentsSelectPostResponse200 = {
+  data: AssignmentSummary
+  status: 200
+}
+
+export type selectAssignmentApiRunAssignmentsSelectPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type selectAssignmentApiRunAssignmentsSelectPostResponseSuccess = (selectAssignmentApiRunAssignmentsSelectPostResponse200) & {
+  headers: Headers;
+};
+export type selectAssignmentApiRunAssignmentsSelectPostResponseError = (selectAssignmentApiRunAssignmentsSelectPostResponse422) & {
+  headers: Headers;
+};
+
+export type selectAssignmentApiRunAssignmentsSelectPostResponse = (selectAssignmentApiRunAssignmentsSelectPostResponseSuccess | selectAssignmentApiRunAssignmentsSelectPostResponseError)
+
+export const getSelectAssignmentApiRunAssignmentsSelectPostUrl = () => {
+
+
+  
+
+  return `/api/run/assignments/select`
+}
+
+export const selectAssignmentApiRunAssignmentsSelectPost = async (selectAssignmentRequest: SelectAssignmentRequest, options?: RequestInit): Promise<selectAssignmentApiRunAssignmentsSelectPostResponse> => {
+  
+  return httpClient<selectAssignmentApiRunAssignmentsSelectPostResponse>(getSelectAssignmentApiRunAssignmentsSelectPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      selectAssignmentRequest,)
+  }
+);}
+  
+
+
+
+export const getSelectAssignmentApiRunAssignmentsSelectPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext> => {
+
+const mutationKey = ['selectAssignmentApiRunAssignmentsSelectPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, {data: SelectAssignmentRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  selectAssignmentApiRunAssignmentsSelectPost(data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelectAssignmentApiRunAssignmentsSelectPostMutationResult = NonNullable<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>>
+    export type SelectAssignmentApiRunAssignmentsSelectPostMutationBody = SelectAssignmentRequest
+    export type SelectAssignmentApiRunAssignmentsSelectPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Select Assignment
+ */
+export const useSelectAssignmentApiRunAssignmentsSelectPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>, TError,{data: SelectAssignmentRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof selectAssignmentApiRunAssignmentsSelectPost>>,
+        TError,
+        {data: SelectAssignmentRequest},
+        TContext
+      > => {
+      return useMutation(getSelectAssignmentApiRunAssignmentsSelectPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Return eligible game/PC/NPC triplets for the authenticated player.
+ * @summary Get Eligible Options
+ */
+export type getEligibleOptionsApiRunEligibleOptionsGetResponse200 = {
+  data: EligibleAssignmentOptionsResponse
+  status: 200
+}
+
+export type getEligibleOptionsApiRunEligibleOptionsGetResponseSuccess = (getEligibleOptionsApiRunEligibleOptionsGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getEligibleOptionsApiRunEligibleOptionsGetResponse = (getEligibleOptionsApiRunEligibleOptionsGetResponseSuccess)
+
+export const getGetEligibleOptionsApiRunEligibleOptionsGetUrl = () => {
+
+
+  
+
+  return `/api/run/eligible-options`
+}
+
+export const getEligibleOptionsApiRunEligibleOptionsGet = async ( options?: RequestInit): Promise<getEligibleOptionsApiRunEligibleOptionsGetResponse> => {
+  
+  return httpClient<getEligibleOptionsApiRunEligibleOptionsGetResponse>(getGetEligibleOptionsApiRunEligibleOptionsGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getGetEligibleOptionsApiRunEligibleOptionsGetQueryKey = () => {
+    return [
+    `/api/run/eligible-options`
+    ] as const;
+    }
+
+    
+export const getGetEligibleOptionsApiRunEligibleOptionsGetQueryOptions = <TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEligibleOptionsApiRunEligibleOptionsGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>> = ({ signal }) => getEligibleOptionsApiRunEligibleOptionsGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetEligibleOptionsApiRunEligibleOptionsGetQueryResult = NonNullable<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>>
+export type GetEligibleOptionsApiRunEligibleOptionsGetQueryError = unknown
+
+
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>,
+          TError,
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>,
+          TError,
+          Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Eligible Options
+ */
+
+export function useGetEligibleOptionsApiRunEligibleOptionsGet<TData = Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEligibleOptionsApiRunEligibleOptionsGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetEligibleOptionsApiRunEligibleOptionsGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Store responses for one pending run form group.
+ * @summary Submit Run Form Group
+ */
+export type submitRunFormGroupApiRunFormsSubmitPostResponse200 = {
+  data: FormSubmitResponse
+  status: 200
+}
+
+export type submitRunFormGroupApiRunFormsSubmitPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type submitRunFormGroupApiRunFormsSubmitPostResponseSuccess = (submitRunFormGroupApiRunFormsSubmitPostResponse200) & {
+  headers: Headers;
+};
+export type submitRunFormGroupApiRunFormsSubmitPostResponseError = (submitRunFormGroupApiRunFormsSubmitPostResponse422) & {
+  headers: Headers;
+};
+
+export type submitRunFormGroupApiRunFormsSubmitPostResponse = (submitRunFormGroupApiRunFormsSubmitPostResponseSuccess | submitRunFormGroupApiRunFormsSubmitPostResponseError)
+
+export const getSubmitRunFormGroupApiRunFormsSubmitPostUrl = () => {
+
+
+  
+
+  return `/api/run/forms/submit`
+}
+
+export const submitRunFormGroupApiRunFormsSubmitPost = async (formSubmitRequest: FormSubmitRequest, options?: RequestInit): Promise<submitRunFormGroupApiRunFormsSubmitPostResponse> => {
+  
+  return httpClient<submitRunFormGroupApiRunFormsSubmitPostResponse>(getSubmitRunFormGroupApiRunFormsSubmitPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      formSubmitRequest,)
+  }
+);}
+  
+
+
+
+export const getSubmitRunFormGroupApiRunFormsSubmitPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: FormSubmitRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: FormSubmitRequest}, TContext> => {
+
+const mutationKey = ['submitRunFormGroupApiRunFormsSubmitPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, {data: FormSubmitRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitRunFormGroupApiRunFormsSubmitPost(data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>>
+    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationBody = FormSubmitRequest
+    export type SubmitRunFormGroupApiRunFormsSubmitPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Submit Run Form Group
+ */
+export const useSubmitRunFormGroupApiRunFormsSubmitPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>, TError,{data: FormSubmitRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitRunFormGroupApiRunFormsSubmitPost>>,
+        TError,
+        {data: FormSubmitRequest},
+        TContext
+      > => {
+      return useMutation(getSubmitRunFormGroupApiRunFormsSubmitPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Return the current finite progress for the run.
+ * @summary Run Progress
+ */
+export type runProgressApiRunProgressGetResponse200 = {
+  data: ProgressResponse
+  status: 200
+}
+
+export type runProgressApiRunProgressGetResponseSuccess = (runProgressApiRunProgressGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type runProgressApiRunProgressGetResponse = (runProgressApiRunProgressGetResponseSuccess)
+
+export const getRunProgressApiRunProgressGetUrl = () => {
+
+
+  
+
+  return `/api/run/progress`
+}
+
+export const runProgressApiRunProgressGet = async ( options?: RequestInit): Promise<runProgressApiRunProgressGetResponse> => {
+  
+  return httpClient<runProgressApiRunProgressGetResponse>(getRunProgressApiRunProgressGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRunProgressApiRunProgressGetQueryKey = () => {
+    return [
+    `/api/run/progress`
+    ] as const;
+    }
+
+    
+export const getRunProgressApiRunProgressGetQueryOptions = <TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRunProgressApiRunProgressGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>> = ({ signal }) => runProgressApiRunProgressGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RunProgressApiRunProgressGetQueryResult = NonNullable<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>>
+export type RunProgressApiRunProgressGetQueryError = unknown
+
+
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>,
+          TError,
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>,
+          TError,
+          Awaited<ReturnType<typeof runProgressApiRunProgressGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Run Progress
+ */
+
+export function useRunProgressApiRunProgressGet<TData = Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runProgressApiRunProgressGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRunProgressApiRunProgressGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Create or resume a session for one run assignment.
+ * @summary Create Run Session
+ */
+export type createRunSessionApiRunSessionsPostResponse200 = {
+  data: CreateGameResponse
+  status: 200
+}
+
+export type createRunSessionApiRunSessionsPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type createRunSessionApiRunSessionsPostResponseSuccess = (createRunSessionApiRunSessionsPostResponse200) & {
+  headers: Headers;
+};
+export type createRunSessionApiRunSessionsPostResponseError = (createRunSessionApiRunSessionsPostResponse422) & {
+  headers: Headers;
+};
+
+export type createRunSessionApiRunSessionsPostResponse = (createRunSessionApiRunSessionsPostResponseSuccess | createRunSessionApiRunSessionsPostResponseError)
+
+export const getCreateRunSessionApiRunSessionsPostUrl = () => {
+
+
+  
+
+  return `/api/run/sessions`
+}
+
+export const createRunSessionApiRunSessionsPost = async (assignmentSessionRequest: AssignmentSessionRequest, options?: RequestInit): Promise<createRunSessionApiRunSessionsPostResponse> => {
+  
+  return httpClient<createRunSessionApiRunSessionsPostResponse>(getCreateRunSessionApiRunSessionsPostUrl(),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      assignmentSessionRequest,)
+  }
+);}
+  
+
+
+
+export const getCreateRunSessionApiRunSessionsPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: AssignmentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: AssignmentSessionRequest}, TContext> => {
+
+const mutationKey = ['createRunSessionApiRunSessionsPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, {data: AssignmentSessionRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRunSessionApiRunSessionsPost(data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRunSessionApiRunSessionsPostMutationResult = NonNullable<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>>
+    export type CreateRunSessionApiRunSessionsPostMutationBody = AssignmentSessionRequest
+    export type CreateRunSessionApiRunSessionsPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Create Run Session
+ */
+export const useCreateRunSessionApiRunSessionsPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>, TError,{data: AssignmentSessionRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createRunSessionApiRunSessionsPost>>,
+        TError,
+        {data: AssignmentSessionRequest},
+        TContext
+      > => {
+      return useMutation(getCreateRunSessionApiRunSessionsPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Return run metadata, form schemas, and current player assignment state.
+ * @summary Run Setup
+ */
+export type runSetupApiRunSetupGetResponse200 = {
+  data: SetupResponse
+  status: 200
+}
+
+export type runSetupApiRunSetupGetResponseSuccess = (runSetupApiRunSetupGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type runSetupApiRunSetupGetResponse = (runSetupApiRunSetupGetResponseSuccess)
+
+export const getRunSetupApiRunSetupGetUrl = () => {
+
+
+  
+
+  return `/api/run/setup`
+}
+
+export const runSetupApiRunSetupGet = async ( options?: RequestInit): Promise<runSetupApiRunSetupGetResponse> => {
+  
+  return httpClient<runSetupApiRunSetupGetResponse>(getRunSetupApiRunSetupGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRunSetupApiRunSetupGetQueryKey = () => {
+    return [
+    `/api/run/setup`
+    ] as const;
+    }
+
+    
+export const getRunSetupApiRunSetupGetQueryOptions = <TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRunSetupApiRunSetupGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>> = ({ signal }) => runSetupApiRunSetupGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RunSetupApiRunSetupGetQueryResult = NonNullable<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>>
+export type RunSetupApiRunSetupGetQueryError = unknown
+
+
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>,
+          TError,
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>,
+          TError,
+          Awaited<ReturnType<typeof runSetupApiRunSetupGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Run Setup
+ */
+
+export function useRunSetupApiRunSetupGet<TData = Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runSetupApiRunSetupGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRunSetupApiRunSetupGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Return the current aggregate status for the run.
+ * @summary Run Status
+ */
+export type runStatusApiRunStatusGetResponse200 = {
+  data: RunStatusResponse
+  status: 200
+}
+
+export type runStatusApiRunStatusGetResponseSuccess = (runStatusApiRunStatusGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type runStatusApiRunStatusGetResponse = (runStatusApiRunStatusGetResponseSuccess)
+
+export const getRunStatusApiRunStatusGetUrl = () => {
+
+
+  
+
+  return `/api/run/status`
+}
+
+export const runStatusApiRunStatusGet = async ( options?: RequestInit): Promise<runStatusApiRunStatusGetResponse> => {
+  
+  return httpClient<runStatusApiRunStatusGetResponse>(getRunStatusApiRunStatusGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRunStatusApiRunStatusGetQueryKey = () => {
+    return [
+    `/api/run/status`
+    ] as const;
+    }
+
+    
+export const getRunStatusApiRunStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRunStatusApiRunStatusGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>> = ({ signal }) => runStatusApiRunStatusGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RunStatusApiRunStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>>
+export type RunStatusApiRunStatusGetQueryError = unknown
+
+
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof runStatusApiRunStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Run Status
+ */
+
+export function useRunStatusApiRunStatusGet<TData = Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof runStatusApiRunStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRunStatusApiRunStatusGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
  * Expose server capabilities so clients can adapt to the active mode.
  * @summary Server Config
  */
@@ -2810,6 +2182,634 @@ export function useServerConfigApiServerConfigGet<TData = Awaited<ReturnType<typ
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getServerConfigApiServerConfigGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * List active in-memory sessions for the player tied to the provided API key.
+ * @summary List Sessions
+ */
+export type listSessionsApiSessionsListGetResponse200 = {
+  data: SessionsListResponse
+  status: 200
+}
+
+export type listSessionsApiSessionsListGetResponseSuccess = (listSessionsApiSessionsListGetResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listSessionsApiSessionsListGetResponse = (listSessionsApiSessionsListGetResponseSuccess)
+
+export const getListSessionsApiSessionsListGetUrl = () => {
+
+
+  
+
+  return `/api/sessions/list`
+}
+
+export const listSessionsApiSessionsListGet = async ( options?: RequestInit): Promise<listSessionsApiSessionsListGetResponse> => {
+  
+  return httpClient<listSessionsApiSessionsListGetResponse>(getListSessionsApiSessionsListGetUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getListSessionsApiSessionsListGetQueryKey = () => {
+    return [
+    `/api/sessions/list`
+    ] as const;
+    }
+
+    
+export const getListSessionsApiSessionsListGetQueryOptions = <TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSessionsApiSessionsListGetQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>> = ({ signal }) => listSessionsApiSessionsListGet({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSessionsApiSessionsListGetQueryResult = NonNullable<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>>
+export type ListSessionsApiSessionsListGetQueryError = unknown
+
+
+export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>,
+          TError,
+          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>,
+          TError,
+          Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Sessions
+ */
+
+export function useListSessionsApiSessionsListGet<TData = Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSessionsApiSessionsListGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSessionsApiSessionsListGetQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Clone a persisted paused child session from an existing root session.
+ * @summary Branch Session
+ */
+export type branchSessionApiSessionsSessionIdBranchPostResponse200 = {
+  data: BranchSessionResponse
+  status: 200
+}
+
+export type branchSessionApiSessionsSessionIdBranchPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type branchSessionApiSessionsSessionIdBranchPostResponseSuccess = (branchSessionApiSessionsSessionIdBranchPostResponse200) & {
+  headers: Headers;
+};
+export type branchSessionApiSessionsSessionIdBranchPostResponseError = (branchSessionApiSessionsSessionIdBranchPostResponse422) & {
+  headers: Headers;
+};
+
+export type branchSessionApiSessionsSessionIdBranchPostResponse = (branchSessionApiSessionsSessionIdBranchPostResponseSuccess | branchSessionApiSessionsSessionIdBranchPostResponseError)
+
+export const getBranchSessionApiSessionsSessionIdBranchPostUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/branch`
+}
+
+export const branchSessionApiSessionsSessionIdBranchPost = async (sessionId: string, options?: RequestInit): Promise<branchSessionApiSessionsSessionIdBranchPostResponse> => {
+  
+  return httpClient<branchSessionApiSessionsSessionIdBranchPostResponse>(getBranchSessionApiSessionsSessionIdBranchPostUrl(sessionId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getBranchSessionApiSessionsSessionIdBranchPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext> => {
+
+const mutationKey = ['branchSessionApiSessionsSessionIdBranchPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, {sessionId: string}> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  branchSessionApiSessionsSessionIdBranchPost(sessionId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BranchSessionApiSessionsSessionIdBranchPostMutationResult = NonNullable<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>>
+    
+    export type BranchSessionApiSessionsSessionIdBranchPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Branch Session
+ */
+export const useBranchSessionApiSessionsSessionIdBranchPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>, TError,{sessionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof branchSessionApiSessionsSessionIdBranchPost>>,
+        TError,
+        {sessionId: string},
+        TContext
+      > => {
+      return useMutation(getBranchSessionApiSessionsSessionIdBranchPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Remove feedback from one persisted NPC-message event.
+ * @summary Clear Session Event Feedback
+ */
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse200 = {
+  data: ClearSessionEventFeedbackResponse
+  status: 200
+}
+
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseSuccess = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse200) & {
+  headers: Headers;
+};
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseError = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse422) & {
+  headers: Headers;
+};
+
+export type clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse = (clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseSuccess | clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponseError)
+
+export const getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteUrl = (sessionId: string,
+    eventId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/events/${eventId}/feedback`
+}
+
+export const clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete = async (sessionId: string,
+    eventId: string, options?: RequestInit): Promise<clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse> => {
+  
+  return httpClient<clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteResponse>(getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteUrl(sessionId,eventId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+  
+
+
+
+export const getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext> => {
+
+const mutationKey = ['clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, {sessionId: string;eventId: string}> = (props) => {
+          const {sessionId,eventId} = props ?? {};
+
+          return  clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete(sessionId,eventId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>>
+    
+    export type ClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationError = HTTPValidationError
+
+    /**
+ * @summary Clear Session Event Feedback
+ */
+export const useClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>, TError,{sessionId: string;eventId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof clearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDelete>>,
+        TError,
+        {sessionId: string;eventId: string},
+        TContext
+      > => {
+      return useMutation(getClearSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackDeleteMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Store or overwrite feedback on one persisted NPC-message event.
+ * @summary Submit Session Event Feedback
+ */
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse200 = {
+  data: SubmitSessionEventFeedbackResponse
+  status: 200
+}
+
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseSuccess = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse200) & {
+  headers: Headers;
+};
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseError = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse422) & {
+  headers: Headers;
+};
+
+export type submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse = (submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseSuccess | submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponseError)
+
+export const getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostUrl = (sessionId: string,
+    eventId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/events/${eventId}/feedback`
+}
+
+export const submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost = async (sessionId: string,
+    eventId: string,
+    submitSessionEventFeedbackRequest: SubmitSessionEventFeedbackRequest, options?: RequestInit): Promise<submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse> => {
+  
+  return httpClient<submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostResponse>(getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostUrl(sessionId,eventId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      submitSessionEventFeedbackRequest,)
+  }
+);}
+  
+
+
+
+export const getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext> => {
+
+const mutationKey = ['submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, {sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}> = (props) => {
+          const {sessionId,eventId,data} = props ?? {};
+
+          return  submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost(sessionId,eventId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationResult = NonNullable<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>>
+    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationBody = SubmitSessionEventFeedbackRequest
+    export type SubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Submit Session Event Feedback
+ */
+export const useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>, TError,{sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof submitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost>>,
+        TError,
+        {sessionId: string;eventId: string;data: SubmitSessionEventFeedbackRequest},
+        TContext
+      > => {
+      return useMutation(getSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPostMutationOptions(options), queryClient);
+    }
+    
+/**
+ * Return complete persisted metadata + event stream for transcript replay.
+ * @summary Get Session Reconstruction
+ */
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse200 = {
+  data: GetSessionReconstructionApiSessionsSessionIdReconstructionGet200
+  status: 200
+}
+
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseSuccess = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse200) & {
+  headers: Headers;
+};
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseError = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse422) & {
+  headers: Headers;
+};
+
+export type getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse = (getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseSuccess | getSessionReconstructionApiSessionsSessionIdReconstructionGetResponseError)
+
+export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/reconstruction`
+}
+
+export const getSessionReconstructionApiSessionsSessionIdReconstructionGet = async (sessionId: string, options?: RequestInit): Promise<getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse> => {
+  
+  return httpClient<getSessionReconstructionApiSessionsSessionIdReconstructionGetResponse>(getGetSessionReconstructionApiSessionsSessionIdReconstructionGetUrl(sessionId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryKey = (sessionId: string,) => {
+    return [
+    `/api/sessions/${sessionId}/reconstruction`
+    ] as const;
+    }
+
+    
+export const getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryOptions = <TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryKey(sessionId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>> = ({ signal }) => getSessionReconstructionApiSessionsSessionIdReconstructionGet(sessionId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(sessionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>>
+export type GetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryError = HTTPValidationError
+
+
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Session Reconstruction
+ */
+
+export function useGetSessionReconstructionApiSessionsSessionIdReconstructionGet<TData = Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionReconstructionApiSessionsSessionIdReconstructionGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSessionReconstructionApiSessionsSessionIdReconstructionGetQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+/**
+ * Return the current status of a live session.
+
+Used by the frontend to verify a stored session_id is still paused and resumable.
+ * @summary Get Session Status
+ */
+export type getSessionStatusApiSessionsSessionIdStatusGetResponse200 = {
+  data: GetSessionStatusApiSessionsSessionIdStatusGet200
+  status: 200
+}
+
+export type getSessionStatusApiSessionsSessionIdStatusGetResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type getSessionStatusApiSessionsSessionIdStatusGetResponseSuccess = (getSessionStatusApiSessionsSessionIdStatusGetResponse200) & {
+  headers: Headers;
+};
+export type getSessionStatusApiSessionsSessionIdStatusGetResponseError = (getSessionStatusApiSessionsSessionIdStatusGetResponse422) & {
+  headers: Headers;
+};
+
+export type getSessionStatusApiSessionsSessionIdStatusGetResponse = (getSessionStatusApiSessionsSessionIdStatusGetResponseSuccess | getSessionStatusApiSessionsSessionIdStatusGetResponseError)
+
+export const getGetSessionStatusApiSessionsSessionIdStatusGetUrl = (sessionId: string,) => {
+
+
+  
+
+  return `/api/sessions/${sessionId}/status`
+}
+
+export const getSessionStatusApiSessionsSessionIdStatusGet = async (sessionId: string, options?: RequestInit): Promise<getSessionStatusApiSessionsSessionIdStatusGetResponse> => {
+  
+  return httpClient<getSessionStatusApiSessionsSessionIdStatusGetResponse>(getGetSessionStatusApiSessionsSessionIdStatusGetUrl(sessionId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getGetSessionStatusApiSessionsSessionIdStatusGetQueryKey = (sessionId: string,) => {
+    return [
+    `/api/sessions/${sessionId}/status`
+    ] as const;
+    }
+
+    
+export const getGetSessionStatusApiSessionsSessionIdStatusGetQueryOptions = <TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSessionStatusApiSessionsSessionIdStatusGetQueryKey(sessionId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>> = ({ signal }) => getSessionStatusApiSessionsSessionIdStatusGet(sessionId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(sessionId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSessionStatusApiSessionsSessionIdStatusGetQueryResult = NonNullable<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>>
+export type GetSessionStatusApiSessionsSessionIdStatusGetQueryError = HTTPValidationError
+
+
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>,
+          TError,
+          Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Session Status
+ */
+
+export function useGetSessionStatusApiSessionsSessionIdStatusGet<TData = Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError = HTTPValidationError>(
+ sessionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSessionStatusApiSessionsSessionIdStatusGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSessionStatusApiSessionsSessionIdStatusGetQueryOptions(sessionId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

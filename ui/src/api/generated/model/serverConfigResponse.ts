@@ -9,9 +9,9 @@
  * Response payload describing server capabilities for the active mode.
  */
 export interface ServerConfigResponse {
-  mode: 'standard';
   authentication_required: boolean;
+  default_run_name?: string | null;
+  mode: 'standard';
   registration_enabled: boolean;
-  experiments_enabled: boolean;
-  default_experiment_name?: string | null;
+  runs_enabled: boolean;
 }

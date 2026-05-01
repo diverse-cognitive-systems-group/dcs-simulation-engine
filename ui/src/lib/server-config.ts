@@ -13,8 +13,8 @@ interface ServerConfigPayload {
   mode: 'standard'
   authentication_required: boolean
   registration_enabled: boolean
-  experiments_enabled: boolean
-  default_experiment_name: string | null
+  runs_enabled: boolean
+  default_run_name: string | null
 }
 
 let cachedServerConfig: ServerConfig | null = null
@@ -30,8 +30,8 @@ async function fetchServerConfig(): Promise<ServerConfig> {
     mode: payload.mode,
     authentication_required: payload.authentication_required,
     registration_enabled: payload.registration_enabled,
-    runs_enabled: payload.experiments_enabled,
-    default_run_name: payload.default_experiment_name,
+    runs_enabled: payload.runs_enabled,
+    default_run_name: payload.default_run_name,
   }
   cachedServerConfig = config
   return config
