@@ -3,11 +3,9 @@
 Renders flattened assignment form answers (pre/post-game surveys).
 """
 
-
-
-from dcs_utils.auto.constants import chart_caption, section_intro
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.auto.constants import chart_caption
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _FORM_COLUMNS = [
     "player_id",
@@ -22,15 +20,15 @@ _FORM_COLUMNS = [
 ]
 
 _FORM_RENAME = {
-    "player_id":       "Player",
-    "game_name":       "Game",
-    "form_name":       "Form",
-    "trigger_event":   "Trigger",
-    "question_key":    "Question Key",
+    "player_id": "Player",
+    "game_name": "Game",
+    "form_name": "Form",
+    "trigger_event": "Trigger",
+    "question_key": "Question Key",
     "question_prompt": "Question",
-    "answer_type":     "Type",
-    "answer":          "Answer",
-    "submitted_at":    "Submitted At",
+    "answer_type": "Type",
+    "answer": "Answer",
+    "submitted_at": "Submitted At",
 }
 
 

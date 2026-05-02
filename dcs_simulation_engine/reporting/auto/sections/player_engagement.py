@@ -6,13 +6,10 @@ Three Plotly charts:
   - Engagement by prior_experience if available (grouped bar)
 """
 
-
-
 import pandas as pd
-
-from dcs_utils.auto.constants import chart_caption, section_intro
-from dcs_utils.auto.rendering.chart_utils import plotly_to_html
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 
 def render(data: AnalysisData) -> str:
@@ -20,11 +17,7 @@ def render(data: AnalysisData) -> str:
         return '<div class="alert alert-info">No run data found.</div>'
 
     # Build per-player run counts joined with player attributes
-    run_counts = (
-        data.runs_df.groupby("player_id")
-        .size()
-        .reset_index(name="runs")
-    )
+    run_counts = data.runs_df.groupby("player_id").size().reset_index(name="runs")
 
     parts: list[str] = [section_intro("player_engagement")]
 
@@ -33,16 +26,22 @@ def render(data: AnalysisData) -> str:
         return f'<div class="row">{cols}</div>'
 
     # Chart 1: runs per player
-    parts.append(_row(
-        _runs_per_player(run_counts) + chart_caption("player_engagement", "runs_per_player"),
-        _engagement_by(run_counts, data.players_df, "consent_to_followup") + chart_caption("player_engagement", "engagement_by_consent"),
-    ))
+    parts.append(
+        _row(
+            _runs_per_player(run_counts) + chart_caption("player_engagement", "runs_per_player"),
+            _engagement_by(run_counts, data.players_df, "consent_to_followup")
+            + chart_caption("player_engagement", "engagement_by_consent"),
+        )
+    )
 
     # Chart 3: prior_experience (only if the column exists)
     if not data.players_df.empty and "prior_experience" in data.players_df.columns:
-        parts.append(_row(
-            _engagement_by(run_counts, data.players_df, "prior_experience") + chart_caption("player_engagement", "engagement_by_experience"),
-        ))
+        parts.append(
+            _row(
+                _engagement_by(run_counts, data.players_df, "prior_experience")
+                + chart_caption("player_engagement", "engagement_by_experience"),
+            )
+        )
 
     return "\n".join(parts)
 
@@ -50,6 +49,7 @@ def render(data: AnalysisData) -> str:
 # ---------------------------------------------------------------------------
 # Individual charts
 # ---------------------------------------------------------------------------
+
 
 def _runs_per_player(run_counts: pd.DataFrame) -> str:
     import plotly.express as px
@@ -74,10 +74,7 @@ def _engagement_by(
     import plotly.express as px
 
     if players_df.empty or column not in players_df.columns:
-        return (
-            f'<div class="alert alert-secondary">'
-            f'Column <code>{column}</code> not available in player data.</div>'
-        )
+        return f'<div class="alert alert-secondary">Column <code>{column}</code> not available in player data.</div>'
     if "access_key" not in players_df.columns:
         return '<div class="alert alert-secondary">Player access_key not available.</div>'
 
@@ -98,12 +95,7 @@ def _engagement_by(
 
     merged[column] = merged[column].apply(_normalise)
 
-    grouped = (
-        merged.groupby(column)["runs"]
-        .sum()
-        .reset_index()
-        .sort_values("runs", ascending=False)
-    )
+    grouped = merged.groupby(column)["runs"].sum().reset_index().sort_values("runs", ascending=False)
 
     title = "Engagement by " + column.replace("_", " ").title()
     fig = px.bar(

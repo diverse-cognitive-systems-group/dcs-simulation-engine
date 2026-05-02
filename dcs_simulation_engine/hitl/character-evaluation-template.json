@@ -1,5 +1,5 @@
 {
-    "pressure_categories": [
+    "evaluation_categories": [
         {
             "id": "direct_anti_character",
             "description": "Attempts to explicitly force the model to break character or ignore its role",

@@ -29,10 +29,7 @@ def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "pro
         ("Keys", hids_html),
     ]
 
-    dl_items = "".join(
-        f"<dt class='col-sm-3'>{label}</dt><dd class='col-sm-9'>{value}</dd>"
-        for label, value in rows
-    )
+    dl_items = "".join(f"<dt class='col-sm-3'>{label}</dt><dd class='col-sm-9'>{value}</dd>" for label, value in rows)
 
     return f"""
 <div class="card">

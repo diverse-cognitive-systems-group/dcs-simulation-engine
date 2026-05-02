@@ -9,6 +9,7 @@ from dcs_simulation_engine.cli.commands.admin import admin_app
 from dcs_simulation_engine.cli.commands.dump import dump
 from dcs_simulation_engine.cli.commands.remote import remote_app
 from dcs_simulation_engine.cli.commands.server import server
+from dcs_simulation_engine.cli.commands.workflow import report_app
 from dcs_simulation_engine.cli.common import GlobalOptions
 from dcs_simulation_engine.helpers.logging_helpers import configure_logger
 from dotenv import load_dotenv
@@ -49,6 +50,7 @@ app = typer.Typer(
 # sub-apps
 app.add_typer(admin_app, name="admin")
 app.add_typer(remote_app, name="remote")
+app.add_typer(report_app, name="report")
 
 # top level commands (no subcommand)
 app.command("dump")(dump)

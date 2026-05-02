@@ -12,10 +12,9 @@ import json
 from pathlib import Path
 
 import pandas as pd
-
-from dcs_utils.auto.rendering.chart_utils import plotly_to_html
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.auto.sections import coverage_shared
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.auto.sections import coverage_shared
 
 
 def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "prod") -> str:
@@ -29,16 +28,14 @@ def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "pro
     if hids_filter:
         nonhuman = [c for c in nonhuman if c["hid"] in hids_filter]
 
-    dim_schema: dict[str, dict] = {
-        k: v for k, v in dims_raw["dimensions"].items() if k != "description"
-    }
+    dim_schema: dict[str, dict] = {k: v for k, v in dims_raw["dimensions"].items() if k != "description"}
 
     # Build long-form DataFrame: one row per (hid, dimension_key, value)
     long_rows = []
     for c in nonhuman:
         hid = c["hid"]
         for dk, entry in c["dimensions"].items():
-            for v in (entry.get("value") or []):
+            for v in entry.get("value") or []:
                 long_rows.append({"hid": hid, "dimension": dk, "value": v})
     long_df = pd.DataFrame(long_rows) if long_rows else pd.DataFrame(columns=["hid", "dimension", "value"])
 
@@ -75,8 +72,8 @@ def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "pro
                 col_content = (
                     f'<p class="fw-semibold mb-1" style="font-size:0.9rem;">{label}</p>'
                     f'<p class="text-muted" style="font-size:0.85rem;">'
-                    f'Only one category defined: <code>{note}</code>. '
-                    f'All {len(long_df[long_df["dimension"] == dk]["hid"].unique())} characters use it.'
+                    f"Only one category defined: <code>{note}</code>. "
+                    f"All {len(long_df[long_df['dimension'] == dk]['hid'].unique())} characters use it."
                     f"</p>"
                 )
             else:
@@ -114,16 +111,12 @@ def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "pro
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _dim_bar_chart(long_df: pd.DataFrame, dk: str, options: list[str]) -> str:
     import plotly.express as px
 
     ddf = long_df[long_df["dimension"] == dk]
-    counts = (
-        ddf["value"].value_counts()
-        .reindex(options, fill_value=0)
-        .rename_axis("value")
-        .reset_index(name="count")
-    )
+    counts = ddf["value"].value_counts().reindex(options, fill_value=0).rename_axis("value").reset_index(name="count")
     title = dk.replace("_", " ").title()
     fig = px.bar(
         counts,
@@ -147,7 +140,9 @@ def _dim_bar_chart(long_df: pd.DataFrame, dk: str, options: list[str]) -> str:
 def _coverage_heatmap(long_df: pd.DataFrame, dim_schema: dict) -> str:
     import base64
     import io
+
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -248,9 +243,7 @@ def _combo_table_html(long_df: pd.DataFrame, dim_a: str, dim_b: str, table_id: s
     # Highlight zero-count rows via DataTables createdRow callback
     table_html = table_html.replace(
         "order: [],",
-        "order: [],"
-        f"\n        createdRow: function(row, data) {{"
-        f" if (parseInt(data[2]) === 0) {{ $(row).addClass('table-warning'); }} }},",
+        "order: [],\n        createdRow: function(row, data) { if (parseInt(data[2]) === 0) { $(row).addClass('table-warning'); } },",
     )
 
     return table_html

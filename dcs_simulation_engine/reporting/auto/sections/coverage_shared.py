@@ -13,7 +13,7 @@ def _score_color(score: float) -> str:
         return "#198754"  # Bootstrap success green
     if score >= 0.5:
         return "#fd7e14"  # Bootstrap orange
-    return "#dc3545"      # Bootstrap danger red
+    return "#dc3545"  # Bootstrap danger red
 
 
 def nonhuman_score(nonhuman: list[dict]) -> tuple[float, str]:
@@ -24,7 +24,7 @@ def nonhuman_score(nonhuman: list[dict]) -> tuple[float, str]:
     long_rows = []
     for c in nonhuman:
         for dk, entry in c["dimensions"].items():
-            for v in (entry.get("value") or []):
+            for v in entry.get("value") or []:
                 long_rows.append({"hid": c["hid"], "dimension": dk, "value": v})
 
     if not long_rows:
@@ -74,11 +74,13 @@ def human_score(human: list[dict]) -> tuple[float, str]:
     for c in human:
         for category, abilities in c["hsn_divergence"].items():
             for ability, data in abilities.items():
-                long_rows.append({
-                    "hid": c["hid"],
-                    "ability": ability,
-                    "value": data["value"],
-                })
+                long_rows.append(
+                    {
+                        "hid": c["hid"],
+                        "ability": ability,
+                        "value": data["value"],
+                    }
+                )
 
     long_df = pd.DataFrame(long_rows)
     all_abilities = long_df["ability"].unique()
@@ -86,10 +88,7 @@ def human_score(human: list[dict]) -> tuple[float, str]:
     covered = int(long_df[long_df["value"] == "divergent"]["ability"].nunique())
 
     score = covered / total if total > 0 else 0.0
-    detail = (
-        f"HSN assumption coverage: {covered} of {total} ability assumptions "
-        f"have at least one divergent human character."
-    )
+    detail = f"HSN assumption coverage: {covered} of {total} ability assumptions have at least one divergent human character."
     return score, detail
 
 

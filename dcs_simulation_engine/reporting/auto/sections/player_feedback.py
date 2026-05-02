@@ -6,14 +6,11 @@ Renders:
 3. Player feedback patterns — per-player segmentation by feedback behaviour.
 """
 
-
-
 import pandas as pd
-
-from dcs_utils.auto.constants import chart_caption, section_intro
-from dcs_utils.auto.rendering.chart_utils import plotly_to_html
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _EVENT_COLUMNS = [
     "session_id",
@@ -28,14 +25,14 @@ _EVENT_COLUMNS = [
 ]
 
 _EVENT_RENAME = {
-    "session_id":   "Session",
-    "game_name":    "Game",
-    "player_id":    "Player",
-    "turn_index":   "Turn",
-    "liked":        "Liked",
-    "flags":        "Flags",
-    "comment":      "Comment",
-    "context":      "Transcript Context",
+    "session_id": "Session",
+    "game_name": "Game",
+    "player_id": "Player",
+    "turn_index": "Turn",
+    "liked": "Liked",
+    "flags": "Flags",
+    "comment": "Comment",
+    "context": "Transcript Context",
     "submitted_at": "Submitted At",
 }
 
@@ -65,10 +62,7 @@ def _build_context_column(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> pd
         return edf
 
     # Pre-index transcripts by session_id for efficiency
-    by_session = {
-        sid: grp.sort_values("turn_index")
-        for sid, grp in transcripts_df.groupby("session_id")
-    }
+    by_session = {sid: grp.sort_values("turn_index") for sid, grp in transcripts_df.groupby("session_id")}
 
     contexts = []
     for _, row in edf.iterrows():
@@ -84,19 +78,12 @@ def _build_context_column(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> pd
             continue
 
         ti = int(ti)
-        window = session_events[
-            (session_events["turn_index"] >= ti - _CONTEXT_TURNS) &
-            (session_events["turn_index"] <= ti)
-        ]
+        window = session_events[(session_events["turn_index"] >= ti - _CONTEXT_TURNS) & (session_events["turn_index"] <= ti)]
 
         lines = []
         for _, evt in window.iterrows():
             # Use event_source if available (e.g. "user"/"npc"), else event_type, else "?"
-            source = (
-                str(evt.get("event_source") or "").strip()
-                or str(evt.get("event_type") or "").strip()
-                or "?"
-            )
+            source = str(evt.get("event_source") or "").strip() or str(evt.get("event_type") or "").strip() or "?"
             content = str(evt.get("content") or "").strip()
             t = int(evt["turn_index"]) if pd.notna(evt["turn_index"]) else "?"
             lines.append(f"[{source} T{t}]: {content}")
@@ -130,9 +117,7 @@ def _flags_over_turns_chart(transcripts_df: pd.DataFrame) -> str:
         return ""
 
     # Check at least one flag is actually set
-    any_flag = pd.concat(
-        [flagged[col].fillna(False).astype(bool) for col, _ in available], axis=1
-    ).any(axis=1)
+    any_flag = pd.concat([flagged[col].fillna(False).astype(bool) for col, _ in available], axis=1).any(axis=1)
     if not any_flag.any():
         return ""
 
@@ -142,20 +127,17 @@ def _flags_over_turns_chart(transcripts_df: pd.DataFrame) -> str:
     colors = ["#e45f3c", "#3c8ee4", "#8e44ad"]
 
     for (col, label), color in zip(available, colors):
-        counts = (
-            flagged[flagged[col].fillna(False).astype(bool)]
-            .groupby("turn_index")
-            .size()
-            .reset_index(name="count")
-        )
+        counts = flagged[flagged[col].fillna(False).astype(bool)].groupby("turn_index").size().reset_index(name="count")
         if counts.empty:
             continue
-        fig.add_trace(go.Bar(
-            x=counts["turn_index"],
-            y=counts["count"],
-            name=label,
-            marker_color=color,
-        ))
+        fig.add_trace(
+            go.Bar(
+                x=counts["turn_index"],
+                y=counts["count"],
+                name=label,
+                marker_color=color,
+            )
+        )
 
     fig.update_layout(
         barmode="group",
@@ -210,12 +192,7 @@ def _flags_over_turns_by_game(edf: pd.DataFrame) -> str:
     for col_idx, game in enumerate(games, start=1):
         subset = flagged[flagged["game_name"] == game]
         for trace_idx, (label, color) in enumerate(zip(_FLAG_LABELS, _FLAG_COLORS)):
-            counts = (
-                subset[subset[label]]
-                .groupby("turn_index")
-                .size()
-                .reset_index(name="count")
-            )
+            counts = subset[subset[label]].groupby("turn_index").size().reset_index(name="count")
             fig.add_trace(
                 go.Bar(
                     x=counts["turn_index"],
@@ -264,58 +241,58 @@ def _flags_over_turns_by_player(edf: pd.DataFrame) -> str:
     for p_idx, player in enumerate(players):
         subset = flagged[flagged["player_id"].astype(str) == player]
         for label, color in zip(_FLAG_LABELS, _FLAG_COLORS):
-            counts = (
-                subset[subset[label]]
-                .groupby("turn_index")
-                .size()
-                .reset_index(name="count")
+            counts = subset[subset[label]].groupby("turn_index").size().reset_index(name="count")
+            fig.add_trace(
+                go.Bar(
+                    x=counts["turn_index"],
+                    y=counts["count"],
+                    name=label,
+                    marker_color=color,
+                    legendgroup=label,
+                    showlegend=(p_idx == 0),
+                    visible=(p_idx == 0),
+                )
             )
-            fig.add_trace(go.Bar(
-                x=counts["turn_index"],
-                y=counts["count"],
-                name=label,
-                marker_color=color,
-                legendgroup=label,
-                showlegend=(p_idx == 0),
-                visible=(p_idx == 0),
-            ))
 
     # Build dropdown: each button makes only the selected player's traces visible
     buttons = []
     for p_idx, player in enumerate(players):
-        visible = [
-            (i // n_flag_types == p_idx)
-            for i in range(len(players) * n_flag_types)
-        ]
-        buttons.append(dict(
-            label=str(player),
-            method="update",
-            args=[
-                {"visible": visible},
-                {"title": ""},
-            ],
-        ))
+        visible = [(i // n_flag_types == p_idx) for i in range(len(players) * n_flag_types)]
+        buttons.append(
+            dict(
+                label=str(player),
+                method="update",
+                args=[
+                    {"visible": visible},
+                    {"title": ""},
+                ],
+            )
+        )
 
     fig.update_layout(
-        updatemenus=[dict(
-            buttons=buttons,
-            direction="down",
-            x=0.0,
-            xanchor="left",
-            y=1.15,
-            yanchor="top",
-            showactive=True,
-        )],
-        annotations=[dict(
-            text="Select Player:",
-            x=0.0,
-            xanchor="right",
-            xref="paper",
-            y=1.15,
-            yanchor="top",
-            yref="paper",
-            showarrow=False,
-        )],
+        updatemenus=[
+            dict(
+                buttons=buttons,
+                direction="down",
+                x=0.0,
+                xanchor="left",
+                y=1.15,
+                yanchor="top",
+                showactive=True,
+            )
+        ],
+        annotations=[
+            dict(
+                text="Select Player:",
+                x=0.0,
+                xanchor="right",
+                xref="paper",
+                y=1.15,
+                yanchor="top",
+                yref="paper",
+                showarrow=False,
+            )
+        ],
         barmode="group",
         xaxis_title="Turn",
         yaxis_title="Flag count",
@@ -332,17 +309,21 @@ def _player_segments_table(edf: pd.DataFrame) -> str:
     if edf.empty or "player_id" not in edf.columns:
         return ""
 
-    liked_col = edf["liked"] if "liked" in edf.columns else pd.Series(dtype=object)
-    comment_col = edf["comment"].fillna("") if "comment" in edf.columns else pd.Series("", index=edf.index)
-    flags_col = edf["flags"].fillna("") if "flags" in edf.columns else pd.Series("", index=edf.index)
-
-    agg = edf.groupby("player_id").apply(lambda g: pd.Series({
-        "total":       len(g),
-        "positive":    int((g["liked"] == True).sum()) if "liked" in g.columns else 0,  # noqa: E712
-        "negative":    int((g["liked"] == False).sum()) if "liked" in g.columns else 0,  # noqa: E712
-        "commented":   int((g["comment"].fillna("").str.len() > 0).sum()) if "comment" in g.columns else 0,
-        "flags_count": int((g["flags"].fillna("") != "").sum()) if "flags" in g.columns else 0,
-    })).reset_index()
+    agg = (
+        edf.groupby("player_id")
+        .apply(
+            lambda g: pd.Series(
+                {
+                    "total": len(g),
+                    "positive": int((g["liked"] == True).sum()) if "liked" in g.columns else 0,  # noqa: E712
+                    "negative": int((g["liked"] == False).sum()) if "liked" in g.columns else 0,  # noqa: E712
+                    "commented": int((g["comment"].fillna("").str.len() > 0).sum()) if "comment" in g.columns else 0,
+                    "flags_count": int((g["flags"].fillna("") != "").sum()) if "flags" in g.columns else 0,
+                }
+            )
+        )
+        .reset_index()
+    )
 
     if agg.empty:
         return ""
@@ -369,13 +350,13 @@ def _player_segments_table(edf: pd.DataFrame) -> str:
         table_id="player-segments-table",
         columns=["player_id", "total", "positive", "negative", "commented", "flags_count", "segment"],
         rename={
-            "player_id":    "Player",
-            "total":        "Total",
-            "positive":     "Positive",
-            "negative":     "Negative",
-            "commented":    "w/ Comment",
-            "flags_count":  "Flagged",
-            "segment":      "Segment",
+            "player_id": "Player",
+            "total": "Total",
+            "positive": "Positive",
+            "negative": "Negative",
+            "commented": "w/ Comment",
+            "flags_count": "Flagged",
+            "segment": "Segment",
         },
         scroll_y="",
         export_buttons=True,
@@ -391,7 +372,7 @@ def _fmt_pct(numerator: int, denominator: int) -> str:
 def _feedback_summary_card(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> str:
     """Return a titled Bootstrap card summarising key feedback proportion metrics."""
     total_fb = len(edf) if not edf.empty else 0
-    positive = int((edf["liked"] == True).sum()) if not edf.empty and "liked" in edf.columns else 0   # noqa: E712
+    positive = int((edf["liked"] == True).sum()) if not edf.empty and "liked" in edf.columns else 0  # noqa: E712
     negative = int((edf["liked"] == False).sum()) if not edf.empty and "liked" in edf.columns else 0  # noqa: E712
 
     # Total NPC turns across all sessions — denominator for ICF / flag rates
@@ -401,13 +382,10 @@ def _feedback_summary_card(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> s
         total_npc_turns = 0
 
     def _row(label: str, value: str) -> str:
-        return (
-            f"<dt class='col-sm-6'>{label}</dt>"
-            f"<dd class='col-sm-6'>{value}</dd>"
-        )
+        return f"<dt class='col-sm-6'>{label}</dt><dd class='col-sm-6'>{value}</dd>"
 
     rows = (
-        _row("Feedback Rate", _fmt_pct(total_fb,  total_npc_turns))
+        _row("Feedback Rate", _fmt_pct(total_fb, total_npc_turns))
         + _row("👍 Thumbs Up", _fmt_pct(positive, total_fb))
         + _row("👎 Thumbs Down", _fmt_pct(negative, total_fb))
     )
@@ -416,7 +394,7 @@ def _feedback_summary_card(edf: pd.DataFrame, transcripts_df: pd.DataFrame) -> s
         '<h3 class="h5 mb-2">Summary</h3>'
         '<div class="card mb-4"><div class="card-body">'
         f'<dl class="row dl-meta mb-0">{rows}</dl>'
-        '</div></div>'
+        "</div></div>"
     )
 
 
@@ -456,14 +434,16 @@ def render(data: AnalysisData) -> str:
         cols = [c for c in _EVENT_COLUMNS if c in edf.columns]
         rename = {k: v for k, v in _EVENT_RENAME.items() if k in cols}
         parts.append("<h5>In-Play Feedback</h5>")
-        parts.append(df_to_datatable(
-            edf,
-            table_id="event-feedback-table",
-            columns=cols,
-            rename=rename,
-            truncate_cols=["comment", "context"],
-            truncate_at=300,
-        ))
+        parts.append(
+            df_to_datatable(
+                edf,
+                table_id="event-feedback-table",
+                columns=cols,
+                rename=rename,
+                truncate_cols=["comment", "context"],
+                truncate_at=300,
+            )
+        )
         parts.append(chart_caption("player_feedback", "inplay_feedback_table"))
 
     # --- Player feedback patterns ---

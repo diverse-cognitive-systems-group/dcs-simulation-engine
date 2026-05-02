@@ -11,8 +11,7 @@ without touching any rendering or section code.
 
 SECTION_DESCRIPTIONS: dict[str, str] = {
     "metadata": (
-        "Run configuration and participant counts at a glance. "
-        "Confirms the right games, players, and assignment settings were used."
+        "Run configuration and participant counts at a glance. Confirms the right games, players, and assignment settings were used."
     ),
     "simulation_quality": (
         "Aggregate and per-character simulation quality scores. "
@@ -42,10 +41,7 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "and structured survey responses. Use this to connect player sentiment "
         "to specific moments in gameplay."
     ),
-    "player_performance": (
-        "Outcome metrics measuring how well players performed during gameplay. "
-        "(Not yet implemented.)"
-    ),
+    "player_performance": ("Outcome metrics measuring how well players performed during gameplay. (Not yet implemented.)"),
     "system_errors": (
         "Three views of errors across the run: a summary card, "
         "in-game error events delivered to players (from session events), "
@@ -293,6 +289,7 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
+
 
 def section_intro(key: str) -> str:
     """Return an HTML lead paragraph for the given section key, or '' if absent."""

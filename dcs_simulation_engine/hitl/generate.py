@@ -1,9 +1,9 @@
-"""Scaffold a <hid>-scenarios.json file for a character.
+"""Scaffold a <hid>-test-cases.json file for a character.
 
 Generates one scenario group per pressure category (using the category's
 example prompts as starter attempts) plus one scenario per entry in the
 character's scenarios[] array.  All conversation_history fields start
-empty; the engine populates them when `dcs-utils generate responses` runs.
+empty; the engine populates them when `dcs admin hitl update` runs.
 """
 
 import json
@@ -11,12 +11,12 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dcs_utils.hitl import Attempt, Scenario, ScenarioGroup, ScenarioFile
+from dcs_simulation_engine.hitl import Attempt, Scenario, ScenarioFile, ScenarioGroup
 
 # Repo-relative paths
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_PRESSURE_CATEGORIES_PATH = _REPO_ROOT / "dcs_utils" / "data" / "character_pressure_categories.json"
-_SCENARIOS_DIR = _REPO_ROOT / "dcs_utils" / "data" / "character_scenarios"
+_PRESSURE_CATEGORIES_PATH = Path(__file__).with_name("character-evaluation-template.json")
+_SCENARIOS_DIR = _REPO_ROOT / "evaluations" / "characters"
 _DEV_CHARS_PATH = _REPO_ROOT / "database_seeds" / "dev" / "characters.json"
 _PROD_CHARS_PATH = _REPO_ROOT / "database_seeds" / "prod" / "characters.json"
 
@@ -67,21 +67,18 @@ def load_character(hid: str, db: str) -> dict:
         if char.get("hid") == hid:
             return char
     available = sorted(c.get("hid", "?") for c in characters)
-    raise ValueError(
-        f"Character '{hid}' not found in {path.name}. "
-        f"Available HIDs: {', '.join(available)}"
-    )
+    raise ValueError(f"Character '{hid}' not found in {path.name}. Available HIDs: {', '.join(available)}")
 
 
 def load_pressure_categories() -> list[dict]:
-    """Load the pressure category definitions."""
+    """Load the evaluation category definitions."""
     data = json.loads(_PRESSURE_CATEGORIES_PATH.read_text(encoding="utf-8"))
-    return data["pressure_categories"]
+    return data["evaluation_categories"]
 
 
 def scenarios_path_for(hid: str) -> Path:
-    """Return the expected output path for a character's scenarios file."""
-    return _SCENARIOS_DIR / f"{hid}-scenarios.json"
+    """Return the expected output path for a character's test cases file."""
+    return _SCENARIOS_DIR / f"{hid}-test-cases.json"
 
 
 def build_scaffold(character: dict, game: str) -> ScenarioFile:
@@ -95,7 +92,6 @@ def build_scaffold(character: dict, game: str) -> ScenarioFile:
         A :class:`ScenarioFile` ready to serialise to JSON.
     """
     hid = character["hid"]
-    char_name = character.get("short_description", hid) or hid
     # Use a brief handle for prompt substitution — prefer hid over long description
     char_label = hid
 
@@ -107,10 +103,7 @@ def build_scaffold(character: dict, game: str) -> ScenarioFile:
         examples: list[dict] = cat.get("examples", [])
 
         # Build attempts from this category's example prompts (up to 3)
-        attempts = [
-            Attempt(player_message=_fill_template(ex["prompt"], hid, char_label))
-            for ex in examples[:3]
-        ]
+        attempts = [Attempt(player_message=_fill_template(ex["prompt"], hid, char_label)) for ex in examples[:3]]
 
         scenario = Scenario(
             id=f"{hid}-{cat_id}-001",
@@ -142,13 +135,8 @@ def build_scaffold(character: dict, game: str) -> ScenarioFile:
 
         # Pick "direct_anti_character" as the pressure type for context-based scenarios
         cat_id = "direct_anti_character"
-        cat_examples = next(
-            (c.get("examples", []) for c in categories if c["id"] == cat_id), []
-        )
-        attempts = [
-            Attempt(player_message=_fill_template(ex["prompt"], hid, char_label))
-            for ex in cat_examples[:2]
-        ]
+        cat_examples = next((c.get("examples", []) for c in categories if c["id"] == cat_id), [])
+        attempts = [Attempt(player_message=_fill_template(ex["prompt"], hid, char_label)) for ex in cat_examples[:2]]
 
         scenario = Scenario(
             id=f"{hid}-context-{idx + 1:02d}",
@@ -161,9 +149,7 @@ def build_scaffold(character: dict, game: str) -> ScenarioFile:
         group = ScenarioGroup(
             group_id=f"context-{idx + 1:02d}",
             label=f"Character Context: {scenario_name}",
-            expected_failure_mode=(
-                "NPC breaks character when situated in a specific scenario context"
-            ),
+            expected_failure_mode=("NPC breaks character when situated in a specific scenario context"),
             pressure_category=cat_id,
             scenarios=[scenario],
         )

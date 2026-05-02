@@ -2,7 +2,7 @@
 
 Entry point:
 
-    from dcs_utils.auto import run_analysis
+    from dcs_simulation_engine.reporting.auto import run_analysis
     html = run_analysis(data, title="My Study")
 
 Or via CLI:
@@ -14,8 +14,8 @@ import base64
 import types
 from pathlib import Path
 
-from dcs_utils.auto.rendering.html_builder import build_html
-from dcs_utils.auto.sections import (
+from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_html
+from dcs_simulation_engine.reporting.auto.sections import (
     coverage_human,
     coverage_nonhuman,
     form_responses,
@@ -28,13 +28,12 @@ from dcs_utils.auto.sections import (
     system_performance,
     transcripts,
 )
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _TODO_PLACEHOLDER = (
-    '<div class="alert alert-warning mt-3" role="alert">'
-    "<strong>TODO:</strong> Add your interpretations and results discussion here."
-    "</div>"
+    '<div class="alert alert-warning mt-3" role="alert"><strong>TODO:</strong> Add your interpretations and results discussion here.</div>'
 )
+
 
 # Adapters: coverage sections use render(repo_root) but default report uses render(data).
 # HIDs are scoped to characters that actually appeared in the run.
@@ -61,29 +60,25 @@ _npc_coverage = types.SimpleNamespace(render=_render_npc_coverage)
 #   "sub"   — indented sidebar entry, rendered in main content (same as top but visually nested)
 #   "group" — sidebar label only (no anchor, no content); anchor and module are None
 SECTIONS = [
-    ("metadata",            "Metadata",           metadata,            "top"),
-    ("runs-overview",       "Overview",           runs_overview,       "top"),
-    (None,                  "Player",             None,                "group"),
-    ("player-performance",  "Performance",        player_performance,  "sub"),
-    ("player-feedback",     "Feedback",           player_feedback,     "sub"),
-    ("form-responses",      "Form Responses",     form_responses,      "sub"),
-    ("pc-coverage",         "PC Coverage",        _pc_coverage,        "sub"),
-    (None,                  "System",             None,                "group"),
-    ("system-performance",  "Performance",        system_performance,  "sub"),
-    ("system-errors",       "Errors",             system_errors,       "sub"),
-    ("sim-quality",         "Simulation Quality", simulation_quality,  "sub"),
-    ("npc-coverage",        "NPC Coverage",       _npc_coverage,       "sub"),
-    ("transcripts",         "Transcripts",        transcripts,         "top"),
+    ("metadata", "Metadata", metadata, "top"),
+    ("runs-overview", "Overview", runs_overview, "top"),
+    (None, "Player", None, "group"),
+    ("player-performance", "Performance", player_performance, "sub"),
+    ("player-feedback", "Feedback", player_feedback, "sub"),
+    ("form-responses", "Form Responses", form_responses, "sub"),
+    ("pc-coverage", "PC Coverage", _pc_coverage, "sub"),
+    (None, "System", None, "group"),
+    ("system-performance", "Performance", system_performance, "sub"),
+    ("system-errors", "Errors", system_errors, "sub"),
+    ("sim-quality", "Simulation Quality", simulation_quality, "sub"),
+    ("npc-coverage", "NPC Coverage", _npc_coverage, "sub"),
+    ("transcripts", "Transcripts", transcripts, "top"),
 ]
 
 DEFAULT_SECTIONS = [s for s in SECTIONS if s[0] != "sim-quality"]
 
-VALID_SECTION_SLUGS: frozenset[str] = frozenset(
-    anchor for anchor, _, _, _ in SECTIONS if anchor is not None
-)
-_DEFAULT_SECTION_SLUGS: frozenset[str] = frozenset(
-    anchor for anchor, _, _, _ in DEFAULT_SECTIONS if anchor is not None
-)
+VALID_SECTION_SLUGS: frozenset[str] = frozenset(anchor for anchor, _, _, _ in SECTIONS if anchor is not None)
+_DEFAULT_SECTION_SLUGS: frozenset[str] = frozenset(anchor for anchor, _, _, _ in DEFAULT_SECTIONS if anchor is not None)
 
 
 def resolve_sections(
@@ -104,10 +99,7 @@ def resolve_sections(
         unknown = [s for s in slugs if s not in VALID_SECTION_SLUGS]
         if unknown:
             valid = ", ".join(sorted(VALID_SECTION_SLUGS))
-            raise ValueError(
-                f"unknown section name(s): {', '.join(repr(s) for s in unknown)}. "
-                f"Valid: {valid}"
-            )
+            raise ValueError(f"unknown section name(s): {', '.join(repr(s) for s in unknown)}. Valid: {valid}")
 
     if only is not None:
         _validate(only)
@@ -162,12 +154,7 @@ def run_analysis(
         try:
             fragment = module.render(data)
         except Exception as exc:
-            fragment = (
-                f'<div class="alert alert-danger">'
-                f"<strong>Error rendering &ldquo;{section_title}&rdquo;:</strong> "
-                f"{exc}"
-                f"</div>"
-            )
+            fragment = f'<div class="alert alert-danger"><strong>Error rendering &ldquo;{section_title}&rdquo;:</strong> {exc}</div>'
         if with_todos:
             fragment = fragment + _TODO_PLACEHOLDER
         rendered.append((anchor, section_title, fragment, kind))
@@ -188,8 +175,8 @@ def _find_repo_root(start: Path | None = None) -> Path:
     for p in [candidate, *candidate.parents]:
         if (p / "pyproject.toml").exists() and (p / "database_seeds").exists():
             return p
-    # Fallback: analysis/auto/__init__.py → parents[2] = repo root
-    return Path(__file__).parents[2]
+    # Fallback: dcs_simulation_engine/reporting/auto/__init__.py -> repo root
+    return Path(__file__).parents[3]
 
 
 def run_coverage_report(
@@ -203,7 +190,7 @@ def run_coverage_report(
     """
     import json as _json
 
-    from dcs_utils.auto.sections import (
+    from dcs_simulation_engine.reporting.auto.sections import (
         coverage_human,
         coverage_metadata,
         coverage_nonhuman,
@@ -238,11 +225,11 @@ def run_coverage_report(
         return build_html(rendered, title=title, artifacts={}, download_items=[])
 
     coverage_sections = [
-        ("metadata",       "Metadata",       coverage_metadata,  "top"),
-        (None,             "Non-human",      None,               "group"),
-        ("dim-coverage",   "Dimensions",     coverage_nonhuman,  "sub"),
-        (None,             "Human",          None,               "group"),
-        ("hsn-divergence", "HSN Divergence", coverage_human,     "sub"),
+        ("metadata", "Metadata", coverage_metadata, "top"),
+        (None, "Non-human", None, "group"),
+        ("dim-coverage", "Dimensions", coverage_nonhuman, "sub"),
+        (None, "Human", None, "group"),
+        ("hsn-divergence", "HSN Divergence", coverage_human, "sub"),
     ]
 
     rendered: list[tuple[str | None, str, str, str]] = []
@@ -253,12 +240,7 @@ def run_coverage_report(
         try:
             fragment = module.render(root, hids_filter=hids_filter, db=db)
         except Exception as exc:
-            fragment = (
-                f'<div class="alert alert-danger">'
-                f"<strong>Error rendering &ldquo;{section_title}&rdquo;:</strong> "
-                f"{exc}"
-                f"</div>"
-            )
+            fragment = f'<div class="alert alert-danger"><strong>Error rendering &ldquo;{section_title}&rdquo;:</strong> {exc}</div>'
         rendered.append((anchor, section_title, fragment, kind))
 
     dims_path = root / "database_seeds" / "dev" / "character_dimensions.json"

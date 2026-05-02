@@ -6,8 +6,6 @@ plugin for that table. The page must load jQuery, DataTables core, and the
 DataTables Bootstrap 5 + Buttons plugins from CDN (all in <head>).
 """
 
-
-
 import html as _html
 
 import pandas as pd
@@ -82,6 +80,7 @@ def df_to_datatable(
             disp_col = rename.get(col, col) if rename else col
             if disp_col not in display_trunc.columns:
                 continue
+
             def _trunc(val, limit=truncate_at):
                 s = str(val)
                 if len(s) <= limit:
@@ -131,10 +130,15 @@ def df_to_datatable(
             buttons: ['copy', 'csv', 'excel', 'colvis'],
             dom: { button: { className: 'btn btn-outline-secondary btn-sm' } }
         },"""
-        if export_buttons else ""
+        if export_buttons
+        else ""
     )
     scroll_x_js = "true" if scroll_x else "false"
-    scroll_y_js = f'scrollY: "{scroll_y}", scrollCollapse: true, paging: false,' if use_scroll_y else "pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],"
+    scroll_y_js = (
+        f'scrollY: "{scroll_y}", scrollCollapse: true, paging: false,'
+        if use_scroll_y
+        else "pageLength: 10, lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],"
+    )
 
     col_filter_js = ""
     if column_filters:

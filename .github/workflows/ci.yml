@@ -45,7 +45,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.13
       - name: Install deps (incl. dev)
-        run: uv sync --extra dev --extra analysis
+        run: uv sync --extra dev
       - run: make test
 
   build-docs:

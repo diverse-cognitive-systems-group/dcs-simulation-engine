@@ -5,19 +5,17 @@ full_name) are already stripped from players_df by the loader.
 Run count is added by joining against runs_df.
 """
 
-
-
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _RENAME = {
-    "access_key":           "Access Key",
-    "consent_to_followup":  "Consent to Follow-up",
-    "consent_signature":    "Consent Signature",
-    "access_key_revoked":   "Revoked",
-    "created_at":           "Created At",
-    "last_key_issued_at":   "Last Key Issued",
-    "run_count":            "Runs",
+    "access_key": "Access Key",
+    "consent_to_followup": "Consent to Follow-up",
+    "consent_signature": "Consent Signature",
+    "access_key_revoked": "Revoked",
+    "created_at": "Created At",
+    "last_key_issued_at": "Last Key Issued",
+    "run_count": "Runs",
 }
 
 
@@ -29,11 +27,7 @@ def render(data: AnalysisData) -> str:
 
     # Add run count
     if not data.runs_df.empty and "player_id" in data.runs_df.columns:
-        run_counts = (
-            data.runs_df.groupby("player_id")
-            .size()
-            .reset_index(name="run_count")
-        )
+        run_counts = data.runs_df.groupby("player_id").size().reset_index(name="run_count")
         if "access_key" in df.columns:
             df = df.merge(
                 run_counts.rename(columns={"player_id": "access_key"}),

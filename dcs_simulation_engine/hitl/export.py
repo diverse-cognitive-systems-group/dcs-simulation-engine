@@ -1,6 +1,6 @@
-"""Export a completed scenarios file to a results directory.
+"""Export a completed test cases file to a results directory.
 
-The output directory has the same structure that ``dcs-utils generate report``
+The output directory has the same structure that ``dcs generate report``
 expects: sessions.json, session_events.json, characters.json, players.json,
 assignments.json, runs.json, and __manifest__.json.
 
@@ -15,8 +15,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dcs_utils.hitl import Attempt, EvaluatorFeedback, ScenarioFile
-from dcs_utils.hitl.generate import load_scenario_file
+from dcs_simulation_engine.hitl import Attempt, EvaluatorFeedback, ScenarioFile
+from dcs_simulation_engine.hitl.generate import load_scenario_file
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEV_CHARS_PATH = _REPO_ROOT / "database_seeds" / "dev" / "characters.json"
@@ -96,13 +96,13 @@ def export_results(
     evaluator_id: str = "evaluator",
     output_dir: Path | None = None,
 ) -> Path:
-    """Convert a completed scenarios file to a results directory.
+    """Convert a completed test cases file to a results directory.
 
-    The results directory is placed next to the scenarios file by default
+    The results directory is placed next to the test cases file by default
     (``<hid>-scenario-results/``), or at ``output_dir`` if specified.
 
     Args:
-        scenarios_path: Path to the ``<hid>-scenarios.json`` file.
+        scenarios_path: Path to the ``<hid>-test-cases.json`` file.
         evaluator_id: Name/ID recorded as the synthetic player.
         output_dir: Override the output directory path.
 
@@ -131,9 +131,7 @@ def export_results(
             total_source_scenarios += 1
             total_source_attempts += len(scenario.attempts)
             completed_attempts = [
-                (turn_index, attempt)
-                for turn_index, attempt in enumerate(scenario.attempts)
-                if _is_completed_attempt(attempt)
+                (turn_index, attempt) for turn_index, attempt in enumerate(scenario.attempts) if _is_completed_attempt(attempt)
             ]
             if not completed_attempts:
                 continue

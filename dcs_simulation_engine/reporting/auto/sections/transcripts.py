@@ -4,11 +4,9 @@ Transcript-focused session-events DataTable. PC/NPC/player columns are joined
 from runs_df since session_events only carries session_id.
 """
 
-
-
-from dcs_utils.auto.constants import chart_caption, section_intro
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _COLUMNS = [
     "session_id",
@@ -63,8 +61,5 @@ def render(data: AnalysisData) -> str:
         truncate_at=400,
     )
     return (
-        section_intro("transcripts")
-        + '<h3 class="h5 mb-2">Session Events</h3>'
-        + table
-        + chart_caption("transcripts", "transcripts_table")
+        section_intro("transcripts") + '<h3 class="h5 mb-2">Session Events</h3>' + table + chart_caption("transcripts", "transcripts_table")
     )

@@ -12,14 +12,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
+from dcs_simulation_engine.hitl import Attempt, EvaluatorFeedback, Scenario, ScenarioGroup
+from dcs_simulation_engine.hitl.generate import load_scenario_file, save_scenario_file
 from rich.console import Console
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.text import Text
-
-from dcs_utils.hitl import Attempt, EvaluatorFeedback, ScenarioGroup, Scenario
-from dcs_utils.hitl.generate import load_scenario_file, save_scenario_file
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -77,15 +75,10 @@ def _prompt_feedback(
     attempt_label: str,
 ) -> EvaluatorFeedback:
     """Display one attempt and collect evaluator feedback interactively."""
-
     console.print(Rule(f"[bold]{group.label}[/bold]", style="dim"))
-    console.print(
-        f"  [dim]Expected failure:[/dim] {group.expected_failure_mode}"
-    )
+    console.print(f"  [dim]Expected failure:[/dim] {group.expected_failure_mode}")
     console.print()
-    console.print(
-        f"  [bold]{scenario.id}[/bold] · {attempt_label}"
-    )
+    console.print(f"  [bold]{scenario.id}[/bold] · {attempt_label}")
     console.print(f"  [dim]{scenario.description}[/dim]")
     console.print()
 
@@ -197,7 +190,7 @@ def collect_feedback(
     """Walk through pending attempts and collect evaluator feedback.
 
     Args:
-        path: Path to the ``<hid>-scenarios.json`` file.
+        path: Path to the ``<hid>-test-cases.json`` file.
         evaluator_id: Optional string recorded in each feedback entry.
         only: If set, process ONLY scenarios with these IDs.
         include_ids: Force-include these scenario IDs even when ``only`` is set.
@@ -205,16 +198,11 @@ def collect_feedback(
         console: Rich Console for output.
     """
     scenario_file = load_scenario_file(path)
-    pending = _pending_attempts(
-        scenario_file, only=only, include_ids=include_ids, exclude=exclude
-    )
+    pending = _pending_attempts(scenario_file, only=only, include_ids=include_ids, exclude=exclude)
 
     awaiting = _count_awaiting_responses(scenario_file)
     if awaiting:
-        console.print(
-            f"[dim]{awaiting} attempt(s) still awaiting simulator responses — "
-            f"skipping those.[/dim]"
-        )
+        console.print(f"[dim]{awaiting} attempt(s) still awaiting simulator responses — skipping those.[/dim]")
 
     if not pending:
         if awaiting:
@@ -224,8 +212,7 @@ def collect_feedback(
         return
 
     console.print(
-        f"Collecting feedback for [bold]{len(pending)}[/bold] attempt(s). "
-        f"Press Ctrl-C to pause — progress is saved after each entry.\n"
+        f"Collecting feedback for [bold]{len(pending)}[/bold] attempt(s). Press Ctrl-C to pause — progress is saved after each entry.\n"
     )
     if evaluator_id:
         console.print(f"Evaluator: [bold]{evaluator_id}[/bold]\n", style="dim")
@@ -242,9 +229,7 @@ def collect_feedback(
             total_attempts_in_scenario = len(scenario.attempts)
             attempt_label = f"attempt {a_idx + 1}/{total_attempts_in_scenario}"
 
-            console.print(
-                f"\n[dim]── {pos + 1}/{len(pending)} ──[/dim]"
-            )
+            console.print(f"\n[dim]── {pos + 1}/{len(pending)} ──[/dim]")
 
             feedback = _prompt_feedback(
                 console=console,
@@ -265,8 +250,7 @@ def collect_feedback(
 
     except (KeyboardInterrupt, typer.Abort):
         console.print(
-            f"\n[warning]Paused after {completed} entr{'y' if completed == 1 else 'ies'}. "
-            f"Run the command again to resume.[/warning]"
+            f"\n[warning]Paused after {completed} entr{'y' if completed == 1 else 'ies'}. Run the command again to resume.[/warning]"
         )
         return
 
@@ -276,7 +260,4 @@ def collect_feedback(
             f"{'y' if completed == 1 else 'ies'} recorded for available responses.[/success]"
         )
     else:
-        console.print(
-            f"\n[success]All feedback recorded — {completed} feedback entr"
-            f"{'y' if completed == 1 else 'ies'} recorded.[/success]"
-        )
+        console.print(f"\n[success]All feedback recorded — {completed} feedback entr{'y' if completed == 1 else 'ies'} recorded.[/success]")

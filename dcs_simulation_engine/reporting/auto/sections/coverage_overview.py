@@ -10,10 +10,10 @@ Renders two coverage score cards:
 import json
 from pathlib import Path
 
-from dcs_utils.auto.sections.coverage_shared import (
+from dcs_simulation_engine.reporting.auto.sections.coverage_shared import (
+    _score_color,
     human_score,
     nonhuman_score,
-    _score_color,
 )
 
 

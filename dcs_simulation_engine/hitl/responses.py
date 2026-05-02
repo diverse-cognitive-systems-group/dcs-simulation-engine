@@ -4,12 +4,11 @@ import asyncio
 from collections import defaultdict
 from pathlib import Path
 
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-
 from dcs_simulation_engine.api.client import APIClient, SimulationRun
 from dcs_simulation_engine.api.models import CreateGameRequest
-from dcs_utils.hitl import Scenario, ScenarioFile, SimulatorResponseType
-from dcs_utils.hitl.generate import load_scenario_file, save_scenario_file
+from dcs_simulation_engine.hitl import Scenario, ScenarioFile, SimulatorResponseType
+from dcs_simulation_engine.hitl.generate import load_scenario_file, save_scenario_file
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 
 class ParentSessionMissingError(RuntimeError):
@@ -129,18 +128,9 @@ def render_status_summary(
         f"  {summary['scenario_groups_total']} scenario group(s)",
         f"  {scenarios_total} scenario(s)",
         f"  {attempts_total} attempt(s)",
-        (
-            f"  {summary['attempts_without_simulator_responses']}/{attempts_total} attempt(s) "
-            "without simulator responses"
-        ),
-        (
-            f"  {summary['attempts_without_player_feedback']}/{attempts_total} attempt(s) "
-            "without player feedback"
-        ),
-        (
-            f"  {summary['empty_conversation_histories']}/{scenarios_total} empty "
-            "conversation history/histories"
-        ),
+        (f"  {summary['attempts_without_simulator_responses']}/{attempts_total} attempt(s) without simulator responses"),
+        (f"  {summary['attempts_without_player_feedback']}/{attempts_total} attempt(s) without player feedback"),
+        (f"  {summary['empty_conversation_histories']}/{scenarios_total} empty conversation history/histories"),
         (
             f"  {summary['conversation_histories_missing_simulator_reply']}/{scenarios_total} "
             "conversation history/histories missing a simulator reply"
@@ -386,7 +376,9 @@ async def _run_scenario_async(
 ) -> list[str]:
     """Sync shared history and optionally run pending attempts for one scenario."""
 
-    def _sync_run() -> tuple[list[dict], str | None, list[tuple[int, str | None, SimulatorResponseType | None, list[dict[str, str]]]], list[str]]:
+    def _sync_run() -> tuple[
+        list[dict], str | None, list[tuple[int, str | None, SimulatorResponseType | None, list[dict[str, str]]]], list[str]
+    ]:
         scenario = scenario_file.scenario_groups[group_idx].scenarios[scenario_idx]
         warnings: list[str] = []
 

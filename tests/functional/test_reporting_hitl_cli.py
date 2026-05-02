@@ -1,9 +1,9 @@
-"""Functional tests for the dcs-utils CLI.
+"""Functional tests for the dcs CLI.
 
 Prerequisites:
     uv sync --extra dev --extra analysis
 
-Runs every dcs-utils command and asserts:
+Runs every dcs command and asserts:
   - exit code 0
   - all HTML reports are parseable (contain <html>, no Python Traceback)
 """
@@ -13,9 +13,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
-from dcs_utils.cli.__main__ import app
-from dcs_utils.hitl import Attempt, EvaluatorFeedback, Scenario, ScenarioFile, ScenarioGroup
-from dcs_utils.hitl.generate import save_scenario_file
+from dcs_simulation_engine.cli.app import app
+from dcs_simulation_engine.hitl import Attempt, EvaluatorFeedback, Scenario, ScenarioFile, ScenarioGroup
+from dcs_simulation_engine.hitl.generate import save_scenario_file
 from typer.testing import CliRunner
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ def _assert_valid_html(path: Path) -> None:
 
 @pytest.mark.functional
 def test_report_coverage_dev(tmp_path, monkeypatch):
-    """dcs-utils report coverage --db dev writes a valid HTML report."""
+    """Dcs report coverage --db dev writes a valid HTML report."""
     monkeypatch.chdir(tmp_path)
 
     result = _RUNNER.invoke(app, ["report", "coverage", "--db", "dev"])
@@ -87,7 +87,7 @@ def test_report_coverage_dev(tmp_path, monkeypatch):
 
 @pytest.mark.functional
 def test_report_coverage_prod(tmp_path, monkeypatch):
-    """dcs-utils report coverage --db prod writes a valid HTML report."""
+    """Dcs report coverage --db prod writes a valid HTML report."""
     monkeypatch.chdir(tmp_path)
 
     result = _RUNNER.invoke(app, ["report", "coverage", "--db", "prod"])
@@ -105,7 +105,7 @@ def test_report_coverage_prod(tmp_path, monkeypatch):
 
 @pytest.mark.functional
 def test_report_results_default_sections(tmp_path):
-    """dcs-utils report results with default sections produces a valid HTML report."""
+    """Dcs report results with default sections produces a valid HTML report."""
     out = tmp_path / "report.html"
 
     result = _RUNNER.invoke(
@@ -120,7 +120,7 @@ def test_report_results_default_sections(tmp_path):
 
 @pytest.mark.functional
 def test_report_results_sim_quality(tmp_path):
-    """dcs-utils report results --only sim-quality produces a valid HTML report and per-character sub-reports."""
+    """Dcs report results --only sim-quality produces a valid HTML report and per-character sub-reports."""
     out = tmp_path / "report.html"
 
     result = _RUNNER.invoke(
@@ -147,7 +147,7 @@ def test_report_results_sim_quality(tmp_path):
 @pytest.mark.functional
 @pytest.mark.parametrize("slug", _VALID_SECTION_SLUGS)
 def test_report_results_each_section(tmp_path, slug):
-    """dcs-utils report results --only <slug> runs without error for every section."""
+    """Dcs report results --only <slug> runs without error for every section."""
     out = tmp_path / f"report_{slug}.html"
 
     result = _RUNNER.invoke(
@@ -175,25 +175,25 @@ def test_report_results_each_section(tmp_path, slug):
 
 @pytest.mark.functional
 def test_hitl_create(tmp_path, monkeypatch):
-    """dcs-utils hitl create NA --db dev creates a valid scenarios scaffold file."""
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    """Dcs admin hitl create NA --db dev creates a valid test cases scaffold file."""
+    test_cases_file = tmp_path / "NA-test-cases.json"
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
 
-    result = _RUNNER.invoke(app, ["hitl", "create", "NA", "--db", "dev"])
+    result = _RUNNER.invoke(app, ["admin", "hitl", "create", "NA", "--db", "dev"])
 
     assert result.exit_code == 0, result.output
-    assert scenarios_file.exists(), f"Expected scenarios file at {scenarios_file}"
+    assert test_cases_file.exists(), f"Expected test cases file at {test_cases_file}"
     assert "Scenario File Summary" in result.output
     assert "scenario group(s)" in result.output
     assert "attempt(s) without simulator responses" in result.output
     assert "attempt(s) without player feedback" in result.output
     assert "Next steps:" not in result.output
 
-    data = json.loads(scenarios_file.read_text())
+    data = json.loads(test_cases_file.read_text())
     assert data["npc_hid"] == "NA"
     assert len(data["scenario_groups"]) >= 12
     # All attempts start empty (no engine responses yet)
@@ -210,7 +210,7 @@ def test_hitl_create(tmp_path, monkeypatch):
 
 @pytest.mark.functional
 def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypatch):
-    """dcs-utils hitl update stores shared opening history, then branches per attempt."""
+    """Dcs admin hitl update stores shared opening history, then branches per attempt."""
 
     class _FakeRun:
         def __init__(
@@ -288,7 +288,7 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
                 f"branch-session-{self._branch_count}",
             )
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-22T00:00:00+00:00",
@@ -314,7 +314,7 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
     _responses_by_message = {
         "I look around": "The machine gives a low mechanical hum.",
@@ -323,17 +323,17 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
     _step_calls: list[str] = []
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_utils.hitl.responses.APIClient", _FakeAPIClient)
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    help_result = _RUNNER.invoke(app, ["hitl", "update", "--help"])
+    help_result = _RUNNER.invoke(app, ["admin", "hitl", "update", "--help"])
     assert help_result.exit_code == 0, help_result.output
     assert "--include-empty" not in help_result.output
 
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
+    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
 
     assert result.exit_code == 0, result.output
     assert _step_calls == [
@@ -342,7 +342,7 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
         ("branch-2", "I touch the wall"),
     ]
 
-    data = json.loads(scenarios_file.read_text(encoding="utf-8"))
+    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
     scenario = data["scenario_groups"][0]["scenarios"][0]
 
     assert scenario["conversation_history"] == [
@@ -361,7 +361,7 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
 
 @pytest.mark.functional
 def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monkeypatch):
-    """dcs-utils hitl update --only-history repairs a trailing player turn without branching attempts."""
+    """Dcs admin hitl update --only-history repairs a trailing player turn without branching attempts."""
 
     class _FakeAPIClient:
         def __init__(self, *, url: str, api_key: str) -> None:
@@ -409,7 +409,7 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
             self.branch_calls += 1
             raise AssertionError("branch_session should not be called for --only-history")
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-23T00:00:00+00:00",
@@ -436,23 +436,23 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_utils.hitl.responses.APIClient", _FakeAPIClient)
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--only-history"])
+    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--only-history"])
 
     assert result.exit_code == 0, result.output
     assert "Scenario File Summary" in result.output
     assert "1/1 attempt(s) without simulator responses" in result.output
     assert "0/1 conversation history/histories missing a simulator reply" in result.output
 
-    data = json.loads(scenarios_file.read_text(encoding="utf-8"))
+    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
     scenario = data["scenario_groups"][0]["scenarios"][0]
     assert scenario["conversation_history"][-1] == {
         "role": "assistant",
@@ -463,7 +463,7 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
 
 @pytest.mark.functional
 def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_path, monkeypatch):
-    """dcs-utils hitl update can rebuild a missing parent session from saved history."""
+    """Dcs admin hitl update can rebuild a missing parent session from saved history."""
 
     class _FakeRun:
         def __init__(
@@ -526,8 +526,8 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
                 f"branch-session-{self._branch_count}",
             )
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
-    scenarios_file.write_text(
+    test_cases_file = tmp_path / "NA-test-cases.json"
+    test_cases_file.write_text(
         json.dumps(
             {
                 "npc_hid": "NA",
@@ -545,9 +545,7 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
                                 "game": "Explore",
                                 "pc_hid": "NA",
                                 "context_session_id": "missing-parent",
-                                "conversation_history": [
-                                    {"role": "assistant", "content": "A quiet machine waits."}
-                                ],
+                                "conversation_history": [{"role": "assistant", "content": "A quiet machine waits."}],
                                 "attempts": [
                                     {
                                         "player_message": "I inspect the machine",
@@ -572,15 +570,16 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
     _step_calls: list[tuple[str, str]] = []
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_utils.hitl.responses.APIClient", _FakeAPIClient)
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
     result = _RUNNER.invoke(
         app,
         [
+            "admin",
             "hitl",
             "update",
             "NA",
@@ -597,7 +596,7 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
         ("branch-1", "I inspect the machine"),
     ]
 
-    data = json.loads(scenarios_file.read_text(encoding="utf-8"))
+    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
     scenario = data["scenario_groups"][0]["scenarios"][0]
     assert "context_session_id" not in scenario
     assert scenario["parent_session_id"] == "rebuilt-parent"
@@ -666,7 +665,7 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
             self._branch_count += 1
             return _FakeRun(_step_calls, f"branch-{self._branch_count}", f"branch-session-{self._branch_count}")
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-23T00:00:00+00:00",
@@ -689,38 +688,36 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
     _step_calls: list[tuple[str, str]] = []
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_utils.hitl.responses.APIClient", _FakeAPIClient)
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
+    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--skip-player-feedback"])
 
     assert result.exit_code == 0, result.output
     assert "Scenario File Summary" in result.output
     assert "0/1 attempt(s) without simulator responses" in result.output
 
-    data = json.loads(scenarios_file.read_text(encoding="utf-8"))
+    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
     attempt = data["scenario_groups"][0]["scenarios"][0]["attempts"][0]
     assert attempt["simulator_response"] == "Validation blocked that action."
     assert attempt["simulator_response_type"] == "error"
-    assert attempt["simulator_extra_events"] == [
-        {"event_type": "info", "content": "Try a grounded physical action instead."}
-    ]
+    assert attempt["simulator_extra_events"] == [{"event_type": "info", "content": "Try a grounded physical action instead."}]
 
 
 @pytest.mark.functional
 def test_hitl_status_summary_respects_selected_subset(tmp_path):
     """Shared HITL summary counts only the selected scenarios when filtered."""
-    from dcs_utils.hitl.responses import compute_status_summary
+    from dcs_simulation_engine.hitl.responses import compute_status_summary
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-23T00:00:00+00:00",
@@ -757,9 +754,9 @@ def test_hitl_status_summary_respects_selected_subset(tmp_path):
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
-    summary = compute_status_summary(scenarios_file, only=["NA-test-001"])
+    summary = compute_status_summary(test_cases_file, only=["NA-test-001"])
 
     assert summary["scenario_groups_total"] == 1
     assert summary["scenarios_total"] == 1
@@ -772,7 +769,7 @@ def test_hitl_status_summary_respects_selected_subset(tmp_path):
 
 @pytest.mark.functional
 def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
-    """dcs-utils hitl update should fail fast with a clear server-running message."""
+    """Dcs admin hitl update should fail fast with a clear server-running message."""
 
     class _UnavailableAPIClient:
         def __init__(self, *, url: str, api_key: str) -> None:
@@ -787,7 +784,7 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
         def health(self):
             raise RuntimeError("connection refused")
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-23T00:00:00+00:00",
@@ -810,11 +807,11 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _UnavailableAPIClient)
 
@@ -824,9 +821,9 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
         called["generate"] = True
         _ = kwargs
 
-    monkeypatch.setattr("dcs_utils.hitl.responses.generate_responses", _fake_generate_responses)
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
 
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
+    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--skip-player-feedback"])
 
     assert result.exit_code == 1
     assert "Could not connect to the DCS server" in result.output
@@ -841,24 +838,24 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
 
 @pytest.mark.functional
 def test_hitl_export(tmp_path, monkeypatch):
-    """dcs-utils hitl export NA writes a standard results directory."""
-    from dcs_utils.hitl.generate import build_scaffold, load_character, save_scaffold
+    """Dcs admin hitl export NA writes a standard results directory."""
+    from dcs_simulation_engine.hitl.generate import build_scaffold, load_character, save_scaffold
 
-    # Build a scaffold directly so we have a scenarios file to export from.
+    # Build a scaffold directly so we have a test cases file to export from.
     character = load_character("NA", "dev")
     scaffold = build_scaffold(character, "Explore")
-    scenarios_file = tmp_path / "NA-scenarios.json"
-    save_scaffold(scaffold, scenarios_file)
+    test_cases_file = tmp_path / "NA-test-cases.json"
+    save_scaffold(scaffold, test_cases_file)
 
     monkeypatch.setattr(
-        "dcs_utils.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-scenarios.json",
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
 
     out_dir = tmp_path / "hitl_export"
     result = _RUNNER.invoke(
         app,
-        ["hitl", "export", "NA", "--output-dir", str(out_dir)],
+        ["admin", "hitl", "export", "NA", "--output-dir", str(out_dir)],
     )
 
     assert result.exit_code == 0, result.output
@@ -885,9 +882,9 @@ def test_hitl_export(tmp_path, monkeypatch):
 @pytest.mark.functional
 def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
     """Validation/system attempt responses export with their original event types."""
-    from dcs_utils.hitl.export import export_results
+    from dcs_simulation_engine.hitl.export import export_results
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-23T00:00:00+00:00",
@@ -908,9 +905,7 @@ def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
                                 player_message="Try blocked action",
                                 simulator_response="Validation blocked that action.",
                                 simulator_response_type="error",
-                                simulator_extra_events=[
-                                    {"event_type": "info", "content": "Try a grounded physical action instead."}
-                                ],
+                                simulator_extra_events=[{"event_type": "info", "content": "Try a grounded physical action instead."}],
                                 evaluator_feedback=EvaluatorFeedback(
                                     liked=False,
                                     comment="Validator caught it correctly.",
@@ -926,9 +921,9 @@ def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
-    out_dir = export_results(scenarios_file, output_dir=tmp_path / "hitl_export")
+    out_dir = export_results(test_cases_file, output_dir=tmp_path / "hitl_export")
     session_events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
 
     outbound = [event for event in session_events if event["direction"] == "outbound"]
@@ -945,9 +940,9 @@ def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
 @pytest.mark.functional
 def test_hitl_export_skips_incomplete_attempts_and_zero_complete_scenarios(tmp_path):
     """Only attempts with both response and feedback are exported."""
-    from dcs_utils.hitl.export import export_results
+    from dcs_simulation_engine.hitl.export import export_results
 
-    scenarios_file = tmp_path / "NA-scenarios.json"
+    test_cases_file = tmp_path / "NA-test-cases.json"
     scenario_file = ScenarioFile(
         npc_hid="NA",
         generated_at="2026-04-23T00:00:00+00:00",
@@ -1000,9 +995,9 @@ def test_hitl_export_skips_incomplete_attempts_and_zero_complete_scenarios(tmp_p
             )
         ],
     )
-    save_scenario_file(scenarios_file, scenario_file)
+    save_scenario_file(test_cases_file, scenario_file)
 
-    out_dir = export_results(scenarios_file, output_dir=tmp_path / "hitl_export")
+    out_dir = export_results(test_cases_file, output_dir=tmp_path / "hitl_export")
     manifest = json.loads((out_dir / "__manifest__.json").read_text(encoding="utf-8"))
     sessions = json.loads((out_dir / "sessions.json").read_text(encoding="utf-8"))
     session_events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
@@ -1045,7 +1040,7 @@ _SIM_QUALITY_HTML = """\
 
 @pytest.mark.functional
 def test_admin_publish_characters(tmp_path, monkeypatch):
-    """dcs-utils admin publish characters produces all three expected changes.
+    """Dcs admin publish characters produces all three expected changes.
 
     Expected changes:
       [1] character_evaluations.json — one new evaluation entry appended for NA
@@ -1064,12 +1059,12 @@ def test_admin_publish_characters(tmp_path, monkeypatch):
     def _mock_write_manifest(path: Path, approved, policy_version) -> None:
         manifest_calls.append((path, approved, policy_version))
 
-    monkeypatch.setattr("dcs_utils.auto.publish.save_json_file", _mock_save_json_file)
+    monkeypatch.setattr("dcs_simulation_engine.reporting.auto.publish.save_json_file", _mock_save_json_file)
     monkeypatch.setattr(
         "dcs_simulation_engine.utils.release_policy.write_manifest",
         _mock_write_manifest,
     )
-    # compute_approved_characters has a stale import ('analysis' was renamed to 'dcs_utils')
+    # compute_approved_characters has a stale import ('analysis' was renamed to 'dcs_simulation_engine')
     monkeypatch.setattr(
         "dcs_simulation_engine.utils.release_policy.compute_approved_characters",
         lambda policy, evals, chars_by_hid: [],

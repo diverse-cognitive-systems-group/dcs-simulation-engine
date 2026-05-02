@@ -1,15 +1,12 @@
 """Load a DCS results directory into analysis-ready DataFrames.
 
 Usage:
-    from dcs_utils.common import load_all
+    from dcs_simulation_engine.reporting import load_all
     data = load_all("/path/to/results")
 """
 
-
-
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -34,6 +31,7 @@ def _parse_dt(x):
 def _human_duration(seconds: float) -> str:
     """Convert seconds to a human-friendly string, e.g. '1h 5m 3s'."""
     from datetime import timedelta
+
     td = timedelta(seconds=int(seconds))
     d = td.days
     h, r = divmod(td.seconds, 3600)
@@ -62,29 +60,30 @@ def _load_logs(logs_dir: Path) -> pd.DataFrame:
                 try:
                     obj = json.loads(line)
                 except json.JSONDecodeError:
-                    rows.append({"log_file": log_path.name, "event_idx": event_idx,
-                                 "parse_error": True, "raw_line": line})
+                    rows.append({"log_file": log_path.name, "event_idx": event_idx, "parse_error": True, "raw_line": line})
                     continue
                 record = obj.get("record", {}) or {}
                 level = record.get("level", {}) or {}
                 file_info = record.get("file", {}) or {}
                 time_info = record.get("time", {}) or {}
-                rows.append({
-                    "log_file":   log_path.name,
-                    "event_idx":  event_idx,
-                    "parse_error": False,
-                    "message":    record.get("message"),
-                    "exception":  record.get("exception"),
-                    "function":   record.get("function"),
-                    "module":     record.get("module"),
-                    "line":       record.get("line"),
-                    "file_name":  file_info.get("name"),
-                    "level":      level.get("name"),
-                    "level_no":   level.get("no"),
-                    "time_repr":  time_info.get("repr"),
-                    "timestamp":  time_info.get("timestamp"),
-                    "text":       obj.get("text"),
-                })
+                rows.append(
+                    {
+                        "log_file": log_path.name,
+                        "event_idx": event_idx,
+                        "parse_error": False,
+                        "message": record.get("message"),
+                        "exception": record.get("exception"),
+                        "function": record.get("function"),
+                        "module": record.get("module"),
+                        "line": record.get("line"),
+                        "file_name": file_info.get("name"),
+                        "level": level.get("name"),
+                        "level_no": level.get("no"),
+                        "time_repr": time_info.get("repr"),
+                        "timestamp": time_info.get("timestamp"),
+                        "text": obj.get("text"),
+                    }
+                )
     df = pd.DataFrame(rows)
     if df.empty:
         return df
@@ -94,6 +93,7 @@ def _load_logs(logs_dir: Path) -> pd.DataFrame:
         parsed = pd.to_datetime(df["time_repr"], utc=True, errors="coerce")
         df["timestamp"] = df["timestamp"].fillna(parsed)
     return df.sort_values(["log_file", "event_idx"]).reset_index(drop=True)
+
 
 # ---------------------------------------------------------------------------
 # PII columns that are always dropped from the display players DataFrame
@@ -123,15 +123,15 @@ class AnalysisData:
     run: dict  # first record from runs.json, or {}
 
     # Core DataFrames
-    runs_df: pd.DataFrame        # sessions — one row per run
-    players_df: pd.DataFrame     # players (PII columns dropped)
-    transcripts_df: pd.DataFrame # session_events — one row per event
-    assignments_df: pd.DataFrame # assignments — one row per assignment
-    feedback_df: pd.DataFrame    # flattened form answers
+    runs_df: pd.DataFrame  # sessions — one row per run
+    players_df: pd.DataFrame  # players (PII columns dropped)
+    transcripts_df: pd.DataFrame  # session_events — one row per event
+    assignments_df: pd.DataFrame  # assignments — one row per assignment
+    feedback_df: pd.DataFrame  # flattened form answers
     event_feedback_df: pd.DataFrame  # inline per-message feedback from session_events
-    logs_df: pd.DataFrame        # log events (empty if no logs/ dir)
+    logs_df: pd.DataFrame  # log events (empty if no logs/ dir)
     characters_df: pd.DataFrame  # characters
-    errors_df: pd.DataFrame      # WARNING/ERROR/CRITICAL subset of logs_df
+    errors_df: pd.DataFrame  # WARNING/ERROR/CRITICAL subset of logs_df
 
     @property
     def runs_enriched_df(self) -> pd.DataFrame:
@@ -255,15 +255,8 @@ def _load_runs(results_dir: Path) -> pd.DataFrame:
 
     # Derived columns
     if "session_started_at" in df.columns and "session_ended_at" in df.columns:
-        df["duration_minutes"] = (
-            (df["session_ended_at"] - df["session_started_at"])
-            .dt.total_seconds()
-            .div(60)
-            .round(2)
-        )
-        df["duration_human"] = df["duration_minutes"].apply(
-            lambda m: _human_duration(m * 60) if pd.notna(m) else "—"
-        )
+        df["duration_minutes"] = (df["session_ended_at"] - df["session_started_at"]).dt.total_seconds().div(60).round(2)
+        df["duration_human"] = df["duration_minutes"].apply(lambda m: _human_duration(m * 60) if pd.notna(m) else "—")
     else:
         df["duration_minutes"] = pd.NA
         df["duration_human"] = "—"
@@ -367,18 +360,20 @@ def _build_feedback(assignments_df: pd.DataFrame) -> pd.DataFrame:
                     answer = "; ".join(str(a) for a in answer)
                 trigger = form_data.get("trigger")
                 trigger_event = trigger.get("event") if isinstance(trigger, dict) else None
-                rows.append({
-                    "player_id":       row.get("player_id"),
-                    "game_name":       row.get("game_name"),
-                    "run_name":        row.get("run_name"),
-                    "form_name":       form_name,
-                    "trigger_event":   trigger_event,
-                    "submitted_at":    submitted_at,
-                    "question_key":    key,
-                    "question_prompt": ans_obj.get("prompt"),
-                    "answer_type":     ans_obj.get("answer_type"),
-                    "answer":          answer,
-                })
+                rows.append(
+                    {
+                        "player_id": row.get("player_id"),
+                        "game_name": row.get("game_name"),
+                        "run_name": row.get("run_name"),
+                        "form_name": form_name,
+                        "trigger_event": trigger_event,
+                        "submitted_at": submitted_at,
+                        "question_key": key,
+                        "question_prompt": ans_obj.get("prompt"),
+                        "answer_type": ans_obj.get("answer_type"),
+                        "answer": answer,
+                    }
+                )
 
     return pd.DataFrame(rows)
 
@@ -395,9 +390,7 @@ def _build_event_feedback(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -
 
     # Join game_name and player_id from sessions
     if not runs_df.empty and "session_id" in runs_df.columns:
-        session_meta = runs_df[
-            [c for c in ["session_id", "game_name", "player_id"] if c in runs_df.columns]
-        ]
+        session_meta = runs_df[[c for c in ["session_id", "game_name", "player_id"] if c in runs_df.columns]]
         df = df.merge(session_meta, on="session_id", how="left")
 
     flags = []
@@ -414,17 +407,19 @@ def _build_event_feedback(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -
         liked = row.get("feedback.liked")
         comment = str(row.get("feedback.comment") or "").strip()
         active_flags = [label for col, label in flags if row.get(col)]
-        rows.append({
-            "session_id":   row.get("session_id"),
-            "game_name":    row.get("game_name"),
-            "player_id":    row.get("player_id"),
-            "seq":          row.get("seq"),
-            "turn_index":   row.get("turn_index"),
-            "liked":        liked,
-            "flags":        ", ".join(active_flags) if active_flags else "",
-            "comment":      comment,
-            "submitted_at": _parse_dt(row.get("feedback.submitted_at")),
-        })
+        rows.append(
+            {
+                "session_id": row.get("session_id"),
+                "game_name": row.get("game_name"),
+                "player_id": row.get("player_id"),
+                "seq": row.get("seq"),
+                "turn_index": row.get("turn_index"),
+                "liked": liked,
+                "flags": ", ".join(active_flags) if active_flags else "",
+                "comment": comment,
+                "submitted_at": _parse_dt(row.get("feedback.submitted_at")),
+            }
+        )
 
     return pd.DataFrame(rows)
 

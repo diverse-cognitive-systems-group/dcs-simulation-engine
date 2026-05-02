@@ -9,9 +9,8 @@ import json
 from pathlib import Path
 
 import pandas as pd
-
-from dcs_utils.auto.rendering.chart_utils import matplotlib_to_base64, plotly_to_html
-from dcs_utils.auto.sections import coverage_shared
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import matplotlib_to_base64, plotly_to_html
+from dcs_simulation_engine.reporting.auto.sections import coverage_shared
 
 
 def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "prod") -> str:
@@ -44,12 +43,14 @@ def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "pro
         label = hid_label[c["hid"]]
         for category, abilities in c["hsn_divergence"].items():
             for ability, data in abilities.items():
-                long_rows.append({
-                    "hid": label,
-                    "category": category,
-                    "ability": ability,
-                    "value": data["value"],  # "normative" | "divergent"
-                })
+                long_rows.append(
+                    {
+                        "hid": label,
+                        "category": category,
+                        "ability": ability,
+                        "value": data["value"],  # "normative" | "divergent"
+                    }
+                )
     long_df = pd.DataFrame(long_rows)
 
     parts.append(
@@ -89,26 +90,27 @@ def render(repo_root: Path, hids_filter: list[str] | None = None, db: str = "pro
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _hsn_heatmap(long_df: pd.DataFrame) -> str:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import seaborn as sns
 
     # Build pivot: rows=hid, cols=ability (ordered by category then name)
-    col_order = (
-        long_df[["category", "ability"]]
-        .drop_duplicates()
-        .sort_values(["category", "ability"])["ability"]
-        .tolist()
-    )
+    col_order = long_df[["category", "ability"]].drop_duplicates().sort_values(["category", "ability"])["ability"].tolist()
 
-    pivot = long_df.pivot_table(
-        index="hid",
-        columns="ability",
-        values="value",
-        aggfunc=lambda s: 1 if "divergent" in s.values else 0,
-    ).fillna(0).astype(int)
+    pivot = (
+        long_df.pivot_table(
+            index="hid",
+            columns="ability",
+            values="value",
+            aggfunc=lambda s: 1 if "divergent" in s.values else 0,
+        )
+        .fillna(0)
+        .astype(int)
+    )
 
     # Reorder columns
     col_order = [c for c in col_order if c in pivot.columns]
@@ -146,18 +148,9 @@ def _hsn_heatmap(long_df: pd.DataFrame) -> str:
 def _divergence_bar(long_df: pd.DataFrame) -> str:
     import plotly.express as px
 
-    div_counts = (
-        long_df[long_df["value"] == "divergent"]
-        .groupby("hid")
-        .size()
-        .reset_index(name="divergent_count")
-    )
+    div_counts = long_df[long_df["value"] == "divergent"].groupby("hid").size().reset_index(name="divergent_count")
     all_hids = long_df["hid"].unique()
-    full = (
-        pd.DataFrame({"hid": all_hids})
-        .merge(div_counts, on="hid", how="left")
-        .fillna(0)
-    )
+    full = pd.DataFrame({"hid": all_hids}).merge(div_counts, on="hid", how="left").fillna(0)
     full["divergent_count"] = full["divergent_count"].astype(int)
     full = full.sort_values("divergent_count", ascending=False)
 

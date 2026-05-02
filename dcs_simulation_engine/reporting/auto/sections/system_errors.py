@@ -7,13 +7,10 @@ Three views of errors:
   3. Tables — top error messages, in-game error events, raw filtered log table.
 """
 
-
-
 import pandas as pd
-
-from dcs_utils.auto.constants import chart_caption, section_intro
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.common.loader import AnalysisData
+from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
 # ---------------------------------------------------------------------------
 # Column definitions for the raw log table (unchanged from original)
@@ -32,12 +29,12 @@ _LOG_COLUMNS = [
 
 _LOG_RENAME = {
     "timestamp": "Timestamp",
-    "level":     "Level",
-    "log_file":  "Log File",
-    "module":    "Module",
-    "function":  "Function",
-    "line":      "Line",
-    "message":   "Message",
+    "level": "Level",
+    "log_file": "Log File",
+    "module": "Module",
+    "function": "Function",
+    "line": "Line",
+    "message": "Message",
     "exception": "Exception",
 }
 
@@ -48,22 +45,25 @@ _LEVEL_COL_INDEX = 1  # 0-based index of "Level" in _LOG_COLUMNS, used in JS
 # render
 # ---------------------------------------------------------------------------
 
+
 def render(data: AnalysisData) -> str:
     parts: list[str] = [section_intro("system_errors")]
 
     parts.append(_summary_card(data))
 
     # Charts row
-    row_charts = "".join([
-        f'<div class="col-md-6 chart-container">'
-        f'{_log_level_breakdown(data.logs_df)}'
-        f'{chart_caption("system_errors", "log_level_breakdown")}'
-        f'</div>',
-        f'<div class="col-md-6 chart-container">'
-        f'{_error_events_per_session(data)}'
-        f'{chart_caption("system_errors", "error_events_per_session")}'
-        f'</div>',
-    ])
+    row_charts = "".join(
+        [
+            f'<div class="col-md-6 chart-container">'
+            f"{_log_level_breakdown(data.logs_df)}"
+            f"{chart_caption('system_errors', 'log_level_breakdown')}"
+            f"</div>",
+            f'<div class="col-md-6 chart-container">'
+            f"{_error_events_per_session(data)}"
+            f"{chart_caption('system_errors', 'error_events_per_session')}"
+            f"</div>",
+        ]
+    )
     parts.append(f'<div class="row">{row_charts}</div>')
 
     parts.append('<h3 class="h5 mt-4 mb-2">Top Error Messages</h3>')
@@ -85,6 +85,7 @@ def render(data: AnalysisData) -> str:
 # Summary card
 # ---------------------------------------------------------------------------
 
+
 def _summary_card(data: AnalysisData) -> str:
     # Log-level counts
     def _level_count(level: str) -> int:
@@ -92,8 +93,8 @@ def _summary_card(data: AnalysisData) -> str:
             return 0
         return int(data.errors_df["level"].eq(level).sum())
 
-    warnings  = _level_count("WARNING")
-    errors    = _level_count("ERROR")
+    warnings = _level_count("WARNING")
+    errors = _level_count("ERROR")
     criticals = _level_count("CRITICAL")
 
     # In-game error events
@@ -104,30 +105,21 @@ def _summary_card(data: AnalysisData) -> str:
     # Sessions ending with retry budget exhausted
     n_retry = 0
     if not data.runs_df.empty and "termination_reason" in data.runs_df.columns:
-        n_retry = int(
-            data.runs_df["termination_reason"]
-            .fillna("")
-            .str.lower()
-            .str.contains("retry_budget|retry budget")
-            .sum()
-        )
+        n_retry = int(data.runs_df["termination_reason"].fillna("").str.lower().str.contains("retry_budget|retry budget").sum())
 
     rows = [
-        ("Log WARNINGs",                  str(warnings)),
-        ("Log ERRORs",                    str(errors)),
-        ("Log CRITICALs",                 str(criticals)),
-        ("In-game error events",          str(n_inplay)),
+        ("Log WARNINGs", str(warnings)),
+        ("Log ERRORs", str(errors)),
+        ("Log CRITICALs", str(criticals)),
+        ("In-game error events", str(n_inplay)),
         ("Sessions (retry budget exhausted)", str(n_retry)),
     ]
-    dl_items = "".join(
-        f"<dt class='col-sm-5'>{label}</dt><dd class='col-sm-7'>{value}</dd>"
-        for label, value in rows
-    )
+    dl_items = "".join(f"<dt class='col-sm-5'>{label}</dt><dd class='col-sm-7'>{value}</dd>" for label, value in rows)
     return (
         '<h3 class="h5 mb-2">Summary</h3>'
         '<div class="card mb-4"><div class="card-body">'
         f'<dl class="row dl-meta mb-0">{dl_items}</dl>'
-        '</div></div>'
+        "</div></div>"
     )
 
 
@@ -135,34 +127,34 @@ def _summary_card(data: AnalysisData) -> str:
 # Charts
 # ---------------------------------------------------------------------------
 
+
 def _log_level_breakdown(logs_df: pd.DataFrame) -> str:
     import plotly.express as px
 
     if logs_df.empty or "level" not in logs_df.columns:
         return '<div class="alert alert-secondary">No log data available.</div>'
 
-    counts = (
-        logs_df["level"].fillna("unknown")
-        .value_counts()
-        .rename_axis("level")
-        .reset_index(name="count")
-    )
+    counts = logs_df["level"].fillna("unknown").value_counts().rename_axis("level").reset_index(name="count")
     color_map = {
         "CRITICAL": "#c0392b",
-        "ERROR":    "#e74c3c",
-        "WARNING":  "#f39c12",
-        "INFO":     "#3498db",
-        "DEBUG":    "#95a5a6",
+        "ERROR": "#e74c3c",
+        "WARNING": "#f39c12",
+        "INFO": "#3498db",
+        "DEBUG": "#95a5a6",
     }
     fig = px.bar(
-        counts, x="count", y="level", orientation="h",
+        counts,
+        x="count",
+        y="level",
+        orientation="h",
         title="Log Entries by Severity",
         labels={"level": "Level", "count": "Count"},
         color="level",
         color_discrete_map=color_map,
     )
     fig.update_layout(
-        height=300, margin=dict(l=20, r=20, t=40, b=40),
+        height=300,
+        margin=dict(l=20, r=20, t=40, b=40),
         showlegend=False,
         yaxis={"categoryorder": "total ascending"},
     )
@@ -191,14 +183,18 @@ def _error_events_per_session(data: AnalysisData) -> str:
     if not data.runs_df.empty and "game_name" in data.runs_df.columns:
         counts = counts.merge(
             data.runs_df[["session_id", "game_name"]].drop_duplicates("session_id"),
-            on="session_id", how="left",
+            on="session_id",
+            how="left",
         )
         counts["label"] = counts["session_id"].str[:8] + " (" + counts["game_name"].fillna("?") + ")"
     else:
         counts["label"] = counts["session_id"].str[:8]
 
     fig = px.bar(
-        counts, x="errors", y="label", orientation="h",
+        counts,
+        x="errors",
+        y="label",
+        orientation="h",
         title="In-Game Error Events per Session",
         labels={"label": "Session", "errors": "Error Events"},
     )
@@ -214,18 +210,12 @@ def _error_events_per_session(data: AnalysisData) -> str:
 # Tables
 # ---------------------------------------------------------------------------
 
+
 def _top_error_messages(errors_df: pd.DataFrame) -> str:
     if errors_df.empty or "message" not in errors_df.columns:
         return '<div class="alert alert-secondary">No error log data available.</div>'
 
-    top = (
-        errors_df["message"]
-        .fillna("")
-        .value_counts()
-        .head(20)
-        .rename_axis("message")
-        .reset_index(name="count")
-    )
+    top = errors_df["message"].fillna("").value_counts().head(20).rename_axis("message").reset_index(name="count")
     return df_to_datatable(
         top,
         table_id="top-errors-table",
@@ -246,23 +236,21 @@ def _inplay_error_events_table(data: AnalysisData) -> str:
 
     if not data.runs_df.empty:
         run_attrs = data.runs_df[
-            [c for c in ["session_id", "player_id", "game_name", "pc_hid", "npc_hid"]
-             if c in data.runs_df.columns]
+            [c for c in ["session_id", "player_id", "game_name", "pc_hid", "npc_hid"] if c in data.runs_df.columns]
         ].drop_duplicates("session_id")
         df = df.merge(run_attrs, on="session_id", how="left")
 
-    cols_ordered = ["session_id", "player_id", "game_name", "pc_hid", "npc_hid",
-                    "turn_index", "content", "event_ts"]
+    cols_ordered = ["session_id", "player_id", "game_name", "pc_hid", "npc_hid", "turn_index", "content", "event_ts"]
     cols = [c for c in cols_ordered if c in df.columns]
     rename = {
         "session_id": "Session",
-        "player_id":  "Player",
-        "game_name":  "Game",
-        "pc_hid":     "PC",
-        "npc_hid":    "NPC",
+        "player_id": "Player",
+        "game_name": "Game",
+        "pc_hid": "PC",
+        "npc_hid": "NPC",
         "turn_index": "Turn",
-        "content":    "Error Message",
-        "event_ts":   "Timestamp",
+        "content": "Error Message",
+        "event_ts": "Timestamp",
     }
     return df_to_datatable(
         df,
@@ -279,16 +267,8 @@ def _log_errors_table(data: AnalysisData) -> str:
 
     if df.empty:
         if data.logs_df.empty:
-            return (
-                '<div class="alert alert-secondary">'
-                'No log files found — cannot check for errors.'
-                '</div>'
-            )
-        return (
-            '<div class="alert alert-success">'
-            'No warnings or errors found in logs.'
-            '</div>'
-        )
+            return '<div class="alert alert-secondary">No log files found — cannot check for errors.</div>'
+        return '<div class="alert alert-success">No warnings or errors found in logs.</div>'
 
     cols = [c for c in _LOG_COLUMNS if c in df.columns]
     rename = {k: v for k, v in _LOG_RENAME.items() if k in cols}
@@ -328,6 +308,8 @@ $(document).ready(function () {{
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _plotly(fig) -> str:
-    from dcs_utils.auto.rendering.chart_utils import plotly_to_html
+    from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
+
     return plotly_to_html(fig)

@@ -5,21 +5,16 @@ Renders:
 2. Per-NPC scores table — ICF, NCo, Other, and Scenario Coverage broken down by NPC character.
 """
 
-
-
 import html as html_lib
 import json
 from pathlib import Path
 
 import pandas as pd
+from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.loader import AnalysisData
 
-from dcs_utils.auto.constants import chart_caption, section_intro
-from dcs_utils.auto.rendering.table_utils import df_to_datatable
-from dcs_utils.common.loader import AnalysisData
-
-_PRESSURE_CATEGORIES_PATH = (
-    Path(__file__).resolve().parents[2] / "data" / "character_pressure_categories.json"
-)
+_PRESSURE_CATEGORIES_PATH = Path(__file__).resolve().parents[3] / "hitl" / "character-evaluation-template.json"
 
 
 def _fmt_pct(numerator: int, denominator: int) -> str:
@@ -35,10 +30,10 @@ def _flag_count(transcripts_df: pd.DataFrame, col: str) -> int:
 
 
 def _load_pressure_categories() -> list[dict]:
-    """Load pressure category definitions from the data directory."""
+    """Load evaluation category definitions from the HITL template."""
     try:
         raw = json.loads(_PRESSURE_CATEGORIES_PATH.read_text(encoding="utf-8"))
-        return raw.get("pressure_categories", [])
+        return raw.get("evaluation_categories", [])
     except Exception:
         return []
 
@@ -80,24 +75,17 @@ def _scenario_coverage_section(npc_hid: str, runs_df: pd.DataFrame) -> str:
             icon = '<span class="text-danger fw-bold" style="min-width:1.2em;">✗</span>'
         items.append(
             f'<li class="list-group-item d-flex align-items-start gap-2 py-2">'
-            f'{icon}'
-            f'<div>'
+            f"{icon}"
+            f"<div>"
             f'<span class="fw-semibold">{html_lib.escape(label)}</span>'
             f'<span class="text-muted ms-2" style="font-size:0.88rem;">{description}</span>'
-            f'</div>'
-            f'</li>'
+            f"</div>"
+            f"</li>"
         )
 
-    list_html = (
-        '<ul class="list-group list-group-flush">'
-        + "".join(items)
-        + "</ul>"
-    )
+    list_html = '<ul class="list-group list-group-flush">' + "".join(items) + "</ul>"
 
-    return (
-        f'<p class="mb-2">{html_lib.escape(header_text)}</p>'
-        f'<div class="card"><div class="card-body p-0">{list_html}</div></div>'
-    )
+    return f'<p class="mb-2">{html_lib.escape(header_text)}</p><div class="card"><div class="card-body p-0">{list_html}</div></div>'
 
 
 def _scores_summary_card(
@@ -110,29 +98,26 @@ def _scores_summary_card(
     else:
         total_npc_turns = 0
 
-    ooc_count   = _flag_count(transcripts_df, "feedback.out_of_character")
-    dms_count   = _flag_count(transcripts_df, "feedback.doesnt_make_sense")
+    ooc_count = _flag_count(transcripts_df, "feedback.out_of_character")
+    dms_count = _flag_count(transcripts_df, "feedback.doesnt_make_sense")
     other_count = _flag_count(transcripts_df, "feedback.other")
-    in_char     = total_npc_turns - ooc_count
+    in_char = total_npc_turns - ooc_count
 
     rows = [
-        ("Total NPC Turns",              str(total_npc_turns)),
-        ("In-Character Fidelity (ICF)",  _fmt_pct(in_char,     total_npc_turns)),
-        ("Narrative Coherence (NCo)",    _fmt_pct(dms_count,   total_npc_turns)),
-        ("Other",                        _fmt_pct(other_count, total_npc_turns)),
+        ("Total NPC Turns", str(total_npc_turns)),
+        ("In-Character Fidelity (ICF)", _fmt_pct(in_char, total_npc_turns)),
+        ("Narrative Coherence (NCo)", _fmt_pct(dms_count, total_npc_turns)),
+        ("Other", _fmt_pct(other_count, total_npc_turns)),
     ]
     if coverage_text is not None:
         rows.append(("Scenario Coverage", coverage_text))
 
-    dl_items = "".join(
-        f"<dt class='col-sm-4'>{label}</dt><dd class='col-sm-8'>{value}</dd>"
-        for label, value in rows
-    )
+    dl_items = "".join(f"<dt class='col-sm-4'>{label}</dt><dd class='col-sm-8'>{value}</dd>" for label, value in rows)
     return (
         '<h3 class="h5 mb-2">Scores Summary</h3>'
         '<div class="card mb-4"><div class="card-body">'
         f'<dl class="row dl-meta mb-0">{dl_items}</dl>'
-        '</div></div>'
+        "</div></div>"
     )
 
 
@@ -150,12 +135,7 @@ def _per_npc_scores_table(
         return ""
 
     # Join npc_hid from runs_df via session_id
-    if (
-        not runs_df.empty
-        and "session_id" in runs_df.columns
-        and "npc_hid" in runs_df.columns
-        and "session_id" in npc_turns.columns
-    ):
+    if not runs_df.empty and "session_id" in runs_df.columns and "npc_hid" in runs_df.columns and "session_id" in npc_turns.columns:
         npc_turns = npc_turns.merge(
             runs_df[["session_id", "npc_hid"]].drop_duplicates(),
             on="session_id",
@@ -168,8 +148,8 @@ def _per_npc_scores_table(
         return ""
 
     flag_cols = {
-        "ooc":   "feedback.out_of_character",
-        "dms":   "feedback.doesnt_make_sense",
+        "ooc": "feedback.out_of_character",
+        "dms": "feedback.doesnt_make_sense",
         "other": "feedback.other",
     }
 
@@ -188,22 +168,24 @@ def _per_npc_scores_table(
 
     rows = []
     for npc_hid, grp in npc_turns.groupby("npc_hid", sort=True):
-        total  = len(grp)
-        ooc    = int(grp[flag_cols["ooc"]].sum())
-        dms    = int(grp[flag_cols["dms"]].sum())
-        other  = int(grp[flag_cols["other"]].sum())
+        total = len(grp)
+        ooc = int(grp[flag_cols["ooc"]].sum())
+        dms = int(grp[flag_cols["dms"]].sum())
+        other = int(grp[flag_cols["other"]].sum())
         in_char = total - ooc
 
         covered = _compute_covered_categories(str(npc_hid), runs_df)
-        rows.append({
-            "npc_hid":           npc_hid,
-            "descriptor":        desc_by_hid.get(str(npc_hid), ""),
-            "turns":             total,
-            "icf":               _fmt_pct(in_char, total),
-            "nco":               _fmt_pct(dms,     total),
-            "other":             _fmt_pct(other,   total),
-            "scenario_coverage": _fmt_pct(len(covered), len(all_categories)),
-        })
+        rows.append(
+            {
+                "npc_hid": npc_hid,
+                "descriptor": desc_by_hid.get(str(npc_hid), ""),
+                "turns": total,
+                "icf": _fmt_pct(in_char, total),
+                "nco": _fmt_pct(dms, total),
+                "other": _fmt_pct(other, total),
+                "scenario_coverage": _fmt_pct(len(covered), len(all_categories)),
+            }
+        )
 
     if not rows:
         return ""
@@ -214,12 +196,12 @@ def _per_npc_scores_table(
         table_id="sim-quality-per-npc-table",
         columns=["npc_hid", "descriptor", "turns", "icf", "nco", "other", "scenario_coverage"],
         rename={
-            "npc_hid":           "HID",
-            "descriptor":        "Character",
-            "turns":             "Turns",
-            "icf":               "ICF",
-            "nco":               "NCo",
-            "other":             "Other",
+            "npc_hid": "HID",
+            "descriptor": "Character",
+            "turns": "Turns",
+            "icf": "ICF",
+            "nco": "NCo",
+            "other": "Other",
             "scenario_coverage": "Scenario Coverage",
         },
         scroll_y="",
@@ -231,9 +213,9 @@ def _per_npc_scores_table(
 
 def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     """Build a standalone per-character quality HTML report for the given NPC HID."""
-    from dcs_utils.auto.rendering.html_builder import build_html
-    from dcs_utils.auto.sections import player_feedback
-    from dcs_utils.auto.sections import transcripts as transcripts_section
+    from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_html
+    from dcs_simulation_engine.reporting.auto.sections import player_feedback
+    from dcs_simulation_engine.reporting.auto.sections import transcripts as transcripts_section
 
     # --- Character metadata ---
     char_meta: dict = {"hid": hid}
@@ -286,15 +268,8 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     for key, label in (("name", "Name"), ("short_description", "Description"), ("long_description", "Long Description")):
         if key in char_meta:
             meta_rows.append((label, html_lib.escape(str(char_meta[key]))))
-    dl_items = "".join(
-        f"<dt class='col-sm-3'>{lbl}</dt><dd class='col-sm-9'>{val}</dd>"
-        for lbl, val in meta_rows
-    )
-    metadata_fragment = (
-        '<div class="card"><div class="card-body">'
-        f'<dl class="row dl-meta mb-0">{dl_items}</dl>'
-        '</div></div>'
-    )
+    dl_items = "".join(f"<dt class='col-sm-3'>{lbl}</dt><dd class='col-sm-9'>{val}</dd>" for lbl, val in meta_rows)
+    metadata_fragment = f'<div class="card"><div class="card-body"><dl class="row dl-meta mb-0">{dl_items}</dl></div></div>'
 
     # 2. Overview (scores summary filtered to this character)
     overview_fragment = _scores_summary_card(char_data.transcripts_df, coverage_text=coverage_text)
@@ -310,11 +285,11 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
 
     # --- Assemble ---
     sections = [
-        ("metadata",          "Metadata",          metadata_fragment,    "top"),
-        ("overview",          "Overview",          overview_fragment,    "top"),
-        ("scenario-coverage", "Scenario Coverage", scenario_fragment,    "top"),
-        ("feedback",          "Feedback",          feedback_fragment,    "top"),
-        ("transcripts",       "Transcripts",       transcripts_fragment, "top"),
+        ("metadata", "Metadata", metadata_fragment, "top"),
+        ("overview", "Overview", overview_fragment, "top"),
+        ("scenario-coverage", "Scenario Coverage", scenario_fragment, "top"),
+        ("feedback", "Feedback", feedback_fragment, "top"),
+        ("transcripts", "Transcripts", transcripts_fragment, "top"),
     ]
 
     char_name = char_meta.get("name") or hid

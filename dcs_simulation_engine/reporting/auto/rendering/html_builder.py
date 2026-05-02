@@ -1,7 +1,5 @@
 """Assemble the final HTML document from rendered section fragments."""
 
-
-
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,7 +33,7 @@ def build_html(
         must match an entry in *artifacts*. Defaults to the standard
         raw_results / run_config pair.
 
-    Returns
+    Returns:
     -------
     str
         Complete, self-contained HTML document as a string.
@@ -49,10 +47,14 @@ def build_html(
 
     generated_at = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-    _download_items = download_items if download_items is not None else [
-        ("Raw Results (.zip)", "raw_results"),
-        ("Run Config (.yml)", "run_config"),
-    ]
+    _download_items = (
+        download_items
+        if download_items is not None
+        else [
+            ("Raw Results (.zip)", "raw_results"),
+            ("Run Config (.yml)", "run_config"),
+        ]
+    )
 
     return template.render(
         title=title,

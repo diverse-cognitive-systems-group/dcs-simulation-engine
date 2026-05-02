@@ -1,4 +1,4 @@
-"""Publish utilities for dcs-utils.
+"""Publish utilities for dcs.
 
 Provides pure functions for:
 - Parsing the per-NPC simulation quality table from a report HTML
@@ -13,10 +13,10 @@ from typing import Any
 
 from dcs_simulation_engine.dal.base import CharacterRecord
 
-
 # ---------------------------------------------------------------------------
 # HTML table parser
 # ---------------------------------------------------------------------------
+
 
 class _TableParser(HTMLParser):
     """Extract rows from a <table id="..."> element."""
@@ -95,14 +95,14 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
 
         [{"npc_hid": "NA", "turns": 25, "icf": 0.96, "dms": 0.01}, ...]
 
-    Raises
+    Raises:
     ------
     ValueError
         If the table ``sim-quality-per-npc-table`` is not found in the HTML.
         This means the report was generated before the simulation_quality section
         was added. Regenerate with::
 
-            dcs-utils generate report ... --template simulation_quality
+            dcs generate report ... --template simulation_quality
     """
     parser = _TableParser("sim-quality-per-npc-table")
     parser.feed(html)
@@ -112,7 +112,7 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
             "Report has no simulation quality per-NPC table "
             "('sim-quality-per-npc-table' not found). "
             "Regenerate the report with: "
-            "dcs-utils generate report <results_dir> --template simulation_quality"
+            "dcs generate report <results_dir> --template simulation_quality"
         )
 
     # Normalise header names → column indices
@@ -122,15 +122,12 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
         try:
             return headers_lower.index(name)
         except ValueError:
-            raise ValueError(
-                f"Expected column {name!r} in sim-quality-per-npc-table "
-                f"but found: {parser.headers}"
-            )
+            raise ValueError(f"Expected column {name!r} in sim-quality-per-npc-table but found: {parser.headers}")
 
-    npc_col   = _col("hid")
+    npc_col = _col("hid")
     turns_col = _col("turns")
-    icf_col   = _col("icf")
-    nco_col   = _col("nco")
+    icf_col = _col("icf")
+    nco_col = _col("nco")
 
     # Scenario Coverage column is optional (reports generated before this feature lack it)
     try:
@@ -159,17 +156,17 @@ def parse_sim_quality_table(html: str) -> list[dict[str, Any]]:
         except ValueError:
             turns = 0
         scenario_coverage = (
-            _pct(row[scenario_coverage_col])
-            if scenario_coverage_col is not None and len(row) > scenario_coverage_col
-            else 0.0
+            _pct(row[scenario_coverage_col]) if scenario_coverage_col is not None and len(row) > scenario_coverage_col else 0.0
         )
-        results.append({
-            "npc_hid":           npc_hid,
-            "turns":             turns,
-            "icf":               _pct(row[icf_col]),
-            "dms":               _pct(row[nco_col]),
-            "scenario_coverage": scenario_coverage,
-        })
+        results.append(
+            {
+                "npc_hid": npc_hid,
+                "turns": turns,
+                "icf": _pct(row[icf_col]),
+                "dms": _pct(row[nco_col]),
+                "scenario_coverage": scenario_coverage,
+            }
+        )
 
     return results
 
@@ -194,6 +191,7 @@ def build_char_record_from_doc(doc: dict[str, Any]) -> CharacterRecord:
 # ---------------------------------------------------------------------------
 # JSON helpers
 # ---------------------------------------------------------------------------
+
 
 def load_json_file(path: Path) -> list | dict:
     """Read and return parsed JSON from *path*."""
