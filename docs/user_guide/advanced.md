@@ -104,7 +104,7 @@ The engine exposes an API endpoint, so you do not have to use our text-based Rea
 
 This is useful for non-run-harnessed gameplay, where the client directly interacts with the engine API without using the run harness. This enables custom orchestration, AI-driven control loops, and integration into external systems or apps.
 
-[OpenEvolve](https://github.com/codelion/openevolve) is an evolutionary coding agent: it mutates a small "initial program" file across generations and scores each candidate with an evaluator function. To evolve a program that *plays* a game on the engine, start the engine without the UI (see [examples/run_configs/benchmark-ai.yml](../../examples/run_configs/benchmark-ai.yml), which sets `launch_gui: false`) and have the candidate program call the API directly (see [examples/api_usage/](../../examples/api_usage/)).
+[OpenEvolve](https://github.com/codelion/openevolve) is an evolutionary coding agent: it mutates a small "initial program" file across generations and scores each candidate with an evaluator function. To evolve a program that *plays* a game on the engine, start the engine without the UI (see [examples/run_configs/benchmark-ai.yml](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/blob/main/examples/run_configs/benchmark-ai.yml), which sets `launch_gui: false`) and have the candidate program call the API directly (see [examples/api_usage/](https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine/tree/main/examples/api_usage)).
 
 ```plaintext
 [OpenEvolve controller]
