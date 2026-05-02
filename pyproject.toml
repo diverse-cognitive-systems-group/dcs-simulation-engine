@@ -53,18 +53,6 @@ version = "0.1.0"
 # runtime dependencies here. These libraries will not be included when
 # the package "deploys".
 [project.optional-dependencies]
-analysis = [
-  "ipykernel>=6.31.0",
-  "itables>=2.7.0",
-  "jupyter>=1.1.1",
-  "matplotlib>=3.10.8",
-  "networkx>=3.6.1",
-  "pandas>=3.0.1",
-  "plotly>=6.6.0",
-  "scikit-learn>=1.8.0",
-  "seaborn>=0.13.2",
-  "sentence-transformers>=5.2.3",
-]
 dev = [
   "httpx>=0.28.1,<0.29.0",
   "ipykernel>=6.30.1,<7.0.0",
@@ -80,6 +68,18 @@ dev = [
   "ruff>=0.12.10,<0.13.0",
   "types-pyyaml>=6.0.12.20250822",
   "yamale>=6.0.0,<7.0.0",
+]
+notebooks = [
+  "ipykernel>=6.31.0",
+  "itables>=2.7.0",
+  "jupyter>=1.1.1",
+  "matplotlib>=3.10.8",
+  "networkx>=3.6.1",
+  "pandas>=3.0.1",
+  "plotly>=6.6.0",
+  "scikit-learn>=1.8.0",
+  "seaborn>=0.13.2",
+  "sentence-transformers>=5.2.3",
 ]
 
 # This allows you to defines "scripts" so that your package can install executables into the current

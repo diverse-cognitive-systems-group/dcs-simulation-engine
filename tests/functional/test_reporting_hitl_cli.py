@@ -1,8 +1,5 @@
 """Functional tests for the dcs CLI.
 
-Prerequisites:
-    uv sync --extra dev --extra analysis
-
 Runs every dcs command and asserts:
   - exit code 0
   - all HTML reports are parseable (contain <html>, no Python Traceback)
