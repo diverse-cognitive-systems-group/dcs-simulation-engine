@@ -1,8 +1,22 @@
 #!/usr/bin/env python3
-"""Manual load test for end-to-end player registration/auth/gameplay.
+"""Run a DCS load test and publish the system-performance report.
 
-This script assumes the API server is already running:
-- runs each client in its own process (with async HTTP + WebSocket per client)
+Usage:
+    uv run python scripts/load_test_and_report.py
+    uv run python scripts/load_test_and_report.py --clients 1 --games 1 --turns 1
+
+Prerequisites:
+    Start the DCS engine separately with shutdown dumping enabled, for example
+    through the compose flow that runs `dcs server --dump ./runs`.
+
+Workflow:
+    1. This script runs load-test clients against the already-running engine.
+    2. When the load test finishes, stop/close the engine.
+    3. The engine writes its standard results export to runs/<timestamp>.
+    4. This script runs:
+       dcs report results runs/<timestamp> --only system-performance \
+           --title "Load Test Results Report" \
+           --report-path docs/reports/load_test_results_report.html
 """
 
 import asyncio
@@ -10,7 +24,10 @@ import concurrent.futures
 import json
 import multiprocessing as mp
 import random
+import re
 import statistics
+import subprocess
+import sys
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -31,15 +48,25 @@ from dcs_simulation_engine.api.models import (
     WSClosedFrame,
     WSErrorFrame,
     WSEventFrame,
+    WSSessionMetaFrame,
     WSTurnEndFrame,
 )
 from dcs_simulation_engine.errors import APIRequestError
 from websockets.asyncio.client import connect
 
-try:
-    import pandas as pd
-except ModuleNotFoundError as exc:
-    raise SystemExit("Missing dependency: pandas. Install pandas to run load_test.py with dataframe export support.") from exc
+
+VALID_PC_ACTIONS = (
+    "I look around the room.",
+    "I wave and say hello.",
+    "I wait and listen.",
+    "I ask what is happening.",
+    "I take a slow step forward.",
+    "I check the nearest door.",
+    "I look at the other person.",
+    "I ask if they need help.",
+    "I stand still and observe.",
+    "I point to the object nearby.",
+)
 
 
 @dataclass
@@ -53,6 +80,7 @@ class GameResult:
     game_duration_ms: float
     wait_samples: list[dict[str, Any]]
     turns: int
+    session_id: str | None = None
     error: str | None = None
 
 
@@ -88,7 +116,7 @@ async def _recv_json(ws: Any) -> dict[str, Any]:
     return frame
 
 
-async def _recv_frame(ws: Any) -> WSEventFrame | WSTurnEndFrame | WSClosedFrame:
+async def _recv_frame(ws: Any) -> WSEventFrame | WSSessionMetaFrame | WSTurnEndFrame | WSClosedFrame:
     """Receive and parse one typed websocket frame."""
     frame = await _recv_json(ws)
     frame_type = frame.get("type")
@@ -97,6 +125,8 @@ async def _recv_frame(ws: Any) -> WSEventFrame | WSTurnEndFrame | WSClosedFrame:
         raise RuntimeError(f"Server error: {error.detail}")
     if frame_type == "event":
         return WSEventFrame.model_validate(frame)
+    if frame_type == "session_meta":
+        return WSSessionMetaFrame.model_validate(frame)
     if frame_type == "turn_end":
         return WSTurnEndFrame.model_validate(frame)
     if frame_type == "closed":
@@ -109,6 +139,8 @@ async def _recv_until_turn_end(ws: Any) -> tuple[list[WSEventFrame], WSTurnEndFr
     events: list[WSEventFrame] = []
     while True:
         frame = await _recv_frame(ws)
+        if isinstance(frame, WSSessionMetaFrame):
+            continue
         if isinstance(frame, WSEventFrame):
             events.append(frame)
             continue
@@ -155,7 +187,10 @@ def _find_playable_setup(
                 f"{game_name}: can_start={setup.can_start} denial_reason={setup.denial_reason} pcs={len(pcs)} npcs={len(npcs)}"
             )
             continue
-        return game_name, random.choice(pcs).hid, random.choice(npcs).hid
+        if "NA" not in {pc.hid for pc in pcs}:
+            diagnostics.append(f"{game_name}: NA is not an allowed pc_choice")
+            continue
+        return game_name, "NA", random.choice(npcs).hid
     detail = "; ".join(diagnostics) if diagnostics else "no setup diagnostics available"
     raise RuntimeError(f"No playable game setup found for this client ({detail})")
 
@@ -228,7 +263,7 @@ async def _play_single_game(
             raise RuntimeError("Session closed before first turn completed")
 
         for turn_idx in range(n_turns):
-            action = f"client={client_id} game={game_index + 1} turn={turn_idx + 1}: advance"
+            action = random.choice(VALID_PC_ACTIONS)
             await ws.send(WSAdvanceRequest(type="advance", text=action).model_dump_json())
             wait_start_ns = time.perf_counter_ns()
             _, turn_end = await _recv_until_turn_end(ws)
@@ -267,6 +302,7 @@ async def _play_single_game(
         game_duration_ms=game_duration_ms,
         wait_samples=wait_samples,
         turns=turns_seen,
+        session_id=session_id,
     )
 
 
@@ -327,6 +363,7 @@ async def run_client(
                 game_duration_ms=0.0,
                 wait_samples=[],
                 turns=0,
+                session_id=None,
                 error=str(exc),
             )
 
@@ -368,10 +405,32 @@ def run_load_test(
     """Execute all clients concurrently in separate processes."""
     ctx = mp.get_context("spawn")
     results: list[ClientResult] = []
+    print(
+        f"Starting load test: clients={n_clients}, games/client={n_games}, turns/game={n_turns}, base_url={base_url}",
+        flush=True,
+    )
     with concurrent.futures.ProcessPoolExecutor(max_workers=n_clients, mp_context=ctx) as pool:
         futures = [pool.submit(_run_client_process, i, base_url, n_games, n_turns, forced_game) for i in range(n_clients)]
-        for fut in concurrent.futures.as_completed(futures):
-            results.append(fut.result())
+        pending = set(futures)
+        started = time.monotonic()
+        while pending:
+            done, pending = concurrent.futures.wait(
+                pending,
+                timeout=5.0,
+                return_when=concurrent.futures.FIRST_COMPLETED,
+            )
+            for fut in done:
+                results.append(fut.result())
+            elapsed_s = time.monotonic() - started
+            completed_games = sum(result.completed_games for result in results)
+            errors = sum(len(result.errors) for result in results)
+            print(
+                "Load test running: "
+                f"clients_done={len(results)}/{n_clients}, "
+                f"games_completed={completed_games}/{n_clients * n_games}, "
+                f"errors={errors}, elapsed={elapsed_s:.1f}s",
+                flush=True,
+            )
     return sorted(results, key=lambda r: r.client_id)
 
 
@@ -443,58 +502,67 @@ def _print_summary(results: list[ClientResult], elapsed_s: float) -> None:
             print(f"  ... {len(failed) - 50} more")
 
 
-def _build_metrics_dataframe(results: list[ClientResult]) -> pd.DataFrame:
-    """Build a flat dataframe for easy analysis ingestion.
-
-    Rows include both metrics:
-    - metric == "game_duration_ms" with one row per game result
-    - metric == "wait_response_duration_ms" with one row per wait sample
-    """
-    rows: list[dict[str, Any]] = []
-    for client in results:
-        for game_result in client.game_results:
-            common = {
-                "client_id": game_result.client_id,
-                "player_id": client.player_id,
-                "game_number": game_result.game_number,
-                "game": game_result.game,
-                "success": game_result.success,
-                "turns": game_result.turns,
-                "error": game_result.error,
-            }
-            rows.append(
-                {
-                    **common,
-                    "metric": "game_duration_ms",
-                    "sample_index": 0,
-                    "value_ms": float(game_result.game_duration_ms),
-                }
-            )
-            for sample_idx, wait_sample in enumerate(game_result.wait_samples, start=1):
-                phase = str(wait_sample.get("phase", "unknown"))
-                turn_index = int(wait_sample.get("turn_index", 0))
-                wait_ms = float(wait_sample.get("duration_ms", 0.0))
-                rows.append(
-                    {
-                        **common,
-                        "metric": "wait_response_duration_ms",
-                        "phase": phase,
-                        "turn_index": turn_index,
-                        "sample_index": sample_idx,
-                        "value_ms": wait_ms,
-                    }
-                )
-    return pd.DataFrame(rows)
+_RUN_DIR_RE = re.compile(r"^\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}$")
+_REQUIRED_REPORT_FILES = frozenset({"runs.json", "sessions.json", "session_events.json"})
 
 
-def _write_results_dataframe(results: list[ClientResult], out_path: Path) -> Path:
-    """Write flattened metrics dataframe as CSV."""
-    df = _build_metrics_dataframe(results)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    df_path = out_path
-    df.to_csv(df_path, index=False)
-    print(f"Wrote metrics dataframe CSV: {df_path}")
-    return df_path
+def _timestamped_run_dirs(runs_dir: Path) -> set[Path]:
+    """Return timestamped result directories currently present under runs_dir."""
+    if not runs_dir.exists():
+        return set()
+    return {path.resolve() for path in runs_dir.iterdir() if path.is_dir() and _RUN_DIR_RE.match(path.name)}
+
+
+def _is_complete_results_dir(path: Path) -> bool:
+    """Return True when a run directory has the minimum files needed for reporting."""
+    return all((path / name).is_file() for name in _REQUIRED_REPORT_FILES)
+
+
+def _find_new_results_dir(*, runs_dir: Path, before: set[Path]) -> Path | None:
+    """Find the newest complete results directory that was not present before the load test."""
+    candidates = [path for path in _timestamped_run_dirs(runs_dir) - before if _is_complete_results_dir(path)]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: (path.stat().st_mtime, path.name))
+
+
+def _wait_for_results_dir(*, runs_dir: Path, before: set[Path], timeout_s: float) -> Path:
+    """Wait until the engine writes a new complete runs/<timestamp> export."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        results_dir = _find_new_results_dir(runs_dir=runs_dir, before=before)
+        if results_dir is not None:
+            return results_dir
+        time.sleep(2.0)
+
+    raise TimeoutError(
+        f"No new complete results export appeared under {runs_dir} within {timeout_s:.0f}s. "
+        "Stop/close the DCS engine so it can write runs/<timestamp>, then rerun report generation."
+    )
+
+
+def _successful_game_count(results: list[ClientResult]) -> int:
+    """Count successful completed games across all clients."""
+    return sum(1 for client in results for game_result in client.game_results if game_result.success)
+
+
+def _generate_report(*, results_dir: Path, report_path: Path, title: str) -> None:
+    """Run the DCS report command for the completed load-test results directory."""
+    command = [
+        sys.executable,
+        "-m",
+        "dcs_simulation_engine.cli.app",
+        "report",
+        "results",
+        str(results_dir),
+        "--only",
+        "system-performance",
+        "--title",
+        title,
+        "--report-path",
+        str(report_path),
+    ]
+    subprocess.run(command, check=True)
 
 
 async def _run(
@@ -504,15 +572,28 @@ async def _run(
     games: int,
     turns: int,
     game: str | None,
-    out: str,
+    runs_dir: Path,
+    report_path: Path,
+    title: str,
+    wait_timeout: float,
 ) -> int:
     """Run load test clients against an already-running server."""
     parsed = urlparse(base_url)
     host = parsed.hostname or "127.0.0.1"
     port = parsed.port or 8000
     base_url = f"http://{host}:{port}"
+    runs_dir = runs_dir.resolve()
+    report_path = report_path.resolve()
 
-    await _wait_for_server(base_url)
+    before_run_dirs = _timestamped_run_dirs(runs_dir)
+    try:
+        await _wait_for_server(base_url)
+    except RuntimeError as exc:
+        print(f"DCS engine is not reachable at {base_url}.")
+        print("Start it first with `uv run dcs server --dump ./runs`, then rerun this script.")
+        print(f"Readiness check failed: {exc}")
+        return 1
+
     started = time.perf_counter()
     results = run_load_test(
         n_clients=clients,
@@ -523,7 +604,24 @@ async def _run(
     )
     elapsed_s = time.perf_counter() - started
     _print_summary(results, elapsed_s=elapsed_s)
-    _write_results_dataframe(results, out_path=Path(out))
+
+    if _successful_game_count(results) == 0:
+        print("\nNo games completed successfully; skipping report generation.")
+        return 1
+
+    print("\nLoad test complete.")
+    print("Stop/close the DCS engine now so it writes its automatic results export to runs/<timestamp>.")
+    print(f"Waiting up to {wait_timeout:.0f}s for a new export under: {runs_dir}")
+
+    try:
+        results_dir = _wait_for_results_dir(runs_dir=runs_dir, before=before_run_dirs, timeout_s=wait_timeout)
+    except TimeoutError as exc:
+        print(f"\n{exc}")
+        return 1
+
+    print(f"Detected results directory: {results_dir}")
+    _generate_report(results_dir=results_dir, report_path=report_path, title=title)
+    print(f"Report written to: {report_path}")
     return 0
 
 
@@ -533,11 +631,19 @@ def main(
     games: int = typer.Option(10, help="Max games per client"),
     turns: int = typer.Option(3, help="Advance turns per game"),
     game: str | None = typer.Option(None, help="Force a specific game name (optional)"),
-    out: str = typer.Option("load_test_metrics.csv", help="Output CSV file path for flattened metrics"),
+    runs_dir: Path = typer.Option(Path("runs"), help="Directory where the engine writes timestamped results exports"),
+    report_path: Path = typer.Option(
+        Path("docs/reports/load_test_results_report.html"),
+        help="Output path for the generated HTML report",
+    ),
+    title: str = typer.Option("Load Test Results Report", help="Report title"),
+    wait_timeout: float = typer.Option(300.0, help="Seconds to wait for a new runs/<timestamp> export after the load test"),
 ) -> None:
     """CLI entrypoint."""
     if clients < 1 or games < 1 or turns < 0:
         raise typer.BadParameter("Invalid arguments: clients>=1, games>=1, turns>=0 required")
+    if wait_timeout <= 0:
+        raise typer.BadParameter("Invalid arguments: wait-timeout must be > 0")
 
     raise SystemExit(
         asyncio.run(
@@ -547,7 +653,10 @@ def main(
                 games=games,
                 turns=turns,
                 game=game,
-                out=out,
+                runs_dir=runs_dir,
+                report_path=report_path,
+                title=title,
+                wait_timeout=wait_timeout,
             )
         )
     )
