@@ -54,7 +54,6 @@ from dcs_simulation_engine.api.models import (
 from dcs_simulation_engine.errors import APIRequestError
 from websockets.asyncio.client import connect
 
-
 VALID_PC_ACTIONS = (
     "I look around the room.",
     "I wave and say hello.",

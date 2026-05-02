@@ -130,8 +130,8 @@ src = ["dcs_simulation_engine", "tests"]
 
 [tool.ruff.lint]
 exclude = [
-  "*.ipynb",              # all notebooks
-  "analysis_notebooks/*", # specific folder
+  "*.ipynb",     # all notebooks
+  "notebooks/*", # specific folder
 ]
 ignore = ["E501"]
 select = [
