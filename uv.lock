@@ -672,18 +672,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-analysis = [
-    { name = "ipykernel" },
-    { name = "itables" },
-    { name = "jupyter" },
-    { name = "matplotlib" },
-    { name = "networkx" },
-    { name = "pandas" },
-    { name = "plotly" },
-    { name = "scikit-learn" },
-    { name = "seaborn" },
-    { name = "sentence-transformers" },
-]
 dev = [
     { name = "httpx" },
     { name = "ipykernel" },
@@ -699,6 +687,18 @@ dev = [
     { name = "ruff" },
     { name = "types-pyyaml" },
     { name = "yamale" },
+]
+notebooks = [
+    { name = "ipykernel" },
+    { name = "itables" },
+    { name = "jupyter" },
+    { name = "matplotlib" },
+    { name = "networkx" },
+    { name = "pandas" },
+    { name = "plotly" },
+    { name = "scikit-learn" },
+    { name = "seaborn" },
+    { name = "sentence-transformers" },
 ]
 
 [package.dev-dependencies]
@@ -717,29 +717,29 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.118.0,<1.0.0" },
     { name = "httpx", specifier = ">=0.28.1,<0.29.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28.1,<0.29.0" },
-    { name = "ipykernel", marker = "extra == 'analysis'", specifier = ">=6.31.0" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.30.1,<7.0.0" },
-    { name = "itables", marker = "extra == 'analysis'", specifier = ">=2.7.0" },
+    { name = "ipykernel", marker = "extra == 'notebooks'", specifier = ">=6.31.0" },
+    { name = "itables", marker = "extra == 'notebooks'", specifier = ">=2.7.0" },
     { name = "jinja2", specifier = ">=3.0,<4.0" },
-    { name = "jupyter", marker = "extra == 'analysis'", specifier = ">=1.1.1" },
     { name = "jupyter", marker = "extra == 'dev'", specifier = ">=1.1.1,<2.0.0" },
+    { name = "jupyter", marker = "extra == 'notebooks'", specifier = ">=1.1.1" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "matplotlib", marker = "extra == 'analysis'", specifier = ">=3.10.8" },
+    { name = "matplotlib", marker = "extra == 'notebooks'", specifier = ">=3.10.8" },
     { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6.1,<2.0.0" },
     { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9.6.19,<10.0.0" },
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'dev'", specifier = ">=0.30.0,<0.31.0" },
     { name = "mongomock", marker = "extra == 'dev'", specifier = ">=4.3.0,<5.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.17.1,<2.0.0" },
-    { name = "networkx", marker = "extra == 'analysis'", specifier = ">=3.6.1" },
+    { name = "networkx", marker = "extra == 'notebooks'", specifier = ">=3.6.1" },
     { name = "numpy", specifier = ">=2.3.5" },
     { name = "openai", specifier = ">=1.99.9,<2.0.0" },
     { name = "packaging", specifier = ">=26.0" },
     { name = "pandas", specifier = ">=3.0.1" },
-    { name = "pandas", marker = "extra == 'analysis'", specifier = ">=3.0.1" },
+    { name = "pandas", marker = "extra == 'notebooks'", specifier = ">=3.0.1" },
     { name = "plotly", specifier = ">=6.6.0" },
-    { name = "plotly", marker = "extra == 'analysis'", specifier = ">=6.6.0" },
     { name = "plotly", marker = "extra == 'dev'", specifier = ">=6.6.0" },
+    { name = "plotly", marker = "extra == 'notebooks'", specifier = ">=6.6.0" },
     { name = "pydantic", specifier = ">=2.11.9,<3.0.0" },
     { name = "pymongo", specifier = ">=4.15.3,<5.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3,<10.0.0" },
@@ -747,9 +747,9 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2,<7.0.0" },
     { name = "rich", specifier = ">=14.1.0,<15.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.10,<0.13.0" },
-    { name = "scikit-learn", marker = "extra == 'analysis'", specifier = ">=1.8.0" },
-    { name = "seaborn", marker = "extra == 'analysis'", specifier = ">=0.13.2" },
-    { name = "sentence-transformers", marker = "extra == 'analysis'", specifier = ">=5.2.3" },
+    { name = "scikit-learn", marker = "extra == 'notebooks'", specifier = ">=1.8.0" },
+    { name = "seaborn", marker = "extra == 'notebooks'", specifier = ">=0.13.2" },
+    { name = "sentence-transformers", marker = "extra == 'notebooks'", specifier = ">=5.2.3" },
     { name = "typer", specifier = ">=0.24.1" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20250822" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.37.0,<0.38.0" },
@@ -757,7 +757,7 @@ requires-dist = [
     { name = "websockets", specifier = ">=16.0,<17.0" },
     { name = "yamale", marker = "extra == 'dev'", specifier = ">=6.0.0,<7.0.0" },
 ]
-provides-extras = ["analysis", "dev"]
+provides-extras = ["dev", "notebooks"]
 
 [package.metadata.requires-dev]
 dev = [
