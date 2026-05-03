@@ -18,7 +18,7 @@ For each character, we:
 - Generate a HITL scenario scaffold covering multiple pressure categories
 - Edit those scenarios so they actually test the representational bounds of the character
 - Run HITL updates to generate simulator outputs and collect evaluator feedback on whether responses are in character, out of character, or invalid
-- Export the completed scenarios and generate a simulation-quality report
+- Export the completed test cases and generate a simulation-quality report
 
 Characters are not added to production unless they pass the quality thresholds defined by `character-release-policy.yml`. In practice this means they must clear release gates such as:
 
@@ -180,8 +180,8 @@ The repo maintains a labelled fixture set covering the full validator ensemble â
 
 | Dataset | Path | Cases | Rule set under test |
 |---------|------|-------|---------------------|
-| Player turn | `tests/data/player_turn_validator_cases.json` | 29 | `DEFAULT_PLAYER_TURN_VALIDATORS` |
-| Simulator turn | `tests/data/simulator_turn_validator_cases.json` | 17 | `DEFAULT_SIMULATOR_TURN_VALIDATORS` |
+| Player turn | `tests/data/validators/player_turn_validator_cases.json` | 29 | `DEFAULT_PLAYER_TURN_VALIDATORS` |
+| Simulator turn | `tests/data/validators/simulator_turn_validator_cases.json` | 17 | `DEFAULT_SIMULATOR_TURN_VALIDATORS` |
 
 Each case is a self-contained record (`pc_hid`, `npc_hid`, `transcript`, `player_action` or `simulator_response`, `game_objective` for the simulator side) carrying the *expected* verdict for the full ensemble â€” both `expected_passed_validators` and `expected_failed_validators` are enumerated per case, and together they must equal the ensemble's full rule list. The fixtures are organised by `id` prefix into three intent buckets:
 

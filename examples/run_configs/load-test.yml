@@ -1,0 +1,32 @@
+# METADATA
+name: Load Test
+description: |
+  A DCS-SE run configuration for synthetic API and WebSocket load testing.
+
+# USER INTERFACE OPTIONS
+ui:
+  launch_gui: false
+  registration_required: true
+
+# PLAYERS ALLOWED
+players:
+  humans:
+    all: true
+
+# GAMES INCLUDED
+games:
+  - name: Explore
+  - name: Infer Intent
+  - name: Foresight
+  - name: Goal Horizon
+  - name: Teamwork
+
+# NEXT GAME STRATEGY
+next_game_strategy:
+  strategy:
+    id: full_character_access
+    allow_choice_if_multiple: true
+    require_completion: false
+
+# DATA COLLECTION FORMS
+forms: null

@@ -23,8 +23,12 @@ dependencies = [
   "httpx (>=0.28.1,<0.29.0)",
   "jinja2 (>=3.0,<4.0)",
   "loguru (>=0.7.3,<0.8.0)",
+  "matplotlib>=3.10.8",
+  "numpy>=2.3.5",
   "openai (>=1.99.9,<2.0.0)",
   "packaging>=26.0",
+  "pandas>=3.0.1",
+  "plotly>=6.6.0",
   "pydantic (>=2.11.9,<3.0.0)",
   "pymongo (>=4.15.3,<5.0.0)",
   "pyyaml (>=6.0.2,<7.0.0)",
@@ -49,18 +53,6 @@ version = "0.1.0"
 # runtime dependencies here. These libraries will not be included when
 # the package "deploys".
 [project.optional-dependencies]
-analysis = [
-  "ipykernel>=6.31.0",
-  "itables>=2.7.0",
-  "jupyter>=1.1.1",
-  "matplotlib>=3.10.8",
-  "networkx>=3.6.1",
-  "pandas>=3.0.1",
-  "plotly>=6.6.0",
-  "scikit-learn>=1.8.0",
-  "seaborn>=0.13.2",
-  "sentence-transformers>=5.2.3",
-]
 dev = [
   "httpx>=0.28.1,<0.29.0",
   "ipykernel>=6.30.1,<7.0.0",
@@ -77,6 +69,18 @@ dev = [
   "types-pyyaml>=6.0.12.20250822",
   "yamale>=6.0.0,<7.0.0",
 ]
+notebooks = [
+  "ipykernel>=6.31.0",
+  "itables>=2.7.0",
+  "jupyter>=1.1.1",
+  "matplotlib>=3.10.8",
+  "networkx>=3.6.1",
+  "pandas>=3.0.1",
+  "plotly>=6.6.0",
+  "scikit-learn>=1.8.0",
+  "seaborn>=0.13.2",
+  "sentence-transformers>=5.2.3",
+]
 
 # This allows you to defines "scripts" so that your package can install executables into the current
 # python environment which will include the system PATH so they may be invoked from the command line.
@@ -84,7 +88,6 @@ dev = [
 # after this package is pip installed, to invoke the main function in the my_app package.
 [project.scripts]
 dcs = "dcs_simulation_engine.cli.app:app"
-dcs-utils = "dcs_utils.cli.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/diverse-cognitive-systems-group/dcs-simulation-engine"
@@ -120,7 +123,6 @@ profile = "black"
 
 [tool.ruff]
 exclude = [
-  "dcs_utils/*", # dcs_utils folder
   "**/*.ipynb", # all notebooks
 ]
 line-length = 140
@@ -128,8 +130,8 @@ src = ["dcs_simulation_engine", "tests"]
 
 [tool.ruff.lint]
 exclude = [
-  "*.ipynb",              # all notebooks
-  "analysis_notebooks/*", # specific folder
+  "*.ipynb",     # all notebooks
+  "notebooks/*", # specific folder
 ]
 ignore = ["E501"]
 select = [
@@ -137,6 +139,11 @@ select = [
   "E", # pycodestyle rules
   "F", # pyflakes rules
   "I", # import rules
+]
+
+[tool.ruff.lint.per-file-ignores]
+"dcs_simulation_engine/reporting/auto/sections/*.py" = [
+  "D103", # moved report section modules expose render() by convention
 ]
 
 [tool.ruff.lint.isort]
@@ -156,6 +163,8 @@ include = ["dcs_simulation_engine*"]
 
 [tool.setuptools.package-data]
 "dcs_simulation_engine.deployments.templates" = ["*.j2"]
+"dcs_simulation_engine.hitl" = ["*.json"]
+"dcs_simulation_engine.reporting.auto.templates" = ["*.html"]
 
 [dependency-groups]
 dev = [

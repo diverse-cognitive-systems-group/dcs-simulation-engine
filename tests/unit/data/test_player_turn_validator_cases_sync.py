@@ -14,7 +14,7 @@ pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SEED_CHARACTERS_PATH = REPO_ROOT / "database_seeds" / "dev" / "characters.json"
-PLAYER_CASES_PATH = REPO_ROOT / "tests" / "data" / "player_turn_validator_cases.json"
+PLAYER_CASES_PATH = REPO_ROOT / "tests" / "data" / "validators" / "player_turn_validator_cases.json"
 
 
 def _load_json(path: Path) -> Any:

@@ -1,6 +1,6 @@
 """Functional tests for CLI commands.
 
-All tests in this file are xfailed pending CLI refactor from dcs-utils.
+All tests in this file are xfailed pending CLI refactor from dcs.
 """
 
 import pytest

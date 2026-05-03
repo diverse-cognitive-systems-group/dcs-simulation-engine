@@ -50,7 +50,7 @@ def compute_approved_characters(
       the fingerprint computed from the current character doc, model, and
       updater prompt template.
     """
-    from dcs_utils.auto.publish import build_char_record_from_doc
+    from dcs_simulation_engine.reporting.auto.publish import build_char_record_from_doc
 
     criteria = policy.get("criteria", {})
     min_icf: float = criteria.get("min_icf_score", 0.0)
