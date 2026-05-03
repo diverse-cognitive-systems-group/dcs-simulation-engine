@@ -1,14 +1,12 @@
 {
     "metadata": {
-        "dataset_name": "simulator_turn_validator_cases",
-        "validator_ensemble": "DEFAULT_SIMULATOR_TURN_VALIDATORS",
-        "notes": "Lean, human-readable, test-runnable cases for simulator turn validation."
+        "model_key": "DEFAULT_SIMULATOR_TURN_VALIDATORS",
+        "description": "Test-runnable cases for default simulator turn validation ensemble."
     },
     "cases": [
         {
-            "id": "allowed_baseline_valid_response",
+            "id": "allows_baseline_valid_response",
             "description": "Observable, relevant adjudication using correct NPC token and no PC over-control.",
-            "input_pattern": "baseline_valid_response",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked records room door faces a narrow university hallway.\nPlayer (NA): I check the card reader beside the door.\nSimulator: The reader stays dark. NB watches the corridor.\nPlayer (NA): I push on the door.",
@@ -26,9 +24,8 @@
             ]
         },
         {
-            "id": "allowed_second_person_observation",
+            "id": "allows_second_person_observation",
             "description": "Second-person observation without controlling the PC is allowed.",
-            "input_pattern": "second_person_world_observation_allowed",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked office door faces you at the end of a quiet hall.\nPlayer (NA): I look at the handle and the frame.\nSimulator: The handle is still. NB waits beside the frame with a clipboard.\nPlayer (NA): I push on it.",
@@ -46,9 +43,8 @@
             ]
         },
         {
-            "id": "allowed_involuntary_physical_consequence",
+            "id": "allows_involuntary_physical_consequence",
             "description": "World-imposed physical consequences on the PC are allowed.",
-            "input_pattern": "involuntary_physical_consequence_allowed",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, exposed wiring hangs across a lab threshold and sparks near the floor.\nPlayer (NA): I study the gap between the wires.\nSimulator: A spark jumps across the opening. NB stays back from the doorway.\nPlayer (NA): I step forward.",
@@ -66,9 +62,8 @@
             ]
         },
         {
-            "id": "allowed_extraordinary_pc_perception",
+            "id": "allows_extraordinary_pc_perception",
             "description": "Extraordinary PC perception allows broader but still direct observation.",
-            "input_pattern": "extraordinary_pc_perception_allowed",
             "pc_hid": "UNI",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a checkpoint opens onto a plaza with a desk, a side gate, and several nearby hosts in view.\nPlayer (UNI): I focus through the nearest host by the checkpoint desk.\nSimulator: Through that host, NB is visible scanning badges at the desk.\nPlayer (UNI): I sync nearby hosts to monitor exits.",
@@ -86,9 +81,8 @@
             ]
         },
         {
-            "id": "allowed_loose_world_modeling",
+            "id": "allows_loose_world_modeling",
             "description": "Simulator adjudicates plausible improvised tool use.",
-            "input_pattern": "loose_world_modeling_adjudicates_improvised_tool",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a dim service corridor ends at a locked lab door.\nPlayer (NA): I crouch near the strike plate and look along the lock.\nSimulator: The lock face is dull in the low light. NB waits near the door with a folded incident form.\nPlayer (NA): I grab a flashlight and angle it across the lock.",
@@ -106,9 +100,8 @@
             ]
         },
         {
-            "id": "npc_action_wrong_subject_label",
+            "id": "disallows_npc_action_with_wrong_subject_label",
             "description": "NPC action uses incorrect subject label.",
-            "input_pattern": "wrong_npc_subject_reference",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a heavy lab door blocks a short concrete hall.\nPlayer (NA): I put my hand on the handle.\nSimulator: The handle does not move. NB waits beside the door with his badge clipped to his coat.\nPlayer (NA): I push the door.",
@@ -127,9 +120,8 @@
             ]
         },
         {
-            "id": "npc_action_pronoun_subject",
+            "id": "disallows_npc_action_with_pronoun_subject",
             "description": "NPC action uses pronoun instead of token.",
-            "input_pattern": "npc_action_with_pronoun_subject",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a narrow equipment room leaves little space between you and NB.\nPlayer (NA): I stop near the storage cabinet and watch his stance.\nSimulator: NB keeps his hands at his sides beside the metal cabinet.\nPlayer (NA): I step closer.",
@@ -148,9 +140,8 @@
             ]
         },
         {
-            "id": "npc_intention_only",
+            "id": "disallows_npc_intention_only",
             "description": "NPC intention without observable action fails.",
-            "input_pattern": "npc_intention_only_without_observable_action",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a side office holds a desk, two chairs, and a closed file drawer.\nPlayer (NA): I glance from the desk to the door.\nSimulator: NB stands near the desk with one hand on the chair back.\nPlayer (NA): I watch NB.",
@@ -169,9 +160,8 @@
             ]
         },
         {
-            "id": "npc_unsupported_ability",
+            "id": "disallows_npc_unsupported_ability",
             "description": "NPC uses unsupported ability.",
-            "input_pattern": "unsupported_npc_superpower",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked storage room door sits between shelves of lab supplies.\nPlayer (NA): I test the handle once.\nSimulator: The handle holds firm. NB stands a few feet back with a key ring at his belt.\nPlayer (NA): I push the door.",
@@ -190,9 +180,8 @@
             ]
         },
         {
-            "id": "perception_hidden_offscreen_event",
+            "id": "disallows_perception_of_offscreen_information",
             "description": "Simulator reveals offscreen information.",
-            "input_pattern": "hidden_offscreen_information_leak",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a closed basement access door sits at the end of a service hallway.\nPlayer (NA): I check the frame for any gap.\nSimulator: The frame is flush. NB shifts the archive box in his arms.\nPlayer (NA): I listen at the door.",
@@ -211,9 +200,8 @@
             ]
         },
         {
-            "id": "perception_hidden_intention",
+            "id": "disallows_perception_of_hidden_intention",
             "description": "Simulator reveals NPC internal plan.",
-            "input_pattern": "hidden_intention_leak",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a break room doorway opens onto a quiet hall.\nPlayer (NA): I stop in the doorway and study the room.\nSimulator: NB stands by the coffee machine and looks toward the exit.\nPlayer (NA): I watch NB.",
@@ -232,9 +220,8 @@
             ]
         },
         {
-            "id": "adjudication_ignores_player_action",
+            "id": "disallows_ignoring_pending_player_question",
             "description": "Simulator ignores pending player action.",
-            "input_pattern": "ignores_pending_player_question",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked archive door stands beside a wall cabinet of labeled binders.\nPlayer (NA): I look over the key ring in NB's hand.\nSimulator: NB holds the keys at waist height beside the door.\nPlayer (NA): I ask which key works.",
@@ -253,9 +240,8 @@
             ]
         },
         {
-            "id": "adjudication_partial_but_not_answer",
+            "id": "disallows_partial_adjudication",
             "description": "Simulator responds but fails to resolve core question.",
-            "input_pattern": "partial_adjudication_but_misses_core_question",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, smoke drifts lightly from a copier alcove beside a locked records door.\nPlayer (NA): I point at the lock and the keys.\nSimulator: NB lifts the key ring. Smoke continues to drift from the alcove.\nPlayer (NA): Which key opens this?",
@@ -274,9 +260,8 @@
             ]
         },
         {
-            "id": "authority_forces_player_volition",
+            "id": "disallows_narrating_player_volition",
             "description": "Simulator dictates player choice.",
-            "input_pattern": "forces_player_volition",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a narrow corridor leads past NB toward an open stairwell door.\nPlayer (NA): I look past him toward the stairwell.\nSimulator: NB stands in the middle of the path with one hand on the rail.\nPlayer (NA): I step forward.",
@@ -295,9 +280,8 @@
             ]
         },
         {
-            "id": "authority_forces_player_emotion",
+            "id": "disallows_narrating_player_emotion",
             "description": "Simulator dictates player emotion.",
-            "input_pattern": "forces_player_emotion",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a small conference room holds a table, two chairs, and a stack of folders.\nPlayer (NA): I plant my hands on the table edge.\nSimulator: NB faces you across the table with both hands braced on it.\nPlayer (NA): I stand firm.",
@@ -316,9 +300,8 @@
             ]
         },
         {
-            "id": "authority_forces_player_speech",
+            "id": "disallows_narrating_player_speech",
             "description": "Simulator dictates player speech.",
-            "input_pattern": "forces_player_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a loading dock office has a roll-up door, a desk, and a lit exit sign.\nPlayer (NA): I square my shoulders and hold my ground.\nSimulator: NB faces you from a few feet away with the door at his back.\nPlayer (NA): I stare at NB.",
@@ -337,9 +320,8 @@
             ]
         },
         {
-            "id": "alignment_irrelevant_event",
+            "id": "disallows_game_objective_alignment_drift",
             "description": "Simulator introduces irrelevant disconnected event.",
-            "input_pattern": "objective_alignment_drift",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked records room door sits at the end of a fluorescent hallway.\nPlayer (NA): I test the handle once and watch the latch.\nSimulator: The latch stays set. NB stands beside the frame and watches your hands.\nPlayer (NA): I try the door again.",
