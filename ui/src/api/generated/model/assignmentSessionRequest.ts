@@ -9,7 +9,7 @@
  * Payload for creating a session from the current assignment.
  */
 export interface AssignmentSessionRequest {
-  assignment_id?: string | null;
   /** @minLength 1 */
   source?: string;
+  assignment_id?: string | null;
 }

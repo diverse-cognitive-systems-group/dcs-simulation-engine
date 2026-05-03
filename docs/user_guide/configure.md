@@ -40,14 +40,14 @@ This controls whether GUI is launched in addition to the API. If only AI players
 - **`players`** — list of players allowed to participate in the run (e.g. `human`, `gpt-4o`, `claude-2`, etc.)
 
 ### Define what forms players see and when
-Forms are used for showing surveys, questionnaires, consent forms, instructions at different events during the run. 
+Forms are used for showing surveys, questionnaires, consent forms, and instructions at different events during the run. They are configured in the run config rather than being hard-coded into registration.
 
 Events include:
 
-- before_all_gameplay_sessions
-- after_all_gameplay_sessions
-- before_each_gameplay_session
-- after_each_gameplay_session
+- before_all_assignments
+- before_assignment
+- after_assignment
+- after_all_assignments
 
 ### Define what games should be included
 Games listed are the ones that the assignment strategy (below) will pull from when creating assignments. It includes the game and any game-specific configurations exposed in that game definition. Omitting games list will pull from all core games with default configurations.

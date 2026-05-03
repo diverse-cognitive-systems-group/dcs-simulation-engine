@@ -10,8 +10,6 @@ from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _RENAME = {
     "access_key": "Access Key",
-    "consent_to_followup": "Consent to Follow-up",
-    "consent_signature": "Consent Signature",
     "access_key_revoked": "Revoked",
     "created_at": "Created At",
     "last_key_issued_at": "Last Key Issued",
@@ -45,6 +43,5 @@ def render(data: AnalysisData) -> str:
         display,
         table_id="players-table",
         rename=rename,
-        truncate_cols=["consent_to_followup", "consent_signature"],
         truncate_at=120,
     )

@@ -19,8 +19,6 @@ REGISTRATION_PAYLOAD = {
     "full_name": "Example Config Tester",
     "email": "example-config-tester@example.com",
     "phone_number": "555-0100",
-    "consent_to_followup": False,
-    "consent_signature": "Example Config Tester",
 }
 
 

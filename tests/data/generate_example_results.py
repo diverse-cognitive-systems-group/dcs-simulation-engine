@@ -715,24 +715,6 @@ def main():
                 "full_name": {"key": "full_name", "type": "text", "label": p["name"], "required": True, "pii": True},
                 "email": {"key": "email", "type": "email", "label": p["email"], "required": True, "pii": True},
                 "phone_number": {"key": "phone_number", "type": "phone", "label": p["phone"], "required": True, "pii": True},
-                "consent_to_followup": {
-                    "key": "consent_to_followup",
-                    "type": "checkboxes",
-                    "label": "Follow-ups",
-                    "required": True,
-                    "pii": True,
-                    "answer": ["I consent to being contacted for a voluntary follow-up regarding this study."],
-                },
-                "consent_signature": {
-                    "key": "consent_signature",
-                    "type": "checkboxes",
-                    "label": "Consent Signature",
-                    "required": True,
-                    "pii": True,
-                    "answer": [
-                        "I confirm that the information I have provided is true and accurate. I acknowledge that I have read and understand the research consent information above, and I agree to participate. I understand that checking this box constitutes my electronic signature."
-                    ],
-                },
             }
         )
     with open(f"{OUT}/players.json", "w") as f:

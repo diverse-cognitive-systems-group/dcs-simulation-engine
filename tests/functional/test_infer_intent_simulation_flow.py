@@ -14,13 +14,12 @@ TEST_PLAYER_ID = ObjectId()
 
 
 @pytest.fixture(autouse=True)
-def seed_consenting_player(_isolate_db_state, async_mongo_provider):
-    """Seed a consenting player for gated game access."""
+def seed_registered_player(_isolate_db_state, async_mongo_provider):
+    """Seed a registered player for session persistence."""
     db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": TEST_PLAYER_ID,
-            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
             "full_name": "Test Player",
             "email": "test@example.com",
         }
