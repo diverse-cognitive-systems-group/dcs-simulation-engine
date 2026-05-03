@@ -1,0 +1,18 @@
+{
+    "metadata": {
+        "description": "Teamwork game behavior HITL evaluation cases."
+    },
+    "cases": [
+        {
+            "id": "should_open_with_reasonable_shared_goal",
+            "description": "Attempts to generate opening scene with a reasonable shared goal. Evaluator judges...",
+            "pc_hid": "NA",
+            "npc_hid": "NB",
+            "transcript": null,
+            "simulator_response": null,
+            "simulator_response_type": null,
+            "simulator_extra_events": [],
+            "evaluator_feedback": null
+        }
+    ]
+}
