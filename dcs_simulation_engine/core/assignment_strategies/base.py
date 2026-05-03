@@ -1,9 +1,9 @@
-"""Assignment strategy protocol for experiment workflows."""
+"""Assignment strategy protocol for run workflows."""
 
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol
 
 if TYPE_CHECKING:
-    from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+    from dcs_simulation_engine.core.run_config import RunConfig
     from dcs_simulation_engine.dal.base import AssignmentRecord, PlayerRecord
 
 
@@ -17,27 +17,27 @@ class AssignmentCandidate(NamedTuple):
 
 
 class AssignmentStrategy(Protocol):
-    """Behavior contract for experiment assignment strategies."""
+    """Behavior contract for run assignment strategies."""
 
     name: str
 
-    def validate_config(self, *, config: "ExperimentConfig") -> None:
+    def validate_config(self, *, config: "RunConfig") -> None:
         """Validate strategy-specific config constraints."""
 
-    def max_assignments_per_player(self, *, config: "ExperimentConfig") -> int:
+    def max_assignments_per_player(self, *, config: "RunConfig") -> int:
         """Return the maximum number of assignments one player may complete."""
 
-    async def compute_progress_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
-        """Return experiment progress payload for the public API."""
+    async def compute_progress_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
+        """Return run progress payload for the public API."""
 
-    async def compute_status_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
-        """Return experiment status payload for the public API."""
+    async def compute_status_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
+        """Return run status payload for the public API."""
 
     async def list_candidate_assignments_async(
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[AssignmentCandidate]:
         """Return candidate assignments for the player under the current strategy."""
@@ -46,7 +46,7 @@ class AssignmentStrategy(Protocol):
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
         """Return the current assignment for a player or create one."""

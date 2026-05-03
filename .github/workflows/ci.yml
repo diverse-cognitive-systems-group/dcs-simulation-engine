@@ -45,7 +45,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.13
       - name: Install deps (incl. dev)
-        run: uv sync --extra dev --extra analysis
+        run: uv sync --extra dev
       - run: make test
 
   build-docs:
@@ -109,7 +109,7 @@ jobs:
   #         TOML
   #     - name: Create Procfile
   #       run: |
-  #         echo "web: uv run dcs server --free-play --host 0.0.0.0 --port 8080" > Procfile
+  #         echo "web: uv run dcs server --config examples/run_configs/demo.yml --host 0.0.0.0 --port 8080" > Procfile
   #     - name: Deploy
   #       run: |
   #         flyctl deploy \

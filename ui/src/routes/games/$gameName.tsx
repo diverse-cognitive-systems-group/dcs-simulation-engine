@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getActiveExperimentName, getApiKey } from '@/lib/auth'
+import { getApiKey } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
 import { getServerConfig } from '@/lib/server-config'
 import { requireAuth, rootRoute } from '../__root'
@@ -157,7 +157,7 @@ function GameSetupPage() {
         await navigate({
           to: '/play/$sessionId',
           params: { sessionId: result.session_id },
-          search: { gameName, experimentName: '' },
+          search: { gameName, runName: '' },
         })
       },
       onError: (err) => {
@@ -179,7 +179,7 @@ function GameSetupPage() {
     await navigate({
       to: '/play/$sessionId',
       params: { sessionId: resumableSessionId },
-      search: { gameName, experimentName: '' },
+      search: { gameName, runName: '' },
     })
   }
 
@@ -377,16 +377,7 @@ export const gameSetupRoute = createRoute({
     if (serverConfig.authentication_required) {
       await requireAuth()
     }
-    if (serverConfig.mode === 'free_play') {
-      return
-    }
-    const experimentName = getActiveExperimentName()
-    if (experimentName) {
-      throw redirect({
-        to: '/experiments/$experimentName',
-        params: { experimentName },
-      })
-    }
+    throw redirect({ to: '/run' })
   },
   component: GameSetupPage,
 })

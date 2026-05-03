@@ -2,7 +2,7 @@
 
 import pytest
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 
 pytestmark = [pytest.mark.unit, pytest.mark.anyio]
@@ -17,34 +17,34 @@ def _load_strategy_config(
     max_assignments_per_player: int = 1,
     allow_choice_if_multiple: bool = False,
     require_completion: bool = True,
-) -> ExperimentConfig:
-    games_yaml = "\n".join(f"    - {game}" for game in games)
+) -> RunConfig:
+    games_yaml = "\n".join(f"  - name: {game}" for game in games)
     path = write_yaml(
         f"{name}.yaml",
         "\n".join(
             [
                 f"name: {name}",
                 "description: Strategy test fixture",
-                "assignment_strategy:",
-                "  strategy: random_unique_game",
-                "  games:",
+                "games:",
                 games_yaml,
-                f"  quota_per_game: {quota_per_game}",
-                f"  max_assignments_per_player: {max_assignments_per_player}",
-                f"  seed: {name}-seed",
-                f"  allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
-                f"  require_completion: {str(require_completion).lower()}",
+                "next_game_strategy:",
+                "  strategy:",
+                "    id: random_unique_game",
+                f"    quota_per_game: {quota_per_game}",
+                f"    max_assignments_per_player: {max_assignments_per_player}",
+                f"    seed: {name}-seed",
+                f"    allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
+                f"    require_completion: {str(require_completion).lower()}",
             ]
         )
         + "\n",
     )
-    return ExperimentConfig.load(path)
+    return RunConfig.load(path)
 
 
 async def _create_assignment(
     provider,
     *,
-    experiment_name: str,
     player_id: str,
     game_name: str,
     pc_hid: str,
@@ -53,7 +53,6 @@ async def _create_assignment(
 ) -> None:
     assignment = await provider.create_assignment(
         assignment_doc={
-            MongoColumns.EXPERIMENT_NAME: experiment_name,
             MongoColumns.PLAYER_ID: player_id,
             MongoColumns.GAME_NAME: game_name,
             MongoColumns.PC_HID: pc_hid,
@@ -82,7 +81,6 @@ async def test_random_unique_game_progress_closes_on_in_progress_quota(async_mon
 
     await _create_assignment(
         async_mongo_provider,
-        experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
         pc_hid="test-char-a",
@@ -102,7 +100,6 @@ async def test_random_unique_game_status_closes_on_counted_quota(async_mongo_pro
 
     await _create_assignment(
         async_mongo_provider,
-        experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
         pc_hid="test-char-a",
@@ -149,7 +146,6 @@ async def test_random_unique_game_skips_games_at_counted_quota(async_mongo_provi
 
     await _create_assignment(
         async_mongo_provider,
-        experiment_name=config.name,
         player_id=filled_player.id,
         game_name="Explore",
         pc_hid="test-char-a",
@@ -175,7 +171,6 @@ async def test_random_unique_game_assigned_rows_do_not_consume_quota(async_mongo
 
     await _create_assignment(
         async_mongo_provider,
-        experiment_name=config.name,
         player_id=first_player.id,
         game_name="Explore",
         pc_hid="test-char-a",
@@ -200,13 +195,12 @@ async def test_random_unique_game_interrupted_rows_release_quota(async_mongo_pro
 
     await _create_assignment(
         async_mongo_provider,
-        experiment_name=config.name,
         player_id=first_player.id,
         game_name="Explore",
         pc_hid="test-char-a",
         status="in_progress",
     )
-    interrupted = await async_mongo_provider.get_active_assignment(experiment_name=config.name, player_id=first_player.id)
+    interrupted = await async_mongo_provider.get_active_assignment(player_id=first_player.id)
     assert interrupted is not None
     await async_mongo_provider.update_assignment_status(
         assignment_id=interrupted.assignment_id,
@@ -244,7 +238,6 @@ async def test_random_unique_player_choice_options_remain_available_with_existin
 
     await _create_assignment(
         async_mongo_provider,
-        experiment_name=config.name,
         player_id=player.id,
         game_name="Explore",
         pc_hid="test-char-a",

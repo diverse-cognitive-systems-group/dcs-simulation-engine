@@ -27,16 +27,16 @@ games:
   - name: Infer Intent
     overrides:
       # or false if you don't want the AI to learn from game scores
-      display_score: true
+      show_final_score: true
   - name: Foresight
     overrides:
-      display_score: true
+      show_final_score: true
   - name: Goal Horizon
     overrides:
-      display_score: true
+      show_final_score: true
   - name: Teamwork
     overrides:
-      display_score: true
+      show_final_score: true
 
 # NEXT GAME STRATEGY
 next_game_strategy:

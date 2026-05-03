@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 from dcs_simulation_engine.core.assignment_strategies import get_assignment_strategy
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
 
@@ -29,27 +29,28 @@ def _load_strategy_config(
     games: list[str] | None = None,
     allow_choice_if_multiple: bool = False,
     max_assignments_per_player: int = 3,
-) -> ExperimentConfig:
-    games_yaml = "\n".join(f"    - {game}" for game in (games or ["Explore", "Foresight"]))
+) -> RunConfig:
+    games_yaml = "\n".join(f"  - name: {game}" for game in (games or ["Explore", "Foresight"]))
     path = write_yaml(
         f"{name}.yaml",
         "\n".join(
             [
                 f"name: {name}",
                 "description: Strategy test fixture",
-                "assignment_strategy:",
-                f"  strategy: {strategy}",
-                "  games:",
+                "games:",
                 games_yaml,
-                "  quota_per_game: 10",
-                f"  max_assignments_per_player: {max_assignments_per_player}",
-                f"  allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
-                f"  seed: {name}-seed",
+                "next_game_strategy:",
+                "  strategy:",
+                f"    id: {strategy}",
+                "    quota_per_game: 10",
+                f"    max_assignments_per_player: {max_assignments_per_player}",
+                f"    allow_choice_if_multiple: {str(allow_choice_if_multiple).lower()}",
+                f"    seed: {name}-seed",
             ]
         )
         + "\n",
     )
-    return ExperimentConfig.load(Path(path))
+    return RunConfig.load(Path(path))
 
 
 async def _seed_characters(provider) -> None:
@@ -103,7 +104,6 @@ def _patch_auto_pick_first(monkeypatch: pytest.MonkeyPatch) -> None:
 async def _create_assignment(
     provider,
     *,
-    experiment_name: str,
     player_id: str,
     game_name: str,
     pc_hid: str,
@@ -112,7 +112,6 @@ async def _create_assignment(
     metadata: dict[str, Any] | None = None,
 ) -> None:
     assignment_doc = {
-        MongoColumns.EXPERIMENT_NAME: experiment_name,
         MongoColumns.PLAYER_ID: player_id,
         MongoColumns.GAME_NAME: game_name,
         MongoColumns.PC_HID: pc_hid,
@@ -135,15 +134,17 @@ class _StrategyTestBase:
                 [
                     f"name: missing-{self.strategy_id}",
                     "description: Missing games",
-                    "assignment_strategy:",
-                    f"  strategy: {self.strategy_id}",
-                    "  quota_per_game: 10",
+                    "next_game_strategy:",
+                    "  strategy:",
+                    f"    id: {self.strategy_id}",
+                    "    quota_per_game: 10",
                 ]
             )
             + "\n",
         )
+        config = RunConfig.load(Path(path))
         with pytest.raises(ValueError, match="games"):
-            ExperimentConfig.load(Path(path))
+            get_assignment_strategy(self.strategy_id).validate_config(config=config)
 
 
 class TestFullCharacterAccess(_StrategyTestBase):
@@ -193,7 +194,6 @@ class TestUnplayedCombinationChoice(_StrategyTestBase):
         player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -257,7 +257,6 @@ class TestNextIncompleteCombination(_StrategyTestBase):
         player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -294,7 +293,6 @@ class TestLeastPlayedCombinationNext(_StrategyTestBase):
         other, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "B"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=other.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -330,7 +328,6 @@ class TestProgressiveDivergenceAssignment(_StrategyTestBase):
         player, _ = await async_mongo_provider.create_player(player_data={"full_name": {"answer": "A"}})
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",
@@ -423,7 +420,6 @@ class TestExpertiseMatchedCharacterBatch(_StrategyTestBase):
         )
         await _create_assignment(
             async_mongo_provider,
-            experiment_name=config.name,
             player_id=player.id,
             game_name="Explore",
             pc_hid="pc-alpha",

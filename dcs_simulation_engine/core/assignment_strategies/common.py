@@ -12,8 +12,11 @@ from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.divergence import compute_divergence_score
 
 if TYPE_CHECKING:
-    from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+    from dcs_simulation_engine.core.run_config import RunConfig
     from dcs_simulation_engine.dal.base import AssignmentRecord, PlayerRecord
+
+
+DEFAULT_MAX_ASSIGNMENTS_PER_PLAYER = 3
 
 
 def _tokenize(text: str) -> set[str]:
@@ -34,10 +37,10 @@ class CandidateAssignmentStrategy:
 
     name = ""
 
-    def validate_config(self, *, config: "ExperimentConfig") -> None:
+    def validate_config(self, *, config: "RunConfig") -> None:
         """Validate strategy config shared across candidate-based strategies."""
-        if not config.assignment_strategy.games:
-            raise ValueError(f"{self.name} requires assignment_strategy.games")
+        if not config.game_names:
+            raise ValueError(f"{self.name} requires run config games")
         if config.assignment_strategy.quota_per_game is not None and config.assignment_strategy.quota_per_game <= 0:
             raise ValueError(f"{self.name} requires a positive quota_per_game")
 
@@ -45,24 +48,22 @@ class CandidateAssignmentStrategy:
         if max_assignments is not None and max_assignments <= 0:
             raise ValueError(f"{self.name} requires max_assignments_per_player to be positive")
 
-    def max_assignments_per_player(self, *, config: "ExperimentConfig") -> int:
+    def max_assignments_per_player(self, *, config: "RunConfig") -> int:
         """Return the configured per-player assignment cap for this strategy."""
         configured = config.assignment_strategy.max_assignments_per_player
         if configured is None:
-            return len(config.games)
+            return DEFAULT_MAX_ASSIGNMENTS_PER_PLAYER
         return max(0, int(configured))
 
-    async def compute_progress_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
-        """Compute quota-based experiment progress for the configured games."""
+    async def compute_progress_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
+        """Compute quota-based run progress for the configured games."""
         quota = config.assignment_strategy.quota_per_game
         completed_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["completed"],
         )
         counted_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress", "completed"],
         )
         completed_total = sum(len(players) for players in completed_players_by_game.values())
@@ -74,33 +75,30 @@ class CandidateAssignmentStrategy:
             }
         quota_count = int(quota)
         return {
-            "total": quota_count * len(config.games),
+            "total": quota_count * len(config.game_names),
             "completed": completed_total,
-            "is_complete": all(len(counted_players_by_game.get(game_name, set())) >= quota_count for game_name in config.games),
+            "is_complete": all(len(counted_players_by_game.get(game_name, set())) >= quota_count for game_name in config.game_names),
         }
 
-    async def compute_status_async(self, *, provider: Any, config: "ExperimentConfig") -> dict[str, Any]:
-        """Compute per-game status counts and overall experiment openness."""
+    async def compute_status_async(self, *, provider: Any, config: "RunConfig") -> dict[str, Any]:
+        """Compute per-game status counts and overall run openness."""
         quota = config.assignment_strategy.quota_per_game
         completed_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["completed"],
         )
         in_progress_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress"],
         )
         counted_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress", "completed"],
         )
 
         per_game: dict[str, dict[str, int]] = {}
         quota_count = int(quota) if quota is not None else 0
-        for game_name in config.games:
+        for game_name in config.game_names:
             per_game[game_name] = {
                 "total": quota_count,
                 "completed": len(completed_players_by_game.get(game_name, set())),
@@ -115,8 +113,8 @@ class CandidateAssignmentStrategy:
                 "per_game": per_game,
             }
         return {
-            "is_open": any(len(counted_players_by_game.get(game_name, set())) < quota_count for game_name in config.games),
-            "total": quota_count * len(config.games),
+            "is_open": any(len(counted_players_by_game.get(game_name, set())) < quota_count for game_name in config.game_names),
+            "total": quota_count * len(config.game_names),
             "completed": sum(item["completed"] for item in per_game.values()),
             "per_game": per_game,
         }
@@ -125,7 +123,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[AssignmentCandidate]:
         """Return ordered candidate assignments for the player."""
@@ -135,7 +133,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[dict[str, str]]:
         """Return serialized candidate assignment options."""
@@ -146,7 +144,7 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
         """Return an existing assignment or create one from this strategy's candidates."""
@@ -175,10 +173,10 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> "AssignmentRecord | None":
-        active_assignment = await maybe_await(provider.get_active_assignment(experiment_name=config.name, player_id=player.id))
+        active_assignment = await maybe_await(provider.get_active_assignment(player_id=player.id))
         if active_assignment is None:
             return None
         if config.assignment_strategy.require_completion:
@@ -190,12 +188,11 @@ class CandidateAssignmentStrategy:
     def _assignment_doc_for_candidate(
         self,
         *,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
         candidate: AssignmentCandidate,
     ) -> dict[str, Any]:
         assignment_doc: dict[str, Any] = {
-            MongoColumns.EXPERIMENT_NAME: config.name,
             MongoColumns.PLAYER_ID: player.id,
             MongoColumns.GAME_NAME: candidate.game_name,
             MongoColumns.PC_HID: candidate.pc_hid,
@@ -211,19 +208,18 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list[AssignmentCandidate]:
         counted_players_by_game = await self._players_by_game(
             provider=provider,
-            experiment_name=config.name,
             statuses=["in_progress", "completed"],
         )
         quota = config.assignment_strategy.quota_per_game
         pc_eligible_only = bool(config.assignment_strategy.pc_eligible_only)
         candidates: list[AssignmentCandidate] = []
 
-        for game_name in config.games:
+        for game_name in config.game_names:
             if quota is not None and len(counted_players_by_game.get(game_name, set())) >= int(quota):
                 continue
             game_config = SessionManager.get_game_config_cached(game_name)
@@ -253,19 +249,18 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         player: "PlayerRecord",
     ) -> list["AssignmentRecord"]:
-        return await maybe_await(provider.list_assignments(experiment_name=config.name, player_id=player.id))
+        return await maybe_await(provider.list_assignments(player_id=player.id))
 
     async def _players_by_game(
         self,
         *,
         provider: Any,
-        experiment_name: str,
         statuses: list[str],
     ) -> dict[str, set[str]]:
-        assignments = await maybe_await(provider.list_assignments(experiment_name=experiment_name, statuses=statuses))
+        assignments = await maybe_await(provider.list_assignments(statuses=statuses))
         players_by_game: dict[str, set[str]] = defaultdict(set)
         for assignment in assignments:
             players_by_game[assignment.game_name].add(assignment.player_id)
@@ -275,10 +270,10 @@ class CandidateAssignmentStrategy:
         self,
         *,
         provider: Any,
-        config: "ExperimentConfig",
+        config: "RunConfig",
         statuses: list[str],
     ) -> dict[tuple[str, str], int]:
-        assignments = await maybe_await(provider.list_assignments(experiment_name=config.name, statuses=statuses))
+        assignments = await maybe_await(provider.list_assignments(statuses=statuses))
         counts: dict[tuple[str, str], int] = defaultdict(int)
         for assignment in assignments:
             counts[(assignment.game_name, assignment.npc_hid)] += 1
@@ -308,16 +303,20 @@ class CandidateAssignmentStrategy:
             return None
         return completed[-1]
 
-    def _expertise_match_hids(
+    async def _expertise_match_hids(
         self,
         *,
+        provider: Any,
+        config: "RunConfig",
         player: "PlayerRecord",
         characters_by_hid: dict[str, CharacterRecord],
     ) -> set[str]:
-        expertise = str(player.data.get("expertise") or "").strip()
-        if not expertise:
+        expertise_values = await self._expertise_values(provider=provider, config=config, player=player)
+        if not expertise_values:
             return set()
-        expertise_tokens = _tokenize(expertise)
+        expertise_tokens: set[str] = set()
+        for value in expertise_values:
+            expertise_tokens.update(_tokenize(str(value)))
         if not expertise_tokens:
             return set()
         matched_hids: set[str] = set()
@@ -329,6 +328,35 @@ class CandidateAssignmentStrategy:
             if expertise_tokens & label_tokens:
                 matched_hids.add(hid)
         return matched_hids
+
+    async def _expertise_values(self, *, provider: Any, config: "RunConfig", player: "PlayerRecord") -> list[str]:
+        values: list[str] = []
+        player_forms = await maybe_await(provider.get_player_forms(player_id=player.id))
+        for form_payload in (player_forms.data if player_forms else {}).values():
+            if not isinstance(form_payload, dict):
+                continue
+            answers = form_payload.get("answers", {})
+            if not isinstance(answers, dict):
+                continue
+            answer_payload = answers.get("expertise")
+            if isinstance(answer_payload, dict):
+                values.extend(self._flatten_expertise_values(answer_payload.get("answer")))
+        return values
+
+    def _flatten_expertise_values(self, value: Any) -> list[str]:
+        if value in (None, ""):
+            return []
+        if isinstance(value, dict):
+            if "answer" in value:
+                return self._flatten_expertise_values(value["answer"])
+            return []
+        if isinstance(value, (list, tuple, set)):
+            values: list[str] = []
+            for item in value:
+                values.extend(self._flatten_expertise_values(item))
+            return values
+        text = str(value).strip()
+        return [text] if text else []
 
     def _sort_with_expertise_priority(
         self,

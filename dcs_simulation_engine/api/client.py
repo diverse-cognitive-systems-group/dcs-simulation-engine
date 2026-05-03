@@ -183,6 +183,10 @@ class APIClient:
         """Register a new player and return player_id + api_key."""
         return self._request("POST", "/api/player/registration", body, RegistrationResponse)
 
+    def anonymous_player(self) -> RegistrationResponse:
+        """Create an anonymous player for runs that do not require registration."""
+        return self._request("POST", "/api/player/anonymous", None, RegistrationResponse)
+
     def auth(self, *, api_key: Optional[str] = None) -> AuthResponse:
         """Validate an API key and return player_id + authenticated."""
         key = self._resolve_api_key(api_key)

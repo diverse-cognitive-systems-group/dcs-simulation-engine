@@ -24,7 +24,7 @@ class LeastPlayedCombinationNextAssignmentStrategy(CandidateAssignmentStrategy):
         if not candidates:
             return []
 
-        game_order = {game_name: index for index, game_name in enumerate(config.games)}
+        game_order = {game_name: index for index, game_name in enumerate(config.game_names)}
         counts = await self._assignments_by_group(
             provider=provider,
             config=config,

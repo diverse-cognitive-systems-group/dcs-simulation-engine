@@ -12,23 +12,20 @@ from typing import Literal
 from dcs_simulation_engine.api.auth import (
     REMOTE_ADMIN_ROLE,
     api_key_from_request,
-    get_default_experiment_name_from_request,
     get_provider_from_request,
-    get_server_mode_from_request,
     has_remote_admin_async,
     require_remote_admin_async,
     require_remote_management_from_request,
-    resolve_remote_deployment_mode,
 )
 from dcs_simulation_engine.api.models import (
-    ExperimentGameStatusResponse,
-    ExperimentProgressResponse,
-    ExperimentStatusResponse,
+    GameStatusResponse,
+    ProgressResponse,
     RemoteBootstrapResponse,
     RemoteStatusResponse,
+    RunStatusResponse,
 )
 from dcs_simulation_engine.cli.bootstrap import create_provider_admin
-from dcs_simulation_engine.core.experiment_manager import ExperimentManager
+from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json_async
 from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.auth import validate_access_key
@@ -66,23 +63,23 @@ def _requested_admin_key(request: Request) -> str | None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-def _progress_response(progress: dict) -> ExperimentProgressResponse:
-    """Convert raw experiment progress into the API response model."""
-    return ExperimentProgressResponse(
+def _progress_response(progress: dict) -> ProgressResponse:
+    """Convert raw run progress into the API response model."""
+    return ProgressResponse(
         total=int(progress["total"]),
         completed=int(progress["completed"]),
         is_complete=bool(progress["is_complete"]),
     )
 
 
-def _status_response(status_payload: dict) -> ExperimentStatusResponse:
-    """Convert raw experiment status into the API response model."""
-    return ExperimentStatusResponse(
+def _status_response(status_payload: dict) -> RunStatusResponse:
+    """Convert raw run status into the API response model."""
+    return RunStatusResponse(
         is_open=bool(status_payload["is_open"]),
         total=int(status_payload["total"]),
         completed=int(status_payload["completed"]),
         per_game={
-            str(game_name): ExperimentGameStatusResponse(
+            str(game_name): GameStatusResponse(
                 total=int(counts["total"]),
                 completed=int(counts["completed"]),
                 in_progress=int(counts["in_progress"]),
@@ -237,56 +234,41 @@ async def bootstrap_remote_deployment(request: Request) -> RemoteBootstrapRespon
     if api_key is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to issue admin key")
 
-    experiment_name = get_default_experiment_name_from_request(request)
-    if experiment_name:
-        await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=experiment_name)
+    run_name = request.app.state.run_config.name
+    await EngineRunManager.ensure_run_async(provider=provider)
 
     return RemoteBootstrapResponse(
         player_id=record.id,
         admin_api_key=api_key,
-        experiment_name=experiment_name,
+        run_name=run_name,
     )
 
 
 @router.get("/status", response_model=RemoteStatusResponse)
 async def remote_status(request: Request) -> RemoteStatusResponse:
-    """Return a public status summary for remote-managed experiment deployments."""
+    """Return a public status summary for remote-managed run deployments."""
     started_at = request.app.state.started_at
     uptime = int((utc_now() - started_at).total_seconds())
-    default_experiment_name = get_default_experiment_name_from_request(request)
+    run_name = request.app.state.run_config.name
     provider = get_provider_from_request(request)
 
-    progress = None
-    experiment_status = None
-    if default_experiment_name:
-        try:
-            await ExperimentManager.ensure_experiment_async(provider=provider, experiment_name=default_experiment_name)
-            progress = _progress_response(
-                await ExperimentManager.compute_progress_async(
-                    provider=provider,
-                    experiment_name=default_experiment_name,
-                )
-            )
-            experiment_status = _status_response(
-                await ExperimentManager.compute_status_async(provider=provider, experiment_name=default_experiment_name)
-            )
-        except Exception as exc:
-            logger.exception("Failed to compute remote status for {}", default_experiment_name)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to compute remote status: {exc}",
-            ) from exc
+    try:
+        await EngineRunManager.ensure_run_async(provider=provider)
+        progress = _progress_response(await EngineRunManager.compute_progress_async(provider=provider))
+        run_status = _status_response(await EngineRunManager.compute_status_async(provider=provider))
+    except Exception as exc:
+        logger.exception("Failed to compute remote status for {}", run_name)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to compute remote status: {exc}",
+        ) from exc
 
     return RemoteStatusResponse(
-        mode=resolve_remote_deployment_mode(
-            server_mode=get_server_mode_from_request(request),
-            default_experiment_name=default_experiment_name,
-        ),
         started_at=started_at,
         uptime=max(uptime, 0),
-        experiment_name=default_experiment_name,
+        run_name=run_name,
         progress=progress,
-        experiment_status=experiment_status,
+        run_status=run_status,
     )
 
 
@@ -309,8 +291,8 @@ async def export_remote_database(
     archive_path = temp_root / f"{dump_root.name}{archive_suffix}"
     await asyncio.to_thread(_archive_dump_dir, dump_root, archive_path, format)
 
-    experiment_name = get_default_experiment_name_from_request(request) or "dcs-db"
-    filename = f"{experiment_name}-{utc_now().strftime('%Y%m%d-%H%M%S')}{archive_suffix}"
+    run_name = request.app.state.run_config.name
+    filename = f"{run_name}-{utc_now().strftime('%Y%m%d-%H%M%S')}{archive_suffix}"
     return FileResponse(
         archive_path,
         media_type="application/zip" if format == "zip" else "application/gzip",

@@ -19,9 +19,9 @@ class RandomUniqueGameAssignmentStrategy(CandidateAssignmentStrategy):
         if config.assignment_strategy.quota_per_game is None or config.assignment_strategy.quota_per_game <= 0:
             raise ValueError("random_unique_game requires a positive quota_per_game")
         max_assignments = config.assignment_strategy.max_assignments_per_player
-        if max_assignments is not None and max_assignments > len(config.games):
+        if max_assignments is not None and max_assignments > len(config.game_names):
             raise ValueError(
-                "random_unique_game cannot assign more games per player than are listed in assignment_strategy.games"
+                "random_unique_game cannot assign more games per player than are listed in run config games"
             )
 
     async def list_candidate_assignments_async(

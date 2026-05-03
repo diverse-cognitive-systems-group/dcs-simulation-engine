@@ -1,8 +1,8 @@
 """Functional tests for the game setup API endpoint.
 
 Tests GET /api/play/setup/{game_name} returns valid PC and NPC character
-choices for each game. Uses the FastAPI TestClient in free-play mode so
-no player authentication is required.
+choices for each game. Uses an anonymous player issued by a no-registration
+run config.
 """
 
 import pytest
@@ -26,19 +26,20 @@ class _StaticCharacterProvider:
 
 @pytest.fixture
 def setup_client(_isolate_db_state, async_mongo_provider):
-    """Build a TestClient in free-play mode wired to the seeded mongomock DB.
+    """Build a TestClient wired to the seeded mongomock DB and anonymous auth.
 
-    Free-play mode skips player authentication, so no API key is needed.
     Character data comes from the auto-seeded mongomock DB (database_seeds/dev).
     """
     app = create_app(
         provider=async_mongo_provider,
-        server_mode="free_play",
         session_ttl_seconds=3600,
         sweep_interval_seconds=3600,
     )
     with TestClient(app) as client:
-        yield client
+        response = client.post("/api/player/anonymous")
+        assert response.status_code == 200, response.text
+        auth_payload = response.json()
+        yield client, {"Authorization": f"Bearer {auth_payload['api_key']}"}
 
 
 @pytest.mark.parametrize("game", ALL_GAMES)
@@ -50,7 +51,8 @@ def test_setup_returns_valid_pc_and_npc_options(game, setup_client):
     - pcs: non-empty list with at least one entry having a non-empty hid
     - npcs: non-empty list with at least one entry having a non-empty hid
     """
-    response = setup_client.get(f"/api/play/setup/{game}")
+    client, headers = setup_client
+    response = client.get(f"/api/play/setup/{game}", headers=headers)
 
     assert response.status_code == 200, f"[{game}] Expected 200 from /api/play/setup, got {response.status_code}: {response.text}"
 
@@ -71,7 +73,8 @@ def test_setup_pc_options_have_hid(game, setup_client):
     Confirms that character choices are populated with valid identifiers
     usable as pc_choice / npc_choice when creating a game session.
     """
-    response = setup_client.get(f"/api/play/setup/{game}")
+    client, headers = setup_client
+    response = client.get(f"/api/play/setup/{game}", headers=headers)
     assert response.status_code == 200
 
     data = response.json()
@@ -85,7 +88,8 @@ def test_setup_pc_options_have_hid(game, setup_client):
 @pytest.mark.anyio
 async def test_goal_horizon_setup_uses_game_class_player_character_filter(setup_client, async_mongo_provider):
     """Goal Horizon setup should expose player characters from its game class filter."""
-    response = setup_client.get("/api/play/setup/Goal Horizon")
+    client, headers = setup_client
+    response = client.get("/api/play/setup/Goal Horizon", headers=headers)
     assert response.status_code == 200
 
     characters = await async_mongo_provider.get_characters()
@@ -126,9 +130,11 @@ async def test_session_manager_rejects_invalid_npc_choice(async_mongo_provider):
 
 def test_create_game_rejects_invalid_pc_choice(setup_client):
     """POST /api/play/game should fail fast for an invalid PC choice."""
-    response = setup_client.post(
+    client, headers = setup_client
+    api_key = headers["Authorization"].removeprefix("Bearer ")
+    response = client.post(
         "/api/play/game",
-        json={"game": "explore", "pc_choice": "NOT_A_REAL_PC", "npc_choice": "FW", "source": "api"},
+        json={"api_key": api_key, "game": "explore", "pc_choice": "NOT_A_REAL_PC", "npc_choice": "FW", "source": "api"},
     )
 
     assert response.status_code == 400
@@ -137,9 +143,11 @@ def test_create_game_rejects_invalid_pc_choice(setup_client):
 
 def test_create_game_rejects_invalid_npc_choice(setup_client):
     """POST /api/play/game should fail fast for an invalid NPC choice."""
-    response = setup_client.post(
+    client, headers = setup_client
+    api_key = headers["Authorization"].removeprefix("Bearer ")
+    response = client.post(
         "/api/play/game",
-        json={"game": "explore", "pc_choice": "NA", "npc_choice": "NOT_A_REAL_NPC", "source": "api"},
+        json={"api_key": api_key, "game": "explore", "pc_choice": "NA", "npc_choice": "NOT_A_REAL_NPC", "source": "api"},
     )
 
     assert response.status_code == 400

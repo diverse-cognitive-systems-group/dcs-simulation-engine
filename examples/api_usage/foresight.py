@@ -5,7 +5,7 @@ import argparse
 import json
 
 from dcs_simulation_engine.api.client import APIClient
-from dcs_simulation_engine.api.models import CreateGameRequest, ServerMode
+from dcs_simulation_engine.api.models import CreateGameRequest
 
 GAME_NAME = "Foresight"
 PREFERRED_PC = "NA"
@@ -21,12 +21,12 @@ def _choose_hid(options, preferred_hid: str) -> str:
     return options[0].hid
 
 
-def _api_key_for_mode(server_mode: ServerMode, api_key: str | None) -> str | None:
-    if server_mode == "free_play":
-        return None
+def _require_api_key(registration_required: bool, api_key: str | None) -> str:
     if api_key:
         return api_key
-    raise RuntimeError("--api-key is required when the server is running in standard mode.")
+    if not registration_required:
+        raise RuntimeError("Anonymous player creation should handle registration_required: false runs.")
+    raise RuntimeError("--api-key is required when the active run config has registration_required: true.")
 
 
 def main() -> None:
@@ -36,7 +36,7 @@ def main() -> None:
     parser.add_argument(
         "--api-key",
         default=None,
-        help="Player API key for standard-mode servers. Omit this in free-play mode.",
+        help="Player API key for runs with registration_required: true.",
     )
     args = parser.parse_args()
 
@@ -45,16 +45,19 @@ def main() -> None:
     with APIClient(url=base_url, timeout=60.0) as api:
         print("1) Fetch server config")
         config = api.server_config()
-        api_key = _api_key_for_mode(config.mode, args.api_key)
-        print(f"   mode={config.mode}")
+        registration_required = config.registration_enabled
+        print(f"   registration_required={config.registration_enabled}")
 
-        if api_key is not None:
+        if registration_required or args.api_key:
+            api_key = _require_api_key(registration_required, args.api_key)
             print("2) Authenticate")
             auth = api.auth(api_key=api_key)
             print(f"   authenticated={auth.authenticated} player_id={auth.player_id}")
         else:
-            print("2) Authenticate")
-            print("   skipped (free play mode)")
+            print("2) Create anonymous player")
+            anonymous = api.anonymous_player()
+            api_key = anonymous.api_key
+            print(f"   player_id={anonymous.player_id}")
 
         print("3) Fetch setup options")
         setup = api.setup_options(game_name=GAME_NAME, api_key=api_key)

@@ -3,11 +3,10 @@
 import importlib
 import inspect
 import random
+import re
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-import yaml
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.core.game_config import GameConfig
 from dcs_simulation_engine.core.session_event_recorder import (
@@ -16,10 +15,17 @@ from dcs_simulation_engine.core.session_event_recorder import (
 )
 from dcs_simulation_engine.dal.base import CharacterRecord, DataProvider
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
-from dcs_simulation_engine.helpers.game_helpers import get_game_config
 from dcs_simulation_engine.utils.async_utils import maybe_await
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
+
+if TYPE_CHECKING:
+    from dcs_simulation_engine.core.run_config import RunConfig
+
+
+def _normalize_game_ref(value: str) -> str:
+    """Normalize display names, slugs, and filenames to the same key."""
+    return re.sub(r"[\s_-]+", "", value.strip().lower())
 
 
 def _parse_command_input(text: str | None) -> tuple[str, str] | None:
@@ -41,11 +47,46 @@ class SessionManager:
     """Manages a single session of a Game."""
 
     _game_config_cache: dict[str, GameConfig] = {}
+    _run_config: "RunConfig | None" = None
 
     @classmethod
     def _cache_key(cls, game: str) -> str:
         """Normalize cache lookup key for one exact game name."""
-        return game.strip()
+        return _normalize_game_ref(game)
+
+    @classmethod
+    def configure_run_config(cls, run_config: "RunConfig") -> None:
+        """Install the active run config used by this single engine run."""
+        cls._run_config = run_config
+        cls._game_config_cache.clear()
+
+    @classmethod
+    def _builtin_game_classes(cls) -> dict[str, type[Game]]:
+        """Return built-in game classes keyed by normalized game name."""
+        from dcs_simulation_engine.games.explore import ExploreGame
+        from dcs_simulation_engine.games.foresight import ForesightGame
+        from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
+        from dcs_simulation_engine.games.infer_intent import InferIntentGame
+        from dcs_simulation_engine.games.teamwork import TeamworkGame
+
+        classes: list[type[Game]] = [
+            ExploreGame,
+            InferIntentGame,
+            ForesightGame,
+            GoalHorizonGame,
+            TeamworkGame,
+        ]
+        return {_normalize_game_ref(game_cls.GAME_NAME): game_cls for game_cls in classes}
+
+    @classmethod
+    def _run_overrides_for_game(cls, game: str) -> dict[str, Any]:
+        if cls._run_config is None:
+            return {}
+        normalized = _normalize_game_ref(game)
+        for item in cls._run_config.games:
+            if _normalize_game_ref(item.name) == normalized:
+                return dict(item.overrides)
+        return {}
 
     @classmethod
     def _load_game_config_into_cache(cls, game: str) -> bool:
@@ -53,8 +94,16 @@ class SessionManager:
         cache_key = cls._cache_key(game)
         if cache_key in cls._game_config_cache:
             return False
-        game_config_fpath = get_game_config(game)
-        cls._game_config_cache[cache_key] = GameConfig.load(game_config_fpath)
+        game_classes = cls._builtin_game_classes()
+        try:
+            game_cls = game_classes[cache_key]
+        except KeyError as exc:
+            found = sorted(game_cls.GAME_NAME for game_cls in game_classes.values())
+            raise FileNotFoundError(f"No game config matching {game!r} found. Found built-ins: {found}") from exc
+        cls._game_config_cache[cache_key] = GameConfig.from_game_class(
+            game_cls,
+            overrides=cls._run_overrides_for_game(game),
+        )
         return True
 
     @classmethod
@@ -148,29 +197,14 @@ class SessionManager:
 
     @classmethod
     def preload_game_configs(cls) -> int:
-        """Load all valid game configs from disk into the in-memory cache."""
-        games_dir = Path(__file__).resolve().parents[2] / "games"
-        if not games_dir.exists() or not games_dir.is_dir():
-            return 0
-
-        discovered_names: set[str] = set()
-        for path in games_dir.glob("*.y*ml"):
-            try:
-                with path.open("r", encoding="utf-8") as f:
-                    doc = yaml.safe_load(f) or {}
-                raw_name = doc.get("name")
-                if isinstance(raw_name, str) and raw_name.strip():
-                    discovered_names.add(raw_name.strip())
-            except Exception:
-                logger.debug("Skipping unreadable game config while preloading: {}", path, exc_info=True)
-
+        """Load all built-in game configs into the in-memory cache."""
         loaded = 0
-        for name in discovered_names:
+        for game_cls in cls._builtin_game_classes().values():
             try:
-                if cls._load_game_config_into_cache(name):
+                if cls._load_game_config_into_cache(game_cls.GAME_NAME):
                     loaded += 1
             except Exception:
-                logger.debug("Skipping invalid game config '{}' during preload", name, exc_info=True)
+                logger.debug("Skipping invalid game config '{}'", game_cls.GAME_NAME, exc_info=True)
 
         if loaded > 0:
             logger.info("Preloaded {} game config(s) into SessionManager cache.", loaded)
@@ -187,7 +221,7 @@ class SessionManager:
         module_path, class_name = game_config.game_class.rsplit(".", 1)
         module = importlib.import_module(module_path)
         game_cls = getattr(module, class_name)
-        return game_cls.create_from_context(pc=pc, npc=npc)
+        return game_cls.create_from_context(pc=pc, npc=npc, **game_config.overrides)
 
     @classmethod
     def _build_session(

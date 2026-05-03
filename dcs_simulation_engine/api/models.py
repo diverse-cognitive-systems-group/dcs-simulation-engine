@@ -6,8 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
-ServerMode = Literal["standard", "free_play"]
-RemoteDeploymentMode = Literal["standard", "free_play", "experiment"]
 SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
@@ -53,13 +51,11 @@ class AuthResponse(BaseModel):
 
 
 class ServerConfigResponse(BaseModel):
-    """Response payload describing server capabilities for the active mode."""
+    """Response payload describing server capabilities."""
 
-    mode: ServerMode
     authentication_required: bool
     registration_enabled: bool
-    experiments_enabled: bool
-    default_experiment_name: str | None = None
+    run_name: str
 
 
 class StatusResponse(BaseModel):
@@ -75,19 +71,18 @@ class RemoteBootstrapResponse(BaseModel):
 
     player_id: str
     admin_api_key: str
-    experiment_name: str | None = None
+    run_name: str | None = None
 
 
 class RemoteStatusResponse(BaseModel):
-    """Public status payload for remote-managed or generic deployments."""
+    """Public status payload for remote-managed deployments."""
 
     status: Literal["ok"] = "ok"
-    mode: RemoteDeploymentMode
     started_at: datetime
     uptime: int
-    experiment_name: str | None = None
-    progress: "ExperimentProgressResponse | None" = None
-    experiment_status: "ExperimentStatusResponse | None" = None
+    run_name: str
+    progress: "ProgressResponse | None" = None
+    run_status: "RunStatusResponse | None" = None
 
 
 class CreateGameRequest(BaseModel):
@@ -137,8 +132,8 @@ class GameSetupOptionsResponse(BaseModel):
     npcs: list[CharacterChoice]
 
 
-class ExperimentAssignmentSummary(BaseModel):
-    """Assignment summary returned by experiment endpoints."""
+class AssignmentSummary(BaseModel):
+    """Assignment summary returned by run endpoints."""
 
     assignment_id: str
     game_name: str
@@ -146,7 +141,7 @@ class ExperimentAssignmentSummary(BaseModel):
     npc_hid: str
     status: AssignmentStatus
     active_session_id: str | None = None
-    needs_post_play: bool = False
+    has_pending_forms: bool = False
     game_description: str = ""
     player_character_name: str = ""
     player_character_description: str = ""
@@ -154,29 +149,29 @@ class ExperimentAssignmentSummary(BaseModel):
     simulator_character_details_visible: bool = False
 
 
-class ExperimentProgressResponse(BaseModel):
-    """Finite progress payload for the usability experiment."""
+class ProgressResponse(BaseModel):
+    """Finite progress payload for the usability run."""
 
     total: int
     completed: int
     is_complete: bool
 
 
-class ExperimentGameStatusResponse(BaseModel):
-    """Per-game status counts for an experiment."""
+class GameStatusResponse(BaseModel):
+    """Per-game status counts for a run."""
 
     total: int
     completed: int
     in_progress: int
 
 
-class ExperimentStatusResponse(BaseModel):
-    """Aggregate status payload for an experiment."""
+class RunStatusResponse(BaseModel):
+    """Aggregate status payload for a run."""
 
     is_open: bool
     total: int
     completed: int
-    per_game: dict[str, ExperimentGameStatusResponse]
+    per_game: dict[str, GameStatusResponse]
 
 
 class NextAssignmentState(BaseModel):
@@ -184,7 +179,7 @@ class NextAssignmentState(BaseModel):
 
     mode: NextAssignmentMode
     reason: str = ""
-    assignment: ExperimentAssignmentSummary | None = None
+    assignment: AssignmentSummary | None = None
     options: list["EligibleAssignmentOption"] = Field(default_factory=list)
 
 
@@ -204,26 +199,23 @@ class PendingFormGroupResponse(BaseModel):
     assignment_id: str | None = None
 
 
-class ExperimentSetupResponse(BaseModel):
-    """Setup payload for the experiment landing page."""
+class SetupResponse(BaseModel):
+    """Setup payload for the run landing page."""
 
-    experiment_name: str
+    run_name: str
     description: str
     is_open: bool
     forms: list[dict] = Field(default_factory=list)
     pending_form_groups: list[PendingFormGroupResponse] = Field(default_factory=list)
-    progress: ExperimentProgressResponse
-    current_assignment: ExperimentAssignmentSummary | None = None
-    pending_post_play: bool = False
-    before_play_complete: bool = False
+    progress: ProgressResponse
+    current_assignment: AssignmentSummary | None = None
     # True only when the participant has exhausted all assignments available to them.
     assignment_completed: bool = False
     next_assignment: NextAssignmentState | None = None
     allow_choice_if_multiple: bool = False
     require_completion: bool = True
-    has_submitted_before_forms: bool = False
     eligible_assignment_options: list["EligibleAssignmentOption"] = Field(default_factory=list)
-    assignments: list[ExperimentAssignmentSummary] = Field(default_factory=list)
+    assignments: list[AssignmentSummary] = Field(default_factory=list)
     # Set when the current assignment has a paused session the player can resume.
     resumable_session_id: str | None = None
 
@@ -255,25 +247,25 @@ class SelectAssignmentRequest(BaseModel):
     npc_hid: str
 
 
-class ExperimentFormSubmitRequest(BaseModel):
-    """Payload for submitting one pending experiment form group."""
+class FormSubmitRequest(BaseModel):
+    """Payload for submitting one pending run form group."""
 
     group_id: str = Field(min_length=1)
     responses: dict[str, dict]
 
 
-class ExperimentFormSubmitResponse(BaseModel):
-    """Response after storing one pending experiment form group."""
+class FormSubmitResponse(BaseModel):
+    """Response after storing one pending run form group."""
 
     group_id: str
     trigger: FormTriggerResponse
     assignment_id: str | None = None
 
 
-class ExperimentSessionRequest(BaseModel):
+class AssignmentSessionRequest(BaseModel):
     """Payload for creating a session from the current assignment."""
 
-    source: str = Field(default="experiment", min_length=1)
+    source: str = Field(default="run", min_length=1)
     assignment_id: str | None = None
 
 

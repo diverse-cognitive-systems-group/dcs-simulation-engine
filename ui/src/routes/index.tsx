@@ -1,7 +1,7 @@
-// Index route for "/". Never renders UI — immediately redirects based on server mode.
+// Index route for "/". Never renders UI; it immediately redirects.
 
 import { createRoute, redirect } from '@tanstack/react-router'
-import { getActiveExperimentName, isAuthenticated } from '@/lib/auth'
+import { isAuthenticated } from '@/lib/auth'
 import { getServerConfig } from '@/lib/server-config'
 import { rootRoute } from './__root'
 
@@ -11,28 +11,10 @@ export const indexRoute = createRoute({
   // beforeLoad runs before the component mounts; throwing a redirect aborts the navigation.
   beforeLoad: async () => {
     const serverConfig = await getServerConfig()
-    if (serverConfig.mode === 'free_play') {
-      throw redirect({ to: '/games' })
+    if (serverConfig.authentication_required && !isAuthenticated()) {
+      throw redirect({ to: '/login' })
     }
-
-    const defaultExperimentName = serverConfig.default_experiment_name
-    const experimentName = getActiveExperimentName()
-    if (experimentName) {
-      throw redirect({
-        to: '/experiments/$experimentName',
-        params: { experimentName },
-      })
-    }
-    if (defaultExperimentName) {
-      throw redirect({
-        to: '/experiments/$experimentName',
-        params: { experimentName: defaultExperimentName },
-      })
-    }
-    if (isAuthenticated()) {
-      throw redirect({ to: '/games' })
-    }
-    throw redirect({ to: '/games' })
+    throw redirect({ to: '/run' })
   },
   component: () => null,
 })

@@ -4,16 +4,16 @@
  * DCS Server
  * OpenAPI spec version: 0.1.0
  */
+import type { AssignmentSummary } from './assignmentSummary';
 import type { EligibleAssignmentOption } from './eligibleAssignmentOption';
-import type { ExperimentAssignmentSummary } from './experimentAssignmentSummary';
 import type { NextAssignmentStateMode } from './nextAssignmentStateMode';
 
 /**
  * Backend-derived state for the next participant action.
  */
 export interface NextAssignmentState {
+  assignment?: AssignmentSummary | null;
   mode: NextAssignmentStateMode;
-  reason?: string;
-  assignment?: ExperimentAssignmentSummary | null;
   options?: EligibleAssignmentOption[];
+  reason?: string;
 }

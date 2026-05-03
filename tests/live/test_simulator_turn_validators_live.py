@@ -21,7 +21,7 @@ pytestmark = pytest.mark.live
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SEED_CHARACTERS_PATH = REPO_ROOT / "database_seeds" / "dev" / "characters.json"
-SIMULATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "simulator_turn_validator_cases.json"
+SIMULATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "validators" / "simulator_turn_validator_cases.json"
 PLAYER_TURN_RE = re.compile(r"^(?P<context>.*)Player \((?P<pc_hid>[^)]+)\): (?P<action>.*)$", re.DOTALL)
 
 

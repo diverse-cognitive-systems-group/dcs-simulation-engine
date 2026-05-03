@@ -4,19 +4,17 @@
  * DCS Server
  * OpenAPI spec version: 0.1.0
  */
-import type { ExperimentProgressResponse } from './experimentProgressResponse';
-import type { ExperimentStatusResponse } from './experimentStatusResponse';
-import type { RemoteStatusResponseMode } from './remoteStatusResponseMode';
+import type { ProgressResponse } from './progressResponse';
+import type { RunStatusResponse } from './runStatusResponse';
 
 /**
- * Public status payload for remote-managed or generic deployments.
+ * Public status payload for remote-managed deployments.
  */
 export interface RemoteStatusResponse {
-  status?: 'ok';
-  mode: RemoteStatusResponseMode;
+  progress?: ProgressResponse | null;
+  run_name: string;
+  run_status?: RunStatusResponse | null;
   started_at: string;
+  status?: 'ok';
   uptime: number;
-  experiment_name?: string | null;
-  progress?: ExperimentProgressResponse | null;
-  experiment_status?: ExperimentStatusResponse | null;
 }

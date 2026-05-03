@@ -9,13 +9,13 @@ from dcs_simulation_engine.cli.common import echo, step
 from dcs_simulation_engine.infra.remote import (
     RemoteDeploymentResult,
     RemoteStatusResult,
-    deploy_remote_experiment,
+    deploy_remote_run,
     fetch_remote_status,
     save_remote_database,
-    stop_remote_experiment,
+    stop_remote_run,
 )
 
-remote_app = typer.Typer(help="Remote Fly experiment deployment and lifecycle commands.")
+remote_app = typer.Typer(help="Remote Fly run deployment and lifecycle commands.")
 
 _REGION_CAPACITY_ERROR_SNIPPETS = (
     "insufficient resources available to fulfill request",
@@ -58,7 +58,6 @@ def _deploy_with_region_fallback(
     *,
     ctx: typer.Context,
     config: Path | None,
-    free_play: bool,
     openrouter_key: str,
     mongo_seed_path: Path,
     admin_key: str | None,
@@ -75,9 +74,8 @@ def _deploy_with_region_fallback(
         if announce_attempts and region is not None:
             echo(ctx, f"Attempting Fly deploy in region: {region}", style="warning")
         try:
-            return deploy_remote_experiment(
+            return deploy_remote_run(
                 config=config,
-                free_play=free_play,
                 openrouter_key=openrouter_key,
                 mongo_seed_path=mongo_seed_path,
                 admin_key=admin_key,
@@ -101,20 +99,15 @@ def _deploy_with_region_fallback(
 @remote_app.command("deploy", context_settings={"allow_extra_args": True})
 def deploy(
     ctx: typer.Context,
-    config: Optional[Path] = typer.Option(
-        None,
+    config: Path = typer.Option(
+        Path("examples/run_configs/demo.yml"),
         "--config",
         exists=True,
         dir_okay=False,
         file_okay=True,
         readable=True,
         resolve_path=True,
-        help="Experiment YAML config to deploy. Omit when using --free-play.",
-    ),
-    free_play: bool = typer.Option(
-        False,
-        "--free-play",
-        help="Deploy the stack in anonymous free-play mode instead of experiment mode.",
+        help="Run config YAML to deploy.",
     ),
     openrouter_key: str = typer.Option(
         ...,
@@ -162,16 +155,11 @@ def deploy(
 ) -> None:
     """Deploy one remote-managed stack to Fly as API, UI, and Mongo apps."""
     try:
-        if free_play and config is not None:
-            raise ValueError("Use either --config or --free-play, not both.")
-        if not free_play and config is None:
-            raise ValueError("--config is required unless --free-play is set.")
         region_candidates = _parse_region_candidates(ctx, region)
         if json_output:
             result = _deploy_with_region_fallback(
                 ctx=ctx,
                 config=config,
-                free_play=free_play,
                 openrouter_key=openrouter_key,
                 mongo_seed_path=mongo_seed_path,
                 admin_key=admin_key,
@@ -184,11 +172,10 @@ def deploy(
                 announce_attempts=False,
             )
         else:
-            with step("Deploying remote experiment to Fly"):
+            with step("Deploying remote run to Fly"):
                 result = _deploy_with_region_fallback(
                     ctx=ctx,
                     config=config,
-                    free_play=free_play,
                     openrouter_key=openrouter_key,
                     mongo_seed_path=mongo_seed_path,
                     admin_key=admin_key,
@@ -208,7 +195,7 @@ def deploy(
         _print_json(result)
         return
 
-    echo(ctx, f"Deployment ready: {result.experiment_name}", style="success")
+    echo(ctx, f"Deployment ready: {result.run_name}", style="success")
     echo(ctx, f"Deployed apps: {', '.join(result.deployed_apps)}")
     echo(ctx, f"API: {result.api_url}")
     echo(ctx, f"UI: {result.ui_url}")
@@ -245,10 +232,10 @@ def status(
         raise typer.Exit(code=1) from exc
 
     if json_output:
-        _print_json(result.experiment_status or {})
+        _print_json(result.run_status or {})
         return
 
-    typer.echo(json.dumps(result.experiment_status or {}, indent=2, sort_keys=True))
+    typer.echo(json.dumps(result.run_status or {}, indent=2, sort_keys=True))
 
 
 @remote_app.command("save")
@@ -301,10 +288,10 @@ def stop(
         help="Fly API token used to destroy the remote apps.",
     ),
 ) -> None:
-    """Save the remote DB archive, then destroy all Fly apps for the experiment."""
+    """Save the remote DB archive, then destroy all Fly apps for the run."""
     try:
         with step("Saving remote database and destroying Fly apps"):
-            result_path = stop_remote_experiment(
+            result_path = stop_remote_run(
                 uri=uri,
                 admin_key=admin_key,
                 save_db_path=save_db_path,

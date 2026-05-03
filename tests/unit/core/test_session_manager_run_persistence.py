@@ -135,8 +135,6 @@ async def test_query_methods_return_expected_types_after_gameplay(
     """Provider query methods return expected data and runtime types."""
     _ = patch_llm_client
     await _play_and_persist_session(provider=async_mongo_provider, game_name="Explore", player_id=consenting_player_id)
-    db = async_mongo_provider.get_db()
-    assert "runs" not in db.list_collection_names()
 
     player = await async_mongo_provider.get_player(player_id=consenting_player_id)
     assert isinstance(player, PlayerRecord)

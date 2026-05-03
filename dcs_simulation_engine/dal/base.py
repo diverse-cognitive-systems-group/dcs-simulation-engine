@@ -46,8 +46,8 @@ class SessionEventRecord(NamedTuple):
     data: dict[str, Any]
 
 
-class ExperimentRecord(NamedTuple):
-    """A persisted experiment metadata record."""
+class RunRecord(NamedTuple):
+    """A persisted run metadata record."""
 
     name: str
     created_at: Any
@@ -56,20 +56,18 @@ class ExperimentRecord(NamedTuple):
 
 
 class PlayerFormsRecord(NamedTuple):
-    """Before-play form responses for a player in a specific experiment."""
+    """Before-play form responses for a player."""
 
     player_id: str
-    experiment_name: str
     data: dict[str, Any]
     created_at: Any
     updated_at: Any
 
 
 class AssignmentRecord(NamedTuple):
-    """A persisted experiment assignment row."""
+    """A persisted assignment row."""
 
     assignment_id: str
-    experiment_name: str
     player_id: str
     game_name: str
     pc_hid: str
@@ -207,55 +205,53 @@ class DataProvider:
         """Remove feedback from a persisted NPC-message event."""
         raise NotImplementedError
 
-    def get_experiment(self, *, experiment_name: str) -> ExperimentRecord | None:
-        """Return a persisted experiment record by name."""
+    def get_run(self) -> RunRecord | None:
+        """Return the singleton persisted run record."""
         raise NotImplementedError
 
-    def upsert_experiment(
+    def upsert_run(
         self,
         *,
-        experiment_name: str,
+        name: str,
         description: str,
         config_snapshot: dict[str, Any],
         progress: dict[str, Any],
-    ) -> ExperimentRecord:
-        """Create or update a persisted experiment metadata record."""
+    ) -> RunRecord:
+        """Create or update a persisted run metadata record."""
         raise NotImplementedError
 
-    def set_experiment_progress(
+    def set_run_progress(
         self,
         *,
-        experiment_name: str,
         progress: dict[str, Any],
-    ) -> ExperimentRecord | None:
-        """Persist the latest experiment progress snapshot."""
+    ) -> RunRecord | None:
+        """Persist the latest run progress snapshot."""
         raise NotImplementedError
 
     def create_assignment(self, *, assignment_doc: dict[str, Any], allow_concurrent: bool = False) -> AssignmentRecord:
-        """Persist a new experiment assignment row."""
+        """Persist a new run assignment row."""
         raise NotImplementedError
 
     def get_assignment(self, *, assignment_id: str) -> AssignmentRecord | None:
         """Return one assignment row by assignment id."""
         raise NotImplementedError
 
-    def get_active_assignment(self, *, experiment_name: str, player_id: str) -> AssignmentRecord | None:
-        """Return the current active assignment for one player in one experiment."""
+    def get_active_assignment(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the current active assignment for one player."""
         raise NotImplementedError
 
-    def get_latest_experiment_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
-        """Return the newest experiment assignment for one player across experiments."""
+    def get_latest_assignment_for_player(self, *, player_id: str) -> AssignmentRecord | None:
+        """Return the newest assignment for one player."""
         raise NotImplementedError
 
     def list_assignments(
         self,
         *,
-        experiment_name: str,
         player_id: str | None = None,
         statuses: list[str] | None = None,
         game_name: str | None = None,
     ) -> list[AssignmentRecord]:
-        """List experiment assignments matching the provided filters."""
+        """List run assignments matching the provided filters."""
         raise NotImplementedError
 
     def update_assignment_status(
@@ -275,25 +271,23 @@ class DataProvider:
         form_key: str,
         response: dict[str, Any],
     ) -> AssignmentRecord | None:
-        """Store one experiment form response payload on an assignment row."""
+        """Store one run form response payload on an assignment row."""
         raise NotImplementedError
 
     def set_player_form_response(
         self,
         *,
         player_id: str,
-        experiment_name: str,
         form_key: str,
         response: dict[str, Any],
     ) -> PlayerFormsRecord | None:
-        """Store one before-play form response in the forms collection."""
+        """Store one player-scoped form response in the forms collection."""
         raise NotImplementedError
 
     def get_player_forms(
         self,
         *,
         player_id: str,
-        experiment_name: str,
     ) -> PlayerFormsRecord | None:
-        """Return the before-play form responses for a player in an experiment."""
+        """Return player-scoped form responses for a player."""
         raise NotImplementedError

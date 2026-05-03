@@ -4,10 +4,13 @@ from pathlib import Path
 
 import typer
 from dcs_simulation_engine.cli.bootstrap import create_provider_admin
+from dcs_simulation_engine.cli.commands.workflow import admin_publish_app, hitl_app
 from dcs_simulation_engine.cli.common import echo, seed_database
 from dcs_simulation_engine.utils.auth import generate_access_key
 
 admin_app = typer.Typer(help="Database administration commands.")
+admin_app.add_typer(hitl_app, name="hitl")
+admin_app.add_typer(admin_publish_app, name="publish")
 
 
 @admin_app.command("seed")

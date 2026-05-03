@@ -2,7 +2,7 @@
 
 *Characters* are cognitive systems that can be used as player characters (PCs) or non-player characters (NPCs) in simulations.
 
-Each character is a fixed snapshot of a cognitive system, including its persona, abilities and goals.
+Each character is a fixed snapshot of a cognitive system, including its persona, abilities, constraints, and goals.
 
 ## Core Characters
 Core characters are a curated set of cognitive systems included with the simulation engine. Each is selected to represent a distinct type of cognition—differing in goals, structure, or behavior—and is tested to ensure the engine can model it reliably.
@@ -32,13 +32,13 @@ Examples include:
 
 - And additional forms as needed
 
-👉 See our character coverage reports for character's in [development](../reports/character_coverage_report_dev.html) and [production](../reports/character_coverage_report_prod.html).
+👉 See our character coverage reports for characters in [development](../reports/character_coverage_report_dev.html) and [production](../reports/character_coverage_report_prod.html).
 
 ### Character Development
 
-Characters are defined using structured character sheets, informed by primary research and, where possible, in-person interviews.
+Characters are defined using structured character sheets, informed by primary research and, where possible, interviews or first-person experiential input.
 
-These sheets specify persona, abilities, goals, and other attributes required for simulation. They are iteratively refined to capture essential features of the cognitive system while remaining playable within the engine.
+These sheets specify narrative fields such as descriptions, abilities, persona features, and goals, along with structured dimensions such as origin, form, agency, substrate, and size. They are iteratively refined to capture essential features of the cognitive system while remaining playable within the engine.
 
 👉 See the [Custom Characters](../user_guide/advanced.md#custom-characters) section in the User Guide for the character development workflow.
 
@@ -48,13 +48,13 @@ Character behavior depends on three components:
 
 - The character sheet
 - The system prompt
-- The role-playing model (ensembles)
+- The role-playing model(s)
 
 All **evaluations are fingerprinted** against this full configuration. As a result, evaluations are valid only for the exact combination of character sheet, system prompt, and model(s) they were run against.
 
 Any change to one of these components (e.g., model version or prompt update) automatically invalidates prior evaluations and requires re-evaluation.
 
-Character quality is governed by a character **release policy** (see `character-release-policy.yml` in the repository), which defines a minimum threshold score on evaluations that is required for characters to be included in production (e.g., in-character fidelity (ICF), scenario coverage).
+Character quality is governed by a character **release policy** (see `character-release-policy.yml` in the repository), which defines the minimum evaluation thresholds required before a character is added to production, including measures such as in-character fidelity (ICF) and scenario coverage.
 
 Evaluations are conducted by internal and, when possible, external experts to ensure characters meet required thresholds.
 

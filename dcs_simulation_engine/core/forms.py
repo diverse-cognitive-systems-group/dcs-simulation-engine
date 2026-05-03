@@ -1,4 +1,4 @@
-"""Shared form models for experiment workflows."""
+"""Shared form models for run workflows."""
 
 import re
 from typing import Any, Literal
@@ -34,8 +34,8 @@ def _normalize_identifier(value: str) -> str:
     return text
 
 
-class ExperimentFormQuestion(BaseModel):
-    """Question model used by experiment forms."""
+class FormQuestion(BaseModel):
+    """Question model used by run forms."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -57,7 +57,7 @@ class ExperimentFormQuestion(BaseModel):
     required: bool = False
 
     @model_validator(mode="after")
-    def validate_question(self) -> "ExperimentFormQuestion":
+    def validate_question(self) -> "FormQuestion":
         """Validate options vs answer type."""
         if self.answer_type in {"single_choice", "multi_choice"} and not self.options:
             raise ValueError("Choice questions require options.")
@@ -66,8 +66,8 @@ class ExperimentFormQuestion(BaseModel):
         return self
 
 
-class ExperimentFormTrigger(BaseModel):
-    """Canonical trigger for experiment forms."""
+class FormTrigger(BaseModel):
+    """Canonical trigger for run forms."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -75,7 +75,7 @@ class ExperimentFormTrigger(BaseModel):
     match: Any = None
 
     @model_validator(mode="after")
-    def validate_registered_trigger(self) -> "ExperimentFormTrigger":
+    def validate_registered_trigger(self) -> "FormTrigger":
         """Validate event registration and v1 match support."""
         if self.event not in REGISTERED_FORM_TRIGGER_EVENTS:
             raise ValueError(f"Unknown form trigger event: {self.event}")
@@ -84,14 +84,14 @@ class ExperimentFormTrigger(BaseModel):
         return self
 
 
-class ExperimentForm(BaseModel):
-    """Named experiment form shown at a registered experiment trigger."""
+class Form(BaseModel):
+    """Named run form shown at a registered run trigger."""
 
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    trigger: ExperimentFormTrigger
-    questions: list[ExperimentFormQuestion] = Field(default_factory=list)
+    trigger: FormTrigger
+    questions: list[FormQuestion] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -103,7 +103,7 @@ class ExperimentForm(BaseModel):
         return normalized
 
     @model_validator(mode="after")
-    def assign_question_keys(self) -> "ExperimentForm":
+    def assign_question_keys(self) -> "Form":
         """Ensure every question has a stable key."""
         seen: set[str] = set()
         for index, question in enumerate(self.questions, start=1):

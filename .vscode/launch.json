@@ -16,7 +16,7 @@
             "cwd": "${workspaceFolder}",
         },
         {
-            "name": "dcs server",
+            "name": "dcs server demo",
             "type": "debugpy",
             "request": "launch",
             "python": "/opt/venv/bin/python",
@@ -24,7 +24,7 @@
             "args": [
                 "server",
                 "--mongo-seed-dir=database_seeds/dev",
-                "--default-experiment=usability",
+                "--config=examples/run_configs/demo.yml",
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "start-mongo",
@@ -34,7 +34,7 @@
             }
         },
         {
-            "name": "dcs server freeplay",
+            "name": "dcs server usability",
             "type": "debugpy",
             "request": "launch",
             "python": "/opt/venv/bin/python",
@@ -42,7 +42,7 @@
             "args": [
                 "server",
                 "--mongo-seed-dir=database_seeds/dev",
-                "--free-play",
+                "--config=examples/run_configs/usability.yml",
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "start-mongo",

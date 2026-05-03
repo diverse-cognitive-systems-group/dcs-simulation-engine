@@ -1,6 +1,6 @@
 # DCS Simulation UI
 
-A browser-based interface for the DCS (Decision and Communication Simulation) engine. In standard mode, players register with a one-time access key, browse available simulation games, configure a session by selecting characters, and then interact with an AI-driven scenario in real time over a WebSocket connection. In server free-play mode, the UI skips login/registration and lands users directly in anonymous game selection.
+A browser-based interface for the DCS (Decision and Communication Simulation) engine. Registration-required runs ask players to register with a one-time access key, browse available simulation games, configure a session by selecting characters, and then interact with an AI-driven scenario in real time over a WebSocket connection. No-registration runs issue anonymous player keys automatically and skip the registration screen.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ A browser-based interface for the DCS (Decision and Communication Simulation) en
 The Vite dev server proxies HTTP `/api/` requests to `http://localhost:8000`, so the API server must be running before you start the UI.
 Live gameplay WebSockets connect directly to the backend on port `8000` in development so chat does not depend on Vite's WebSocket proxy implementation.
 
-For anonymous local play, start the backend with `uv run dcs server --free-play`.
+For anonymous local play, start the backend with `uv run dcs server --config examples/run_configs/demo.yml`.
 
 ## Getting Started
 
@@ -75,9 +75,9 @@ src/
 ├── routes/
 │   ├── routeTree.ts          # Assembles all routes into the tree passed to createRouter
 │   ├── __root.tsx            # Root route (renders <Outlet />) and requireAuth guard
-│   ├── index.tsx             # "/" — redirects based on server mode and auth state
-│   ├── login.tsx             # "/login" — access-key login form (standard mode only)
-│   ├── signup.tsx            # "/signup" — participant registration form (standard mode only)
+│   ├── index.tsx             # "/" — redirects based on auth state
+│   ├── login.tsx             # "/login" — access-key login form
+│   ├── signup.tsx            # "/signup" — participant registration form
 │   ├── games/
 │   │   ├── index.tsx         # "/games" — grid of available games
 │   │   └── $gameName.tsx     # "/games/:gameName" — character selection and session creation
@@ -145,4 +145,4 @@ Authentication uses a bearer access key issued at registration when the server r
 
 For authenticated app API calls, the key is sent as an `Authorization: Bearer <key>` header (via `src/api/http.ts`). Login (`/api/player/auth`) and registration (`/api/player/registration`) are unauthenticated bootstrap requests. The key is also sent as an `auth` WebSocket frame at the start of each game session (via `src/hooks/use-session-websocket.ts`).
 
-When the server runs with `--free-play`, the UI discovers that mode from `/api/server/config`, hides auth/experiment flows, and starts gameplay without any stored access key.
+When the active run config has `ui.registration_required: false`, the UI discovers that from `/api/server/config`, creates an anonymous player key, and starts gameplay without showing registration.

@@ -23,7 +23,7 @@ Each remote deployment creates three Fly apps: `db`, `api`, and `ui`.
 - `flyctl` installed
 - Fly.io account access
 - `OPENROUTER_API_KEY`
-- Experiment config YAML file
+- Run config YAML file
 - `dcs` CLI available (or use `uv run dcs` from this repo)
 
 #### 2) Authenticate and set keys
@@ -79,11 +79,14 @@ dcs remote stop \
 
 ### Additional Deployment Options
 
-#### Free-play mode
+#### Anonymous demo run
+
+Deploy any run config with `ui.registration_required: false` to allow players
+to enter through automatically issued anonymous access keys.
 
 ```bash
 dcs remote deploy \
-  --free-play \
+  --config examples/run_configs/demo.yml \
   --mongo-seed-path dump/2026_03_20_07_35_09 \
   --region lax
 ```
@@ -115,8 +118,8 @@ dcs remote deploy \
 - Generated Fly configs are written to `deployments/<deployment-slug>/` each time you run `dcs remote deploy`, and deploy uses those saved files directly.
 - No local deployment manifest is written beyond those generated Fly config files. Keep the deploy output or use `--json` and store it yourself.
 - The UI is built for the paired API automatically during deploy.
-- The API is started in remote-managed mode for either one hosted experiment or free-play mode.
+- The API is started with remote management enabled for the selected run config.
 - The first admin key is claimed automatically during deployment and becomes the only key allowed to export the database.
 - Database exports written by `dcs remote save` and `dcs dump` include collection JSON plus manifest/index metadata, and those artifacts can be used again with `--mongo-seed-path`.
 - When `--regions` is provided, deploy attempts the listed regions in order and uses the first region that succeeds.
-- You can deploy multiple experiments independently by running `dcs remote deploy` once per experiment config, or deploy one free-play stack with `--free-play`.
+- You can deploy multiple runs independently by running `dcs remote deploy` once per run config.

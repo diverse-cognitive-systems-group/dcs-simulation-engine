@@ -27,7 +27,7 @@ class NextIncompleteCombinationAssignmentStrategy(CandidateAssignmentStrategy):
         for candidate in candidates:
             grouped[(candidate.game_name, candidate.npc_hid)].append(candidate)
 
-        for game_name in config.games:
+        for game_name in config.game_names:
             matching_groups = sorted(key for key in grouped if key[0] == game_name)
             for key in matching_groups:
                 if key not in completed_groups:

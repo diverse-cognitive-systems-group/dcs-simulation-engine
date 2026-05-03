@@ -19,9 +19,8 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import httpx
-from dcs_simulation_engine.core.experiment_config import ExperimentConfig
+from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.deployments import templates as deployment_templates
-from dcs_simulation_engine.helpers.experiment_helpers import get_experiment_config
 from dcs_simulation_engine.infra.fly import FlyError
 from dcs_simulation_engine.utils.auth import validate_access_key
 from jinja2 import StrictUndefined
@@ -38,7 +37,6 @@ REMOTE_MONGO_READY_TIMEOUT_S = 120
 REMOTE_FLY_CONFIG_DOCKER_DIR = "../../docker"
 REMOTE_DEPLOYMENTS_DIRNAME = "deployments"
 REMOTE_ADMIN_KEY_PLACEHOLDER = "<saved-admin-key>"
-REMOTE_FREE_PLAY_NAME = "free-play"
 
 _deployment_template_env = SandboxedEnvironment(undefined=StrictUndefined)
 
@@ -49,7 +47,7 @@ class RemoteLifecycleError(RuntimeError):
 
 @dataclass(frozen=True)
 class RemoteAppNames:
-    """Concrete Fly app names for one remote experiment deployment."""
+    """Concrete Fly app names for one remote run deployment."""
 
     api_app: str
     ui_app: str
@@ -60,7 +58,7 @@ class RemoteAppNames:
 class RemoteDeploymentResult:
     """Structured output returned after a successful remote deployment."""
 
-    experiment_name: str
+    run_name: str
     deployed_apps: list[str]
     api_app: str
     ui_app: str
@@ -110,7 +108,7 @@ class DbFlyTemplateContext(BaseFlyTemplateContext):
 
 @dataclass(frozen=True)
 class RemoteRenderedFlyConfigs:
-    """Rendered Fly TOML contents for one remote experiment deployment."""
+    """Rendered Fly TOML contents for one remote run deployment."""
 
     api_toml: str
     ui_toml: str
@@ -128,12 +126,11 @@ class RemoteFlyConfigPaths:
 
 @dataclass(frozen=True)
 class RemoteStatusResult:
-    """Authenticated experiment status returned for CLI presentation."""
+    """Authenticated run status returned for CLI presentation."""
 
     api_url: str
-    mode: str | None
-    experiment_name: str | None
-    experiment_status: dict[str, Any] | None
+    run_name: str
+    run_status: dict[str, Any] | None
 
     def model_dump(self) -> dict[str, Any]:
         """Return a JSON-serializable dict payload."""
@@ -143,24 +140,24 @@ class RemoteStatusResult:
 REMOTE_DEPLOY_APP_ORDER = ("db", "api", "ui")
 
 
-def slugify_experiment_name(value: str) -> str:
-    """Normalize an experiment name into a Fly-app-safe slug."""
+def slugify_run_name(value: str) -> str:
+    """Normalize a run name into a Fly-app-safe slug."""
     slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower())
     slug = re.sub(r"-{2,}", "-", slug).strip("-")
     if not slug:
-        raise RemoteLifecycleError("Experiment name does not produce a valid Fly app slug.")
+        raise RemoteLifecycleError("Run name does not produce a valid Fly app slug.")
     return slug
 
 
 def derive_remote_app_names(
     *,
-    experiment_name: str,
+    run_name: str,
     api_app: str | None = None,
     ui_app: str | None = None,
     db_app: str | None = None,
 ) -> RemoteAppNames:
-    """Return explicit or derived app names for a remote experiment deployment."""
-    slug = slugify_experiment_name(experiment_name)
+    """Return explicit or derived app names for a remote run deployment."""
+    slug = slugify_run_name(run_name)
     prefix = f"dcs-{slug}"
     return RemoteAppNames(
         api_app=api_app or f"{prefix}-api",
@@ -350,7 +347,6 @@ def _api_process_command(
     deployment_name: str,
     bootstrap_token: str,
     ui_url: str,
-    free_play: bool = False,
 ) -> str:
     """Build the remote-managed API server command string."""
     parts = [
@@ -361,11 +357,9 @@ def _api_process_command(
         "--port",
         str(REMOTE_API_PORT),
         "--remote-managed",
+        "--config",
+        "/app/deployments/" + deployment_name + "/run_configs/run_config.yml",
     ]
-    if free_play:
-        parts.append("--free-play")
-    else:
-        parts.extend(["--default-experiment", deployment_name])
     parts.extend(
         [
             "--bootstrap-token",
@@ -426,16 +420,16 @@ def _render_db_fly_toml(*, app_name: str, region: str | None) -> str:
     )
 
 
-def _deployment_artifact_dir(*, experiment_name: str) -> Path:
+def _deployment_artifact_dir(*, run_name: str) -> Path:
     """Return the persistent repo-local directory for generated deploy configs."""
-    return _repo_root() / REMOTE_DEPLOYMENTS_DIRNAME / slugify_experiment_name(experiment_name)
+    return _repo_root() / REMOTE_DEPLOYMENTS_DIRNAME / slugify_run_name(run_name)
 
 
-def _write_deployment_experiment_config(*, output_dir: Path, experiment_name: str, source_path: Path) -> Path:
-    """Persist the selected experiment config under the deployment artifact directory."""
-    experiment_dir = output_dir / "experiments"
-    experiment_dir.mkdir(parents=True, exist_ok=True)
-    destination = experiment_dir / f"{slugify_experiment_name(experiment_name)}.yaml"
+def _write_deployment_run_config(*, output_dir: Path, run_name: str, source_path: Path) -> Path:
+    """Persist the selected run config under the deployment artifact directory."""
+    run_dir = output_dir / "run_configs"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    destination = run_dir / "run_config.yml"
     shutil.copy2(source_path, destination)
     return destination
 
@@ -557,34 +551,31 @@ def _bootstrap_remote_deployment(
     return admin_key
 
 
-def load_experiment_config(config: str | Path) -> tuple[Path, ExperimentConfig]:
-    """Resolve and load the experiment config selected for remote deployment."""
-    resolved = Path(get_experiment_config(str(config))).expanduser().resolve()
-    return resolved, ExperimentConfig.load(resolved)
+def load_run_config(config: str | Path) -> tuple[Path, RunConfig]:
+    """Resolve and load the run config selected for remote deployment."""
+    possible_path = Path(config).expanduser()
+    if possible_path.is_file():
+        resolved = possible_path.resolve()
+    else:
+        resolved = (_repo_root() / "examples" / "run_configs" / str(config)).with_suffix(".yml").resolve()
+    return resolved, RunConfig.load(resolved)
 
 
 def _resolve_remote_deployment_target(
     *,
     config: str | Path | None,
-    free_play: bool,
-) -> tuple[str, Path | None]:
-    """Return the deployment name and optional source experiment config path."""
-    if free_play:
-        if config is not None:
-            raise RemoteLifecycleError("Use either config or free_play, not both.")
-        return REMOTE_FREE_PLAY_NAME, None
-
+) -> tuple[str, Path]:
+    """Return the deployment name and source run config path."""
     if config is None:
-        raise RemoteLifecycleError("config is required unless free_play=True.")
+        raise RemoteLifecycleError("config is required.")
 
-    config_path, experiment = load_experiment_config(config)
-    return experiment.name, config_path
+    config_path, run = load_run_config(config)
+    return run.name, config_path
 
 
-def deploy_remote_experiment(
+def deploy_remote_run(
     *,
     config: str | Path | None = None,
-    free_play: bool = False,
     openrouter_key: str,
     mongo_seed_path: str | Path,
     admin_key: str | None = None,
@@ -599,11 +590,11 @@ def deploy_remote_experiment(
     mongo_seed_path = _validate_mongo_seed_path(Path(mongo_seed_path))
     if admin_key is not None:
         admin_key = validate_access_key(admin_key)
-    deployment_name, config_path = _resolve_remote_deployment_target(config=config, free_play=free_play)
+    deployment_name, config_path = _resolve_remote_deployment_target(config=config)
     selected_apps = _normalize_deploy_apps(deploy_apps)
     is_full_deploy = selected_apps == list(REMOTE_DEPLOY_APP_ORDER)
     names = derive_remote_app_names(
-        experiment_name=deployment_name,
+        run_name=deployment_name,
         api_app=api_app,
         ui_app=ui_app,
         db_app=db_app,
@@ -611,7 +602,7 @@ def deploy_remote_experiment(
     api_url = app_url(names.api_app)
     ui_url = app_url(names.ui_app)
     mongo_uri = f"mongodb://{names.db_app}.internal:{REMOTE_MONGO_PORT}/"
-    bootstrap_token = f"dcs-bootstrap-{slugify_experiment_name(deployment_name)}-{secrets.token_urlsafe(12)}"
+    bootstrap_token = f"dcs-bootstrap-{slugify_run_name(deployment_name)}-{secrets.token_urlsafe(12)}"
     rendered_configs = RemoteRenderedFlyConfigs(
         api_toml=_render_api_fly_toml(
             app_name=names.api_app,
@@ -620,24 +611,22 @@ def deploy_remote_experiment(
                 deployment_name=deployment_name,
                 bootstrap_token=bootstrap_token,
                 ui_url=ui_url,
-                free_play=free_play,
             ),
         ),
         ui_toml=_render_ui_fly_toml(app_name=names.ui_app, region=region),
         db_toml=_render_db_fly_toml(app_name=names.db_app, region=region),
     )
-    artifact_dir = _deployment_artifact_dir(experiment_name=deployment_name)
+    artifact_dir = _deployment_artifact_dir(run_name=deployment_name)
     fly_configs = _write_remote_fly_configs(
         output_dir=artifact_dir,
         names=names,
         rendered_configs=rendered_configs,
     )
-    if config_path is not None:
-        _write_deployment_experiment_config(
-            output_dir=artifact_dir,
-            experiment_name=deployment_name,
-            source_path=config_path,
-        )
+    _write_deployment_run_config(
+        output_dir=artifact_dir,
+        run_name=deployment_name,
+        source_path=config_path,
+    )
 
     repo_root = _repo_root()
     if "db" in selected_apps:
@@ -688,7 +677,7 @@ def deploy_remote_experiment(
     save_command = (
         (
             f"dcs remote save --uri {shlex.quote(api_url)} --admin-key {REMOTE_ADMIN_KEY_PLACEHOLDER} "
-            f"--save-db-path {shlex.quote(f'{slugify_experiment_name(deployment_name)}.tar.gz')}"
+            f"--save-db-path {shlex.quote(f'{slugify_run_name(deployment_name)}.tar.gz')}"
         )
         if admin_api_key
         else None
@@ -696,7 +685,7 @@ def deploy_remote_experiment(
     stop_command = (
         (
             f"dcs remote stop --uri {shlex.quote(api_url)} --admin-key {REMOTE_ADMIN_KEY_PLACEHOLDER} "
-            f"--save-db-path {shlex.quote(f'{slugify_experiment_name(deployment_name)}.tar.gz')} "
+            f"--save-db-path {shlex.quote(f'{slugify_run_name(deployment_name)}.tar.gz')} "
             f"--api-app {shlex.quote(names.api_app)} --ui-app {shlex.quote(names.ui_app)} "
             f"--db-app {shlex.quote(names.db_app)}"
         )
@@ -705,7 +694,7 @@ def deploy_remote_experiment(
     )
 
     return RemoteDeploymentResult(
-        experiment_name=deployment_name,
+        run_name=deployment_name,
         deployed_apps=selected_apps,
         api_app=names.api_app,
         ui_app=names.ui_app,
@@ -730,23 +719,20 @@ def fetch_remote_status(
             remote_response = client.get("/api/remote/status")
             remote_response.raise_for_status()
             payload = remote_response.json()
-            experiment_name = payload.get("experiment_name")
-            experiment_status: dict[str, Any]
-            if experiment_name:
-                headers = {"Authorization": f"Bearer {admin_key}"}
-                experiment_response = client.get(f"/api/experiments/{experiment_name}/status", headers=headers)
-                experiment_response.raise_for_status()
-                experiment_status = experiment_response.json()
-            else:
-                experiment_status = payload
+            run_name = payload.get("run_name")
+            if not isinstance(run_name, str) or not run_name:
+                raise RemoteLifecycleError("Remote status response did not include a run name.")
+            headers = {"Authorization": f"Bearer {admin_key}"}
+            run_response = client.get("/api/run/status", headers=headers)
+            run_response.raise_for_status()
+            run_status = run_response.json()
     except httpx.HTTPError as exc:
         raise RemoteLifecycleError(f"Failed to fetch remote deployment status: {exc}") from exc
 
     return RemoteStatusResult(
         api_url=uri,
-        mode=payload.get("mode"),
-        experiment_name=experiment_name,
-        experiment_status=experiment_status,
+        run_name=run_name,
+        run_status=run_status,
     )
 
 
@@ -778,7 +764,7 @@ def save_remote_database(*, uri: str, admin_key: str, save_db_path: Path) -> Pat
     return save_db_path
 
 
-def stop_remote_experiment(
+def stop_remote_run(
     *,
     uri: str,
     admin_key: str,
@@ -788,7 +774,7 @@ def stop_remote_experiment(
     db_app: str,
     fly_api_token: str | None = None,
 ) -> Path:
-    """Save the remote DB archive, then destroy all Fly apps for the experiment."""
+    """Save the remote DB archive, then destroy all Fly apps for the run."""
     saved_path = save_remote_database(uri=uri, admin_key=admin_key, save_db_path=save_db_path)
     for app_name in (ui_app, api_app, db_app):
         _destroy_app(app_name, fly_api_token=fly_api_token)

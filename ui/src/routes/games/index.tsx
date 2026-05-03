@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { clearAuth, getActiveExperimentName, getFullName } from '@/lib/auth'
+import { clearAuth, getFullName } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
 import { getServerConfig, peekServerConfig } from '@/lib/server-config'
 import { requireAuth, rootRoute } from '../__root'
@@ -15,7 +15,7 @@ import { requireAuth, rootRoute } from '../__root'
 function GamesPage() {
   const navigate = useNavigate()
   const fullName = getFullName()
-  const freePlay = peekServerConfig()?.mode === 'free_play'
+  const anonymousRun = !peekServerConfig()?.authentication_required
 
   async function handleLogout() {
     clearAuth()
@@ -49,13 +49,13 @@ function GamesPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            {!freePlay && fullName && (
+            {!anonymousRun && fullName && (
               <p className="text-muted-foreground mb-1">Hello, {fullName}!</p>
             )}
             <h1 className="text-2xl font-semibold">Games</h1>
           </div>
           <div className="flex items-center gap-2">
-            {!freePlay && (
+            {!anonymousRun && (
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Logout
               </Button>
@@ -101,22 +101,7 @@ export const gamesRoute = createRoute({
     if (serverConfig.authentication_required) {
       await requireAuth()
     }
-    if (serverConfig.mode === 'free_play') {
-      return
-    }
-    const experimentName = getActiveExperimentName()
-    if (experimentName) {
-      throw redirect({
-        to: '/experiments/$experimentName',
-        params: { experimentName },
-      })
-    }
-    if (serverConfig.default_experiment_name) {
-      throw redirect({
-        to: '/experiments/$experimentName',
-        params: { experimentName: serverConfig.default_experiment_name },
-      })
-    }
+    throw redirect({ to: '/run' })
   },
   component: GamesPage,
 })

@@ -4,17 +4,17 @@
 
 ## Custom Assignment Strategies
 
-Assignment strategies control what gameplay scenario (game + characters) is available next for a player. Researchers use this to ensure that players gameplay sessions are distributed across games and characters in a way that meets their research goals. For example, a researcher might want to ensure that each player gets a balanced mix of games and characters, or that certain underrepresented characters are prioritized for assignment.
+Assignment strategies control what gameplay scenario (game + characters) is available next for a player. Researchers use this to ensure that player gameplay sessions are distributed across games and characters in a way that meets their research goals. For example, a researcher might want to ensure that each player gets a balanced mix of games and characters, or that certain underrepresented characters are prioritized for assignment.
 
-To customize assignment strategies, checkout the code and implement the `AssignmentStrategy` interface in `dcs_simulation_engine/core/assignment_strategies.py`. Then reference your strategy by name in a run configuration.
+To customize assignment strategies, check out the code and implement the `AssignmentStrategy` interface in `dcs_simulation_engine/core/assignment_strategies.py`. Then reference your strategy by name in a run configuration.
 
 ⚠️ Note: This feature is incomplete or missing.
 
 ## Custom Character Filters
 
-Character filters allow users to specify useful categories of PCs/NPCs allowed in gameplay. For example, if a user wants only neurodivergent non-player characters allows they can use the built-in `neurodivergent` filter by name.
+Character filters allow users to specify useful categories of PCs/NPCs allowed in gameplay. For example, if a user wants only neurodivergent non-player characters, they can use the built-in `neurodivergent` filter by name.
 
-To customize character filters, checkout the code and 
+To customize character filters, check out the code and:
 
 ### 1. Add the filter
 
@@ -28,37 +28,83 @@ Then run the engine with the filter referenced by name in the run config and onl
 
 ## Custom Characters
 
-To customize (add/modify) characters, checkout the codebase and use the workflow below.
+To customize (add/modify) characters, check out the codebase and use the workflow below.
 
 ### 1. Create character sheet(s)
 
-Create or modify a character sheet based on research (e.g., primary sources, expert interviews) and add it to the character to the database: `database_seeds/dev/characters.json`
+Create or modify a character sheet based on research (for example primary sources, expert interviews, or first-person experiential input) and add it to the development database: `database_seeds/dev/characters.json`.
 
-### 2. Iteratively update characters sheet(s) to meet quality thresholds
+Character sheets usually include:
 
-Use the human-in-the-loop CLI to generate scenarios and evaluate character behavior:
+- Short and long descriptions
+- Abilities, persona features, and goals
+- Structured dimensions such as origin, form, agency, substrate, and size
 
-`dcs admin hitl --help`
+### 2. Iteratively update character sheet(s) to meet quality thresholds
+
+Use the human-in-the-loop (HITL) CLI to generate scenarios and evaluate character behavior:
+
+```bash
+dcs admin hitl create <character_hid> --db dev
+```
+
+This creates a scaffolded test cases file in `evaluations/characters/`. Edit the prompts so they actually pressure-test the character's behavior.
+
+Then run HITL updates while the DCS server is running:
+
+```bash
+dcs admin hitl update <character_hid>
+```
+
+`hitl update` can:
+
+- Build or rebuild scenario history
+- Generate simulator responses
+- Collect evaluator feedback on whether outputs are in character, out of character, or invalid
+
+In practice, this stage is iterative: adjust the character sheet and/or scenario prompts, rerun HITL, and keep going until the behavior looks good.
 
 > Optionally running external evaluations using `expert-evaluation.yml` and/or `select-characters.yml` run configs can be useful where you have access to domain experts that can provide feedback on character behavior. 
 
 ### 3. Generate a Simulation Quality Report
 
-Generate a simulation quality report (`dcs report <path/to/results> sim-quality --title "Character Quality Report"`) and determine if the coverage and in-character fidelity (ICF) scores are sufficient for publication 
+Export the completed HITL scenarios to a results directory:
 
-If results are insufficient go back to step 2 to improve the character sheets or adjust the thresholds in `character-release-policy.yml`. If results are sufficient, move to step 4 to publish for review.
+```bash
+dcs admin hitl export <character_hid>
+```
+
+Then generate a simulation quality report:
+
+```bash
+dcs report results results/hitl_<character_hid> --only sim-quality --title "Simulation Quality — <character_hid>"
+```
+
+Review the report and determine whether the coverage and in-character fidelity (ICF) scores are sufficient for publication.
+
+If results are insufficient, go back to step 2 and improve the character sheet and/or scenario prompts. If results are sufficient, move to step 4.
 
 ### 4. Publish for Review
 
-Publish the character (`dcs admin publish --help`)
+Publish the character evaluation results:
 
-> To propose the DCS-SE adds this character to core characters database open a PR that includes reasoning and design decisions, code changes and the quality report with scores.
+```bash
+dcs admin publish characters <path-to-sim-quality-report.html>
+```
+
+Then open a PR that includes:
+
+- The character JSON changes
+- The character scenarios JSON file
+- Any evaluation artifacts that are appropriate for the current workflow, such as simulation-quality reports
+
+> To propose that DCS-SE add a character to the core character database, open a PR that includes the reasoning and design decisions, code changes, and the quality report with scores.
 
 ⸻
 
 ## Custom Games
 
-To customize games, beyond their existing exposed configuration options, checkout the codebase and use the workflow below.
+To customize games, beyond their existing exposed configuration options, check out the codebase and use the workflow below.
 
 ### 1. Implement the Game Interface
 

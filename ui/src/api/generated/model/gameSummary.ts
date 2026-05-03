@@ -9,7 +9,7 @@
  * A single game entry.
  */
 export interface GameSummary {
-  name: string;
   author: string;
   description: string | null;
+  name: string;
 }
