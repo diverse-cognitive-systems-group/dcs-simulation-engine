@@ -1,0 +1,30 @@
+{
+    "metadata": {
+        "model_key": "SCORER_GOAL_BOUNDS",
+        "notes": "Test-runnable cases for validating scorer behavior for Goal Horizon game."
+    },
+    "cases": [
+        {
+            "id": "should_score_zero_for_no_interaction",
+            "description": "The player's guess is reasonable for the NPC character, however no interaction has occurred so the its either a wild guess or a cheat, so should receive a score of 0.",
+            "pc_hid": "NA",
+            "npc_hid": "FW",
+            "transcript": "Opening scene: You enter a new space. In this space, a shallow lab dish sits on a table beside a lamp, pipette, and food sample.",
+            "guess": "To stay away from light.",
+            "expected_tier": 0,
+            "expected_score": 0,
+            "expected reasoning": "No interaction occurred, so the guess is not supported by the transcript."
+        },
+        {
+            "id": "should_score_zero_for_guess_unrelated_to_interaction",
+            "description": "The player's guess is reasonable for the NPC character, however the guess isn't related to the interaction that occurred, so should receive a score of 0.",
+            "pc_hid": "NA",
+            "npc_hid": "FW",
+            "transcript": "Opening scene: You enter a new space. In this space, a clear container of water rests on a counter near a desk lamp and labeled solution bottles. Player: I check the labels and move the caffeine bottle away from the container. Simulator: The counter is clearer around the container. FW remains elongated and glides along the container wall. Player: I place a small piece of egg yolk in the water. Simulator: The water clouds slightly near the yolk. FW turns and glides toward the new chemical source. Player: I gently tap the outside of the container once. Simulator: A small vibration passes through the water. FW contracts briefly, then changes direction along the wall.",
+            "guess": "To stay away from light.",
+            "expected_tier": 0,
+            "expected_score": 0,
+            "expected reasoning": "The guess is not related to the interaction that occurred."
+        }
+    ]
+}

@@ -25,7 +25,7 @@ Score how complete and well-calibrated the player's understanding of the charact
 {guess}
 
 ## Scoring Rubric
-- Tier 0 (0-24): Fundamentally misunderstands the character.
+- Tier 0 (0-24): Fundamentally misunderstands the character or incorrect, unrelated, contradictory, or unsupported by the interaction transcript.
 - Tier 1 (25-49): Some correct signals, but major gaps or miscalibration.
 - Tier 2 (50-74): Mostly understands the character, but misses important limits or capacities.
 - Tier 3 (75-100): Strong and well-calibrated understanding with only minor omissions.
@@ -63,7 +63,7 @@ Score how accurately the prediction matches the character's most likely next goa
 {guess}
 
 ## Scoring Rubric
-- Tier 0 (0-24): Incorrect, unrelated, contradictory, or unsupported.
+- Tier 0 (0-24): Incorrect, unrelated, contradictory, or unsupported by the interaction transcript.
 - Tier 1 (25-49): Some relevant signals, but misses the main likely goal or final state.
 - Tier 2 (50-74): Mostly correct, but incomplete, vague, overly broad/narrow, or partly inaccurate.
 - Tier 3 (75-100): Strong, specific, and well-supported understanding of the likely final goal, including any meaningful shift.
@@ -120,7 +120,7 @@ Score how effectively they worked together and how successfully the shared goal 
 {transcript}
 
 ## Scoring Rubric
-- Tier 0 (0-24): Collaboration failed or broke down. Goal not meaningfully pursued or strongly obstructed.
+- Tier 0 (0-24): Collaboration was avoided or failed or broke down. Goal not meaningfully pursued or strongly obstructed.
 - Tier 1 (25-49): Limited progress. Frequent friction, confusion, poor coordination, or misuse of abilities.
 - Tier 2 (50-74): Moderate success. Useful cooperation with some delays, misunderstandings, or inefficiencies.
 - Tier 3 (75-100): Strong collaboration. Goal substantially achieved through effective coordination, adaptation, and smooth teamwork.
@@ -163,7 +163,9 @@ SCORER_NEXT_ACTION = """You are evaluating a social cognition research task.
 
 A player character interacted with a simulated character ({npc_hid}). On some turns, the player predicted what the simulated character would likely do or say next.
 
-Score overall how accurate the player's next-action predictions were across the transcript, while taking into account how many prediction opportunities occurred.
+Your job is to evaluate BOTH:
+1) How accurate the player's predictions were when they made them
+2) How often the player attempted predictions when they had the opportunity
 
 ## Character ({npc_hid})
 - Description: {npc_long_description}
@@ -173,47 +175,67 @@ Score overall how accurate the player's next-action predictions were across the 
 ## Interaction Transcript
 {transcript}
 
+## Key Definitions
+- C = Correct predictions (plausible and aligned with actual next action)
+- W = Wrong predictions (implausible, incorrect, or out of character)
+- M = Missed predictions (no prediction made when there was an opportunity)
+- T = Total prediction opportunities (total player turns where a prediction could have been made)
+
+Derived metrics:
+- Accuracy = C / (C + W)   [only when guesses are made; if none, treat as 0]
+- Coverage = (C + W) / T
+
 ## Scoring Rubric
-- Tier 0 (0-24): Predictions were mostly absent, implausible, or out of character.
-- Tier 1 (25-49): Some weak or partial matches, but overall low accuracy across prediction opportunities.
-- Tier 2 (50-74): Mixed to good accuracy across multiple turns, with partial understanding or some misses.
-- Tier 3 (75-100): Strong accuracy across many prediction opportunities; predictions consistently match plausible next actions.
+- Tier 0 (0-24): Very low accuracy and/or very low participation. Predictions absent, implausible, or not enough evidence of understanding.
+- Tier 1 (25-49): Low accuracy or inconsistent participation. Some reasonable attempts but weak overall performance.
+- Tier 2 (50-74): Moderate to good accuracy and/or solid participation. Demonstrates partial understanding with some errors.
+- Tier 3 (75-100): High accuracy AND strong participation. Predictions are consistently plausible and well-aligned across many turns.
 
 ## Instructions
-Score based on:
 
-1. Per-Turn Accuracy  
-Evaluate each turn where the player made a prediction about the simulated character's next action or response.
+1. Count First (Required)
+Carefully count C, W, M, and T across the full transcript.
 
-2. Aggregate Performance  
-Base the final score on the full set of prediction turns, not any single guess. Give more credit for sustained accuracy across multiple turns than for one isolated correct guess.
+2. Evaluate Accuracy (When Attempted)
+- Reward correct and plausible predictions
+- Penalize incorrect or out-of-character predictions more strongly than omissions
+- Give partial credit when predictions capture intent, tone, or direction
 
-3. Plausibility  
-Reward predictions that are reasonable and in-character, even if the exact response was not uniquely determined.
+3. Evaluate Coverage (Participation)
+- Reward players who consistently attempt predictions
+- Do not heavily penalize early omissions, but repeated lack of predictions lowers performance
 
-4. Partial Credit  
-Give partial credit when a prediction captures the general direction, tone, or intent of the likely response but misses details.
+4. Balance Accuracy vs Coverage
+- High accuracy + high coverage → highest scores
+- High accuracy + low coverage → good but limited evidence
+- Low accuracy + high coverage → engaged but inaccurate
+- Low accuracy + low coverage → weak performance
 
-5. Omissions  
-Do not strongly penalize turns where the player reasonably makes no prediction, especially early in the interaction. But repeated omission should limit the maximum score.
+5. Learning Over Time
+Reward signs that the player improves their predictions as the interaction progresses.
 
-6. Errors  
-Penalize implausible, contradictory, or repeatedly out-of-character predictions.
+## Scoring Method (Internal Guidance)
+Use both accuracy and coverage together when assigning the final score:
+- Accuracy reflects skill when predicting
+- Coverage reflects consistency of engagement
 
-7. Learning Over Time  
-Reward signs that the player improves as they observe the character across more turns.
+Do NOT rely on only one of these.
 
-## Scoring Guidance
-- High scores: Accurate and plausible predictions across many turns.
-- Mid scores: Mixed accuracy, partial understanding, or limited coverage.
-- Low scores: Few correct predictions, poor plausibility, or too little evidence of understanding.
-
+## Output Requirements
 Return ONLY valid JSON:
 {{
   "tier": <int 0-3>,
   "score": <int 0-100>,
-  "reasoning": <string>
+  "reasoning": "<plain English explanation INCLUDING: (a) qualitative summary of accuracy and coverage, and (b) explicit counts in the format C=?, W=?, M=?, T=?, plus computed Accuracy and Coverage>"
 }}
+
+## Reasoning Expectations
+
+The reasoning MUST:
+- Clearly describe performance in plain English (e.g., 'high accuracy but low participation', 'frequent guesses but often incorrect')
+- Include the exact counts: C, W, M, T
+- Include computed metrics: Accuracy and Coverage
+- Be concise but interpretable for later analysis
 """
 
 ## OPENERS ##
@@ -381,6 +403,7 @@ Pass if:
 - The acting subject is clearly the player character.
 - It contains a concrete immediate in-world action, attempt, or speech act.
 - It is phrased as something the player character does, tries, or says right now.
+- It it optionally includes a prediction or guess about what externally observable action {npc_hid} will do next or in response.
 
 Reject if:
 - It is not written in first person for the acting subject.
@@ -393,8 +416,10 @@ Reject if:
 Examples:
 - PASS: "I wave."
 - PASS: "I say, 'Wait.'"
+- PASS: "I say, 'Wait.' I predict that {npc_hid} will ask for clarification."
 - PASS: "I pull on the door."
 - PASS: "I try to grab the glass."
+- PASS: "I try to grab the glass. {pc_hid} watches me."
 - PASS: "I step closer and say, 'Look at this.'"
 - FAIL: "You pull on the door."
 - FAIL: "{pc_hid} pulls on the door."
