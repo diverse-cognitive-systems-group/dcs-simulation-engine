@@ -14,7 +14,7 @@ pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SEED_CHARACTERS_PATH = REPO_ROOT / "database_seeds" / "dev" / "characters.json"
-SIMULATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "validators" / "simulator_turn_validator_cases.json"
+SIMULATOR_CASES_PATH = REPO_ROOT / "tests" / "data" / "validators" / "default_simulator_turn_validator_cases.json"
 
 
 def _load_json(path: Path) -> Any:
@@ -40,13 +40,11 @@ def test_simulator_turn_validator_dataset_has_required_structure() -> None:
 
     metadata = dataset.get("metadata", {})
     required_metadata_keys = {
-        "dataset_name",
-        "validator_ensemble",
-        "notes",
+        "model_key",
+        "description",
     }
     assert required_metadata_keys <= set(metadata), f"{SIMULATOR_CASES_PATH.name} missing metadata keys"
-    assert metadata.get("dataset_name") == "simulator_turn_validator_cases"
-    assert metadata.get("validator_ensemble") == "DEFAULT_SIMULATOR_TURN_VALIDATORS"
+    assert metadata.get("model_key") == "DEFAULT_SIMULATOR_TURN_VALIDATORS"
 
     cases = dataset.get("cases", [])
     assert isinstance(cases, list) and cases, f"{SIMULATOR_CASES_PATH.name} should contain cases"

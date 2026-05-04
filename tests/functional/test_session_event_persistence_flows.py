@@ -51,7 +51,7 @@ EVALUATION_GAME_CASES = [
         "prompt_expectations": [
             "Interaction Transcript",
             "I wave my hand and predict they will wave back.",
-            "Predictions were mostly absent, implausible, or out of character.",
+            "Accuracy = C / (C + W)",
         ],
     },
     {

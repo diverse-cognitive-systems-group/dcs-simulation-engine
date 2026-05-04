@@ -208,7 +208,7 @@ def test_prompt_builders_render_without_unresolved_placeholders(character_pair, 
         (
             SCORER_NEXT_ACTION,
             {"guess": "I predict NPC steps back."},
-            ["Per-Turn Accuracy", "Interaction Transcript", "Predictions were mostly absent, implausible, or out of character."],
+            ["Accuracy = C / (C + W)", "Coverage = (C + W) / T", "Interaction Transcript"],
         ),
         (
             SCORER_SHARED_GOAL,
