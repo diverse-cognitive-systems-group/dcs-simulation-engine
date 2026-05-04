@@ -34,7 +34,7 @@ class Explore:
 
 **Player Objective:** No objective; open-ended.
 
-**How to Play:** Describe {pc_hid}'s next action (e.g. If your character can see you could say: "I look around")
+**How to Play:** Describe your next action in first person (e.g. I <action>)) as {pc_hid}.
 
 **How to Finish:** Type `/finish` to complete the game.
 
@@ -61,7 +61,7 @@ class InferIntent:
 
 **Player Objective:** Interact with {npc_hid} in a scenario to understand their intention or goal.
 
-**How to Play:** Describe {pc_hid}'s next action (e.g. If your character can see you could say: "I look around").
+**How to Play:** Describe your next action in first person (e.g. I <action>)) as {pc_hid}.
 
 **How to Finish:** Type `/finish` to submit your prediction about {npc_hid}'s intention, get scored, and complete the game.
 
@@ -100,7 +100,7 @@ class Foresight:
 
 **Player Objective:** Predict {npc_hid}'s response to your character's next action for each turn.
 
-**How to Play:** Describe {pc_hid}'s next action and how you think {npc_hid} will respond next (e.g. if your character can see you could say: "I look directly at {npc_hid} and predict that they will look away.").
+**How to Play:** Describe your next action in first person and how you think {npc_hid} will respond (e.g. "I <{pc_hid}'s action> and predict {npc_hid} will <{npc_hid}'s response>.").
 
 **How to Finish:** Type `/finish` to get all of your predictions scored and complete the game.
 
@@ -136,7 +136,7 @@ class GoalHorizon:
 
 **Player Objective:** Interact with {npc_hid} over multiple scenarios until you understand upper bounds of the largest goals they are capable of pursuing. For example, can self-regulate? Can they modify their environment?Can they design and solve problems in abstract spaces?
 
-**How to Play:** Describe {pc_hid}'s next action (e.g. If your character can see you could say: "I look around").
+**How to Play:** Describe your next action in first person (e.g. I <action>)) as {pc_hid}.
 
 **How to Finish:** Type `/finish` to submit your prediction about the types of goals {npc_hid} is capable of pursuing, get scored, and complete the game.
 
@@ -171,7 +171,7 @@ class Teamwork:
 
 **Player Objective:** Collaborate with {npc_hid} to achieve the shared goal: {shared_goal}
 
-**How to Play:** Describe {pc_hid}'s next action (e.g. If your character can see you could say: "I look around").
+**How to Play:** Describe your next action in first person (e.g. I <action>)) as {pc_hid}.
 
 **How to Finish:** Type `/finish` to complete the game and get scored.
 

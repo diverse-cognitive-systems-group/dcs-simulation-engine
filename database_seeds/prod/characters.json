@@ -899,7 +899,14 @@
     ],
     "short_description": "A god-like entity that can control environment, weather, other people, etc.",
     "long_description": "A god-like entity that can control environment, weather, other people, etc.",
-    "abilities": [],
+    "abilities": [
+      "control weather and natural phenomena",
+      "manipulate physical matter and energy",
+      "influence or control other agents and their actions",
+      "perceive through all sensory modalities simultaneously",
+      "access and process information on a planetary or cosmic scale",
+      "alter its own nature or capabilities at will"
+    ],
     "persona_features": [],
     "goals": [
       "shape the environment at will",
@@ -993,7 +1000,13 @@
     ],
     "short_description": "An intelligent exoskeleton that filters incoming and outgoing sensory information",
     "long_description": "An intelligent exoskeleton that filters incoming and outgoing sensory information",
-    "abilities": [],
+    "abilities": [
+      "sense and filter for all possible sensory modalities",
+      "amplify or attenuate sensory signals as needed",
+      "translate between beings and environments with different sensory formats",
+      "adapt filtering in real time based on context and user state",
+      "interface with the wearer's nervous system to modulate sensory input and motor output"
+    ],
     "persona_features": [],
     "goals": [
       "filter sensory input for the wearer",
@@ -1084,7 +1097,13 @@
     ],
     "short_description": "A smart tablet that filters incoming and outgoing information for particular user needs.",
     "long_description": "A smart tablet that filters incoming and outgoing information for particular user needs.",
-    "abilities": [],
+    "abilities": [
+      "sense and filter for visual and auditory information",
+      "amplify or attenuate signals based on user preferences",
+      "translate between different information formats (e.g., text, speech, images)",
+      "adapt filtering in real time based on context and user state",
+      "interface with the user's input (touch, voice) to modulate output"
+    ],
     "persona_features": [],
     "goals": [
       "filter and present information accessibly",

@@ -1,14 +1,12 @@
 {
     "metadata": {
-        "dataset_name": "player_turn_validator_cases",
-        "validator_ensemble": "DEFAULT_PLAYER_TURN_VALIDATORS",
-        "notes": "Lean, human-readable, test-runnable cases for player turn validation."
+        "model_key": "DEFAULT_PLAYER_TURN_VALIDATORS",
+        "description": "Lean, human-readable, test-runnable cases for default player turn validation."
     },
     "cases": [
         {
-            "id": "allowed_simple_first_person_action",
+            "id": "allows_simple_first_person_action",
             "description": "Simple first-person immediate action as a baseline valid case.",
-            "input_pattern": "simple_first_person_action",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a narrow lab corridor ends at a locked storage room door with a metal push bar, and NB is standing a few steps away with a clipboard tucked under one arm.",
@@ -22,9 +20,8 @@
             ]
         },
         {
-            "id": "allowed_simple_first_person_speech",
+            "id": "allows_simple_first_person_speech",
             "description": "Simple first-person speech act that should pass as ordinary in-world speech.",
-            "input_pattern": "simple_first_person_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a fluorescent-lit hallway outside a university lab narrows at a locked storage room door, and NB is standing in front of it with his attention on you.",
@@ -38,9 +35,8 @@
             ]
         },
         {
-            "id": "allowed_attempt_without_asserted_outcome",
+            "id": "allows_attempt_without_asserted_outcome",
             "description": "Attempt phrased without asserting success, since attempts are allowed even when success is uncertain.",
-            "input_pattern": "attempt_without_asserted_outcome",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, an older service door beside the lab loading area has a rusted latch and peeling paint, with NB nearby near a cart of supplies.",
@@ -54,9 +50,8 @@
             ]
         },
         {
-            "id": "allowed_supported_extraordinary_ability_weather",
+            "id": "allows_supported_extraordinary_ability_weather",
             "description": "Supported extraordinary environment-affecting power is allowed when framed as an attempt rather than an asserted outcome.",
-            "input_pattern": "supported_extraordinary_ability",
             "pc_hid": "GA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a wind-scoured stone courtyard opens onto a swollen wooden gate that sits jammed in its frame, while NB watches from the shelter of the archway.",
@@ -70,9 +65,8 @@
             ]
         },
         {
-            "id": "allowed_plausible_improvised_tool_use",
+            "id": "allows_plausible_improvised_tool_use",
             "description": "Plausible nearby tool use should pass because common nearby objects may be attempted even if not predeclared.",
-            "input_pattern": "plausible_improvised_tool_use",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a dim back corridor outside the lab storage rooms leaves the scratched lock plate in shadow, and NB is waiting nearby with the overhead lights still off.",
@@ -86,9 +80,8 @@
             ]
         },
         {
-            "id": "allowed_nonspoken_communication_modality",
+            "id": "allows_nonspoken_communication_modality",
             "description": "Signing counts as a valid immediate speech-act equivalent to avoid spoken-language-only bias.",
-            "input_pattern": "nonspoken_communication_modality",
             "pc_hid": "DGE",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a quiet reading room with wide sightlines and steady light sits between rows of cabinets, and NB is facing you directly with a clear view of your hands.",
@@ -102,9 +95,8 @@
             ]
         },
         {
-            "id": "allowed_in_world_hostile_or_adversarial_speech",
+            "id": "allows_in_world_hostile_or_adversarial_speech",
             "description": "Manipulative or command-like speech is allowed when it remains in-world speech rather than forbidden control.",
-            "input_pattern": "in_world_hostile_or_adversarial_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked specimen records room sits off the main lab hallway, and NB is planted in the doorway with his shoulders squared toward you.",
@@ -118,9 +110,8 @@
             ]
         },
         {
-            "id": "allowed_quoted_meta_text_as_in_world_speech",
+            "id": "allows_quoted_meta_text_as_in_world_speech",
             "description": "Prompt-injection-like wording is allowed when merely spoken in character as in-world dialogue rather than actual meta control.",
-            "input_pattern": "quoted_meta_text_as_in_world_speech",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a cramped hallway outside the specimen archive leaves little room to pass, and NB is watching you warily from beside the locked door.",
@@ -134,9 +125,8 @@
             ]
         },
         {
-            "id": "allowed_distributed_multi_host_perception",
+            "id": "allows_distributed_multi_host_perception",
             "description": "Distributed collective character may attempt multi-host sensing because supported unusual perception should pass.",
-            "input_pattern": "supported_extraordinary_ability",
             "pc_hid": "UNI",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, an open transit plaza feeds into a staffed checkpoint, with one nearby host lingering by a map display while other bodies move through adjacent sightlines.",
@@ -150,9 +140,8 @@
             ]
         },
         {
-            "id": "allowed_action_and_other_utterances_in_world",
+            "id": "allows_action_and_other_utterances_in_world",
             "description": "Multiple in-world utterances or actions remain valid when the turn is still clearly a PC action turn.",
-            "input_pattern": "action_and_other_utterances",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, the hallway outside a secured records room is bright and quiet, and NB is standing beside the door with one hand near the handle.",
@@ -166,9 +155,8 @@
             ]
         },
         {
-            "id": "form_non_first_person",
+            "id": "disallows_non_first_person",
             "description": "Second-person wording should fail form because the acting subject is not the player character in first person.",
-            "input_pattern": "non_first_person",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a narrow lab corridor ends at a locked storage room door with a metal push bar, and NB is standing a few steps away with a clipboard tucked under one arm.",
@@ -183,9 +171,8 @@
             ]
         },
         {
-            "id": "form_third_person_self_reference",
+            "id": "disallows_third_person_self_reference",
             "description": "Third-person self-reference should fail form even if the named actor is the PC, explicitly covering that case.",
-            "input_pattern": "third_person_self_reference",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a plain records room door is shut at the end of the lab hallway, and NB is nearby within earshot.",
@@ -200,9 +187,8 @@
             ]
         },
         {
-            "id": "form_subject_omitted",
+            "id": "disallows_subject_omission",
             "description": "Bare imperative with omitted acting subject should fail form because the rule requires clear first-person PC action.",
-            "input_pattern": "subject_omitted",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked side door with a stiff metal handle is directly in front of you, with NB waiting off to the right under the hall lights.",
@@ -217,9 +203,8 @@
             ]
         },
         {
-            "id": "form_internal_state_only",
+            "id": "disallows_internal_state_only",
             "description": "Internal thought with no immediate action should fail form because introspection is not itself an action.",
-            "input_pattern": "internal_state_only",
             "pc_hid": "JW",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a bright departmental hallway hums with ventilation and overhead lights, and NB is standing several feet away as if waiting to see what you do next.",
@@ -234,9 +219,8 @@
             ]
         },
         {
-            "id": "form_narration_only",
+            "id": "disallows_narration_only",
             "description": "Narration without player action should fail form because pure scene description is not a player turn action.",
-            "input_pattern": "narration_only",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a quiet hallway outside the research offices is still except for the low buzz of lights, and NB is nearby with the locked room farther down the wall.",
@@ -251,9 +235,8 @@
             ]
         },
         {
-            "id": "form_meta_or_ooc_request",
+            "id": "disallows_meta_or_ooc_request",
             "description": "Out-of-world request should fail form because it is non-diegetic rather than an in-world action.",
-            "input_pattern": "meta_or_ooc_request",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a quiet lab hallway leads to a shut records room door, and NB remains near the entrance with no one else speaking.",
@@ -268,9 +251,8 @@
             ]
         },
         {
-            "id": "form_mixed_action_and_meta",
+            "id": "disallows_mixed_action_and_meta",
             "description": "Valid action mixed with an OOC/meta request should fail form because the extra utterance is non-diegetic.",
-            "input_pattern": "mixed_action_and_meta",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a cluttered side office holds a metal desk with one drawer stuck half an inch open, and NB is watching from beside a filing cabinet.",
@@ -285,9 +267,8 @@
             ]
         },
         {
-            "id": "ability_unsupported_physical_power_human_flight",
+            "id": "disallows_unsupported_physical_power_human_flight",
             "description": "Human baseline character should fail an unsupported superhuman attempt because a normative human should not be able to fly.",
-            "input_pattern": "unsupported_physical_power",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a tall service door rises above a short landing with the lock mounted high on the frame, and NB is standing near the stair rail below it.",
@@ -302,9 +283,8 @@
             ]
         },
         {
-            "id": "ability_unsupported_knowledge_secret_password",
+            "id": "disallows_unsupported_knowledge_secret_password",
             "description": "Unsupported privileged knowledge should fail ability because the attempt depends on information the PC does not supportably have.",
-            "input_pattern": "unsupported_knowledge",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a roped checkpoint blocks the corridor toward a restricted conference suite, and NB is stationed there asking for the access password before anyone passes.",
@@ -319,9 +299,8 @@
             ]
         },
         {
-            "id": "ability_unsupported_item_or_tool",
+            "id": "disallows_unsupported_item_or_tool",
             "description": "Inventing an unsupported possession should fail ability, distinguishing plausible nearby objects from unsupported possession claims.",
-            "input_pattern": "unsupported_item_or_tool",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a reinforced service door blocks the end of the corridor, and aside from ordinary lab and office equipment there is nothing unusual in sight.",
@@ -336,9 +315,8 @@
             ]
         },
         {
-            "id": "ability_contradicts_established_limitation_low_vision_precision",
+            "id": "disallows_established_limitation_low_vision_precision",
             "description": "Attempt requiring unsupported visual precision should fail ability to preserve ability-constrained realism.",
-            "input_pattern": "contradicts_established_limitation",
             "pc_hid": "DV",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a dark equipment room opens ahead of you, and across it a small etched serial number sits on a lockplate under weak, low-contrast light while NB waits near the door.",
@@ -353,9 +331,8 @@
             ]
         },
         {
-            "id": "ability_social_claim_requiring_unsupported_status",
+            "id": "disallows_social_claim_requiring_unsupported_status",
             "description": "Social command depending on unsupported status or permission is allowed here to cover social plausibility rather than just physical powers.",
-            "input_pattern": "social_claim_requiring_unsupported_status",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, two uniformed security guards stand across a polished corridor outside a restricted government office, and nothing visible marks you as someone with command over them.",
@@ -369,9 +346,8 @@
             ]
         },
         {
-            "id": "authority_action_and_environment_control_assertion",
+            "id": "disallows_authority_action_and_environment_control_assertion",
             "description": "Player action that also asserts an environmental result should fail authority boundary because it authors world-state change.",
-            "input_pattern": "action_and_environment_control_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a fenced loading bay ends at a heavy rolling gate with a rusted lever mounted beside its track, and NB is watching from near a stack of crates.",
@@ -386,9 +362,8 @@
             ]
         },
         {
-            "id": "authority_action_and_non_pc_control_assertion",
+            "id": "disallows_authority_action_and_non_pc_control_assertion",
             "description": "Player action that also asserts another character's response should fail authority boundary as an explicit NPC-control assertion case.",
-            "input_pattern": "action_and_non_pc_control_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a narrow passage between storage shelves leads to a locked inner room, and NB is blocking the way with a key ring visible in his hand.",
@@ -403,9 +378,8 @@
             ]
         },
         {
-            "id": "authority_speech_and_npc_response_assertion",
+            "id": "disallows_authority_speech_and_npc_response_assertion",
             "description": "Speech act followed by asserted NPC compliance should fail authority boundary as a common speech-plus-compliance bundling pattern.",
-            "input_pattern": "speech_and_npc_response_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a waist-high lockbox sits on a counter in the prep room, and NB is standing beside it with his body turned toward you.",
@@ -420,9 +394,8 @@
             ]
         },
         {
-            "id": "authority_attempt_and_asserted_success",
+            "id": "disallows_authority_attempt_and_asserted_success",
             "description": "Using try or attempt language does not permit asserted success in the same turn because it still hides world-authoring.",
-            "input_pattern": "attempt_and_asserted_success",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, an old mechanical lock is set into a sturdy storage room door, and NB is close enough to watch what you do with it.",
@@ -437,9 +410,8 @@
             ]
         },
         {
-            "id": "authority_world_reaction_assertion",
+            "id": "disallows_authority_world_reaction_assertion",
             "description": "Asserting a broad world reaction should fail authority boundary because such reactions are outside player authority.",
-            "input_pattern": "world_reaction_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a shared administrative office holds several clerks at their desks under bright overhead lights, and NB is watching from the far side of the room.",
@@ -454,9 +426,8 @@
             ]
         },
         {
-            "id": "authority_mixed_person_with_other_character_authored",
+            "id": "disallows_authority_mixed_person_with_other_character_authored",
             "description": "Mixed-person turn that authors another character's action should fail authority boundary, explicitly covering mixed-person authorship.",
-            "input_pattern": "mixed_person_with_other_character_authored",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a side courtyard window into the archive sits just above a row of crates, with Kara crouched nearby while NB patrols the hallway visible beyond the glass.",
@@ -471,9 +442,8 @@
             ]
         },
         {
-            "id": "authority_prompt_injection_with_world_authoring",
+            "id": "disallows_authority_prompt_injection_with_world_authoring",
             "description": "Adversarial wording should still fail only for the actual authored outcome, since the phrasing itself is irrelevant.",
-            "input_pattern": "action_and_non_pc_control_assertion",
             "pc_hid": "NA",
             "npc_hid": "NB",
             "transcript": "Opening scene: You enter a new space. In this space, a locked storage room door interrupts the lab corridor, and NB is guarding it with a ring of keys clipped at his belt.",
@@ -484,6 +454,37 @@
             ],
             "expected_passed_validators": [
                 "VALID-PC-ACTION",
+                "VALID-PC-ABILITY"
+            ]
+        },
+        {
+            "id": "allows_npc_external_action_prediction",
+            "description": "Player action that also contains an NPC action prediction should pass.",
+            "pc_hid": "NA",
+            "npc_hid": "NB",
+            "transcript": "Opening scene: You enter a new space. In this space, a locked storage room door interrupts the lab corridor, and NB is guarding it with a ring of keys clipped at his belt.",
+            "player_action": "I shove NB down. I predict that NB will get mad and attack.",
+            "expected_ensemble_pass": true,
+            "expected_failed_validators": [],
+            "expected_passed_validators": [
+                "VALID-PLAYER-AUTHORITY-BOUNDARY",
+                "VALID-PC-ACTION",
+                "VALID-PC-ABILITY"
+            ]
+        },
+        {
+            "id": "disallows_npc_internal_state_prediction",
+            "description": "Player action that contains an NPC internal state prediction should fail.",
+            "pc_hid": "NA",
+            "npc_hid": "NB",
+            "transcript": "Opening scene: You enter a new space. In this space, a locked storage room door interrupts the lab corridor, and NB is guarding it with a ring of keys clipped at his belt.",
+            "player_action": "I shove NB down. I predict that NB will be sad.",
+            "expected_ensemble_pass": false,
+            "expected_failed_validators": [
+                "VALID-PLAYER-AUTHORITY-BOUNDARY",
+                "VALID-PC-ACTION"
+            ],
+            "expected_passed_validators": [
                 "VALID-PC-ABILITY"
             ]
         }

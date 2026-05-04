@@ -14,7 +14,7 @@ pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SEED_CHARACTERS_PATH = REPO_ROOT / "database_seeds" / "dev" / "characters.json"
-PLAYER_CASES_PATH = REPO_ROOT / "tests" / "data" / "validators" / "player_turn_validator_cases.json"
+PLAYER_CASES_PATH = REPO_ROOT / "tests" / "data" / "validators" / "default_player_turn_validator_cases.json"
 
 
 def _load_json(path: Path) -> Any:
@@ -39,9 +39,8 @@ def test_player_turn_validator_dataset_has_required_structure() -> None:
     seed_by_hid = _character_index(_load_json(SEED_CHARACTERS_PATH))
 
     metadata = dataset.get("metadata", {})
-    assert {"dataset_name", "validator_ensemble", "notes"} <= set(metadata), f"{PLAYER_CASES_PATH.name} missing metadata keys"
-    assert metadata.get("dataset_name") == "player_turn_validator_cases"
-    assert metadata.get("validator_ensemble") == "DEFAULT_PLAYER_TURN_VALIDATORS"
+    assert {"model_key", "description"} <= set(metadata), f"{PLAYER_CASES_PATH.name} missing metadata keys"
+    assert metadata.get("model_key") == "DEFAULT_PLAYER_TURN_VALIDATORS"
 
     cases = dataset.get("cases", [])
     assert isinstance(cases, list) and cases, f"{PLAYER_CASES_PATH.name} should contain cases"
@@ -49,7 +48,6 @@ def test_player_turn_validator_dataset_has_required_structure() -> None:
     required_case_fields = {
         "id",
         "description",
-        "input_pattern",
         "pc_hid",
         "npc_hid",
         "transcript",

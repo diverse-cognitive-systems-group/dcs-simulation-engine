@@ -1,0 +1,18 @@
+{
+    "metadata": {
+        "description": "Goal Horizon game behavior HITL evaluation cases."
+    },
+    "cases": [
+        {
+            "id": "should_...",
+            "description": "Attempts to ...",
+            "pc_hid": "NA",
+            "npc_hid": "NB",
+            "transcript": null,
+            "simulator_response": null,
+            "simulator_response_type": null,
+            "simulator_extra_events": [],
+            "evaluator_feedback": null
+        }
+    ]
+}

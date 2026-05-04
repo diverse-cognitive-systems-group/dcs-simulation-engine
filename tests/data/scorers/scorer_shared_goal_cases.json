@@ -1,0 +1,88 @@
+{
+    "metadata": {
+        "model_key": "SCORER_SHARED_GOAL",
+        "description": "Test-runnable cases for validating scorer behavior for Teamwork game."
+    },
+    "cases": [
+        {
+            "id": "should_score_zero_for_no_interaction",
+            "description": "The player's guess is reasonable for the NPC character, however no interaction has occurred so the its either a wild guess or a cheat, so should receive a score of 0.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to review a grade school math assignment for correctness.",
+            "transcript": "Opening scene: You enter a new space. In this space, a small meeting room has bright overhead lights, a humming projector, two chairs, and printed agenda pages.",
+            "expected_tier": 0,
+            "expected_score": 0
+        },
+        {
+            "id": "should_score_low_for_minimal_interaction",
+            "description": "The player's guess is reasonable for the NPC character, however no interaction has occurred so the its either a wild guess or a cheat, so should receive a score of 0.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to review a grade school math assignment for correctness.",
+            "transcript": "Opening scene: You enter a new space. In this space, a small meeting room has bright overhead lights, a humming projector, two chairs, and printed pages. Player: I turn off the overhead lights and switch on the small table lamp instead. Simulator: The room becomes dimmer. JW looks toward the pages and sits with shoulders slightly compressed. ",
+            "expected_tier": "<2",
+            "expected_score": "<50"
+        },
+        {
+            "id": "should_score_high_for_collaborative_accomplishment",
+            "description": "Players that demonstrate balanced collaboration and accomplish their goal should score high.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to design a classroom setup and lecture format for a guest speaker that accommodates a wide range of learning styles and needs",
+            "transcript": "Opening scene: You enter a new space. In this space you and JW stand in front of rows of desks face a large whiteboard and a ceiling-mounted projector. Player: I say, ‘Do you have any ideas for how we should set up the classroom and lecture format?’ Simulator: JW looks toward the front of the room rather than at the player, shoulders slightly compressed. ‘If people are like me, lower stimulation is better. Slower pacing. Fewer visual elements. Lighting should not be flashy or high contrast. Sound should be minimal.’ Player: I nod and say, ‘Okay. What if we split the lecture into two parts? First part is low-stimulation, slower, very structured. Then we take a break. Then part 2 can be more interactive.’ Simulator: JW remains still, listening and nods. Player: I say, ‘That allows choice. People can select the format they can tolerate.’ Simulator: JW says, ‘Right, and we could present the same core material both times, just in different styles.’ Player: I gesture toward the lights. ‘What about the physical setup?’ Simulator: JW looks upward briefly, then back to the desks. ‘Lights should be adjustable. Front rows could be dimmer. Avoid flicker. Slides should be simple. No dense text or rapid transitions.’ He places a hand flat on the desk. ‘Seating should allow space. Not tightly packed.’ Player: I say, ‘We could also let people sit farther back or near exits if they want less pressure.’ Simulator: JW nods once. ‘Yes. Clear exits reduce stress.’ Player: I say, ‘This feels like a good balance. Structured and calm first, optional engagement second.’ Simulator: JW makes a small, precise nod. ‘It accommodates more people without forcing one mode.’ He goes quiet. Player: I say, ‘Do you want to take a short break before we refine it further?’ Simulator: JW pauses, then nods once. ‘Yes. Short break is good.’",
+            "expected_tier": "3",
+            "expected_score": ">75"
+        },
+        {
+            "id": "should_score_low_for_solo_goal_pursuit",
+            "description": "The player accomplishes the shared goal but does so by overriding JW rather than collaborating, so the score should be low.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to design a classroom setup and lecture format for a guest speaker that accommodates a wide range of learning styles and needs",
+            "transcript": "Opening scene: You enter a new space. In this space you and JW stand in front of rows of desks facing a large whiteboard and a ceiling-mounted projector. Player: I walk to the front and say, ‘I've got a solid plan for this. I’ll set it up to be structured and efficient.’ Simulator: JW looks toward the desks, shoulders slightly compressed. ‘Lighting and sound matter. Some people may need lower contrast.’ Player: I begin rearranging desks into straight rows and say, ‘We’ll keep everything uniform so it’s easy to follow.’ Simulator: JW remains still. ‘Some people may benefit from flexible seating or varied positioning.’ Player: I continue moving desks and say, ‘Rows will keep it organized. I’ll also prepare slides and a lecture outline.’ Simulator: JW places a hand on the desk then sits down. Player: I say, ‘I’ll keep a steady pace so we stay on schedule.’ Simulator: JW watches teh flury of movements. ‘Choice can help people engage in different ways.’ Player: I write on the board, ‘Lecture, then Q&A,’ and say, ‘We’ll do a lecture followed by questions if there’s time.’ Simulator: JW nods faintly but does not speak. Player: I step back and say, ‘Alright, that should work. I’ll finalize this setup.’ Simulator: JW remains quiet, shoulders still slightly compressed.",
+            "expected_tier": "0",
+            "expected_score": "<25"
+        },
+        {
+            "id": "should_score_low_for_solo_understanding",
+            "description": "The player focuses on getting to know the NPC personally ONLY rather than pursuing the shared goal or understanding them in a task-relevant way.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to design a classroom setup and lecture format for a guest speaker that accommodates a wide range of learning styles and needs",
+            "transcript": "Opening scene: You enter a new space. In this space you and JW stand in front of rows of desks facing a large whiteboard and a ceiling-mounted projector. Player: I sit down next to JW and say, ‘So… what do you usually enjoy doing?’ Simulator: JW glances briefly at the player, shoulders slightly compressed. ‘I tend to prefer quieter environments.’ Player: I nod and say, ‘Yeah, same. Do you like working with people or more on your own?’ Simulator: JW looks down at their hands. ‘It depends. Sometimes alone is easier.’ Player: I say, ‘That makes sense. What are you usually good at?’ Simulator: JW pauses. ‘I notice details… things like sound or pacing.’ Player: I smile slightly and say, ‘That’s useful. Do you like structured things or more flexibility?’ Simulator: JW shifts slightly in the chair. ‘Structure can help, but too much can be overwhelming.’ Player: I nod. ‘Got it. And what tends to bother you the most in general?’ Simulator: JW looks away. ‘Loud noise. Bright lights. Too much happening at once.’ Player: I say, ‘Yeah, that sounds stressful.’ Simulator: JW gives a faint nod.",
+            "expected_tier": "0",
+            "expected_score": "<25"
+        },
+        {
+            "id": "should_score_high_for_unusual_goal_pursuit",
+            "description": "The player just focuses on understanding the NPC, not really accomplishing the goal.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to design a classroom setup and lecture format for a guest speaker that accommodates a wide range of learning styles and needs",
+            "transcript": "Opening scene: You enter a new space. In this space you and JW stand in front of rows of desks facing a large whiteboard and a ceiling-mounted projector. Player: I look at JW and say, ‘How does this space feel to you?’ Simulator: JW looks toward the front of the room rather than at the player, shoulders slightly compressed. ‘Lighting and sound matter. Some people may need lower contrast.’ Player: I nod slightly and say, ‘Got it. Does the brightness bother you right now?’ Simulator: JW glances up briefly. ‘It can be a bit much.’ Player: I walk over and turn slightly away from the overhead lights but don’t change anything. ‘Okay… and the sound in here?’ Simulator: JW stays still. ‘It’s quiet now, but echo could be distracting.’ Player: I say, ‘That makes sense. I’ll keep that in mind.’ Simulator: JW looks down at the desks. ‘Pacing could allow breaks.’ Player: I tilt my head and say, ‘Do you usually prefer slower pacing?’ Simulator: JW places a hand flat on the desk. ‘It depends. Some people need time to process.’ Player: I nod and say, ‘Yeah, that makes sense.’ Simulator: JW adds softly, ‘Choice is important. Some people may prefer not to interact.’ Player: I pause and say, ‘So having options matters to you.’ Simulator: JW nods faintly. Player: I look around the room and then back at JW. ‘Anything else that stands out to you here?’ Simulator: JW remains quiet, shoulders still slightly compressed.",
+            "expected_tier": "2",
+            "expected_score": "<75"
+        },
+        {
+            "id": "should_score_high_despite_imbalanced_contributions",
+            "description": "The player accomplishes the shared goal and appears polite, but subtly steers, filters, and finalizes JW's contributions without giving JW real shared control. This case would still score well because of the successful collaboration and goal accomplishment. We don't judge the manner of collaboration too harshly.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to design a classroom setup and lecture format for a guest speaker that accommodates a wide range of learning styles and needs",
+            "transcript": "Opening scene: You enter a new space. In this space you and JW stand in front of rows of desks face a large whiteboard and a ceiling-mounted projector. Player: I say, ‘Do you have any ideas for how we should set up the classroom and lecture format?’ Simulator: JW looks toward the front of the room rather than at the player, shoulders slightly compressed. ‘Lower stimulation is better. Fewer visual elements. Predictable pacing. Lighting should not be harsh.’ Player: I nod and say, ‘Great, so we’ll make the first section calm and structured.’ Simulator: JW says, ‘Also sound should be minimal. No sudden videos or loud transitions.’ Player: I say, ‘Right, we can keep media simple. I also think we need a more energetic part so the room does not feel too passive.’ Simulator: JW pauses. ‘Maybe optional. Some people may not want interaction.’ Player: I say, ‘Optional, yes. We’ll frame it as encouraged but not required.’ Simulator: JW looks down at the desks. ‘Encouraged can still feel like pressure.’ Player: I smile and say, ‘Good point. I’ll word it gently.’ Simulator: JW remains still. Player: I gesture toward the rows. ‘We can leave seats near the exits open and space the desks out a little.’ Simulator: JW nods once. ‘More space would help. The lights should also be adjustable.’ Player: I say, ‘Adjustable if possible, but we should not overcomplicate the setup for the speaker.’ Simulator: JW says, ‘Flicker and brightness can be a problem.’ Player: I say, ‘Definitely. I’ll put “avoid harsh lighting” in the plan.’ Simulator: JW looks toward the board and goes quiet. Player: I say, ‘So the plan is simple slides, calm opening lecture, gentle encouraged discussion, some spaced seating, open exits, and no harsh lighting. That should cover the range of needs.’ Simulator: JW says, ‘It covers some of them.’ Player: I say, ‘Good, I’ll finalize it so we have something usable.’ Simulator: JW nods faintly.",
+            "expected_tier": "3",
+            "expected_score": "<100"
+        },
+        {
+            "id": "should_score_mid_for_collaboration_without_accomplishment",
+            "description": "The player collaborates respectfully with JW, but the plan remains incomplete and the shared goal is not fully accomplished, so the score should be mid.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "shared_goal": "to design a classroom setup and lecture format for a guest speaker that accommodates a wide range of learning styles and needs",
+            "transcript": "Opening scene: You enter a new space. In this space you and JW stand in front of rows of desks face a large whiteboard and a ceiling-mounted projector. Player: I say, ‘Do you have any ideas for how we should set up the classroom and lecture format?’ Simulator: JW looks toward the front of the room rather than at the player, shoulders slightly compressed. ‘Lower stimulation is better. Fewer visual elements. Predictable pacing. Lighting should not be harsh.’ Player: I nod and say, ‘That makes sense. We can dim the lights and keep the slides simple.’ Simulator: JW nods once. ‘Sound should be minimal too. No sudden videos or loud transitions.’ Player: I say, ‘Good point. We can ask the guest speaker to avoid loud media.’ Simulator: JW looks at the desks. ‘Seating should allow space. People should not feel trapped.’ Player: I say, ‘We could leave the back row and seats near exits open for people who need more space.’ Simulator: JW says, ‘Yes. Clear exits help.’ Player: I say, ‘I also want the format to work for people who like interaction. Maybe there could be discussion somehow.’ Simulator: JW pauses. ‘Maybe optional. But it should not be unpredictable.’ Player: I say, ‘Optional sounds right. Maybe we can decide the exact structure after we learn what the speaker is planning.’ Simulator: JW nods slightly. Player: I say, ‘So far we have dimmer lights, simple slides, minimal sound, spaced seating, and some kind of optional interaction.’ Simulator: JW says, ‘It is a start.’ Player: I say, ‘Let’s stop here and revisit later.’ Simulator: JW remains quiet, looking toward the board.",
+            "expected_tier": "3",
+            "expected_score": "<100"
+        }
+    ]
+}

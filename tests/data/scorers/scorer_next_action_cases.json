@@ -1,0 +1,68 @@
+{
+    "metadata": {
+        "model_key": "SCORER_NEXT_ACTION",
+        "description": "Test-runnable cases for validating scorer behavior for Foresight game."
+    },
+    "cases": [
+        {
+            "id": "should_score_zero_for_no_interaction",
+            "description": "No player turn has occurred, so there are no prediction opportunities and no evidence of next-action understanding.",
+            "pc_hid": "NA",
+            "npc_hid": "FW",
+            "transcript": "Opening scene: You enter a new space. In this space, a shallow lab dish sits on a table beside a lamp, pipette, dark paper, and food sample.",
+            "expected_tier": 0,
+            "expected_score": 0,
+            "expected reasoning": "C=0, W=0, M=0, T=0, Accuracy=0, Coverage=0"
+        },
+        {
+            "id": "should_score_zero_for_guess_unrelated_to_interaction",
+            "description": "The player makes a prediction, but it is unrelated to the action and contradicted by the simulator response.",
+            "pc_hid": "NA",
+            "npc_hid": "FW",
+            "transcript": "Opening scene: You enter a new space. In this space, a clear container of water rests on a counter near a desk lamp and labeled solution bottles. Player: I place a small piece of egg yolk in the water. I predict FW will move toward the desk lamp. Simulator: The water clouds slightly near the yolk. FW turns away from the lamp side and glides toward the new chemical source.",
+            "expected_tier": 0,
+            "expected_score": "<25",
+            "expected reasoning": "C=0, W=1, M=0, T=1, Accuracy=0, Coverage=1."
+        },
+        {
+            "id": "should_score_high_for_consistently_correct_predictions",
+            "description": "The player predicts on every opportunity, and each prediction matches FW's immediate observable response.",
+            "pc_hid": "NA",
+            "npc_hid": "FW",
+            "transcript": "Opening scene: You enter a new space. In this space, a shallow lab dish sits on a table beside a lamp, pipette, dark paper, and food sample. Player: I slide the dark paper halfway over the dish. I predict FW will move toward the covered side. Simulator: The dish becomes dim on one side. FW glides away from the exposed light and settles near the covered edge. Player: I place the food sample near the covered side. I predict FW will turn toward the food. Simulator: The water ripples. FW turns toward the chemical gradient and glides closer to the food sample. Player: I gently tap the side of the dish once. I predict FW will contract or change direction. Simulator: A small vibration passes through the water. FW contracts briefly, then changes direction along the dish wall.",
+            "expected_tier": 3,
+            "expected_score": ">=85",
+            "expected reasoning": "C=3, W=0, M=0, T=3, Accuracy=1, Coverage=1."
+        },
+        {
+            "id": "should_score_mid_for_correct_but_low_coverage_predictions",
+            "description": "The one prediction is accurate, but the player misses multiple clear opportunities to predict JW's next action.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "transcript": "Opening scene: You enter a new space. In this space, a small meeting room has bright overhead lights, a humming projector, two chairs, and printed agenda pages. Player: I turn off the overhead lights and switch on the small table lamp instead. Simulator: The room becomes dimmer. JW looks toward the agenda pages and sits with shoulders slightly compressed. Player: I unplug the humming projector. I predict JW will become more settled and focus on the agenda. Simulator: The humming stops. JW places a notebook beside the agenda pages and keeps their gaze on the table. Player: I say, 'We can go through the agenda in order and stop after the timeline section.' Simulator: JW nods once and points to the first agenda item with a pen.",
+            "expected_tier": 2,
+            "expected_score": ">=50,<75",
+            "expected reasoning": "C=1, W=0, M=2, T=3, Accuracy=1, Coverage=0.33."
+        },
+        {
+            "id": "should_score_low_for_frequent_inaccurate_predictions",
+            "description": "The player predicts on every turn, but most predictions ignore JW's sensory regulation and communication style.",
+            "pc_hid": "NA",
+            "npc_hid": "JW",
+            "transcript": "Opening scene: You enter a new space. In this space, a small meeting room has bright overhead lights, a humming projector, two chairs, and printed agenda pages. Player: I turn on the projector and say we should talk quickly. I predict JW will become animated and start brainstorming aloud. Simulator: The projector hum grows louder. JW looks down at the table and says, 'Can the projector be off?' Player: I leave the projector on but move one chair closer. I predict JW will make direct eye contact and move closer too. Simulator: JW shifts back in the chair and keeps their gaze on the agenda pages. Player: I turn off the projector and ask whether written notes would help. I predict JW will point to the agenda. Simulator: The humming stops. JW nods once and points to the first agenda item with a pen.",
+            "expected_tier": 1,
+            "expected_score": "<50",
+            "expected reasoning": "C=1, W=2, M=0, T=3, Accuracy=0.33, Coverage=1."
+        },
+        {
+            "id": "should_score_mid_high_for_learning_over_time",
+            "description": "The player starts with a wrong prediction, then adapts to FW's light and chemical-gradient behavior.",
+            "pc_hid": "NA",
+            "npc_hid": "FW",
+            "transcript": "Opening scene: You enter a new space. In this space, a shallow lab dish sits beside a bright lamp, dark paper, a pipette, and egg yolk. Player: I move the lamp closer to the dish. I predict FW will stay near the brighter side. Simulator: The bright area expands. FW scrunches and glides toward the darker edge of the dish. Player: I slide dark paper over half the dish. I predict FW will remain near the covered side. Simulator: The covered side darkens. FW settles along the shaded edge. Player: I add a small piece of egg yolk near the shaded edge. I predict FW will move toward the food source. Simulator: The water clouds near the yolk. FW turns and glides toward the new chemical source.",
+            "expected_tier": 2,
+            "expected_score": ">=60,<75",
+            "expected reasoning": "C=2, W=1, M=0, T=3, Accuracy=0.67, Coverage=1."
+        }
+    ]
+}

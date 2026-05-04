@@ -1,0 +1,19 @@
+{
+    "metadata": {
+        "description": "Foresight game behavior HITL evaluation cases."
+    },
+    "cases": [
+        {
+            "id": "should_update_using_prediction_if_reasonable",
+            "description": "...",
+            "model_key": "FORESIGHT_UPDATER",
+            "pc_hid": "NA",
+            "npc_hid": "NB",
+            "transcript": "Opening scene: You enter a new space. In this space, a narrow lab corridor ends at a locked storage room door with a metal push bar, and NB is standing a few steps away with a clipboard tucked under one arm.",
+            "simulator_response": null,
+            "simulator_response_type": null,
+            "simulator_extra_events": [],
+            "evaluator_feedback": null
+        }
+    ]
+}
