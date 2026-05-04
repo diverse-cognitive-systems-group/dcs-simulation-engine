@@ -17,14 +17,13 @@ pytestmark = [pytest.mark.unit, pytest.mark.anyio]
 
 
 @pytest.fixture
-def consenting_player_id(async_mongo_provider: Any) -> str:
-    """Insert a consenting player row and return its id as a string."""
+def registered_player_id(async_mongo_provider: Any) -> str:
+    """Insert a registered player row and return its id as a string."""
     db = async_mongo_provider.get_db()
     player_id = ObjectId()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": player_id,
-            "consent_signature": {"answer": ["I confirm participation."]},
             "full_name": "Session Test User",
             "email": "session-test@example.com",
         }
@@ -130,13 +129,13 @@ async def _run_session_with_async_persistence(
 async def test_query_methods_return_expected_types_after_gameplay(
     patch_llm_client: Any,
     async_mongo_provider: Any,
-    consenting_player_id: str,
+    registered_player_id: str,
 ) -> None:
     """Provider query methods return expected data and runtime types."""
     _ = patch_llm_client
-    await _play_and_persist_session(provider=async_mongo_provider, game_name="Explore", player_id=consenting_player_id)
+    await _play_and_persist_session(provider=async_mongo_provider, game_name="Explore", player_id=registered_player_id)
 
-    player = await async_mongo_provider.get_player(player_id=consenting_player_id)
+    player = await async_mongo_provider.get_player(player_id=registered_player_id)
     assert isinstance(player, PlayerRecord)
 
     keyed_player, raw_key = await async_mongo_provider.create_player(
@@ -160,7 +159,7 @@ async def test_query_methods_return_expected_types_after_gameplay(
 async def test_session_events_persist_normal_turn_with_user_and_npc_messages(
     patch_llm_client: Any,
     async_mongo_provider: Any,
-    consenting_player_id: str,
+    registered_player_id: str,
 ) -> None:
     """A normal gameplay turn persists user input plus NPC message rows."""
     _ = patch_llm_client
@@ -173,7 +172,7 @@ async def test_session_events_persist_normal_turn_with_user_and_npc_messages(
     rows = await _run_session_with_async_persistence(
         provider=async_mongo_provider,
         persistence_db=persistence_db,
-        player_id=consenting_player_id,
+        player_id=registered_player_id,
         session_id="session-normal-turn",
         inputs=["", "I look around"],
     )
@@ -198,7 +197,7 @@ async def test_session_events_persist_normal_turn_with_user_and_npc_messages(
 async def test_session_events_persist_recognized_commands_as_command_rows(
     patch_llm_client: Any,
     async_mongo_provider: Any,
-    consenting_player_id: str,
+    registered_player_id: str,
 ) -> None:
     """Recognized slash commands persist as command input/output rows."""
     _ = patch_llm_client
@@ -211,7 +210,7 @@ async def test_session_events_persist_recognized_commands_as_command_rows(
     rows = await _run_session_with_async_persistence(
         provider=async_mongo_provider,
         persistence_db=persistence_db,
-        player_id=consenting_player_id,
+        player_id=registered_player_id,
         session_id="session-command-turn",
         inputs=["", "/help"],
     )
@@ -231,7 +230,7 @@ async def test_session_events_persist_recognized_commands_as_command_rows(
 async def test_session_events_treat_unrecognized_slash_input_as_normal_message_turn(
     patch_llm_client: Any,
     async_mongo_provider: Any,
-    consenting_player_id: str,
+    registered_player_id: str,
 ) -> None:
     """Unrecognized slash-prefixed input is not persisted as a command."""
     _ = patch_llm_client
@@ -244,7 +243,7 @@ async def test_session_events_treat_unrecognized_slash_input_as_normal_message_t
     rows = await _run_session_with_async_persistence(
         provider=async_mongo_provider,
         persistence_db=persistence_db,
-        player_id=consenting_player_id,
+        player_id=registered_player_id,
         session_id="session-unrecognized-slash",
         inputs=["", "/unknown gesture"],
     )

@@ -10,7 +10,7 @@ import type { FormTriggerResponse } from './formTriggerResponse';
  * Response after storing one pending run form group.
  */
 export interface FormSubmitResponse {
-  assignment_id?: string | null;
   group_id: string;
   trigger: FormTriggerResponse;
+  assignment_id?: string | null;
 }

@@ -232,7 +232,6 @@ async def test_random_unique_player_choice_options_remain_available_with_existin
         player_data={
             "full_name": {"answer": "Chooser"},
             "email": "chooser@example.com",
-            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
         }
     )
 

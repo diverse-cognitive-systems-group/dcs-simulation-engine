@@ -9,7 +9,7 @@
  * Finite progress payload for the usability run.
  */
 export interface ProgressResponse {
+  total: number;
   completed: number;
   is_complete: boolean;
-  total: number;
 }

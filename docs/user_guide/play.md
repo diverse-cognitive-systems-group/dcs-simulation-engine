@@ -6,7 +6,7 @@ Players can play games via the web app (useful for human players) or via the API
 
 Human player receive a link to the web UI where they can play whatever configuration of the engine is configured. 
 
-It may require registrations, consent, or other forms depending on the run configuration. Players may be allowed to play many different games + characters or get specific assignments. 
+It may require registration before access-key issuance. Consent, intake, and survey steps are configured as run forms and shown during the run flow. Players may be allowed to play many different games + characters or get specific assignments.
 
 ## AI Players (API endpoint)
 

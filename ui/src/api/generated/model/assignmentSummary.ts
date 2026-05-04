@@ -10,16 +10,16 @@ import type { AssignmentSummaryStatus } from './assignmentSummaryStatus';
  * Assignment summary returned by run endpoints.
  */
 export interface AssignmentSummary {
-  active_session_id?: string | null;
   assignment_id: string;
-  game_description?: string;
   game_name: string;
-  has_pending_forms?: boolean;
-  npc_hid: string;
   pc_hid: string;
-  player_character_description?: string;
+  npc_hid: string;
+  status: AssignmentSummaryStatus;
+  active_session_id?: string | null;
+  has_pending_forms?: boolean;
+  game_description?: string;
   player_character_name?: string;
+  player_character_description?: string;
   simulator_character_description?: string;
   simulator_character_details_visible?: boolean;
-  status: AssignmentSummaryStatus;
 }

@@ -44,8 +44,6 @@ def main() -> None:
                 full_name="API Smoke Tester",
                 email=email,
                 phone_number="+1 555 010 9999",
-                consent_to_followup=True,
-                consent_signature="API Smoke Tester",
             )
         )
         api_key = reg.api_key

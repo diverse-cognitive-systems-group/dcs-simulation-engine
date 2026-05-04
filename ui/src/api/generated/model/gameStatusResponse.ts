@@ -9,7 +9,7 @@
  * Per-game status counts for a run.
  */
 export interface GameStatusResponse {
+  total: number;
   completed: number;
   in_progress: number;
-  total: number;
 }

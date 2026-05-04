@@ -21,7 +21,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 router = APIRouter(prefix="/api/player", tags=["player"])
 
 
-def _consent_field(
+def _registration_field(
     *,
     key: str,
     answer: Any,
@@ -30,7 +30,7 @@ def _consent_field(
     required: bool,
     pii: bool,
 ) -> dict[str, Any]:
-    """Build a form-compatible stored field shape expected by existing access checks."""
+    """Build a form-compatible stored field shape for registration data."""
     return {
         "key": key,
         "type": field_type,
@@ -42,9 +42,9 @@ def _consent_field(
 
 
 def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
-    """Map fixed registration payload into the stored consent-compatible structure."""
+    """Map fixed registration payload into the stored player data structure."""
     return {
-        "full_name": _consent_field(
+        "full_name": _registration_field(
             key="full_name",
             answer=body.full_name,
             field_type="text",
@@ -52,7 +52,7 @@ def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
             required=True,
             pii=True,
         ),
-        "email": _consent_field(
+        "email": _registration_field(
             key="email",
             answer=body.email,
             field_type="email",
@@ -60,27 +60,11 @@ def _registration_to_player_data(body: RegistrationRequest) -> dict[str, Any]:
             required=True,
             pii=True,
         ),
-        "phone_number": _consent_field(
+        "phone_number": _registration_field(
             key="phone_number",
             answer=body.phone_number,
             field_type="phone",
             label="Phone Number",
-            required=True,
-            pii=True,
-        ),
-        "consent_to_followup": _consent_field(
-            key="consent_to_followup",
-            answer=body.consent_to_followup,
-            field_type="boolean",
-            label="Consent To Follow-up",
-            required=True,
-            pii=False,
-        ),
-        "consent_signature": _consent_field(
-            key="consent_signature",
-            answer=[body.consent_signature],
-            field_type="text",
-            label="Consent Signature",
             required=True,
             pii=True,
         ),

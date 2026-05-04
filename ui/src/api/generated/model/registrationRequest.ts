@@ -10,12 +10,9 @@
  */
 export interface RegistrationRequest {
   /** @minLength 1 */
-  consent_signature: string;
-  consent_to_followup: boolean;
+  full_name: string;
   /** @minLength 1 */
   email: string;
-  /** @minLength 1 */
-  full_name: string;
   /** @minLength 1 */
   phone_number: string;
 }

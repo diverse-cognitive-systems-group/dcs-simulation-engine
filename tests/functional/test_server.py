@@ -260,8 +260,6 @@ def test_registration_returns_player_and_api_key(client: TestClient, mock_provid
         "full_name": "Ada Lovelace",
         "email": "ada@example.com",
         "phone_number": "+1 555 123 4567",
-        "consent_to_followup": True,
-        "consent_signature": "Ada",
     }
 
     response = client.post("/api/player/registration", json=payload)
@@ -271,7 +269,9 @@ def test_registration_returns_player_and_api_key(client: TestClient, mock_provid
 
     kwargs = mock_provider.create_player.call_args.kwargs
     assert kwargs["issue_access_key"] is True
-    assert kwargs["player_data"]["consent_signature"]["answer"] == ["Ada"]
+    assert kwargs["player_data"]["full_name"]["answer"] == "Ada Lovelace"
+    assert "consent_to_followup" not in kwargs["player_data"]
+    assert "consent_signature" not in kwargs["player_data"]
 
 
 @pytest.mark.unit
@@ -1132,7 +1132,6 @@ def test_run_multiple_assignments_can_each_be_resumed(
             player_data={
                 "full_name": {"answer": "Resume Tester"},
                 "email": "resume@example.com",
-                "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
             },
             issue_access_key=True,
         )
@@ -1538,8 +1537,6 @@ def test_remote_managed_registration_assigns_first_user_as_admin(async_mongo_pro
                 "full_name": "First Remote Admin",
                 "email": "first-admin@example.com",
                 "phone_number": "+1 555 123 4567",
-                "consent_to_followup": True,
-                "consent_signature": "First Remote Admin",
             },
         )
 

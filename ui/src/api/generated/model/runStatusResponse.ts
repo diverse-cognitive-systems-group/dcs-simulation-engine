@@ -10,8 +10,8 @@ import type { RunStatusResponsePerGame } from './runStatusResponsePerGame';
  * Aggregate status payload for a run.
  */
 export interface RunStatusResponse {
-  completed: number;
   is_open: boolean;
-  per_game: RunStatusResponsePerGame;
   total: number;
+  completed: number;
+  per_game: RunStatusResponsePerGame;
 }

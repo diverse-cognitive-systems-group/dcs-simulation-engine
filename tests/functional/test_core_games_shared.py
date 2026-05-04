@@ -21,9 +21,6 @@ pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 TEST_PLAYER_ID = ObjectId()
 FINISH_COMMAND = "/finish"
 
-# Games that require a consenting player record in the DB
-_CONSENT_GATED = {"Infer Intent", "Goal Horizon", "foresight", "teamwork"}
-
 ALL_GAMES = ["explore", "Infer Intent", "Goal Horizon", "foresight", "teamwork"]
 
 # Sections that must appear in /help output for every game
@@ -67,17 +64,13 @@ def _run_config(*, overrides_by_game: dict[str, dict[str, Any]] | None = None) -
 
 
 @pytest.fixture(autouse=True)
-def _seed_consenting_player(_isolate_db_state, async_mongo_provider):
-    """Seed a consenting player record for gated games.
-
-    Explore is ungated and ignores player_id; having the record is harmless.
-    """
+def _seed_registered_player(_isolate_db_state, async_mongo_provider):
+    """Seed a registered player record for shared game flows."""
     SessionManager.configure_run_config(_run_config())
     db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": TEST_PLAYER_ID,
-            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
             "full_name": "Test Player",
             "email": "test@example.com",
         }
@@ -87,14 +80,13 @@ def _seed_consenting_player(_isolate_db_state, async_mongo_provider):
 
 
 async def _make_session(game: str, async_mongo_provider):
-    """Create a session, passing player_id only for consent-gated games."""
-    player_id = str(TEST_PLAYER_ID) if game in _CONSENT_GATED else None
+    """Create a session for a registered player."""
     return await SessionManager.create_async(
         game=game,
         provider=async_mongo_provider,
         pc_choice="NA",
         npc_choice="FW",
-        player_id=player_id,
+        player_id=str(TEST_PLAYER_ID),
     )
 
 

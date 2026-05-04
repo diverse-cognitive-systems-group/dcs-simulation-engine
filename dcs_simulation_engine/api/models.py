@@ -25,8 +25,6 @@ class RegistrationRequest(BaseModel):
     full_name: str = Field(min_length=1)
     email: str = Field(min_length=1)
     phone_number: str = Field(min_length=1)
-    consent_to_followup: bool
-    consent_signature: str = Field(min_length=1)
 
 
 class RegistrationResponse(BaseModel):

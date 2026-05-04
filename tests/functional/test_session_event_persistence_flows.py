@@ -111,13 +111,12 @@ def _matching_events(
 
 
 @pytest.fixture(autouse=True)
-def seed_consenting_player(_isolate_db_state: Database[Any], async_mongo_provider: Any) -> None:
-    """Seed a consenting player record for gated game flows."""
+def seed_registered_player(_isolate_db_state: Database[Any], async_mongo_provider: Any) -> None:
+    """Seed a registered player record for persistence flows."""
     db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": TEST_PLAYER_ID,
-            "consent_signature": {"answer": ["I confirm that the information I have provided is true..."]},
             "full_name": "Persistence Flow Test Player",
             "email": "persistence-flow@example.com",
         }

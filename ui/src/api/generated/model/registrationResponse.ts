@@ -9,6 +9,6 @@
  * Response payload for registration.
  */
 export interface RegistrationResponse {
-  api_key: string;
   player_id: string;
+  api_key: string;
 }
