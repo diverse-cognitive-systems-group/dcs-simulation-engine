@@ -1,8 +1,7 @@
 """Section 4 — Player Engagement.
 
-Three Plotly charts:
+Plotly charts:
   - Runs per player (bar)
-  - Engagement by consent_to_followup (grouped bar)
   - Engagement by prior_experience if available (grouped bar)
 """
 
@@ -29,8 +28,6 @@ def render(data: AnalysisData) -> str:
     parts.append(
         _row(
             _runs_per_player(run_counts) + chart_caption("player_engagement", "runs_per_player"),
-            _engagement_by(run_counts, data.players_df, "consent_to_followup")
-            + chart_caption("player_engagement", "engagement_by_consent"),
         )
     )
 

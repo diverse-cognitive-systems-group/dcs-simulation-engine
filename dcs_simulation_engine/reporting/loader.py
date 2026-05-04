@@ -125,6 +125,7 @@ class AnalysisData:
     # Core DataFrames
     runs_df: pd.DataFrame  # sessions — one row per run
     players_df: pd.DataFrame  # players (PII columns dropped)
+    player_forms_df: pd.DataFrame  # player-scoped form payloads
     transcripts_df: pd.DataFrame  # session_events — one row per event
     assignments_df: pd.DataFrame  # assignments — one row per assignment
     feedback_df: pd.DataFrame  # flattened form answers
@@ -135,12 +136,11 @@ class AnalysisData:
 
     @property
     def runs_enriched_df(self) -> pd.DataFrame:
-        """runs_df left-joined with player columns (consent_to_followup, etc.)."""
+        """runs_df left-joined with non-PII player columns."""
         df = self.runs_df.copy()
         if self.players_df.empty or "access_key" not in self.players_df.columns:
             return df
-        optional = [c for c in ["consent_to_followup"] if c in self.players_df.columns]
-        join_cols = ["access_key"] + optional
+        join_cols = [c for c in self.players_df.columns if c not in {"_id"}]
         player_sub = self.players_df[join_cols].rename(columns={"access_key": "player_id"})
         return df.merge(player_sub, on="player_id", how="left")
 
@@ -158,9 +158,10 @@ def load_all(results_dir: str | Path) -> AnalysisData:
     run = _load_run(results_dir)
     runs_df = _load_runs(results_dir)
     players_df = _load_players(results_dir)
+    player_forms_df = _load_player_forms(results_dir)
     transcripts_df = _load_transcripts(results_dir)
     assignments_df = _load_assignments(results_dir)
-    feedback_df = _build_feedback(assignments_df)
+    feedback_df = _build_feedback(assignments_df, player_forms_df)
     event_feedback_df = _build_event_feedback(transcripts_df, runs_df)
     characters_df = _load_characters(results_dir)
     logs_df = _load_logs_safe(results_dir)
@@ -172,6 +173,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
         run=run,
         runs_df=runs_df,
         players_df=players_df,
+        player_forms_df=player_forms_df,
         transcripts_df=transcripts_df,
         assignments_df=assignments_df,
         feedback_df=feedback_df,
@@ -305,6 +307,13 @@ def _load_players(results_dir: Path) -> pd.DataFrame:
     return df
 
 
+def _load_player_forms(results_dir: Path) -> pd.DataFrame:
+    records = _load_json_array(results_dir / "forms.json")
+    if not records:
+        return pd.DataFrame()
+    return pd.DataFrame([_unwrap_mongo(record) for record in records])
+
+
 def _load_transcripts(results_dir: Path) -> pd.DataFrame:
     records = _load_json_array(results_dir / "session_events.json")
     if not records:
@@ -335,47 +344,75 @@ def _load_assignments(results_dir: Path) -> pd.DataFrame:
     return df
 
 
-def _build_feedback(assignments_df: pd.DataFrame) -> pd.DataFrame:
-    """Flatten assignment form_responses into one row per answered question."""
-    if assignments_df.empty or "form_responses" not in assignments_df.columns:
-        return pd.DataFrame()
-
+def _build_feedback(assignments_df: pd.DataFrame, player_forms_df: pd.DataFrame) -> pd.DataFrame:
+    """Flatten assignment and player-scoped form answers."""
     rows = []
-    for _, row in assignments_df.iterrows():
-        responses = row.get("form_responses")
-        if not isinstance(responses, dict):
-            continue
-        for form_name, form_data in responses.items():
-            if not isinstance(form_data, dict):
-                continue
-            answers = form_data.get("answers") or {}
-            submitted_at = _parse_dt(form_data.get("submitted_at"))
-            for key, ans_obj in answers.items():
-                if not isinstance(ans_obj, dict):
-                    continue
-                answer = ans_obj.get("answer")
-                if answer is None or str(answer).strip() == "":
-                    continue
-                if isinstance(answer, list):
-                    answer = "; ".join(str(a) for a in answer)
-                trigger = form_data.get("trigger")
-                trigger_event = trigger.get("event") if isinstance(trigger, dict) else None
-                rows.append(
-                    {
-                        "player_id": row.get("player_id"),
-                        "game_name": row.get("game_name"),
-                        "run_name": row.get("run_name"),
-                        "form_name": form_name,
-                        "trigger_event": trigger_event,
-                        "submitted_at": submitted_at,
-                        "question_key": key,
-                        "question_prompt": ans_obj.get("prompt"),
-                        "answer_type": ans_obj.get("answer_type"),
-                        "answer": answer,
-                    }
+    if not assignments_df.empty and "form_responses" in assignments_df.columns:
+        for _, row in assignments_df.iterrows():
+            rows.extend(
+                _flatten_form_payloads(
+                    row.get("form_responses"),
+                    player_id=row.get("player_id"),
+                    game_name=row.get("game_name"),
+                    run_name=row.get("run_name"),
                 )
+            )
+
+    if not player_forms_df.empty and "data" in player_forms_df.columns:
+        for _, row in player_forms_df.iterrows():
+            rows.extend(
+                _flatten_form_payloads(
+                    row.get("data"),
+                    player_id=row.get("player_id"),
+                    game_name=None,
+                    run_name=None,
+                )
+            )
 
     return pd.DataFrame(rows)
+
+
+def _flatten_form_payloads(
+    responses,
+    *,
+    player_id: object,
+    game_name: object,
+    run_name: object,
+) -> list[dict]:
+    if not isinstance(responses, dict):
+        return []
+
+    rows = []
+    for form_name, form_data in responses.items():
+        if not isinstance(form_data, dict):
+            continue
+        answers = form_data.get("answers") or {}
+        submitted_at = _parse_dt(form_data.get("submitted_at"))
+        for key, ans_obj in answers.items():
+            if not isinstance(ans_obj, dict):
+                continue
+            answer = ans_obj.get("answer")
+            if answer is None or str(answer).strip() == "":
+                continue
+            if isinstance(answer, list):
+                answer = "; ".join(str(a) for a in answer)
+            trigger = form_data.get("trigger")
+            trigger_event = trigger.get("event") if isinstance(trigger, dict) else None
+            rows.append(
+                {
+                    "player_id": player_id,
+                    "game_name": game_name,
+                    "run_name": run_name,
+                    "form_name": form_name,
+                    "trigger_event": trigger_event,
+                    "submitted_at": submitted_at,
+                    "question_key": key,
+                    "question_prompt": ans_obj.get("prompt"),
+                    "answer_type": ans_obj.get("answer_type"),
+                    "answer": answer,
+                }
+            )
+    return rows
 
 
 def _build_event_feedback(transcripts_df: pd.DataFrame, runs_df: pd.DataFrame) -> pd.DataFrame:

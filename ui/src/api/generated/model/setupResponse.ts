@@ -15,18 +15,18 @@ import type { SetupResponseFormsItem } from './setupResponseFormsItem';
  * Setup payload for the run landing page.
  */
 export interface SetupResponse {
-  allow_choice_if_multiple?: boolean;
-  assignment_completed?: boolean;
-  assignments?: AssignmentSummary[];
-  current_assignment?: AssignmentSummary | null;
+  run_name: string;
   description: string;
-  eligible_assignment_options?: EligibleAssignmentOption[];
-  forms?: SetupResponseFormsItem[];
   is_open: boolean;
-  next_assignment?: NextAssignmentState | null;
+  forms?: SetupResponseFormsItem[];
   pending_form_groups?: PendingFormGroupResponse[];
   progress: ProgressResponse;
+  current_assignment?: AssignmentSummary | null;
+  assignment_completed?: boolean;
+  next_assignment?: NextAssignmentState | null;
+  allow_choice_if_multiple?: boolean;
   require_completion?: boolean;
+  eligible_assignment_options?: EligibleAssignmentOption[];
+  assignments?: AssignmentSummary[];
   resumable_session_id?: string | null;
-  run_name: string;
 }

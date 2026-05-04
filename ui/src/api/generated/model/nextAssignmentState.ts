@@ -12,8 +12,8 @@ import type { NextAssignmentStateMode } from './nextAssignmentStateMode';
  * Backend-derived state for the next participant action.
  */
 export interface NextAssignmentState {
-  assignment?: AssignmentSummary | null;
   mode: NextAssignmentStateMode;
-  options?: EligibleAssignmentOption[];
   reason?: string;
+  assignment?: AssignmentSummary | null;
+  options?: EligibleAssignmentOption[];
 }

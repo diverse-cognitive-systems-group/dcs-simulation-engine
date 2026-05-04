@@ -10,11 +10,11 @@ import type { CharacterChoice } from './characterChoice';
  * Preflight setup data for a specific game + authenticated player.
  */
 export interface GameSetupOptionsResponse {
+  game: string;
   allowed: boolean;
   can_start: boolean;
   denial_reason?: 'no_valid_pc' | 'no_valid_npc' | null;
-  game: string;
   message?: string | null;
-  npcs: CharacterChoice[];
   pcs: CharacterChoice[];
+  npcs: CharacterChoice[];
 }

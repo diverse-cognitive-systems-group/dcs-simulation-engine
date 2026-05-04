@@ -244,6 +244,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
         run=data.run,
         runs_df=_filter(data.runs_df),
         players_df=data.players_df,
+        player_forms_df=data.player_forms_df,
         transcripts_df=_filter(data.transcripts_df),
         assignments_df=data.assignments_df,
         feedback_df=data.feedback_df,

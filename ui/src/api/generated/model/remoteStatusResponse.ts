@@ -11,10 +11,10 @@ import type { RunStatusResponse } from './runStatusResponse';
  * Public status payload for remote-managed deployments.
  */
 export interface RemoteStatusResponse {
-  progress?: ProgressResponse | null;
-  run_name: string;
-  run_status?: RunStatusResponse | null;
-  started_at: string;
   status?: 'ok';
+  started_at: string;
   uptime: number;
+  run_name: string;
+  progress?: ProgressResponse | null;
+  run_status?: RunStatusResponse | null;
 }

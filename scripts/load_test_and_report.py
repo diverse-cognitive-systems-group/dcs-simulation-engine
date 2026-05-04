@@ -323,8 +323,6 @@ async def run_client(
                 full_name=f"Load Tester {client_id}",
                 email=email,
                 phone_number=f"+1 555 {1000 + client_id:04d}",
-                consent_to_followup=True,
-                consent_signature=f"Load Tester {client_id}",
             )
         )
         api_key = reg_resp.api_key

@@ -8,7 +8,6 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -30,17 +29,7 @@ const schema = z.object({
     .string()
     .transform((v) => v.replace(/\D/g, ''))
     .pipe(z.string().min(10, 'Enter at least 10 digits')),
-  consent_to_followup: z.boolean(),
-  consent_signature: z.string().min(1, 'Required'),
 })
-
-// Signature validation is separate because it depends on another field (full_name),
-// which Zod's static schema can't reference directly.
-function makeSignatureSchema(fullName: string) {
-  return z.string().refine((v) => v.trim() === fullName.trim(), {
-    message: 'Signature must match your full name exactly',
-  })
-}
 
 type FormFields = keyof typeof schema.shape
 
@@ -82,14 +71,10 @@ function SignupPage() {
     full_name: '',
     email: '',
     phone_number: '',
-    consent_to_followup: false,
-    consent_signature: '',
   })
   // touched tracks which fields the user has interacted with so we only show errors
   // after they've left a field, not on initial load.
   const [touched, setTouched] = useState<Partial<Record<FormFields, boolean>>>({})
-  const [consentRead, setConsentRead] = useState(false)
-  const [consentScrolledToBottom, setConsentScrolledToBottom] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   // issuedKey is set after successful registration; its presence switches the page
@@ -97,7 +82,7 @@ function SignupPage() {
   const [issuedKey, setIssuedKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  function set(field: string, value: string | boolean) {
+  function set(field: FormFields, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -114,28 +99,18 @@ function SignupPage() {
     }
   }
 
-  const sigError =
-    touched.consent_signature && form.consent_signature
-      ? makeSignatureSchema(form.full_name).safeParse(form.consent_signature).error?.issues[0]
-          ?.message
-      : undefined
-
   function visibleError(field: FormFields) {
-    if (field === 'consent_signature')
-      return sigError ?? (touched[field] ? fieldErrors[field] : undefined)
     return touched[field] ? fieldErrors[field] : undefined
   }
 
-  const sigValid =
-    !form.full_name || makeSignatureSchema(form.full_name).safeParse(form.consent_signature).success
-  const canSubmit = parsed.success && sigValid && consentRead && !loading
+  const canSubmit = parsed.success && !loading
 
   async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault()
     // Mark all fields touched to show any remaining errors
     const allFields = Object.keys(schema.shape) as FormFields[]
     setTouched(Object.fromEntries(allFields.map((f) => [f, true])))
-    if (!parsed.success || !sigValid || !consentRead) return
+    if (!parsed.success) return
 
     setError(null)
     setLoading(true)
@@ -154,14 +129,6 @@ function SignupPage() {
     await navigator.clipboard.writeText(issuedKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  function handleConsentScroll(e: React.UIEvent<HTMLDivElement>) {
-    if (consentScrolledToBottom) return
-    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget
-    if (scrollTop + clientHeight >= scrollHeight - 8) {
-      setConsentScrolledToBottom(true)
-    }
   }
 
   // Swap to the key-display view once registration succeeds.
@@ -247,147 +214,6 @@ function SignupPage() {
               />
               <FieldError msg={visibleError('phone_number')} />
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="consent_to_followup"
-                checked={form.consent_to_followup}
-                onCheckedChange={(v) => set('consent_to_followup', Boolean(v))}
-              />
-              <Label htmlFor="consent_to_followup" className="font-normal">
-                I consent to follow-up contact.
-              </Label>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="consent_text">Consent Form</Label>
-              <div
-                id="consent_text"
-                onScroll={handleConsentScroll}
-                className="h-48 overflow-y-auto rounded-md border bg-muted/30 p-3 text-sm leading-6"
-              >
-                <div className="space-y-3">
-                  <h3 className="font-semibold">Consent Form</h3>
-                  <p>
-                    You are invited to participate in a research study. You may not participant if
-                    you are under 18-years-old or located outside of the United States. The purpose
-                    of this study is to explore how people with diverse perspectives and abilities
-                    interact with others, and how we can make it easier for people of different
-                    abilities to engage meaningfully with the world.
-                  </p>
-
-                  <h4 className="font-semibold">What Participation Involves</h4>
-
-                  <h5 className="font-medium">Gameplay</h5>
-                  <p>
-                    You will play a game that involves chatting with simulated characters. The goal
-                    is to explore how you interpret what others care about, their goals, and what
-                    they may be trying to communicate.
-                  </p>
-
-                  <h5 className="font-medium">Conversations</h5>
-                  <p>
-                    You may be asked to take part in one or more conversations with a researcher.
-                    These are flexible in format, length, and topics, depending on your needs.
-                    Conversations typically last 20–45 minutes and may be audio recorded with your
-                    permission. You are free to skip any questions and may withdraw at any time,
-                    even after the study.
-                  </p>
-
-                  <h4 className="font-semibold">Voluntary Participation</h4>
-                  <p>
-                    Your participation is completely voluntary. You may withdraw at any time, for
-                    any or no reason without a problem. You are not required to answer any questions
-                    you do not wish to. You may choose not to consent to audio recording(s) of
-                    conversation(s).
-                  </p>
-
-                  <h4 className="font-semibold">Privacy and Confidentiality</h4>
-                  <p>
-                    Contact information will only be collected if you choose to provide it for
-                    follow-up purposes; otherwise, responses are anonymous. Audio recordings will
-                    only be collected if you verbally consent at the time of the conversation. Any
-                    identifiable information will be coded, securely stored, and access limited to
-                    protect your identity. The risks of participation are no greater than those of
-                    everyday activities. You will not receive financial compensation or direct
-                    personal benefits from participation. You may request that your information be
-                    deleted at any time.
-                  </p>
-
-                  <h4 className="font-semibold">Oversight</h4>
-                  <p>
-                    This study complies with all applicable laws and confidentiality standards. The
-                    Georgia Institute of Technology Institutional Review Board (IRB) and the Office
-                    of Human Research Protections may review study records to ensure proper conduct.
-                  </p>
-
-                  <h4 className="font-semibold">Contacts</h4>
-                  <p>
-                    If you have questions about the study, please contact:{' '}
-                    <a href="mailto:dcs@psych.gatech.edu" className="underline">
-                      dcs@psych.gatech.edu
-                    </a>
-                  </p>
-                  <p>
-                    If you have questions about your rights as a research participant, please
-                    contact the Georgia Institute of Technology Office of Research Integrity
-                    Assurance at{' '}
-                    <a href="mailto:IRB@gatech.edu" className="underline">
-                      IRB@gatech.edu
-                    </a>
-                    .
-                  </p>
-
-                  <h4 className="font-semibold">Consent</h4>
-                  <p>
-                    By completing this form, you indicate your consent to participate in the
-                    following areas of this study.
-                  </p>
-                </div>
-              </div>
-              {!consentScrolledToBottom && (
-                <p className="text-xs text-muted-foreground">
-                  Scroll to the bottom of the consent form to enable acknowledgment.
-                </p>
-              )}
-            </div>
-
-            <div
-              className={`flex items-center gap-2 transition-opacity ${
-                consentScrolledToBottom ? 'opacity-100' : 'opacity-50'
-              }`}
-            >
-              <Checkbox
-                id="consent_read"
-                checked={consentRead}
-                onCheckedChange={(v) => {
-                  if (consentScrolledToBottom) {
-                    setConsentRead(Boolean(v))
-                  }
-                }}
-                disabled={!consentScrolledToBottom}
-              />
-              <Label
-                htmlFor="consent_read"
-                className={`font-normal ${
-                  consentScrolledToBottom ? '' : 'cursor-not-allowed text-muted-foreground'
-                }`}
-              >
-                I have read and understood the consent form.
-              </Label>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="consent_signature">Consent Signature</Label>
-              <Input
-                id="consent_signature"
-                value={form.consent_signature}
-                onChange={(e) => set('consent_signature', e.target.value)}
-                onBlur={() => touch('consent_signature')}
-                placeholder="Type your full name to sign"
-              />
-              <FieldError msg={visibleError('consent_signature')} />
-            </div>
-
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>

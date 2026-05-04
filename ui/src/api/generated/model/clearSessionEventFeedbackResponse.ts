@@ -9,7 +9,7 @@
  * Response payload after feedback is removed from a session event.
  */
 export interface ClearSessionEventFeedbackResponse {
-  cleared?: boolean;
-  event_id: string;
   session_id: string;
+  event_id: string;
+  cleared?: boolean;
 }

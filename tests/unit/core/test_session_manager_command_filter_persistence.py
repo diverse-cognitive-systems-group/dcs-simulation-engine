@@ -94,14 +94,13 @@ async def _create_persisted_session(
 
 
 @pytest.fixture
-def consenting_player_id(async_mongo_provider: Any) -> str:
-    """Insert a consenting player row and return its id."""
+def registered_player_id(async_mongo_provider: Any) -> str:
+    """Insert a registered player row and return its id."""
     player_id = ObjectId()
     db = async_mongo_provider.get_db()
     db[MongoColumns.PLAYERS].insert_one(
         {
             "_id": player_id,
-            "consent_signature": {"answer": ["I confirm participation."]},
             "full_name": "Command Filter Test User",
             "email": "command-filter@example.com",
         }
@@ -125,7 +124,7 @@ def consenting_player_id(async_mongo_provider: Any) -> str:
 async def test_game_level_command_filters_persist_command_events(
     patch_llm_client: Any,
     async_mongo_provider: Any,
-    consenting_player_id: str,
+    registered_player_id: str,
     game_name: str,
     command_text: str,
     expected_command_name: str,
@@ -138,7 +137,7 @@ async def test_game_level_command_filters_persist_command_events(
     session, session_id = await _create_persisted_session(
         provider=async_mongo_provider,
         game_name=game_name,
-        player_id=consenting_player_id,
+        player_id=registered_player_id,
     )
 
     turn_index = session.turns + 1
