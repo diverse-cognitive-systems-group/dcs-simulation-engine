@@ -12,7 +12,6 @@ ENV UV_LINK_MODE=copy
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY dcs_simulation_engine/ ./dcs_simulation_engine/
 COPY examples/run_configs/ ./examples/run_configs/
-COPY deployments/ ./deployments/
 COPY database_seeds/ ./database_seeds/
 
 RUN uv sync --frozen --no-dev
