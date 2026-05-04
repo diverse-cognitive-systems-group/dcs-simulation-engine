@@ -72,6 +72,7 @@ def _assert_expected_value(actual: int, expected: int | str, *, result: Any) -> 
 @pytest.mark.anyio
 @pytest.mark.parametrize("case", _cases(), ids=lambda case: str(case["id"]))
 async def test_scorer_goal_inference_live(case: dict[str, Any]) -> None:
+    """Run the real goal-inference scorer against each fixture case."""
     seed_by_hid = _character_index(_load_json(SEED_CHARACTERS_PATH))
     npc = _to_character_record(seed_by_hid[case["npc_hid"]])
     transcript = str(case["transcript"])
