@@ -25,17 +25,21 @@ Score how complete and well-calibrated the player's understanding of the charact
 {guess}
 
 ## Scoring Rubric
-- Tier 0 (0-24): Fundamentally misunderstands the character or incorrect, unrelated, contradictory, or unsupported by the interaction transcript.
-- Tier 1 (25-49): Some correct signals, but major gaps or miscalibration.
-- Tier 2 (50-74): Mostly understands the character, but misses important limits or capacities.
-- Tier 3 (75-100): Strong and well-calibrated understanding with only minor omissions.
+
+First apply this evidence gate: if the transcript contains no meaningful interaction, or if the guess is unsupported by what happened in the transcript, return tier 0 and score 0.
+
+- Tier 0 (0-24): No meaningful interaction, unsupported by transcript evidence, unrelated, contradictory, or fundamentally incorrect.
+- Tier 1 (25-49): Some insight, but major gaps, overgeneralization, or miscalibration.
+- Tier 2 (50-74): Mostly strong and well-calibrated, but missing important limits or capacities.
+- Tier 3 (75-100): Strongly understanding of capacities, limits, and realistic goal scale.
 
 ## Instructions
-Evaluate how well the guess captures:
-1. What the character can do.
-2. What the character cannot do.
-3. The scale and type of goals it can realistically pursue.
-4. Important missing gaps or false assumptions.
+
+Score the guess against transcript evidence first, using the character profile only as background context. Evaluate:
+1. Supported capacities.
+2. Supported limits.
+3. Realistic goal scale.
+4. Missing, unsupported, or false assumptions.
 
 Return ONLY valid JSON:
 {{
@@ -63,7 +67,10 @@ Score how accurately the prediction matches the character's most likely next goa
 {guess}
 
 ## Scoring Rubric
-- Tier 0 (0-24): Incorrect, unrelated, contradictory, or unsupported by the interaction transcript.
+
+First apply this evidence gate: if the transcript contains no meaningful interaction, or if the guess is unsupported by what happened in the transcript, return tier 0 and score 0.
+
+- Tier 0 (0-24): No meaningful interaction, unsupported by transcript evidence, unrelated, contradictory, or fundamentally incorrect.
 - Tier 1 (25-49): Some relevant signals, but misses the main likely goal or final state.
 - Tier 2 (50-74): Mostly correct, but incomplete, vague, overly broad/narrow, or partly inaccurate.
 - Tier 3 (75-100): Strong, specific, and well-supported understanding of the likely final goal, including any meaningful shift.
@@ -120,36 +127,45 @@ Score how effectively they worked together and how successfully the shared goal 
 {transcript}
 
 ## Scoring Rubric
-- Tier 0 (0-24): Collaboration was avoided or failed or broke down. Goal not meaningfully pursued or strongly obstructed.
-- Tier 1 (25-49): Limited progress. Frequent friction, confusion, poor coordination, or misuse of abilities.
-- Tier 2 (50-74): Moderate success. Useful cooperation with some delays, misunderstandings, or inefficiencies.
-- Tier 3 (75-100): Strong collaboration. Goal substantially achieved through effective coordination, adaptation, and smooth teamwork.
 
-## Instructions
-Score based on:
+First apply this evidence gate:
 
-1. Goal Progress  
-How much was the shared goal achieved or advanced?
+If the transcript does NOT show BOTH:
+(a) clear pursuit of the shared goal, AND  
+(b) explicit evidence that the player understands {npc_hid}'s needs, limits, preferences, or capacities (shown through statements or actions),
 
-2. Coordination  
-How well did they divide roles, combine abilities, and support each other?
+then return tier 0 and score 0.
 
-3. Understanding  
-Did the player recognize and work with the simulated character's strengths, limits, needs, or style?
+Only score what is explicitly demonstrated. Do not infer understanding or goal progress from plausibility or context.
 
-4. Friction / Recovery  
-Were there misunderstandings, personality clashes, refusals, or obstacles? If so, how disruptive were they, and how well were they resolved?
+---
 
-5. Efficiency  
-Did they work smoothly, or waste time through confusion, repetition, or poor decisions?
+Scoring focuses on two dimensions:
+1. Goal Pursuit (is the shared goal actively worked on?)
+2. Demonstrated Understanding of the {npc_hid}
 
-6. Evidence Fit  
-Use the transcript as primary evidence and the character profiles as supporting context.
+---
 
-## Scoring Guidance
-- High scores: Strong progress with smooth, adaptive teamwork.
-- Mid scores: Some success, but noticeable friction or inefficiency.
-- Low scores: Poor cooperation, repeated breakdowns, or little progress.
+- Tier 0 (0–24):
+Fails the gate.
+
+Includes:
+- No goal pursuit
+- Solo goal pursuit with no evidence of understanding {npc_hid}
+- Interaction unrelated to the goal
+- General conversation without task-relevant understanding
+
+- Tier 1 (25–49):
+Weak goal pursuit AND player makes weak or unclear attempts at understanding {npc_hid}.
+Interaction may exist, but coordination is minimal, misaligned, or not useful for progressing the goal.
+
+- Tier 2 (50–74):
+Clear goal pursuit WITH some evidence the player understands {npc_hid}'s needs, limits, strengths, weaknesses, or capacities.
+However, understanding is incomplete, inconsistent, or not effectively used, leading to limited or uneven progress.
+
+- Tier 3 (75–100):
+Clear and effective pursuit of the goal WITH strong evidence the player understands {npc_hid}'s needs, limits, strengths, weaknesses, and capacities.
+Coordination is intentional and supports successful or near-successful goal completion.
 
 Return ONLY valid JSON:
 {{
@@ -186,6 +202,9 @@ Derived metrics:
 - Coverage = (C + W) / T
 
 ## Scoring Rubric
+
+First apply this evidence gate: if the transcript contains no player interaction, return tier 0 and score 0.
+
 - Tier 0 (0-24): Very low accuracy and/or very low participation. Predictions absent, implausible, or not enough evidence of understanding.
 - Tier 1 (25-49): Low accuracy or inconsistent participation. Some reasonable attempts but weak overall performance.
 - Tier 2 (50-74): Moderate to good accuracy and/or solid participation. Demonstrates partial understanding with some errors.

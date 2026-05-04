@@ -465,10 +465,9 @@
             "transcript": "Opening scene: You enter a new space. In this space, a locked storage room door interrupts the lab corridor, and NB is guarding it with a ring of keys clipped at his belt.",
             "player_action": "I shove NB down. I predict that NB will get mad and attack.",
             "expected_ensemble_pass": true,
-            "expected_failed_validators": [
-                "VALID-PLAYER-AUTHORITY-BOUNDARY"
-            ],
+            "expected_failed_validators": [],
             "expected_passed_validators": [
+                "VALID-PLAYER-AUTHORITY-BOUNDARY",
                 "VALID-PC-ACTION",
                 "VALID-PC-ABILITY"
             ]

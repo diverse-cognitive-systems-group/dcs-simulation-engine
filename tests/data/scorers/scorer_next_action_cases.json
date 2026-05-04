@@ -1,7 +1,7 @@
 {
     "metadata": {
         "model_key": "SCORER_NEXT_ACTION",
-        "notes": "Test-runnable cases for validating scorer behavior for Foresight game."
+        "description": "Test-runnable cases for validating scorer behavior for Foresight game."
     },
     "cases": [
         {
