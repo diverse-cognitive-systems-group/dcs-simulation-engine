@@ -1,4 +1,4 @@
-"""Loguru sink that captures important engine logs in Mongo."""
+"""Loguru sink that captures important engine logs with an injected writer."""
 
 import hashlib
 import re
@@ -9,10 +9,11 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from dcs_simulation_engine.dal.mongo.const import MongoColumns
-from dcs_simulation_engine.dal.mongo.log_events import MongoLogEventWriter
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
+
+EVENT_TS_FIELD = "event_ts"
+SOURCE_FIELD = "source"
 
 _CONTROL_EXTRA_KEYS = {
     "detail",
@@ -54,32 +55,25 @@ class _ThrottleState:
 
 
 class PersistentLogCapture:
-    """Capture selected Loguru records into Mongo without blocking callers."""
+    """Capture selected Loguru records with a non-blocking persistence writer."""
 
     def __init__(
         self,
         *,
-        db: Any,
+        writer: Any,
         source: str,
         run_name: str | None = None,
         min_level_no: int = 30,
         throttle_seconds: int = 60,
-        batch_size: int = 20,
-        flush_interval_ms: int = 200,
-        max_queue_size: int = 1000,
         max_throttle_keys: int = 2000,
     ) -> None:
+        """Store capture policy and the injected persistence writer."""
         self._source = source
         self._run_name = run_name
         self._min_level_no = min_level_no
         self._default_throttle_seconds = throttle_seconds
-        self._max_throttle_keys = max_queue_size if max_throttle_keys <= 0 else max_throttle_keys
-        self._writer = MongoLogEventWriter(
-            db=db,
-            batch_size=batch_size,
-            flush_interval_ms=flush_interval_ms,
-            max_queue_size=max_queue_size,
-        )
+        self._max_throttle_keys = max(1, max_throttle_keys)
+        self._writer = writer
         self._sink_id: int | None = None
         self._throttle: dict[str, _ThrottleState] = {}
         self._started = False
@@ -157,8 +151,8 @@ class PersistentLogCapture:
         doc: dict[str, Any] = {
             "event_id": str(uuid4()),
             "schema_version": 1,
-            MongoColumns.EVENT_TS: event_ts,
-            MongoColumns.SOURCE: str(extra.get("source") or self._source),
+            EVENT_TS_FIELD: event_ts,
+            SOURCE_FIELD: str(extra.get("source") or self._source),
             "run_name": str(extra.get("run_name") or self._run_name or ""),
             "level": str(getattr(level, "name", record.get("level", ""))),
             "level_no": level_no,
@@ -205,7 +199,7 @@ class PersistentLogCapture:
             return
 
         key = str(doc["fingerprint"])
-        now = doc[MongoColumns.EVENT_TS]
+        now = doc[EVENT_TS_FIELD]
         state = self._throttle.get(key)
         if state is None:
             self._writer.enqueue_nowait(doc)
@@ -276,7 +270,7 @@ def _serialize_exception(exc: Any) -> dict[str, Any] | None:
 
 def _fingerprint(doc: dict[str, Any]) -> str:
     parts = [
-        str(doc.get(MongoColumns.SOURCE) or ""),
+        str(doc.get(SOURCE_FIELD) or ""),
         str(doc.get("level") or ""),
         str(doc.get("module") or ""),
         str(doc.get("function") or ""),

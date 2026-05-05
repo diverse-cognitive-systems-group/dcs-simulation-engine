@@ -1,9 +1,12 @@
+"""Tests for loading persisted DB log dumps into reporting dataframes."""
+
 import json
 
 from dcs_simulation_engine.reporting.loader import load_all
 
 
 def test_load_all_reads_persisted_logs_json(tmp_path) -> None:
+    """A dumped logs.json collection should populate logs_df and errors_df."""
     logs = [
         {
             "event_id": "log-1",

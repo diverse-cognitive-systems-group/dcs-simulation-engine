@@ -20,6 +20,7 @@ class MongoLogEventWriter:
         flush_interval_ms: int = 200,
         max_queue_size: int = 1000,
     ) -> None:
+        """Bind the writer to Mongo and configure batching limits."""
         if batch_size <= 0:
             raise ValueError("batch_size must be > 0")
         if flush_interval_ms <= 0:

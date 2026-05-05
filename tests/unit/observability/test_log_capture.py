@@ -1,15 +1,18 @@
-import pytest
-from loguru import logger
+"""Tests for DB-backed Loguru log capture."""
 
+import pytest
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.dal.mongo.log_events import MongoLogEventWriter
 from dcs_simulation_engine.observability import PersistentLogCapture
+from loguru import logger
 
 pytestmark = pytest.mark.anyio
 
 
 async def test_persistent_log_capture_writes_bound_warning(async_mongo_provider) -> None:
+    """Warning logs should persist with bound context and redacted detail."""
     db = async_mongo_provider.get_db()
-    capture = PersistentLogCapture(db=db, source="test-suite", throttle_seconds=60)
+    capture = PersistentLogCapture(writer=MongoLogEventWriter(db=db), source="test-suite", throttle_seconds=60)
     await capture.start()
     capture.install()
 
@@ -35,8 +38,9 @@ async def test_persistent_log_capture_writes_bound_warning(async_mongo_provider)
 
 
 async def test_persistent_log_capture_throttles_repeated_messages(async_mongo_provider) -> None:
+    """Repeated warnings should write one row plus a suppressed-count summary."""
     db = async_mongo_provider.get_db()
-    capture = PersistentLogCapture(db=db, source="test-suite", throttle_seconds=60)
+    capture = PersistentLogCapture(writer=MongoLogEventWriter(db=db), source="test-suite", throttle_seconds=60)
     await capture.start()
     capture.install()
 
@@ -54,8 +58,9 @@ async def test_persistent_log_capture_throttles_repeated_messages(async_mongo_pr
 
 
 async def test_persistent_log_capture_can_persist_info_when_requested(async_mongo_provider) -> None:
+    """Info logs should persist when explicitly marked important."""
     db = async_mongo_provider.get_db()
-    capture = PersistentLogCapture(db=db, source="test-suite", throttle_seconds=60)
+    capture = PersistentLogCapture(writer=MongoLogEventWriter(db=db), source="test-suite", throttle_seconds=60)
     await capture.start()
     capture.install()
 

@@ -19,6 +19,7 @@ from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config_references
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.dal.mongo.log_events import MongoLogEventWriter
 from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json_async
 from dcs_simulation_engine.observability import PersistentLogCapture
 from dcs_simulation_engine.utils.time import utc_now
@@ -157,7 +158,11 @@ def _create_log_capture(*, provider: object, run_name: str) -> PersistentLogCapt
         return None
     if _is_mock_object(db):
         return None
-    return PersistentLogCapture(db=db, source="dcs-api", run_name=run_name)
+    return PersistentLogCapture(
+        writer=MongoLogEventWriter(db=db),
+        source="dcs-api",
+        run_name=run_name,
+    )
 
 
 def _is_mock_object(value: object) -> bool:
