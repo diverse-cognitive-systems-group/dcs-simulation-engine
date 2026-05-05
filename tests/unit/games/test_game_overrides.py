@@ -4,7 +4,13 @@ import pytest
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter
-from dcs_simulation_engine.games.ai_client import ParsedSimulatorResponse, SimulatorClient, SimulatorComponentResult, SimulatorTurnResult
+from dcs_simulation_engine.games.ai_client import (
+    SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
+    ParsedSimulatorResponse,
+    SimulatorClient,
+    SimulatorComponentResult,
+    SimulatorTurnResult,
+)
 from dcs_simulation_engine.games.explore import ExploreGame
 from dcs_simulation_engine.games.foresight import ForesightGame
 from dcs_simulation_engine.games.goal_horizon import GoalHorizonGame
@@ -93,6 +99,21 @@ def _invalid_turn(message: str = "That action does not fit the situation.") -> S
     return SimulatorTurnResult(
         ok=False,
         error_message=message,
+        updater_result=SimulatorComponentResult(
+            name="updater",
+            content="",
+            ok=False,
+            metadata={},
+            raw_response='{"type":"error","content":"invalid"}',
+        ),
+    )
+
+
+def _simulator_invalid_turn(message: str = "The simulator response failed validation.") -> SimulatorTurnResult:
+    return SimulatorTurnResult(
+        ok=False,
+        error_message=message,
+        failure_type=SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
         updater_result=SimulatorComponentResult(
             name="updater",
             content="",
@@ -439,14 +460,38 @@ async def test_explore_step_failed_validation_exhausts_retry_budget(pc: Characte
     second_events = await _drain(game, "bad action again")
 
     assert [event.type for event in first_events] == ["error"]
-    assert first_events[0].content == "Try something else."
-    assert [event.type for event in second_events] == ["error", "info"]
-    assert second_events[0].content == "Still invalid."
-    assert "allowed retries" in second_events[1].content
+    assert first_events[0].failure_type == "player_turn_validation_failed"
+    assert first_events[0].retries_remaining == 1
+    assert "That action was blocked: Try something else." in first_events[0].content
+    assert "Failed attempts remaining: 1 attempt." in first_events[0].content
+    assert [event.type for event in second_events] == ["error"]
+    assert second_events[0].content == "Error: Too many failed attempts. Game over."
+    assert second_events[0].failure_type == "player_turn_validation_failed"
+    assert second_events[0].retries_remaining == 0
+    assert second_events[0].exit_reason == "player_validation_retry_exhausted"
     assert game.exited is True
-    assert game.exit_reason == "retry budget exhausted"
+    assert game.exit_reason == "player_validation_retry_exhausted"
     assert game._player_retry_budget == 0
     assert engine.step_calls == ["bad action", "bad action again"]
+
+
+async def test_explore_step_simulator_validation_failure_exits_without_charging_player(
+    pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Simulator validation failures should end as system failures, not player retry failures."""
+    engine = StubEngine(step_results=[_simulator_invalid_turn()])
+    game = ExploreGame(pc=pc, npc=npc, engine=engine, player_retry_budget=2)
+    await _drain(game)
+
+    events = await _drain(game, "reasonable action")
+
+    assert [event.type for event in events] == ["error"]
+    assert "simulation engine hit an internal problem" in events[0].content
+    assert events[0].failure_type == "simulator_turn_validation_retry_exhausted"
+    assert events[0].exit_reason == "simulator_validation_retry_exhausted"
+    assert game.exited is True
+    assert game.exit_reason == "simulator_validation_retry_exhausted"
+    assert game._player_retry_budget == 2
 
 
 async def test_explore_transcript_includes_only_opening_and_successful_turns(pc: CharacterRecord, npc: CharacterRecord) -> None:

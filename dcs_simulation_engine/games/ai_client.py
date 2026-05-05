@@ -10,7 +10,10 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 import httpx
 from dcs_simulation_engine.core.constants import (
+    INTERNAL_ERROR,
     OPENROUTER_BASE_URL,
+    PLAYER_TURN_VALIDATION_FAILED,
+    SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games.prompts import (
@@ -177,6 +180,7 @@ class SimulatorTurnResult:
 
     ok: bool
     error_message: str | None = None
+    failure_type: str | None = None
     simulator_response: str = ""
     pc_validation_failures: list[SimulatorValidationFailure] = field(default_factory=list)
     updater_result: SimulatorComponentResult | None = None
@@ -565,6 +569,7 @@ class SimulatorClient:
             return SimulatorTurnResult(
                 ok=False,
                 error_message=f"I couldn't validate your action just now ({exc}). Please try again.",
+                failure_type=INTERNAL_ERROR,
             )
 
         if player_validation_failures:
@@ -577,6 +582,7 @@ class SimulatorClient:
             return SimulatorTurnResult(
                 ok=False,
                 error_message=player_validation_failures[0].message,
+                failure_type=PLAYER_TURN_VALIDATION_FAILED,
                 pc_validation_failures=player_validation_failures,
             )
 
@@ -591,6 +597,7 @@ class SimulatorClient:
             return SimulatorTurnResult(
                 ok=False,
                 error_message=f"I couldn't produce a simulator response just now ({exc}). Please try again.",
+                failure_type=INTERNAL_ERROR,
                 pc_validation_failures=player_validation_failures,
             )
 
@@ -598,6 +605,7 @@ class SimulatorClient:
             return SimulatorTurnResult(
                 ok=False,
                 error_message="I couldn't produce a valid simulator response. Please retry your action.",
+                failure_type=SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
                 simulator_response="",
                 pc_validation_failures=player_validation_failures,
                 updater_result=updater_result,

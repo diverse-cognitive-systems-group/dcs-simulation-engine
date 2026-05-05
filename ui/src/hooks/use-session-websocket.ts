@@ -21,6 +21,8 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'ai'
   eventType?: EventType
+  failureType?: string
+  retriesRemaining?: number
   content: string
   eventId?: string
   feedback?: MessageFeedback
@@ -93,6 +95,9 @@ export function useSessionWebSocket(sessionId: string) {
             id: nextId(),
             role: 'ai',
             eventType: 'error',
+            failureType: typeof frame.failure_type === 'string' ? frame.failure_type : undefined,
+            retriesRemaining:
+              typeof frame.retries_remaining === 'number' ? frame.retries_remaining : undefined,
             content: frame.detail,
             timestamp: Date.now(),
           },
@@ -122,6 +127,9 @@ export function useSessionWebSocket(sessionId: string) {
             id: nextId(),
             role: (frame.role === 'user' ? 'user' : 'ai') as 'user' | 'ai',
             eventType: frame.event_type as EventType,
+            failureType: typeof frame.failure_type === 'string' ? frame.failure_type : undefined,
+            retriesRemaining:
+              typeof frame.retries_remaining === 'number' ? frame.retries_remaining : undefined,
             content: frame.content,
             eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),
@@ -142,6 +150,9 @@ export function useSessionWebSocket(sessionId: string) {
             id: nextId(),
             role: 'ai',
             eventType: frame.event_type as EventType,
+            failureType: typeof frame.failure_type === 'string' ? frame.failure_type : undefined,
+            retriesRemaining:
+              typeof frame.retries_remaining === 'number' ? frame.retries_remaining : undefined,
             content: frame.content,
             eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),

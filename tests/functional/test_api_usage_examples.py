@@ -13,7 +13,9 @@ import httpx
 import pytest
 import uvicorn
 from dcs_simulation_engine.api.app import create_app
+from dcs_simulation_engine.api.models import WSEventFrame
 from dcs_simulation_engine.core.run_config import RunConfig
+from examples.api_usage.error_handling import classify_error_event
 
 pytestmark = pytest.mark.functional
 
@@ -21,6 +23,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _EXAMPLES_DIR = _REPO_ROOT / "examples" / "api_usage"
 _IGNORED_EXAMPLE_STEMS = {"infer_intent_eval"}
 _SCRIPT_CONFIG = {
+    "error_handling": {"registration_required": False, "args": []},
     "explore": {"registration_required": False, "args": []},
     "infer_intent": {"registration_required": False, "args": []},
     "goal_horizon": {"registration_required": False, "args": []},
@@ -107,6 +110,66 @@ def test_api_usage_example_config_covers_all_supported_scripts() -> None:
     discovered = {path.stem for path in _EXAMPLES_DIR.glob("*.py")}
     supported = discovered - _IGNORED_EXAMPLE_STEMS
     assert supported == set(_SCRIPT_CONFIG)
+
+
+@pytest.mark.parametrize(
+    "event,expected",
+    [
+        (None, "no_error"),
+        (
+            WSEventFrame(
+                session_id="s",
+                event_type="error",
+                content="Player action was blocked.",
+                failure_type="player_turn_validation_failed",
+                retries_remaining=1,
+            ),
+            "player_retryable",
+        ),
+        (
+            WSEventFrame(
+                session_id="s",
+                event_type="error",
+                content="Error: Too many failed attempts. Game over.",
+                failure_type="player_turn_validation_failed",
+                retries_remaining=0,
+            ),
+            "player_terminal",
+        ),
+        (
+            WSEventFrame(
+                session_id="s",
+                event_type="error",
+                content="The simulator exhausted validation retries.",
+                failure_type="simulator_turn_validation_retry_exhausted",
+            ),
+            "system_terminal",
+        ),
+        (
+            WSEventFrame(
+                session_id="s",
+                event_type="error",
+                content="The engine hit an internal error.",
+                failure_type="internal_error",
+            ),
+            "system_terminal",
+        ),
+        (
+            WSEventFrame(
+                session_id="s",
+                event_type="error",
+                content="An unclassified error occurred.",
+            ),
+            "unknown_error",
+        ),
+    ],
+)
+def test_error_handling_example_classifies_api_failure_types(
+    event: WSEventFrame | None,
+    expected: str,
+) -> None:
+    """The documented AI-player branching logic should stay aligned with API failure types."""
+    assert classify_error_event(event) == expected
 
 
 @pytest.mark.parametrize("stem", sorted(_SCRIPT_CONFIG))

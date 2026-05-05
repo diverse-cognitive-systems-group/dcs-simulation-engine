@@ -2,7 +2,7 @@
 
 Three views of errors:
   1. Summary stats card — log-level counts, in-game error event count,
-     retry-budget-exhausted session count.
+     validation-lockout and internal-failure session counts.
   2. Charts — log level breakdown (bar) + in-game error events per session (bar).
   3. Tables — top error messages, in-game error events, raw filtered log table.
 """
@@ -102,17 +102,23 @@ def _summary_card(data: AnalysisData) -> str:
     if not data.transcripts_df.empty and "event_type" in data.transcripts_df.columns:
         n_inplay = int(data.transcripts_df["event_type"].eq("error").sum())
 
-    # Sessions ending with retry budget exhausted
-    n_retry = 0
+    # Sessions ending from player lockout or internal system failures
+    n_player_lockout = 0
+    n_internal_terminal = 0
     if not data.runs_df.empty and "termination_reason" in data.runs_df.columns:
-        n_retry = int(data.runs_df["termination_reason"].fillna("").str.lower().str.contains("retry_budget|retry budget").sum())
+        reasons = data.runs_df["termination_reason"].fillna("").str.lower()
+        n_player_lockout = int(
+            reasons.str.contains("player_validation_retry_exhausted|validation_retry_exhausted|retry_budget|retry budget").sum()
+        )
+        n_internal_terminal = int(reasons.str.contains("simulator_validation_retry_exhausted|internal_error|server_error").sum())
 
     rows = [
         ("Log WARNINGs", str(warnings)),
         ("Log ERRORs", str(errors)),
         ("Log CRITICALs", str(criticals)),
         ("In-game error events", str(n_inplay)),
-        ("Sessions (retry budget exhausted)", str(n_retry)),
+        ("Sessions (player validation lockout)", str(n_player_lockout)),
+        ("Sessions (internal/system failure)", str(n_internal_terminal)),
     ]
     dl_items = "".join(f"<dt class='col-sm-5'>{label}</dt><dd class='col-sm-7'>{value}</dd>" for label, value in rows)
     return (

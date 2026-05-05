@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 SessionStatus = Literal["active", "paused", "closed"]
 EventType = Literal["ai", "info", "error", "warning"]
+FailureType = Literal["player_turn_validation_failed", "simulator_turn_validation_retry_exhausted", "internal_error"]
 SetupDenialReason = Literal["no_valid_pc", "no_valid_npc"]
 AssignmentStatus = Literal["assigned", "in_progress", "completed", "interrupted"]
 NextAssignmentMode = Literal["locked", "choice", "blocked", "none"]
@@ -369,6 +370,8 @@ class WSEventFrame(BaseModel):
     event_type: EventType
     content: str
     event_id: str | None = None
+    failure_type: FailureType | None = None
+    retries_remaining: int | None = None
 
 
 class WSTurnEndFrame(BaseModel):
@@ -378,6 +381,8 @@ class WSTurnEndFrame(BaseModel):
     session_id: str
     turns: int
     exited: bool
+    failure_type: FailureType | None = None
+    exit_reason: str | None = None
 
 
 class WSStatusFrame(BaseModel):
@@ -388,6 +393,7 @@ class WSStatusFrame(BaseModel):
     status: SessionStatus
     turns: int
     exited: bool
+    exit_reason: str | None = None
 
 
 class WSClosedFrame(BaseModel):

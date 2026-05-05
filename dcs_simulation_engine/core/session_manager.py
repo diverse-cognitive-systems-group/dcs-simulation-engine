@@ -364,7 +364,7 @@ class SessionManager:
 
         if self._recorder_open and self._recorder is not None:
             normalized = self._normalize_termination_reason(reason)
-            status = "error" if normalized == "server_error" else "closed"
+            status = "error" if normalized in {"server_error", "internal_error", "simulator_validation_retry_exhausted"} else "closed"
             if self._validation_recorder is not None:
                 await self._validation_recorder.flush_pending()
             await self._recorder.finalize(
@@ -539,6 +539,12 @@ class SessionManager:
             if event.type == "ai":
                 yielded_ai = True
             payload = {"type": event.type, "content": event.content}
+            if event.failure_type is not None:
+                payload["failure_type"] = event.failure_type
+            if event.retries_remaining is not None:
+                payload["retries_remaining"] = event.retries_remaining
+            if event.exit_reason is not None:
+                payload["exit_reason"] = event.exit_reason
             self._events.append(payload)
             if self._recorder_open and self._recorder is not None:
                 persisted_event_type, persisted_event_source = self._classify_persisted_outbound_event(event)
@@ -609,6 +615,12 @@ class SessionManager:
             return "websocket_disconnect"
         if reason_l in {"retry_budget_exhausted", "validation_retry_exhausted"}:
             return "validation_retry_exhausted"
+        if reason_l in {"player_validation_retry_exhausted"}:
+            return "player_validation_retry_exhausted"
+        if reason_l in {"simulator_validation_retry_exhausted"}:
+            return "simulator_validation_retry_exhausted"
+        if reason_l in {"internal_error"}:
+            return "internal_error"
         if reason_l in {"server_error", "internal_server_error"}:
             return "server_error"
         return reason_l
