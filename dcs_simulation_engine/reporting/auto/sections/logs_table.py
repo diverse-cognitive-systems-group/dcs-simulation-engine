@@ -33,7 +33,9 @@ def render(data: AnalysisData) -> str:
     df = data.logs_df
 
     if df.empty:
-        return '<div class="alert alert-secondary">No log files found in the results directory.</div>'
+        if data.logs_source:
+            return f'<div class="alert alert-success">{data.logs_source} was found, but no engine log entries were recorded.</div>'
+        return '<div class="alert alert-secondary">No engine log source was found in the results directory.</div>'
 
     cols = [c for c in _COLUMNS if c in df.columns]
     rename = {k: v for k, v in _RENAME.items() if k in cols}

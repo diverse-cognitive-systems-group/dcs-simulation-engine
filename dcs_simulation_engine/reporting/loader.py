@@ -131,6 +131,7 @@ class AnalysisData:
     feedback_df: pd.DataFrame  # flattened form answers
     event_feedback_df: pd.DataFrame  # inline per-message feedback from session_events
     logs_df: pd.DataFrame  # log events (empty if no logs/ dir)
+    logs_source: str  # logs.json, logs/*.log, or "" when no log source was found
     characters_df: pd.DataFrame  # characters
     errors_df: pd.DataFrame  # WARNING/ERROR/CRITICAL subset of logs_df
 
@@ -164,6 +165,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
     feedback_df = _build_feedback(assignments_df, player_forms_df)
     event_feedback_df = _build_event_feedback(transcripts_df, runs_df)
     characters_df = _load_characters(results_dir)
+    logs_source = _logs_source_label(results_dir)
     logs_df = _load_logs_safe(results_dir)
     errors_df = _filter_errors(logs_df)
 
@@ -179,6 +181,7 @@ def load_all(results_dir: str | Path) -> AnalysisData:
         feedback_df=feedback_df,
         event_feedback_df=event_feedback_df,
         logs_df=logs_df,
+        logs_source=logs_source,
         characters_df=characters_df,
         errors_df=errors_df,
     )
@@ -484,6 +487,15 @@ def _load_logs_safe(results_dir: Path) -> pd.DataFrame:
         return _load_logs(logs_dir)
     except Exception:
         return pd.DataFrame()
+
+
+def _logs_source_label(results_dir: Path) -> str:
+    """Return a human-readable log source label if one exists."""
+    if (results_dir / "logs.json").is_file():
+        return "logs.json"
+    if (results_dir / "logs").is_dir():
+        return "logs/*.log"
+    return ""
 
 
 def _load_persisted_logs(path: Path) -> pd.DataFrame:

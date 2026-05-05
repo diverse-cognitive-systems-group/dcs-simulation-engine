@@ -250,6 +250,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
         feedback_df=data.feedback_df,
         event_feedback_df=_filter(data.event_feedback_df),
         logs_df=data.logs_df,
+        logs_source=data.logs_source,
         characters_df=data.characters_df,
         errors_df=data.errors_df,
     )

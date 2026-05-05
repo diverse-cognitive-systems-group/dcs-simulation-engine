@@ -67,7 +67,7 @@ def render(data: AnalysisData) -> str:
     parts.append(f'<div class="row">{row_charts}</div>')
 
     parts.append('<h3 class="h5 mt-4 mb-2">Top Error Messages</h3>')
-    parts.append(_top_error_messages(data.errors_df))
+    parts.append(_top_error_messages(data))
     parts.append(chart_caption("system_errors", "top_error_messages"))
 
     parts.append('<h3 class="h5 mt-4 mb-2">In-Game Error Events</h3>')
@@ -132,7 +132,7 @@ def _log_level_breakdown(logs_df: pd.DataFrame) -> str:
     import plotly.express as px
 
     if logs_df.empty or "level" not in logs_df.columns:
-        return '<div class="alert alert-secondary">No log data available.</div>'
+        return '<div class="alert alert-success">No engine log entries were recorded for this run.</div>'
 
     counts = logs_df["level"].fillna("unknown").value_counts().rename_axis("level").reset_index(name="count")
     color_map = {
@@ -211,9 +211,10 @@ def _error_events_per_session(data: AnalysisData) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _top_error_messages(errors_df: pd.DataFrame) -> str:
+def _top_error_messages(data: AnalysisData) -> str:
+    errors_df = data.errors_df
     if errors_df.empty or "message" not in errors_df.columns:
-        return '<div class="alert alert-secondary">No error log data available.</div>'
+        return _no_engine_log_errors_message(data)
 
     top = errors_df["message"].fillna("").value_counts().head(20).rename_axis("message").reset_index(name="count")
     return df_to_datatable(
@@ -266,9 +267,7 @@ def _log_errors_table(data: AnalysisData) -> str:
     df = data.errors_df
 
     if df.empty:
-        if data.logs_df.empty:
-            return '<div class="alert alert-secondary">No log files found — cannot check for errors.</div>'
-        return '<div class="alert alert-success">No warnings or errors found in logs.</div>'
+        return _no_engine_log_errors_message(data)
 
     cols = [c for c in _LOG_COLUMNS if c in df.columns]
     rename = {k: v for k, v in _LOG_RENAME.items() if k in cols}
@@ -313,3 +312,14 @@ def _plotly(fig) -> str:
     from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
 
     return plotly_to_html(fig)
+
+
+def _no_engine_log_errors_message(data: AnalysisData) -> str:
+    if data.logs_source:
+        if data.logs_df.empty:
+            return (
+                f'<div class="alert alert-success">{data.logs_source} was found, '
+                "but no engine log entries were recorded for this run.</div>"
+            )
+        return '<div class="alert alert-success">No WARNING, ERROR, or CRITICAL engine log events were recorded.</div>'
+    return '<div class="alert alert-secondary">No engine log source was found in this results directory.</div>'
