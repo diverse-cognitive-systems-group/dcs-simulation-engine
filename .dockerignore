@@ -10,6 +10,10 @@ build/
 .env
 .venv
 *.ipynb_checkpoints
+database_backups/
+logs/
+results/
+runs/
 ui/node_modules/
 .vscode/
 tests/

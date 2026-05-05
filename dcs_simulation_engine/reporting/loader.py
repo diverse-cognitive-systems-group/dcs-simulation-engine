@@ -470,6 +470,13 @@ def _load_characters(results_dir: Path) -> pd.DataFrame:
 
 
 def _load_logs_safe(results_dir: Path) -> pd.DataFrame:
+    persisted_logs = results_dir / "logs.json"
+    if persisted_logs.is_file():
+        try:
+            return _load_persisted_logs(persisted_logs)
+        except Exception:
+            pass
+
     logs_dir = results_dir / "logs"
     if not logs_dir.is_dir():
         return pd.DataFrame()
@@ -477,6 +484,36 @@ def _load_logs_safe(results_dir: Path) -> pd.DataFrame:
         return _load_logs(logs_dir)
     except Exception:
         return pd.DataFrame()
+
+
+def _load_persisted_logs(path: Path) -> pd.DataFrame:
+    """Read DB-backed persisted log events dumped as logs.json."""
+    records = _load_json_array(path)
+    if not records:
+        return pd.DataFrame()
+
+    records = [_unwrap_mongo(record) for record in records]
+    df = pd.json_normalize(records, sep=".")
+    if df.empty:
+        return df
+
+    df["log_file"] = path.name
+    df["event_idx"] = range(len(df))
+    df["parse_error"] = False
+
+    for col in ["event_ts", "persisted_at", "first_seen_at", "last_seen_at"]:
+        if col in df.columns:
+            df[col] = df[col].apply(_parse_dt)
+
+    if "event_ts" in df.columns:
+        df["timestamp"] = df["event_ts"]
+    if "exception" in df.columns:
+        df["exception"] = df["exception"].apply(lambda value: json.dumps(value) if isinstance(value, dict) else value)
+
+    sort_cols = [col for col in ["timestamp", "event_idx"] if col in df.columns]
+    if sort_cols:
+        return df.sort_values(sort_cols).reset_index(drop=True)
+    return df.reset_index(drop=True)
 
 
 def _filter_errors(logs_df: pd.DataFrame) -> pd.DataFrame:
