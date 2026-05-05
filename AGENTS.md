@@ -8,7 +8,7 @@
 * Removing code is better than adding code if we can preserve functionality.
 * Prefer adding less code if it doesn't impact clarity or maintainability.
 
-### Principles
+### IMPORTANT Codebase Patterns to follow
 
 * API is the source of truth — all business logic lives in the backend
 * Strict API/UI separation — backend must not control or depend on UI
