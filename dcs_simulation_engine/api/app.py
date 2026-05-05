@@ -19,7 +19,9 @@ from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.core.run_config import RunConfig, validate_run_config_references
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.base import DataProvider
+from dcs_simulation_engine.dal.mongo.log_events import MongoLogEventWriter
 from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json_async
+from dcs_simulation_engine.observability import PersistentLogCapture
 from dcs_simulation_engine.utils.time import utc_now
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,6 +63,13 @@ def create_app(
     async def lifespan(_app: FastAPI):
         if app.state.provider is None:
             app.state.provider = await create_async_provider(mongo_uri=mongo_uri)
+        app.state.log_capture = _create_log_capture(
+            provider=app.state.provider,
+            run_name=active_run_config.name,
+        )
+        if app.state.log_capture is not None:
+            await app.state.log_capture.start()
+            app.state.log_capture.install()
         app.state.started_at = utc_now()
         registry.set_provider(app.state.provider)
         app.state.engine_run_manager.provider = app.state.provider
@@ -72,6 +81,8 @@ def create_app(
             yield
         finally:
             await registry.stop()
+            if app.state.log_capture is not None:
+                await app.state.log_capture.close()
             if shutdown_dump_dir is not None:
                 try:
                     db = app.state.provider.get_db()
@@ -95,6 +106,7 @@ def create_app(
     app.state.mongo_uri = mongo_uri
     app.state.remote_management_enabled = remote_management_enabled
     app.state.bootstrap_token = bootstrap_token
+    app.state.log_capture = None
 
     app.include_router(users_router)
     app.include_router(sessions_router)
@@ -131,3 +143,27 @@ def create_app(
         return {"status": "ok"}
 
     return app
+
+
+def _create_log_capture(*, provider: object, run_name: str) -> PersistentLogCapture | None:
+    """Build the DB-backed Loguru sink for real providers, skipping test doubles."""
+    if _is_mock_object(provider):
+        return None
+    get_db = getattr(provider, "get_db", None)
+    if not callable(get_db):
+        return None
+    try:
+        db = get_db()
+    except Exception:
+        return None
+    if _is_mock_object(db):
+        return None
+    return PersistentLogCapture(
+        writer=MongoLogEventWriter(db=db),
+        source="dcs-api",
+        run_name=run_name,
+    )
+
+
+def _is_mock_object(value: object) -> bool:
+    return type(value).__module__.startswith("unittest.mock")

@@ -21,6 +21,7 @@ class MongoColumns:
     PII = "pii"
     SESSIONS = "sessions"
     SESSION_EVENTS = "session_events"
+    LOGS = "logs"
     RUNS = "runs"
     ASSIGNMENTS = "assignments"
     FORMS = "forms"

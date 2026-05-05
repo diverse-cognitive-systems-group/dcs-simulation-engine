@@ -58,6 +58,11 @@ def ensure_default_indexes(db: Database[Any]) -> None:
     )
     db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
     db[MongoColumns.SESSION_EVENTS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)])
+    db[MongoColumns.LOGS].create_index(MongoColumns.EVENT_TS)
+    db[MongoColumns.LOGS].create_index([("level_no", DESCENDING), (MongoColumns.EVENT_TS, DESCENDING)])
+    db[MongoColumns.LOGS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, DESCENDING)], sparse=True)
+    db[MongoColumns.LOGS].create_index([("fingerprint", ASCENDING), (MongoColumns.EVENT_TS, DESCENDING)])
+    db[MongoColumns.LOGS].create_index([(MongoColumns.SOURCE, ASCENDING), (MongoColumns.EVENT_TS, DESCENDING)])
     db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ASSIGNMENT_ID, unique=True)
     db[MongoColumns.ASSIGNMENTS].create_index(
         [
@@ -102,6 +107,11 @@ async def ensure_default_indexes_async(db: AsyncDatabase[Any]) -> None:
     )
     await db[MongoColumns.SESSION_EVENTS].create_index(MongoColumns.EVENT_ID, unique=True)
     await db[MongoColumns.SESSION_EVENTS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, ASCENDING)])
+    await db[MongoColumns.LOGS].create_index(MongoColumns.EVENT_TS)
+    await db[MongoColumns.LOGS].create_index([("level_no", DESCENDING), (MongoColumns.EVENT_TS, DESCENDING)])
+    await db[MongoColumns.LOGS].create_index([(MongoColumns.SESSION_ID, ASCENDING), (MongoColumns.EVENT_TS, DESCENDING)], sparse=True)
+    await db[MongoColumns.LOGS].create_index([("fingerprint", ASCENDING), (MongoColumns.EVENT_TS, DESCENDING)])
+    await db[MongoColumns.LOGS].create_index([(MongoColumns.SOURCE, ASCENDING), (MongoColumns.EVENT_TS, DESCENDING)])
     await db[MongoColumns.ASSIGNMENTS].create_index(MongoColumns.ASSIGNMENT_ID, unique=True)
     await db[MongoColumns.ASSIGNMENTS].create_index(
         [
