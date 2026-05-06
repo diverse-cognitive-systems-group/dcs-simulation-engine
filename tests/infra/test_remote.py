@@ -45,6 +45,19 @@ def test_derive_remote_app_names_uses_default_prefix() -> None:
 
 
 @pytest.mark.unit
+def test_api_process_command_uses_slugified_deployment_path() -> None:
+    """Remote API command should point at the slugged artifact directory."""
+    command = remote_infra._api_process_command(
+        deployment_name="Demo",
+        bootstrap_token="bootstrap-token",
+        ui_url="https://dcs-demo-ui.fly.dev",
+    )
+
+    assert "--config /app/deployments/demo/run_configs/run_config.yml" in command
+    assert "/app/deployments/Demo/" not in command
+
+
+@pytest.mark.unit
 def test_ensure_volume_creates_non_interactively(monkeypatch: pytest.MonkeyPatch) -> None:
     """Volume creation should pass Fly's non-interactive confirmation flag."""
     captured: list[tuple[list[str], str | None]] = []

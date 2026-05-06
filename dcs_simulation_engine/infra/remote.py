@@ -349,6 +349,7 @@ def _api_process_command(
     ui_url: str,
 ) -> str:
     """Build the remote-managed API server command string."""
+    deployment_slug = slugify_run_name(deployment_name)
     parts = [
         "dcs",
         "server",
@@ -358,7 +359,7 @@ def _api_process_command(
         str(REMOTE_API_PORT),
         "--remote-managed",
         "--config",
-        "/app/deployments/" + deployment_name + "/run_configs/run_config.yml",
+        "/app/deployments/" + deployment_slug + "/run_configs/run_config.yml",
     ]
     parts.extend(
         [
