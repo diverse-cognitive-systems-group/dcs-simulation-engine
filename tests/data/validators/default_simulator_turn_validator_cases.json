@@ -342,7 +342,6 @@
         {
             "id": "npc_unsupported_communication_modality",
             "description": "Sorting algorithm NPC produces a conversational natural-language reply, but its character sheet lists no language-production ability — only pairwise comparison, swap, and halt detection.",
-            "input_pattern": "unsupported_npc_communication_modality",
             "pc_hid": "NA",
             "npc_hid": "AS",
             "transcript": "Opening scene: You enter a new space. In this space, a small apartment living room holds a desk with a laptop whose terminal displays a scrambled list of numbers, with a couch and a coffee mug nearby.\nPlayer (NA): I sit at the desk and read what is on the terminal.\nSimulator: The terminal shows the list [3, 7, 9, 2, 5] under a heading that reads 'pass 1', with the cursor blinking after it.\nPlayer (NA): I respond, \"That makes sense. Why is sorting these numbers important to you?\"",
