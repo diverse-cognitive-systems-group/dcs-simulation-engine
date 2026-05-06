@@ -53,23 +53,22 @@ ru.STYLE_ABORTED = "white"
 #   ├── report          report generation
 #   │   ├── coverage    character coverage report
 #   │   └── results     HTML report from a results directory
-#   └── admin           database / publishing operations
-#       ├── hitl        human-in-the-loop scenario testing
-#       │   ├── create  scaffold a new test cases file for a character
-#       │   ├── update  generate engine responses and/or collect feedback
-#       │   └── export  convert completed test cases -> results dir
-#       └── publish
-#           └── characters  publish evaluation results
+#   ├── hitl            human-in-the-loop scenario testing
+#   │   ├── create      scaffold a new test cases file for a character
+#   │   ├── update      generate engine responses and/or collect feedback
+#   │   └── export      convert completed test cases -> results dir
+#   └── publish
+#       └── characters  publish evaluation results
 # ---------------------------------------------------------------------------
 
 # -- hitl --
-hitl_app = typer.Typer(help="Human-in-the-loop scenario testing pipeline.")
+hitl_app = typer.Typer(help="Run human-in-the-loop evaluation workflows.")
 
 # -- report --
-report_app = typer.Typer(help="Generate HTML reports.")
+report_app = typer.Typer(help="Generate HTML reports from engine run results.")
 
-# -- admin --
-admin_publish_app = typer.Typer(help="Publish evaluation results to production.")
+# -- publish --
+publish_app = typer.Typer(help="Publish and manage character releases.")
 
 
 # ---------------------------------------------------------------------------
@@ -255,12 +254,12 @@ def _report_results_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin publish characters
+# dcs publish characters
 # ---------------------------------------------------------------------------
 
 
-@admin_publish_app.command("characters")
-def _admin_publish_characters_cmd(
+@publish_app.command("characters")
+def _publish_characters_cmd(
     report_path: Path = typer.Argument(
         ...,
         help="Path to the simulation quality HTML report to publish from.",
@@ -497,7 +496,7 @@ def _admin_publish_characters_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin hitl create
+# dcs hitl create
 # ---------------------------------------------------------------------------
 
 
@@ -519,7 +518,7 @@ def _hitl_create_cmd(
 
     Writes evaluations/characters/<hid>-test-cases.json with one
     scenario group per pressure category, seeded with example player messages.
-    All conversation_history fields start empty — run `dcs admin hitl update`
+    All conversation_history fields start empty — run `dcs hitl update`
     to populate them via the engine.
     """
     from dcs_simulation_engine.hitl.generate import (
@@ -558,7 +557,7 @@ def _hitl_create_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin hitl update
+# dcs hitl update
 # ---------------------------------------------------------------------------
 
 
@@ -629,10 +628,10 @@ def _hitl_update_cmd(
 
     \b
     Examples:
-      dcs admin hitl update AC                                # history + responses + feedback
-      dcs admin hitl update AC --only-history                 # history only
-      dcs admin hitl update AC --skip-player-feedback         # history + responses
-      dcs admin hitl update AC --skip-simulator-responses     # history + feedback
+      dcs hitl update AC                                # history + responses + feedback
+      dcs hitl update AC --only-history                 # history only
+      dcs hitl update AC --skip-player-feedback         # history + responses
+      dcs hitl update AC --skip-simulator-responses     # history + feedback
     """
     import asyncio
 
@@ -651,7 +650,7 @@ def _hitl_update_cmd(
     scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
         _console.print(
-            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs admin hitl create {hid} --db <dev|prod>` first.",
+            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs hitl create {hid} --db <dev|prod>` first.",
             style="error",
         )
         raise typer.Exit(1)
@@ -666,7 +665,7 @@ def _hitl_update_cmd(
         _console.print(
             "ERROR: Could not connect to the DCS server.\n"
             f"Tried: {server_url}\n"
-            "The DCS server needs to be running to use `dcs admin hitl update`.\n"
+            "The DCS server needs to be running to use `dcs hitl update`.\n"
             f"Details: {exc}",
             style="error",
         )
@@ -707,7 +706,7 @@ def _hitl_update_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin hitl export
+# dcs hitl export
 # ---------------------------------------------------------------------------
 
 
@@ -730,7 +729,7 @@ def _hitl_export_cmd(
     The output is compatible with `dcs report results`:
 
     \b
-        dcs admin hitl export AC
+        dcs hitl export AC
         dcs report results results/hitl_AC/ --only sim-quality
     """
     from dcs_simulation_engine.hitl.export import export_results
@@ -740,7 +739,7 @@ def _hitl_export_cmd(
     scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
         _console.print(
-            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs admin hitl create {hid} --db <dev|prod>` first.",
+            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs hitl create {hid} --db <dev|prod>` first.",
             style="error",
         )
         raise typer.Exit(1)

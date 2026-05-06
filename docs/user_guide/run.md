@@ -120,6 +120,6 @@ dcs remote deploy \
 - The UI is built for the paired API automatically during deploy.
 - The API is started with remote management enabled for the selected run config.
 - The first admin key is claimed automatically during deployment and becomes the only key allowed to export the database.
-- Database exports written by `dcs remote save` and `dcs dump` include collection JSON plus manifest/index metadata, and those artifacts can be used again with `--mongo-seed-path`.
+- Database exports written by `dcs remote save` and `dcs database dump` include collection JSON plus manifest/index metadata, and those artifacts can be used again with `--mongo-seed-path`.
 - When `--regions` is provided, deploy attempts the listed regions in order and uses the first region that succeeds.
 - You can deploy multiple runs independently by running `dcs remote deploy` once per run config.

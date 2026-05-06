@@ -15,7 +15,7 @@ from dcs_simulation_engine.infra.remote import (
     stop_remote_run,
 )
 
-remote_app = typer.Typer(help="Remote Fly run deployment and lifecycle commands.")
+remote_app = typer.Typer(help="Deploy and manage remote services (Fly.io).")
 
 _REGION_CAPACITY_ERROR_SNIPPETS = (
     "insufficient resources available to fulfill request",

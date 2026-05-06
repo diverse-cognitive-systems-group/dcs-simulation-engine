@@ -3,7 +3,7 @@
 Generates one scenario group per pressure category (using the category's
 example prompts as starter attempts) plus one scenario per entry in the
 character's scenarios[] array.  All conversation_history fields start
-empty; the engine populates them when `dcs admin hitl update` runs.
+empty; the engine populates them when `dcs hitl update` runs.
 """
 
 import json

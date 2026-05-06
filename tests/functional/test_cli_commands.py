@@ -1,123 +1,49 @@
-"""Functional tests for CLI commands.
+"""Workflow-level CLI coverage obligations.
 
-All tests in this file are xfailed pending CLI refactor from dcs.
+This file intentionally tracks end-to-end CLI workflows rather than individual
+command wiring. Keep unit-level command checks in ``tests/unit/cli`` and use
+these tests for behavior that spans multiple commands, filesystem artifacts,
+database state, or service lifecycle.
+
+Each xfail below should be replaced by a real functional test when the workflow
+is ready to support deterministic local testing. Use strict xfails so an
+accidental pass forces the placeholder to be resolved instead of quietly aging.
 """
 
 import pytest
 
-pytestmark = [pytest.mark.functional, pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")]
-
-# ---------------------------------------------------------------------------
-# ENGINE LIFECYCLE
-# ---------------------------------------------------------------------------
+pytestmark = pytest.mark.functional
 
 
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_run():
-#     """Dcs run should start the engine locally without error."""
-#     ...
+def _workflow_not_covered(workflow: str) -> None:
+    pytest.fail(f"Functional CLI workflow coverage is still missing for: {workflow}")
 
 
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_run_remote():
-#     """Dcs run --remote should deploy and start the engine on Fly.io."""
-#     ...
+@pytest.mark.xfail(strict=True, reason="dcs run orchestration is not implemented yet")
+def test_cli_local_engine_run_cycle() -> None:
+    """Run a local engine stack, exercise the API/UI entrypoints, and shut it down."""
+    _workflow_not_covered("local engine run cycle")
 
 
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_status():
-#     """Dcs status should report the status of active remote runs."""
-#     ...
+@pytest.mark.xfail(strict=True, reason="database workflow coverage should exercise real seed/backup/dump IO together")
+def test_cli_database_seed_backup_dump_cycle() -> None:
+    """Seed a test database, write backup/dump artifacts, and validate outputs."""
+    _workflow_not_covered("database seed/backup/dump cycle")
 
 
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_stop():
-#     """Dcs stop should stop the running engine."""
-#     ...
+@pytest.mark.xfail(strict=True, reason="reporting has command coverage, but not a single CLI workflow cycle")
+def test_cli_reporting_cycle() -> None:
+    """Generate CLI report artifacts from fixture results and validate expected files."""
+    _workflow_not_covered("reporting cycle")
 
 
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_stop_destroy():
-#     """Dcs stop --destroy should stop the engine and tear down Fly apps."""
-#     ...
+@pytest.mark.xfail(strict=True, reason="HITL has command coverage, but not a single full evaluation workflow")
+def test_cli_hitl_evaluation_cycle() -> None:
+    """Create, update, export, and report on a HITL evaluation using test doubles."""
+    _workflow_not_covered("HITL evaluation cycle")
 
 
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_save():
-#     """Dcs save [outdir] should dump db and logs at any point during a run."""
-#     ...
-
-
-# # ---------------------------------------------------------------------------
-# # REPORTS
-# # ---------------------------------------------------------------------------
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_report_coverage():
-#     """Dcs report coverage should generate a scenario coverage report."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_report_results():
-#     """Dcs report results should generate a results report."""
-#     ...
-
-
-# # ---------------------------------------------------------------------------
-# # ADMIN
-# # ---------------------------------------------------------------------------
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_server_start():
-#     """Dcs admin server start [opts] should start the API server."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_db_seed():
-#     """Dcs admin db seed <dir> should seed the database from a directory."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_db_backup():
-#     """Dcs admin db backup [outdir] should back up the database."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_db_keygen():
-#     """Dcs admin db keygen should generate a deployment admin key."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_publish_character():
-#     """Dcs admin publish characters --report-path <path> should publish characters."""
-#     ...
-
-
-# # ---------------------------------------------------------------------------
-# # HITL / SIMULATION QA
-# # ---------------------------------------------------------------------------
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_hitl_create():
-#     """Dcs admin hitl create [opts] should scaffold HITL test scenarios."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_hitl_update():
-#     """Dcs admin hitl update [opts] should update existing HITL scenarios."""
-#     ...
-
-
-# @pytest.mark.xfail(reason="pending CLI refactor — not yet implemented")
-# def test_dcs_admin_hitl_export():
-#     """Dcs admin hitl export [opts] should export scenarios to analysis-compatible run results."""
-#     ...
+@pytest.mark.xfail(strict=True, reason="remote lifecycle needs a deterministic mocked Fly workflow")
+def test_cli_remote_lifecycle_cycle() -> None:
+    """Deploy, inspect, save, and stop a remote run through the CLI lifecycle."""
+    _workflow_not_covered("remote lifecycle cycle")
