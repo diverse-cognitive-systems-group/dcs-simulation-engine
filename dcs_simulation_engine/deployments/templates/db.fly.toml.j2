@@ -1,7 +1,7 @@
 app = "{{ app_name }}"
 {% if region %}primary_region = "{{ region }}"
 {% endif %}[build]
-  dockerfile = "{{ docker_dir }}/mongo.fly.dockerfile"
+  dockerfile = "{{ docker_dir }}/db.dockerfile"
 
 [[mounts]]
   source = "{{ db_volume_name }}"

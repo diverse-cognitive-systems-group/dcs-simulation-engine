@@ -1,9 +1,10 @@
 services:
   mongo:
-    image: mongo:8.0
+    build:
+      context: .
+      dockerfile: docker/db.dockerfile
     container_name: dcs-mongo
     restart: unless-stopped
-    command: ["mongod", "--bind_ip_all", "--noauth"]
     ports:
       - "27017:27017"
     volumes:
@@ -62,8 +63,9 @@ services:
 
   ui:
     build:
-      context: ./ui
-      dockerfile: ../docker/ui.dockerfile
+      context: .
+      dockerfile: docker/ui.dockerfile
+      target: dev
     container_name: dcs-ui
     restart: unless-stopped
     depends_on:

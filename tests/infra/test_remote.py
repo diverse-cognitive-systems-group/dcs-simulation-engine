@@ -191,8 +191,9 @@ def test_deploy_remote_run_generates_configs_and_commands(
     assert 'dockerfile = "../../docker/api.dockerfile"' in api_fly
     assert "--host 0.0.0.0 --port 8000" in api_fly
     assert "--remote-managed" in api_fly
-    assert 'dockerfile = "../../docker/ui.fly.dockerfile"' in ui_fly
-    assert 'dockerfile = "../../docker/mongo.fly.dockerfile"' in db_fly
+    assert 'dockerfile = "../../docker/ui.dockerfile"' in ui_fly
+    assert 'build-target = "runtime"' in ui_fly
+    assert 'dockerfile = "../../docker/db.dockerfile"' in db_fly
     assert "--config /app/deployments/usability-ca/run_configs/run_config.yml" in api_fly
     assert "name: usability-ca" in copied_run_config
 
