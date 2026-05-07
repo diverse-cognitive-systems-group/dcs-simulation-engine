@@ -1,0 +1,101 @@
+name: Package Build
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/package-build.yml"
+      - "compose.yml"
+      - "database_seeds/**"
+      - "dcs_simulation_engine/**"
+      - "docker/**"
+      - "examples/run_configs/**"
+      - "pyproject.toml"
+      - "scripts/**"
+      - "ui/**"
+      - "uv.lock"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/package-build.yml"
+      - "compose.yml"
+      - "database_seeds/**"
+      - "dcs_simulation_engine/**"
+      - "docker/**"
+      - "examples/run_configs/**"
+      - "pyproject.toml"
+      - "scripts/**"
+      - "ui/**"
+      - "uv.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install Python dependencies
+        run: uv sync --extra dev
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Build UI
+        run: |
+          cd ui
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Stage package assets
+        run: uv run python scripts/stage_package_assets.py
+
+      - name: Build package artifacts
+        run: uv build --sdist --wheel
+
+      - name: Verify packaged assets
+        run: |
+          wheel="$(ls dist/*.whl)"
+          uv run python scripts/check_package_artifact.py "$wheel"
+
+      - name: Smoke test installed wheel
+        run: |
+          uv run python -m venv .package-smoke
+          .package-smoke/bin/python -m pip install --upgrade pip
+          .package-smoke/bin/python -m pip install dist/*.whl
+          .package-smoke/bin/dcs --help
+          .package-smoke/bin/dcs engine --help
+          .package-smoke/bin/python - <<'PY'
+          import importlib.resources as resources
+
+          root = resources.files("dcs_simulation_engine").joinpath("package_assets")
+          required = [
+              "compose.yml",
+              "docker/api.dockerfile",
+              "docker/db.dockerfile",
+              "docker/ui.dockerfile",
+              "examples/run_configs/demo.yml",
+              "database_seeds/dev/characters.json",
+              "ui_dist/index.html",
+          ]
+          missing = [path for path in required if not root.joinpath(path).is_file()]
+          if missing:
+              raise SystemExit(f"Missing installed package assets: {missing}")
+          PY
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dcs-simulation-engine-dist
+          path: dist/*
+          if-no-files-found: error

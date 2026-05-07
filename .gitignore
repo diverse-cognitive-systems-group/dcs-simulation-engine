@@ -55,6 +55,7 @@ dist/
 *.egg-info/
 .eggs/
 *.manifest
+dcs_simulation_engine/package_assets/
 
 # Data/logs
 *.log

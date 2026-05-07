@@ -162,6 +162,7 @@ py-modules = ["__init__"]
 include = ["dcs_simulation_engine*"]
 
 [tool.setuptools.package-data]
+"dcs_simulation_engine" = ["package_assets/**/*"]
 "dcs_simulation_engine.deployments.templates" = ["*.j2"]
 "dcs_simulation_engine.hitl" = ["*.json"]
 "dcs_simulation_engine.reporting.auto.templates" = ["*.html"]
