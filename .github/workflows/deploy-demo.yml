@@ -1,0 +1,117 @@
+name: Deploy Demo
+
+"on":
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which part of the demo deployment to deploy."
+        required: false
+        default: full
+        type: choice
+        options:
+          - api-ui
+          - full
+          - api
+          - ui
+          - db
+      regions:
+        description: "Fly regions to try in order, space-separated."
+        required: false
+        default: "dfw lax sjc"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-demo
+  cancel-in-progress: false
+
+jobs:
+  deploy-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: fly-demo
+      url: https://dcs-demo-ui.fly.dev
+    env:
+      DEMO_API_URL: https://dcs-demo-api.fly.dev
+      DEMO_UI_URL: https://dcs-demo-ui.fly.dev
+      DCS_ADMIN_KEY: ${{ secrets.DCS_DEMO_ADMIN_KEY }}
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      REGIONS: ${{ inputs.regions }}
+      TARGET: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate deployment secrets
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${FLY_API_TOKEN:-}" ] || missing+=(FLY_API_TOKEN)
+          [ -n "${OPENROUTER_API_KEY:-}" ] || missing+=(OPENROUTER_API_KEY)
+          [ -n "${DCS_ADMIN_KEY:-}" ] || missing+=(DCS_DEMO_ADMIN_KEY)
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required secret(s): %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Deploy demo to Fly
+        run: |
+          set -euo pipefail
+
+          deploy_args=(
+            remote deploy
+            --config examples/run_configs/demo.yml
+            --mongo-seed-path database_seeds/prod
+          )
+
+          case "$TARGET" in
+            full)
+              ;;
+            api-ui)
+              deploy_args+=(--only-app api --only-app ui)
+              ;;
+            api|ui|db)
+              deploy_args+=(--only-app "$TARGET")
+              ;;
+            *)
+              printf '::error::Unsupported deploy target: %s\n' "$TARGET"
+              exit 1
+              ;;
+          esac
+
+          regions=()
+          if [ -n "${REGIONS// }" ]; then
+            read -r -a regions <<< "$REGIONS"
+            deploy_args+=(--regions "${regions[@]}")
+          fi
+
+          uv run dcs "${deploy_args[@]}"
+
+      - name: Verify demo status
+        run: uv run dcs remote status --uri "$DEMO_API_URL"
+
+      - name: Summarize deployment
+        run: |
+          {
+            echo "## Demo deployment"
+            echo
+            echo "- Target: \`$TARGET\`"
+            echo "- UI: $DEMO_UI_URL"
+            echo "- API docs: $DEMO_API_URL/docs"
+          } >> "$GITHUB_STEP_SUMMARY"
