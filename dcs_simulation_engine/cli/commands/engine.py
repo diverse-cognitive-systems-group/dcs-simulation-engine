@@ -1,6 +1,7 @@
 """CLI commands for managing the local Docker Compose engine stack."""
 
 import json
+from importlib import metadata
 import os
 import shutil
 import subprocess
@@ -14,9 +15,13 @@ import typer
 import yaml
 from dcs_simulation_engine.api.app import DEFAULT_RUN_CONFIG_PATH
 from dcs_simulation_engine.cli.common import echo
+from dcs_simulation_engine.utils.assets import DCSAssets, resolve_assets
+from dcs_simulation_engine.utils.paths import package_root
 
 _CONTAINER_RUN_CONFIG_PATH = "/app/run_config.yml"
 _COMPOSE_PROJECT_NAME = "dcs"
+_PACKAGE_ENGINE_CACHE_ENV = "DCS_ENGINE_ASSETS_DIR"
+_PACKAGE_DISTRIBUTION_NAME = "dcs-simulation-engine"
 
 engine_app = typer.Typer(help="Start, stop, and inspect the local DCS engine stack.")
 
@@ -71,16 +76,20 @@ def start(
     ),
 ) -> None:
     """Start the local DCS engine with Docker Compose."""
-    repo_root = _find_repo_root(Path.cwd())
-    if repo_root is None:
+    try:
+        source_assets = resolve_assets(Path.cwd())
+    except FileNotFoundError as exc:
         echo(
             ctx,
-            "dcs engine start currently requires a repository checkout with compose.yml. Installed-package runs are coming later.",
+            str(exc),
             style="error",
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
-    config_path = config.expanduser().resolve()
+    engine_assets = _materialize_engine_assets(source_assets)
+    engine_root = engine_assets.root
+
+    config_path = _resolve_run_config_path(config, assets=engine_assets)
     if not config_path.is_file():
         echo(ctx, f"Run config not found: {config_path}", style="error")
         raise typer.Exit(code=1)
@@ -98,7 +107,8 @@ def start(
         display_services.append("ui")
 
     env = _compose_env(
-        repo_root=repo_root,
+        engine_root=engine_root,
+        assets_mode=engine_assets.mode,
         api_port=api_port,
         ui_port=ui_port,
         db_port=db_port,
@@ -108,10 +118,10 @@ def start(
         override_path = Path(temp_dir) / "compose.engine.yml"
         _write_run_config_override(
             override_path=override_path,
-            host_config_path=_host_path_for_docker(config_path, repo_root=repo_root),
+            host_config_path=_host_path_for_docker(config_path, engine_root=engine_root, assets_mode=engine_assets.mode),
         )
-        compose_command = _compose_command(repo_root=repo_root)
-        startup_compose_command = _compose_command(repo_root=repo_root, override_path=override_path)
+        compose_command = _compose_command(engine_root=engine_root)
+        startup_compose_command = _compose_command(engine_root=engine_root, override_path=override_path)
         up_command = startup_compose_command + ["up"]
         if not no_build:
             up_command.append("--build")
@@ -176,17 +186,18 @@ def stop(
     ),
 ) -> None:
     """Stop the local DCS engine Docker Compose stack."""
-    repo_root = _find_repo_root(Path.cwd())
-    if repo_root is None:
+    try:
+        engine_assets = _materialize_engine_assets(resolve_assets(Path.cwd()))
+    except FileNotFoundError as exc:
         echo(
             ctx,
-            "dcs engine stop currently requires a repository checkout with compose.yml. Installed-package runs are coming later.",
+            str(exc),
             style="error",
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
     _ensure_docker_ready(ctx)
-    compose_command = _compose_command(repo_root=repo_root)
+    compose_command = _compose_command(engine_root=engine_assets.root)
     down_command = compose_command + ["down"]
     if clean:
         down_command.append("--volumes")
@@ -194,7 +205,7 @@ def stop(
     try:
         _run_checked(
             down_command,
-            env=_stop_env(repo_root=repo_root),
+            env=_stop_env(engine_root=engine_assets.root, assets_mode=engine_assets.mode),
         )
     except subprocess.CalledProcessError as exc:
         echo(ctx, "Docker Compose failed to stop the local engine.", style="error")
@@ -220,18 +231,19 @@ def status(
     json_output: bool = typer.Option(False, "--json", help="Print the status payload as JSON."),
 ) -> None:
     """Show local engine service health and run progress."""
-    repo_root = _find_repo_root(Path.cwd())
-    if repo_root is None:
+    try:
+        engine_assets = _materialize_engine_assets(resolve_assets(Path.cwd()))
+    except FileNotFoundError as exc:
         echo(
             ctx,
-            "dcs engine status currently requires a repository checkout with compose.yml. Installed-package runs are coming later.",
+            str(exc),
             style="error",
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
     _ensure_docker_ready(ctx)
-    env = _stop_env(repo_root=repo_root)
-    compose_command = _compose_command(repo_root=repo_root)
+    env = _stop_env(engine_root=engine_assets.root, assets_mode=engine_assets.mode)
+    compose_command = _compose_command(engine_root=engine_assets.root)
     services = _compose_services(compose_command, env=env)
     payload = _engine_status_payload(
         compose_command=compose_command,
@@ -248,13 +260,6 @@ def status(
 
     if payload["status"] != "healthy":
         raise typer.Exit(code=1)
-
-
-def _find_repo_root(start: Path) -> Path | None:
-    for path in [start, *start.parents]:
-        if (path / "compose.yml").is_file() and (path / "docker").is_dir():
-            return path
-    return None
 
 
 def _ensure_openrouter_key(ctx: typer.Context) -> None:
@@ -279,24 +284,243 @@ def _ensure_docker_ready(ctx: typer.Context) -> None:
         raise typer.Exit(code=1) from exc
 
 
-def _compose_env(*, repo_root: Path, api_port: int, ui_port: int, db_port: int) -> dict[str, str]:
+def _resolve_run_config_path(config: Path, *, assets: DCSAssets) -> Path:
+    expanded = config.expanduser()
+    if expanded.is_file():
+        return expanded.resolve()
+
+    if config == DEFAULT_RUN_CONFIG_PATH:
+        return assets.default_run_config
+
+    if not expanded.is_absolute():
+        asset_relative_path = assets.root / expanded
+        if asset_relative_path.is_file():
+            return asset_relative_path.resolve()
+
+        named_example_path = assets.run_configs_dir / expanded.name
+        if expanded.parent == Path(".") and named_example_path.is_file():
+            return named_example_path.resolve()
+
+    return expanded.resolve()
+
+
+def _materialize_engine_assets(assets: DCSAssets) -> DCSAssets:
+    if assets.mode == "repo":
+        return assets
+
+    target_root = _package_engine_cache_root()
+    if target_root.exists():
+        shutil.rmtree(target_root)
+    target_root.parent.mkdir(parents=True, exist_ok=True)
+
+    _copy_tree(assets.root, target_root)
+    _copy_tree(package_root(), target_root / "dcs_simulation_engine", ignore_package_assets=True)
+    _write_package_requirements(target_root / "requirements.txt")
+    _write_package_api_dockerfile(target_root / "docker" / "api.dockerfile")
+    _write_package_ui_dockerfile(target_root / "docker" / "ui.dockerfile")
+    _write_package_caddyfile(target_root / "docker" / "Caddyfile")
+    _write_package_compose(target_root / "compose.yml")
+    return DCSAssets(
+        mode="package",
+        root=target_root,
+        compose_file=target_root / "compose.yml",
+        docker_dir=target_root / "docker",
+        run_configs_dir=target_root / "examples" / "run_configs",
+        default_run_config=target_root / "examples" / "run_configs" / "demo.yml",
+        database_seeds_dir=target_root / "database_seeds",
+        ui_dist_dir=target_root / "ui_dist",
+    )
+
+
+def _package_engine_cache_root() -> Path:
+    configured = os.getenv(_PACKAGE_ENGINE_CACHE_ENV, "").strip()
+    base = Path(configured).expanduser() if configured else Path.home() / ".cache" / "dcs-simulation-engine" / "engine-assets"
+    return base / _package_version()
+
+
+def _package_version() -> str:
+    try:
+        return metadata.version(_PACKAGE_DISTRIBUTION_NAME)
+    except metadata.PackageNotFoundError:
+        return "local"
+
+
+def _copy_tree(source: Path, target: Path, *, ignore_package_assets: bool = False) -> None:
+    ignore = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store")
+    if ignore_package_assets:
+        ignore = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "package_assets")
+    shutil.copytree(source, target, ignore=ignore)
+
+
+def _write_package_requirements(path: Path) -> None:
+    requirements = []
+    for requirement in metadata.requires(_PACKAGE_DISTRIBUTION_NAME) or []:
+        if "extra ==" in requirement:
+            continue
+        requirements.append(requirement)
+    path.write_text("\n".join(requirements) + "\n", encoding="utf-8")
+
+
+def _write_package_api_dockerfile(path: Path) -> None:
+    path.write_text(
+        """# syntax=docker/dockerfile:1
+
+FROM python:3.13-slim
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV MONGO_URI="mongodb://mongo:27017/"
+ENV DCS_SERVER_HOST="0.0.0.0"
+ENV DCS_SERVER_PORT="8000"
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY dcs_simulation_engine/ ./dcs_simulation_engine/
+COPY examples/run_configs/ ./examples/run_configs/
+COPY database_seeds/ ./database_seeds/
+
+EXPOSE 8000
+
+CMD ["python", "-m", "dcs_simulation_engine.cli.app", "server"]
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_package_ui_dockerfile(path: Path) -> None:
+    path.write_text(
+        """# syntax=docker/dockerfile:1
+
+FROM caddy:2-alpine
+
+WORKDIR /srv
+
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY ui_dist/ /srv/
+
+EXPOSE 8080
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_package_caddyfile(path: Path) -> None:
+    path.write_text(
+        """:8080 {
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}
+""",
+        encoding="utf-8",
+    )
+
+
+def _write_package_compose(path: Path) -> None:
+    compose = {
+        "services": {
+            "mongo": {
+                "build": {"context": ".", "dockerfile": "docker/db.dockerfile"},
+                "container_name": "dcs-mongo",
+                "restart": "unless-stopped",
+                "ports": ["${DCS_DB_PORT:-27017}:27017"],
+                "volumes": ["mongo_data:/data/db"],
+                "healthcheck": {
+                    "test": [
+                        "CMD",
+                        "mongosh",
+                        "--quiet",
+                        "mongodb://127.0.0.1:27017/admin",
+                        "--eval",
+                        "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)",
+                    ],
+                    "interval": "10s",
+                    "timeout": "5s",
+                    "retries": 10,
+                    "start_period": "10s",
+                },
+            },
+            "api": {
+                "build": {"context": ".", "dockerfile": "docker/api.dockerfile"},
+                "container_name": "dcs-api",
+                "restart": "unless-stopped",
+                "depends_on": {"mongo": {"condition": "service_healthy"}},
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    (
+                        "exec python -m dcs_simulation_engine.cli.app server "
+                        "--mongo-seed-dir /app/database_seeds/dev "
+                        "--config ${DCS_RUN_CONFIG:-/app/examples/run_configs/demo.yml} "
+                        "--dump ./runs"
+                    ),
+                ],
+                "environment": {
+                    "MONGO_URI": "mongodb://mongo:27017/",
+                    "DCS_SERVER_HOST": "0.0.0.0",
+                    "DCS_SERVER_PORT": "8000",
+                    "OPENROUTER_API_KEY": "${OPENROUTER_API_KEY:?OPENROUTER_API_KEY must be set before running docker compose}",
+                },
+                "volumes": ["${DCS_RUNS_DIR:-./runs}:/app/runs"],
+                "ports": ["${DCS_API_PORT:-8000}:8000"],
+                "healthcheck": {
+                    "test": [
+                        "CMD",
+                        "python",
+                        "-c",
+                        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()",
+                    ],
+                    "interval": "10s",
+                    "timeout": "5s",
+                    "retries": 10,
+                    "start_period": "10s",
+                },
+            },
+            "ui": {
+                "build": {"context": ".", "dockerfile": "docker/ui.dockerfile"},
+                "container_name": "dcs-ui",
+                "restart": "unless-stopped",
+                "depends_on": {"api": {"condition": "service_healthy"}},
+                "ports": ["${DCS_UI_PORT:-5173}:8080"],
+            },
+        },
+        "volumes": {"mongo_data": {"driver": "local"}},
+    }
+    path.write_text(yaml.safe_dump(compose, sort_keys=False), encoding="utf-8")
+
+
+def _compose_env(*, engine_root: Path, assets_mode: str, api_port: int, ui_port: int, db_port: int) -> dict[str, str]:
     env = os.environ.copy()
     env["DCS_RUN_CONFIG"] = _CONTAINER_RUN_CONFIG_PATH
     env["DCS_API_PORT"] = str(api_port)
     env["DCS_UI_PORT"] = str(ui_port)
     env["DCS_DB_PORT"] = str(db_port)
-    env.setdefault("DCS_RUNS_DIR", str(repo_root / "runs"))
+    runs_dir = engine_root / "runs" if assets_mode == "repo" else Path.cwd() / "runs"
+    env.setdefault("DCS_RUNS_DIR", str(runs_dir))
     return env
 
 
-def _stop_env(*, repo_root: Path) -> dict[str, str]:
+def _stop_env(*, engine_root: Path, assets_mode: str) -> dict[str, str]:
     env = os.environ.copy()
-    env.setdefault("DCS_RUNS_DIR", str(repo_root / "runs"))
+    runs_dir = engine_root / "runs" if assets_mode == "repo" else Path.cwd() / "runs"
+    env.setdefault("DCS_RUNS_DIR", str(runs_dir))
     env.setdefault("OPENROUTER_API_KEY", "unused-for-engine-stop")
     return env
 
 
-def _host_path_for_docker(config_path: Path, *, repo_root: Path) -> Path:
+def _host_path_for_docker(config_path: Path, *, engine_root: Path, assets_mode: str = "repo") -> Path:
+    if assets_mode != "repo":
+        return config_path
+
     runs_dir = os.getenv("DCS_RUNS_DIR", "").strip()
     if not runs_dir:
         return config_path
@@ -306,7 +530,7 @@ def _host_path_for_docker(config_path: Path, *, repo_root: Path) -> Path:
         return config_path
 
     try:
-        relative_path = config_path.relative_to(repo_root)
+        relative_path = config_path.relative_to(engine_root)
     except ValueError:
         return config_path
 
@@ -334,14 +558,14 @@ def _write_run_config_override(*, override_path: Path, host_config_path: Path) -
     override_path.write_text(yaml.safe_dump(override, sort_keys=False), encoding="utf-8")
 
 
-def _compose_command(*, repo_root: Path, override_path: Path | None = None) -> list[str]:
+def _compose_command(*, engine_root: Path, override_path: Path | None = None) -> list[str]:
     command = [
         "docker",
         "compose",
         "-f",
-        str(repo_root / "compose.yml"),
+        str(engine_root / "compose.yml"),
         "--project-directory",
-        str(repo_root),
+        str(engine_root),
         "-p",
         _COMPOSE_PROJECT_NAME,
     ]
