@@ -70,12 +70,15 @@ jobs:
 
       - name: Smoke test installed wheel
         run: |
+          repo_root="$PWD"
           uv run python -m venv .package-smoke
           .package-smoke/bin/python -m pip install --upgrade pip
-          .package-smoke/bin/python -m pip install dist/*.whl
-          .package-smoke/bin/dcs --help
-          .package-smoke/bin/dcs engine --help
-          .package-smoke/bin/python - <<'PY'
+          .package-smoke/bin/python -m pip install --force-reinstall dist/*.whl
+          smoke_cwd="$(mktemp -d)"
+          cd "$smoke_cwd"
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" --help
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" engine --help
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/python" - <<'PY'
           import importlib.resources as resources
 
           root = resources.files("dcs_simulation_engine").joinpath("package_assets")
@@ -92,6 +95,44 @@ jobs:
           if missing:
               raise SystemExit(f"Missing installed package assets: {missing}")
           PY
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" report coverage --db dev
+          test -f "$smoke_cwd/results/character_coverage_dev.html"
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" report results "$repo_root/tests/data/example_results" --only metadata --report-path "$smoke_cwd/report.html"
+          test -f "$smoke_cwd/report.html"
+          PYTHONPATH="" DCS_ENGINE_ASSETS_DIR="$smoke_cwd/engine-assets" "$repo_root/.package-smoke/bin/python" - <<'PY'
+          from pathlib import Path
+
+          from dcs_simulation_engine.cli.commands import engine
+          from dcs_simulation_engine.utils.assets import resolve_assets
+
+          assets = resolve_assets(Path.cwd())
+          if assets.mode != "package":
+              raise SystemExit(f"Expected package assets outside the repo, got {assets.mode!r}")
+
+          materialized = engine._materialize_engine_assets(assets)
+          required = [
+              materialized.compose_file,
+              materialized.docker_dir / "api.dockerfile",
+              materialized.docker_dir / "db.dockerfile",
+              materialized.docker_dir / "ui.dockerfile",
+              materialized.root / "dcs_simulation_engine" / "cli" / "app.py",
+              materialized.default_run_config,
+              materialized.ui_dist_dir / "index.html",
+          ]
+          missing = [str(path) for path in required if not path.is_file()]
+          if missing:
+              raise SystemExit(f"Missing materialized engine assets: {missing}")
+          PY
+          set +e
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" hitl create NA --db dev > "$smoke_cwd/hitl.out" 2>&1
+          hitl_exit=$?
+          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" publish characters missing-report.html > "$smoke_cwd/publish.out" 2>&1
+          publish_exit=$?
+          set -e
+          test "$hitl_exit" -eq 1
+          test "$publish_exit" -eq 1
+          grep -q "currently available only from a repository" "$smoke_cwd/hitl.out"
+          grep -q "currently available only from a repository" "$smoke_cwd/publish.out"
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4

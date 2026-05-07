@@ -1,7 +1,6 @@
 """CLI commands for managing the local Docker Compose engine stack."""
 
 import json
-from importlib import metadata
 import os
 import shutil
 import subprocess
@@ -9,6 +8,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from importlib import metadata
 from pathlib import Path
 
 import typer

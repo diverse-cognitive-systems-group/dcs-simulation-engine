@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import typer
 import typer.rich_utils as ru
-from dcs_simulation_engine.reporting.auto import VALID_SECTION_SLUGS, _find_repo_root, resolve_sections, run_analysis, run_coverage_report
+from dcs_simulation_engine.reporting.auto import VALID_SECTION_SLUGS, resolve_sections, run_analysis, run_coverage_report
 from dcs_simulation_engine.reporting.loader import load_all
 from dcs_simulation_engine.utils.assets import find_repo_root
 from rich.console import Console
