@@ -29,6 +29,10 @@ def resolve_assets(start: Path | None = None) -> DCSAssets:
     if repo_root is not None:
         return _assets_from_root("repo", repo_root)
 
+    package_repo_root = find_repo_root(package_root())
+    if package_repo_root is not None:
+        return _assets_from_root("repo", package_repo_root)
+
     package_assets_root = packaged_assets_root()
     if _has_required_package_assets(package_assets_root):
         return _assets_from_root("package", package_assets_root)

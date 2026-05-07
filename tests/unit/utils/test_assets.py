@@ -66,6 +66,19 @@ def test_resolve_assets_falls_back_to_packaged_assets(tmp_path: Path, monkeypatc
 
 
 @pytest.mark.unit
+def test_resolve_assets_finds_repo_from_package_location_when_cwd_is_elsewhere(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Source/editable installs should find repo assets even from outside the repo cwd."""
+    repo_root = _make_asset_root(tmp_path / "repo", repo=True)
+    package_root = repo_root / "dcs_simulation_engine"
+    monkeypatch.setattr(assets, "package_root", lambda: package_root)
+
+    resolved = assets.resolve_assets(tmp_path / "outside-repo")
+
+    assert resolved.mode == "repo"
+    assert resolved.root == repo_root.resolve()
+
+
+@pytest.mark.unit
 def test_find_repo_root_requires_project_markers(tmp_path: Path) -> None:
     """Asset-like directories without repo markers should not count as a checkout."""
     asset_root = _make_asset_root(tmp_path / "looks-like-assets")
