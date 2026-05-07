@@ -1,8 +1,8 @@
 """Verify that a built wheel contains packaged local engine assets."""
 
+import re
 import sys
 import zipfile
-import re
 from email.parser import Parser
 from pathlib import Path
 
@@ -51,7 +51,11 @@ def _runtime_dependency_errors(metadata: str) -> list[str]:
     parsed = Parser().parsestr(metadata)
     requires_dist = parsed.get_all("Requires-Dist") or []
     normalized = {_runtime_dependency_name(requirement) for requirement in requires_dist}
-    return [f"Missing runtime dependency in wheel metadata: {dependency}" for dependency in REQUIRED_RUNTIME_DEPENDENCIES if dependency not in normalized]
+    return [
+        f"Missing runtime dependency in wheel metadata: {dependency}"
+        for dependency in REQUIRED_RUNTIME_DEPENDENCIES
+        if dependency not in normalized
+    ]
 
 
 def _runtime_dependency_name(requirement: str) -> str:
