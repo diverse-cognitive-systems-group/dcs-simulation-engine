@@ -6,7 +6,7 @@ services:
     container_name: dcs-mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "${DCS_DB_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -47,7 +47,7 @@ services:
     volumes:
       - ${DCS_RUNS_DIR:-./runs}:/app/runs
     ports:
-      - "8000:8000"
+      - "${DCS_API_PORT:-8000}:8000"
     healthcheck:
       test:
         [
@@ -74,7 +74,7 @@ services:
     environment:
       VITE_API_PROXY_TARGET: http://api:8000
     ports:
-      - "5173:5173"
+      - "${DCS_UI_PORT:-5173}:5173"
 
 volumes:
   mongo_data:

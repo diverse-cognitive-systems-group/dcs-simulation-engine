@@ -6,6 +6,7 @@ from typing import Optional
 import typer
 import typer.rich_utils as ru
 from dcs_simulation_engine.cli.commands.database import database_app
+from dcs_simulation_engine.cli.commands.engine import engine_app
 from dcs_simulation_engine.cli.commands.remote import remote_app
 from dcs_simulation_engine.cli.commands.server import server
 from dcs_simulation_engine.cli.commands.workflow import hitl_app, publish_app, report_app
@@ -48,6 +49,7 @@ app = typer.Typer(
 
 # sub-apps
 app.add_typer(database_app, name="database")
+app.add_typer(engine_app, name="engine")
 app.add_typer(hitl_app, name="hitl")
 app.add_typer(publish_app, name="publish")
 app.add_typer(remote_app, name="remote")

@@ -19,7 +19,7 @@ def _workflow_not_covered(workflow: str) -> None:
     pytest.fail(f"Functional CLI workflow coverage is still missing for: {workflow}")
 
 
-@pytest.mark.xfail(strict=True, reason="dcs run orchestration is not implemented yet")
+@pytest.mark.xfail(strict=True, reason="dcs engine lifecycle needs deterministic Docker workflow coverage")
 def test_cli_local_engine_run_cycle() -> None:
     """Run a local engine stack, exercise the API/UI entrypoints, and shut it down."""
     _workflow_not_covered("local engine run cycle")
