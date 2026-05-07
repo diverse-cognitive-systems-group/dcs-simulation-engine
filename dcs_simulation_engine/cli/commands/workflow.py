@@ -10,6 +10,7 @@ import typer
 import typer.rich_utils as ru
 from dcs_simulation_engine.reporting.auto import VALID_SECTION_SLUGS, _find_repo_root, resolve_sections, run_analysis, run_coverage_report
 from dcs_simulation_engine.reporting.loader import load_all
+from dcs_simulation_engine.utils.assets import find_repo_root
 from rich.console import Console
 from rich.theme import Theme
 
@@ -84,6 +85,16 @@ def _slugify(text: str) -> str:
     slug = re.sub(r"[^\w\s-]", "", slug)
     slug = re.sub(r"[\s_-]+", "_", slug)
     return slug.strip("_") or "report"
+
+
+def _require_repo_checkout(command_name: str) -> Path:
+    """Return the repo root or exit with a clear repo-only command message."""
+    repo_root = find_repo_root()
+    if repo_root is not None:
+        return repo_root
+    _console.print(f"ERROR: `dcs {command_name}` is currently available only from a repository checkout.", style="error")
+    _console.print("Run this command from the DCS repository, or install from source if you need authoring tools.", style="dim")
+    raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +299,8 @@ def _publish_characters_cmd(
     2. Adds missing characters to database_seeds/prod/characters.json
     3. Recomputes database_seeds/prod/release_manifest.json via character-release-policy.yml
     """
+    repo_root = _require_repo_checkout("publish characters")
+
     from dcs_simulation_engine.reporting.auto.publish import (
         build_char_record_from_doc,
         load_json_file,
@@ -355,7 +368,6 @@ def _publish_characters_cmd(
 
     selected_rows = [rows_by_hid[h] for h in selected_hids]
 
-    repo_root = _find_repo_root()
     evals_path = repo_root / "database_seeds" / "dev" / "character_evaluations.json"
     prod_chars_path = repo_root / "database_seeds" / "prod" / "characters.json"
     dev_chars_path = repo_root / "database_seeds" / "dev" / "characters.json"
@@ -521,6 +533,8 @@ def _hitl_create_cmd(
     All conversation_history fields start empty — run `dcs hitl update`
     to populate them via the engine.
     """
+    _require_repo_checkout("hitl create")
+
     from dcs_simulation_engine.hitl.generate import (
         build_scaffold,
         load_character,
@@ -633,6 +647,8 @@ def _hitl_update_cmd(
       dcs hitl update AC --skip-player-feedback         # history + responses
       dcs hitl update AC --skip-simulator-responses     # history + feedback
     """
+    _require_repo_checkout("hitl update")
+
     import asyncio
 
     from dcs_simulation_engine.api.client import APIClient
@@ -732,6 +748,8 @@ def _hitl_export_cmd(
         dcs hitl export AC
         dcs report results results/hitl_AC/ --only sim-quality
     """
+    repo_root = _require_repo_checkout("hitl export")
+
     from dcs_simulation_engine.hitl.export import export_results
     from dcs_simulation_engine.hitl.generate import scenarios_path_for
     from dcs_simulation_engine.hitl.responses import compute_status_summary, render_status_summary
@@ -745,7 +763,6 @@ def _hitl_export_cmd(
         raise typer.Exit(1)
 
     if output_dir is None:
-        repo_root = _find_repo_root()
         output_dir = repo_root / "results" / f"hitl_{hid}"
 
     with _console.status(f"Exporting {hid} scenarios to results directory...", spinner="dots"):
