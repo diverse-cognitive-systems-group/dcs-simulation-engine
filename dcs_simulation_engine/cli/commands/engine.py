@@ -23,7 +23,7 @@ _COMPOSE_PROJECT_NAME = "dcs"
 _PACKAGE_ENGINE_CACHE_ENV = "DCS_ENGINE_ASSETS_DIR"
 _PACKAGE_DISTRIBUTION_NAME = "dcs-simulation-engine"
 
-engine_app = typer.Typer(help="Start, stop, and inspect the local DCS engine stack.")
+engine_app = typer.Typer(help="Manage local engine state (e.g. start, stop, status, etc).")
 
 
 @engine_app.command("start")
@@ -75,7 +75,7 @@ def start(
         help="Seconds to wait for services to become ready.",
     ),
 ) -> None:
-    """Start the local DCS engine with Docker Compose."""
+    """Start the engine."""
     try:
         source_assets = resolve_assets(Path.cwd())
     except FileNotFoundError as exc:
@@ -185,7 +185,7 @@ def stop(
         help="Also remove Docker volumes, including local database state. Does not delete ./runs.",
     ),
 ) -> None:
-    """Stop the local DCS engine Docker Compose stack."""
+    """Stop the engine."""
     try:
         engine_assets = _materialize_engine_assets(resolve_assets(Path.cwd()))
     except FileNotFoundError as exc:
@@ -230,7 +230,7 @@ def status(
     ),
     json_output: bool = typer.Option(False, "--json", help="Print the status payload as JSON."),
 ) -> None:
-    """Show local engine service health and run progress."""
+    """Check local engine status (service health and run progress)."""
     try:
         engine_assets = _materialize_engine_assets(resolve_assets(Path.cwd()))
     except FileNotFoundError as exc:

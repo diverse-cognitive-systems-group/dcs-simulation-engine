@@ -23,6 +23,36 @@ def _write(path: Path, text: str = "asset") -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def _copy_sources_from_dockerfile(path: Path) -> list[str]:
+    sources: list[str] = []
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line.startswith("COPY "):
+            continue
+
+        parts = line.split()
+        if any(part.startswith("--from=") for part in parts):
+            continue
+
+        sources.extend(part for part in parts[1:-1] if not part.startswith("--"))
+    return sources
+
+
+@pytest.mark.unit
+def test_repo_dockerfile_copy_sources_exist() -> None:
+    """Repo Dockerfiles should not reference missing build-context paths."""
+    missing: list[str] = []
+    for dockerfile in sorted((REPO_ROOT / "docker").glob("*.dockerfile")):
+        for source in _copy_sources_from_dockerfile(dockerfile):
+            if source.startswith(("/", "$")):
+                continue
+            source_path = REPO_ROOT / source.rstrip("/")
+            if not source_path.exists():
+                missing.append(f"{dockerfile.relative_to(REPO_ROOT)}: {source}")
+
+    assert missing == []
+
+
 @pytest.mark.unit
 def test_stage_package_assets_copies_required_assets_and_removes_stale_files(tmp_path: Path) -> None:
     """Staging should rebuild the generated package asset tree from canonical assets."""
@@ -78,6 +108,7 @@ def test_package_artifact_check_accepts_wheel_with_required_assets(tmp_path: Pat
             wheel.writestr(file_name, "asset")
         wheel.writestr("dcs_simulation_engine/package_assets/ui_dist/assets/index.js", "js")
         wheel.writestr("dcs_simulation_engine/package_assets/ui_dist/assets/index.css", "css")
+        wheel.writestr("dcs_simulation_engine-0.1.0.dist-info/METADATA", "Requires-Dist: seaborn>=0.13.2\n")
 
     assert check_package_artifact.package_asset_errors(wheel_path) == []
 
@@ -92,7 +123,26 @@ def test_package_artifact_check_reports_missing_ui_assets(tmp_path: Path) -> Non
         for file_name in check_package_artifact.REQUIRED_WHEEL_FILES:
             wheel.writestr(file_name, "asset")
         wheel.writestr("dcs_simulation_engine/package_assets/ui_dist/assets/index.js", "js")
+        wheel.writestr("dcs_simulation_engine-0.1.0.dist-info/METADATA", "Requires-Dist: seaborn>=0.13.2\n")
 
     errors = check_package_artifact.package_asset_errors(wheel_path)
 
     assert "Missing packaged UI CSS asset under package_assets/ui_dist/assets/" in errors
+
+
+@pytest.mark.unit
+def test_package_artifact_check_reports_missing_runtime_dependencies(tmp_path: Path) -> None:
+    """Wheel verification should catch reporting dependencies missing from package metadata."""
+    check_package_artifact = _load_script("check_package_artifact")
+    wheel_path = tmp_path / "dcs_simulation_engine-0.1.0-py3-none-any.whl"
+
+    with zipfile.ZipFile(wheel_path, "w") as wheel:
+        for file_name in check_package_artifact.REQUIRED_WHEEL_FILES:
+            wheel.writestr(file_name, "asset")
+        wheel.writestr("dcs_simulation_engine/package_assets/ui_dist/assets/index.js", "js")
+        wheel.writestr("dcs_simulation_engine/package_assets/ui_dist/assets/index.css", "css")
+        wheel.writestr("dcs_simulation_engine-0.1.0.dist-info/METADATA", "Requires-Dist: pandas>=3.0.1\n")
+
+    errors = check_package_artifact.package_asset_errors(wheel_path)
+
+    assert "Missing runtime dependency in wheel metadata: seaborn" in errors

@@ -2,6 +2,8 @@
 
 import sys
 import zipfile
+import re
+from email.parser import Parser
 from pathlib import Path
 
 REQUIRED_WHEEL_FILES = [
@@ -15,6 +17,10 @@ REQUIRED_WHEEL_FILES = [
     "dcs_simulation_engine/package_assets/ui_dist/index.html",
 ]
 
+REQUIRED_RUNTIME_DEPENDENCIES = [
+    "seaborn",
+]
+
 
 def package_asset_errors(wheel_path: Path) -> list[str]:
     """Return missing or malformed package asset errors for a wheel."""
@@ -25,6 +31,8 @@ def package_asset_errors(wheel_path: Path) -> list[str]:
 
     with zipfile.ZipFile(wheel_path) as wheel:
         names = set(wheel.namelist())
+        metadata_path = next((name for name in names if name.endswith(".dist-info/METADATA")), None)
+        metadata = wheel.read(metadata_path).decode("utf-8") if metadata_path is not None else ""
 
     errors = [f"Missing packaged asset: {name}" for name in REQUIRED_WHEEL_FILES if name not in names]
     ui_asset_prefix = "dcs_simulation_engine/package_assets/ui_dist/assets/"
@@ -32,7 +40,23 @@ def package_asset_errors(wheel_path: Path) -> list[str]:
         errors.append("Missing packaged UI JavaScript asset under package_assets/ui_dist/assets/")
     if not any(name.startswith(ui_asset_prefix) and name.endswith(".css") for name in names):
         errors.append("Missing packaged UI CSS asset under package_assets/ui_dist/assets/")
+    errors.extend(_runtime_dependency_errors(metadata))
     return errors
+
+
+def _runtime_dependency_errors(metadata: str) -> list[str]:
+    if not metadata:
+        return ["Missing wheel metadata: *.dist-info/METADATA"]
+
+    parsed = Parser().parsestr(metadata)
+    requires_dist = parsed.get_all("Requires-Dist") or []
+    normalized = {_runtime_dependency_name(requirement) for requirement in requires_dist}
+    return [f"Missing runtime dependency in wheel metadata: {dependency}" for dependency in REQUIRED_RUNTIME_DEPENDENCIES if dependency not in normalized]
+
+
+def _runtime_dependency_name(requirement: str) -> str:
+    package = requirement.split(";", 1)[0].split("[", 1)[0].split("(", 1)[0].strip().lower()
+    return re.split(r"\s|[<>=!~]", package, maxsplit=1)[0]
 
 
 def main(argv: list[str] | None = None) -> int:
