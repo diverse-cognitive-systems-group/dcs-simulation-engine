@@ -5,6 +5,7 @@ from pathlib import Path
 import httpx
 import pytest
 from dcs_simulation_engine.infra import remote as remote_infra
+from dcs_simulation_engine.utils.assets import DCSAssets
 
 
 def _write_run_config(path: Path, *, name: str = "usability-ca") -> None:
@@ -34,6 +35,36 @@ def _write_run_config(path: Path, *, name: str = "usability-ca") -> None:
     )
 
 
+def _write_asset_layout(root: Path) -> None:
+    """Write the asset skeleton expected by repo/package remote deploy tests."""
+    (root / "examples" / "run_configs").mkdir(parents=True, exist_ok=True)
+    _write_run_config(root / "examples" / "run_configs" / "demo.yml")
+    (root / "compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (root / "docker").mkdir(parents=True, exist_ok=True)
+    (root / "docker" / "api.dockerfile").write_text("FROM scratch AS local\nFROM scratch AS remote\n", encoding="utf-8")
+    (root / "docker" / "ui.dockerfile").write_text("FROM scratch AS runtime\n", encoding="utf-8")
+    (root / "docker" / "db.dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+    (root / "docker" / "Caddyfile").write_text(":8080\n", encoding="utf-8")
+    (root / "database_seeds" / "prod").mkdir(parents=True, exist_ok=True)
+    (root / "database_seeds" / "prod" / "characters.json").write_text("[]\n", encoding="utf-8")
+    (root / "ui_dist").mkdir(parents=True, exist_ok=True)
+    (root / "ui_dist" / "index.html").write_text("<div></div>\n", encoding="utf-8")
+
+
+def _assets(root: Path, *, mode: str = "repo") -> DCSAssets:
+    """Return test assets rooted at the given directory."""
+    return DCSAssets(
+        mode=mode,
+        root=root,
+        compose_file=root / "compose.yml",
+        docker_dir=root / "docker",
+        run_configs_dir=root / "examples" / "run_configs",
+        default_run_config=root / "examples" / "run_configs" / "demo.yml",
+        database_seeds_dir=root / "database_seeds",
+        ui_dist_dir=(root / "ui_dist" if mode == "package" else root / "ui" / "dist"),
+    )
+
+
 @pytest.mark.unit
 def test_derive_remote_app_names_uses_default_prefix() -> None:
     """Remote app names should be derived from the normalized run slug."""
@@ -42,6 +73,19 @@ def test_derive_remote_app_names_uses_default_prefix() -> None:
     assert names.api_app == "dcs-usability-ca-api"
     assert names.ui_app == "dcs-usability-ca-ui"
     assert names.db_app == "dcs-usability-ca-db"
+
+
+@pytest.mark.unit
+def test_api_process_command_uses_slugified_deployment_path() -> None:
+    """Remote API command should point at the slugged artifact directory."""
+    command = remote_infra._api_process_command(
+        deployment_name="Demo",
+        bootstrap_token="bootstrap-token",
+        ui_url="https://dcs-demo-ui.fly.dev",
+    )
+
+    assert "--config /app/deployments/demo/run_configs/run_config.yml" in command
+    assert "/app/deployments/Demo/" not in command
 
 
 @pytest.mark.unit
@@ -136,11 +180,11 @@ def test_deploy_remote_run_generates_configs_and_commands(
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
-    (artifacts_root / "deployments").mkdir()
+    _write_asset_layout(artifacts_root)
 
     deploy_calls: list[tuple[str, Path, dict[str, str] | None, dict[str, str] | None]] = []
 
-    monkeypatch.setattr(remote_infra, "_repo_root", lambda: artifacts_root)
+    monkeypatch.setattr(remote_infra, "resolve_assets", lambda _start=None: _assets(artifacts_root))
     monkeypatch.setattr(remote_infra, "_ensure_app_exists", lambda *args, **kwargs: None)
     monkeypatch.setattr(remote_infra, "_ensure_volume", lambda *args, **kwargs: None)
     monkeypatch.setattr(remote_infra, "_wait_for_mongo_ready", lambda **_kwargs: None)
@@ -191,10 +235,66 @@ def test_deploy_remote_run_generates_configs_and_commands(
     assert 'dockerfile = "../../docker/api.dockerfile"' in api_fly
     assert "--host 0.0.0.0 --port 8000" in api_fly
     assert "--remote-managed" in api_fly
-    assert 'dockerfile = "../../docker/ui.fly.dockerfile"' in ui_fly
-    assert 'dockerfile = "../../docker/mongo.fly.dockerfile"' in db_fly
+    assert 'build-target = "remote"' in api_fly
+    assert 'dockerfile = "../../docker/ui.dockerfile"' in ui_fly
+    assert 'build-target = "runtime"' in ui_fly
+    assert 'dockerfile = "../../docker/db.dockerfile"' in db_fly
     assert "--config /app/deployments/usability-ca/run_configs/run_config.yml" in api_fly
     assert "name: usability-ca" in copied_run_config
+
+
+@pytest.mark.unit
+def test_deploy_remote_run_materializes_package_assets(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Package-mode remote deploy should build from a temporary materialized context."""
+    package_assets_root = tmp_path / "package_assets"
+    package_assets_root.mkdir()
+    _write_asset_layout(package_assets_root)
+    package_source = tmp_path / "installed_package" / "dcs_simulation_engine"
+    package_source.mkdir(parents=True)
+    (package_source / "__init__.py").write_text("", encoding="utf-8")
+
+    deploy_roots: list[Path] = []
+    deploy_calls: list[str] = []
+
+    monkeypatch.setattr(remote_infra, "resolve_assets", lambda _start=None: _assets(package_assets_root, mode="package"))
+    monkeypatch.setattr(remote_infra, "package_root", lambda: package_source)
+    monkeypatch.setattr(remote_infra, "_ensure_app_exists", lambda *args, **kwargs: None)
+    monkeypatch.setattr(remote_infra, "_ensure_volume", lambda *args, **kwargs: None)
+    monkeypatch.setattr(remote_infra, "_wait_for_mongo_ready", lambda **_kwargs: None)
+    monkeypatch.setattr(remote_infra, "_wait_for_health", lambda **_kwargs: None)
+    monkeypatch.setattr(remote_infra, "_bootstrap_remote_deployment", lambda **_kwargs: "issued-secret-key")
+
+    def _capture_deploy(*, config_path: Path, app_name: str, cwd: Path, **_kwargs):
+        deploy_roots.append(cwd)
+        deploy_calls.append(app_name)
+        assert cwd != package_assets_root
+        assert (cwd / "docker" / "db.dockerfile").is_file()
+        assert "COPY deployments/" in (cwd / "docker" / "api.dockerfile").read_text(encoding="utf-8")
+        assert "COPY ui_dist/" in (cwd / "docker" / "ui.dockerfile").read_text(encoding="utf-8")
+        assert "reverse_proxy https://dcs-usability-ca-api.fly.dev" in (cwd / "docker" / "Caddyfile").read_text(
+            encoding="utf-8"
+        )
+        assert (cwd / "deployments" / "usability-ca" / "run_configs" / "run_config.yml").is_file()
+        api_fly = (cwd / "deployments" / "usability-ca" / "dcs-usability-ca-api.fly.toml").read_text(encoding="utf-8")
+        assert 'build-target = "remote"' in api_fly
+
+    monkeypatch.setattr(remote_infra, "_deploy_from_config", _capture_deploy)
+
+    result = remote_infra.deploy_remote_run(
+        config="demo.yml",
+        openrouter_key="or-key",
+        mongo_seed_path="prod",
+        fly_api_token="fly-token",
+        region="sea",
+    )
+
+    assert result.run_name == "usability-ca"
+    assert deploy_calls == ["dcs-usability-ca-db", "dcs-usability-ca-api", "dcs-usability-ca-ui"]
+    assert len(set(deploy_roots)) == 1
+    assert not deploy_roots[0].exists()
 
 
 @pytest.mark.unit
@@ -211,11 +311,11 @@ def test_deploy_remote_run_supports_anonymous_demo_run_config(
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
-    (artifacts_root / "deployments").mkdir()
+    _write_asset_layout(artifacts_root)
 
     deploy_calls: list[tuple[str, Path, dict[str, str] | None, dict[str, str] | None]] = []
 
-    monkeypatch.setattr(remote_infra, "_repo_root", lambda: artifacts_root)
+    monkeypatch.setattr(remote_infra, "resolve_assets", lambda _start=None: _assets(artifacts_root))
     monkeypatch.setattr(remote_infra, "_ensure_app_exists", lambda *args, **kwargs: None)
     monkeypatch.setattr(remote_infra, "_ensure_volume", lambda *args, **kwargs: None)
     monkeypatch.setattr(remote_infra, "_wait_for_mongo_ready", lambda **_kwargs: None)
@@ -271,7 +371,7 @@ def test_deploy_remote_run_can_target_one_app(
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
-    (artifacts_root / "deployments").mkdir()
+    _write_asset_layout(artifacts_root)
 
     deploy_calls: list[str] = []
     bootstrap_calls: list[str] = []
@@ -279,7 +379,7 @@ def test_deploy_remote_run_can_target_one_app(
     mongo_waits: list[str] = []
     api_health_waits: list[str] = []
 
-    monkeypatch.setattr(remote_infra, "_repo_root", lambda: artifacts_root)
+    monkeypatch.setattr(remote_infra, "resolve_assets", lambda _start=None: _assets(artifacts_root))
     monkeypatch.setattr(remote_infra, "_ensure_app_exists", lambda app_name, **_kwargs: ensured_apps.append(app_name))
     monkeypatch.setattr(remote_infra, "_ensure_volume", lambda *args, **kwargs: None)
     monkeypatch.setattr(remote_infra, "_wait_for_mongo_ready", lambda **_kwargs: mongo_waits.append("db"))
@@ -329,12 +429,12 @@ def test_deploy_remote_run_api_only_does_not_redeploy_ui(
     seed_path.write_text("[]", encoding="utf-8")
     artifacts_root = tmp_path / "repo"
     artifacts_root.mkdir()
-    (artifacts_root / "deployments").mkdir()
+    _write_asset_layout(artifacts_root)
 
     deploy_calls: list[str] = []
     ensured_apps: list[str] = []
 
-    monkeypatch.setattr(remote_infra, "_repo_root", lambda: artifacts_root)
+    monkeypatch.setattr(remote_infra, "resolve_assets", lambda _start=None: _assets(artifacts_root))
     monkeypatch.setattr(remote_infra, "_ensure_app_exists", lambda app_name, **_kwargs: ensured_apps.append(app_name))
     monkeypatch.setattr(remote_infra, "_ensure_volume", lambda *args, **kwargs: None)
     monkeypatch.setattr(remote_infra, "_wait_for_mongo_ready", lambda **_kwargs: None)

@@ -272,6 +272,48 @@ def test_remote_deploy_command_retries_regions_on_capacity_errors(monkeypatch: p
 
 
 @pytest.mark.unit
+def test_remote_deploy_command_accepts_packaged_asset_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remote deploy should let infra resolve packaged run config and seed names."""
+    deploy = MagicMock(
+        return_value=RemoteDeploymentResult(
+            run_name="usability-ca",
+            deployed_apps=["db", "api", "ui"],
+            api_app="dcs-usability-ca-api",
+            ui_app="dcs-usability-ca-ui",
+            db_app="dcs-usability-ca-db",
+            api_url="https://dcs-usability-ca-api.fly.dev",
+            ui_url="https://dcs-usability-ca-ui.fly.dev",
+            admin_api_key="admin-key",
+            status_command="dcs remote status ...",
+            save_command="dcs remote save ...",
+            stop_command="dcs remote stop ...",
+        )
+    )
+    monkeypatch.setattr(remote_command, "deploy_remote_run", deploy)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "remote",
+            "deploy",
+            "--config",
+            "demo.yml",
+            "--openrouter-key",
+            "or-key",
+            "--mongo-seed-path",
+            "prod",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    deploy.assert_called_once()
+    assert deploy.call_args.kwargs["config"] == Path("demo.yml")
+    assert deploy.call_args.kwargs["mongo_seed_path"] == Path("prod")
+
+
+@pytest.mark.unit
 def test_remote_status_command_wires_helper(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remote status should print the run status payload."""
     fetch_status = MagicMock(

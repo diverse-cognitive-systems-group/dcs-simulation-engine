@@ -2,7 +2,7 @@
 
 The Docker stack now runs as three separate services:
 
-- `mongo`: upstream `mongo:8.0`
+- `mongo`: MongoDB image built from [`docker/db.dockerfile`](./db.dockerfile)
 - `api`: Python server image built from [`docker/api.dockerfile`](./api.dockerfile)
 - `ui`: Bun/Vite UI image built from [`docker/ui.dockerfile`](./ui.dockerfile)
 
@@ -13,7 +13,7 @@ the Vite dev server under `supervisord`.
 
 Each service now owns one responsibility:
 
-- MongoDB stays on the standard upstream image instead of being embedded in the app container.
+- MongoDB runs from [`docker/db.dockerfile`](./db.dockerfile), a tiny wrapper around the standard upstream image with Fly-compatible IPv6 binding.
 - The API image installs Python dependencies once and runs `dcs server`.
 - The UI image runs the same Bun/Vite workflow we use locally from the `ui/` folder.
 
@@ -31,7 +31,7 @@ published directly on port `8000`.
 
 ## Compose
 
-[`compose.yaml`](../compose.yaml) is the main entrypoint for the local stack.
+[`compose.yml`](../compose.yml) is the main entrypoint for the local stack.
 
 ```sh
 docker compose up --build
@@ -93,12 +93,13 @@ keeps repo-relative assets available inside the container:
 
 ### UI image
 
-The UI image installs Bun dependencies from the `ui/` folder and starts the
-Vite dev server with:
+The UI Dockerfile has a `dev` target for local Compose and a `runtime` target
+for Fly/static serving. Compose uses the `dev` target, installs Bun
+dependencies from the `ui/` folder, and starts the Vite dev server with:
 
 ```sh
 bun run dev --host 0.0.0.0
 ```
 
-That keeps Docker aligned with the existing frontend workflow instead of
-introducing a separate nginx-only runtime path.
+Fly uses the `runtime` target, which builds `ui/dist` with Bun and serves it
+through Caddy on port `8080`.

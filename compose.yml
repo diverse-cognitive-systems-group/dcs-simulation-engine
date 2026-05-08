@@ -1,11 +1,12 @@
 services:
   mongo:
-    image: mongo:8.0
+    build:
+      context: .
+      dockerfile: docker/db.dockerfile
     container_name: dcs-mongo
     restart: unless-stopped
-    command: ["mongod", "--bind_ip_all", "--noauth"]
     ports:
-      - "27017:27017"
+      - "${DCS_DB_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -27,6 +28,7 @@ services:
     build:
       context: .
       dockerfile: docker/api.dockerfile
+      target: local
     container_name: dcs-api
     restart: unless-stopped
     depends_on:
@@ -44,9 +46,9 @@ services:
       DCS_SERVER_PORT: 8000
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?OPENROUTER_API_KEY must be set before running docker compose}
     volumes:
-      - ./runs:/app/runs
+      - ${DCS_RUNS_DIR:-./runs}:/app/runs
     ports:
-      - "8000:8000"
+      - "${DCS_API_PORT:-8000}:8000"
     healthcheck:
       test:
         [
@@ -62,8 +64,9 @@ services:
 
   ui:
     build:
-      context: ./ui
-      dockerfile: ../docker/ui.dockerfile
+      context: .
+      dockerfile: docker/ui.dockerfile
+      target: dev
     container_name: dcs-ui
     restart: unless-stopped
     depends_on:
@@ -72,7 +75,7 @@ services:
     environment:
       VITE_API_PROXY_TARGET: http://api:8000
     ports:
-      - "5173:5173"
+      - "${DCS_UI_PORT:-5173}:5173"
 
 volumes:
   mongo_data:

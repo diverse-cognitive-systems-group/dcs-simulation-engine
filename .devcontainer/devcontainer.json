@@ -80,6 +80,7 @@
         }
     },
     "containerEnv": {
+        "DCS_RUNS_DIR": "${localWorkspaceFolder}/runs",
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8"
     }

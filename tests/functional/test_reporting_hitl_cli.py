@@ -172,7 +172,7 @@ def test_report_results_each_section(tmp_path, slug):
 
 @pytest.mark.functional
 def test_hitl_create(tmp_path, monkeypatch):
-    """Dcs admin hitl create NA --db dev creates a valid test cases scaffold file."""
+    """Dcs hitl create NA --db dev creates a valid test cases scaffold file."""
     test_cases_file = tmp_path / "NA-test-cases.json"
 
     monkeypatch.setattr(
@@ -180,7 +180,7 @@ def test_hitl_create(tmp_path, monkeypatch):
         lambda hid: tmp_path / f"{hid}-test-cases.json",
     )
 
-    result = _RUNNER.invoke(app, ["admin", "hitl", "create", "NA", "--db", "dev"])
+    result = _RUNNER.invoke(app, ["hitl", "create", "NA", "--db", "dev"])
 
     assert result.exit_code == 0, result.output
     assert test_cases_file.exists(), f"Expected test cases file at {test_cases_file}"
@@ -207,7 +207,7 @@ def test_hitl_create(tmp_path, monkeypatch):
 
 @pytest.mark.functional
 def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypatch):
-    """Dcs admin hitl update stores shared opening history, then branches per attempt."""
+    """Dcs hitl update stores shared opening history, then branches per attempt."""
 
     class _FakeRun:
         def __init__(
@@ -326,11 +326,11 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
     monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    help_result = _RUNNER.invoke(app, ["admin", "hitl", "update", "--help"])
+    help_result = _RUNNER.invoke(app, ["hitl", "update", "--help"])
     assert help_result.exit_code == 0, help_result.output
     assert "--include-empty" not in help_result.output
 
-    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
 
     assert result.exit_code == 0, result.output
     assert _step_calls == [
@@ -358,7 +358,7 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
 
 @pytest.mark.functional
 def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monkeypatch):
-    """Dcs admin hitl update --only-history repairs a trailing player turn without branching attempts."""
+    """Dcs hitl update --only-history repairs a trailing player turn without branching attempts."""
 
     class _FakeAPIClient:
         def __init__(self, *, url: str, api_key: str) -> None:
@@ -442,7 +442,7 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
     monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--only-history"])
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--only-history"])
 
     assert result.exit_code == 0, result.output
     assert "Scenario File Summary" in result.output
@@ -460,7 +460,7 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
 
 @pytest.mark.functional
 def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_path, monkeypatch):
-    """Dcs admin hitl update can rebuild a missing parent session from saved history."""
+    """Dcs hitl update can rebuild a missing parent session from saved history."""
 
     class _FakeRun:
         def __init__(
@@ -576,7 +576,6 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
     result = _RUNNER.invoke(
         app,
         [
-            "admin",
             "hitl",
             "update",
             "NA",
@@ -696,7 +695,7 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
     monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--skip-player-feedback"])
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
 
     assert result.exit_code == 0, result.output
     assert "Scenario File Summary" in result.output
@@ -766,7 +765,7 @@ def test_hitl_status_summary_respects_selected_subset(tmp_path):
 
 @pytest.mark.functional
 def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
-    """Dcs admin hitl update should fail fast with a clear server-running message."""
+    """Dcs hitl update should fail fast with a clear server-running message."""
 
     class _UnavailableAPIClient:
         def __init__(self, *, url: str, api_key: str) -> None:
@@ -820,7 +819,7 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
 
     monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
 
-    result = _RUNNER.invoke(app, ["admin", "hitl", "update", "NA", "--skip-player-feedback"])
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
 
     assert result.exit_code == 1
     assert "Could not connect to the DCS server" in result.output
@@ -835,7 +834,7 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
 
 @pytest.mark.functional
 def test_hitl_export(tmp_path, monkeypatch):
-    """Dcs admin hitl export NA writes a standard results directory."""
+    """Dcs hitl export NA writes a standard results directory."""
     from dcs_simulation_engine.hitl.generate import build_scaffold, load_character, save_scaffold
 
     # Build a scaffold directly so we have a test cases file to export from.
@@ -852,7 +851,7 @@ def test_hitl_export(tmp_path, monkeypatch):
     out_dir = tmp_path / "hitl_export"
     result = _RUNNER.invoke(
         app,
-        ["admin", "hitl", "export", "NA", "--output-dir", str(out_dir)],
+        ["hitl", "export", "NA", "--output-dir", str(out_dir)],
     )
 
     assert result.exit_code == 0, result.output
@@ -1020,7 +1019,7 @@ def test_hitl_export_skips_incomplete_attempts_and_zero_complete_scenarios(tmp_p
 
 
 # ---------------------------------------------------------------------------
-# admin publish characters
+# publish characters
 # ---------------------------------------------------------------------------
 
 _SIM_QUALITY_HTML = """\
@@ -1036,8 +1035,8 @@ _SIM_QUALITY_HTML = """\
 
 
 @pytest.mark.functional
-def test_admin_publish_characters(tmp_path, monkeypatch):
-    """Dcs admin publish characters produces all three expected changes.
+def test_publish_characters(tmp_path, monkeypatch):
+    """Dcs publish characters produces all three expected changes.
 
     Expected changes:
       [1] character_evaluations.json — one new evaluation entry appended for NA
@@ -1070,7 +1069,6 @@ def test_admin_publish_characters(tmp_path, monkeypatch):
     result = _RUNNER.invoke(
         app,
         [
-            "admin",
             "publish",
             "characters",
             str(report_file),

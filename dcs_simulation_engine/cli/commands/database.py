@@ -1,19 +1,17 @@
-"""CLI admin commands for database administration."""
+"""CLI database administration commands."""
 
 from pathlib import Path
 
 import typer
-from dcs_simulation_engine.cli.bootstrap import create_provider_admin
-from dcs_simulation_engine.cli.commands.workflow import admin_publish_app, hitl_app
+from dcs_simulation_engine.cli.bootstrap import create_provider_admin, create_sync_db
 from dcs_simulation_engine.cli.common import echo, seed_database
+from dcs_simulation_engine.dal.mongo.util import dump_all_collections_to_json
 from dcs_simulation_engine.utils.auth import generate_access_key
 
-admin_app = typer.Typer(help="Database administration commands.")
-admin_app.add_typer(hitl_app, name="hitl")
-admin_app.add_typer(admin_publish_app, name="publish")
+database_app = typer.Typer(help="Manage database and database operations.")
 
 
-@admin_app.command("seed")
+@database_app.command("seed")
 def seed(
     ctx: typer.Context,
     seeds_dir: Path = typer.Argument(
@@ -24,7 +22,7 @@ def seed(
     seed_database(ctx, seeds_dir)
 
 
-@admin_app.command("backup")
+@database_app.command("backup")
 def backup(
     ctx: typer.Context,
     outdir: Path = typer.Argument(
@@ -42,7 +40,32 @@ def backup(
     echo(ctx, f"Backup written to: {result}")
 
 
-@admin_app.command("keygen")
+@database_app.command("dump")
+def dump(
+    ctx: typer.Context,
+    outdir: Path = typer.Argument(
+        ...,
+        help="Directory to write the dump to. A timestamped subdirectory is created inside.",
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        readable=True,
+        resolve_path=False,
+    ),
+) -> None:
+    """Dump all Mongo collections to JSON files."""
+    mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)
+    try:
+        db = create_sync_db(mongo_uri=mongo_uri)
+        result = dump_all_collections_to_json(db, outdir)
+    except Exception as e:
+        echo(ctx, f"Failed to dump database: {e}", style="error")
+        raise typer.Exit(code=1)
+
+    echo(ctx, f"Dump written to: {result}", style="success")
+
+
+@database_app.command("keygen")
 def keygen(ctx: typer.Context) -> None:
     """Generate a deployment-ready admin key without storing it anywhere."""
     key = generate_access_key()

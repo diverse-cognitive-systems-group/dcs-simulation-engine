@@ -1,7 +1,8 @@
 app = "{{ app_name }}"
 {% if region %}primary_region = "{{ region }}"
 {% endif %}[build]
-  dockerfile = "{{ docker_dir }}/ui.fly.dockerfile"
+  dockerfile = "{{ docker_dir }}/ui.dockerfile"
+  build-target = "runtime"
 
 [http_service]
   internal_port = {{ ui_port }}

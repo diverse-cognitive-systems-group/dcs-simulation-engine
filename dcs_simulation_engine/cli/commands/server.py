@@ -83,7 +83,7 @@ def server(
         help="Additional allowed CORS origin. Repeat the flag to allow multiple origins.",
     ),
 ) -> None:
-    """Start the DCS API server."""
+    """Run the DCS API server."""
     import uvicorn
 
     mongo_uri = getattr(getattr(ctx, "obj", None), "mongo_uri", None)

@@ -2,6 +2,7 @@ app = "{{ app_name }}"
 {% if region %}primary_region = "{{ region }}"
 {% endif %}[build]
   dockerfile = "{{ docker_dir }}/api.dockerfile"
+  build-target = "remote"
 
 [processes]
   app = {{ process_cmd_json }}

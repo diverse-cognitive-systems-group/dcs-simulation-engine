@@ -3,10 +3,11 @@
 # Use a config with `ui.registration_required: false` for anonymous local play.
 services:
   mongo:
-    image: mongo:8.0
+    build:
+      context: ..
+      dockerfile: docker/db.dockerfile
     container_name: dcs-mongo
     restart: unless-stopped
-    command: ["mongod", "--bind_ip_all", "--noauth"]
     ports:
       - "27017:27017"
     volumes:

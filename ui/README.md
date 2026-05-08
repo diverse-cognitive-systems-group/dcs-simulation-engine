@@ -33,9 +33,10 @@ Then open [http://localhost:5173](http://localhost:5173) in your browser.
 ## Docker Image
 
 The Docker UI container is built from [`docker/ui.dockerfile`](../docker/ui.dockerfile).
-It runs the same Bun/Vite workflow as local development from the `ui/` folder.
-In Docker Compose, Vite proxies HTTP `/api/*` requests to the `api` service via
-`VITE_API_PROXY_TARGET=http://api:8000`.
+In Docker Compose, the `dev` target runs the same Bun/Vite workflow as local
+development from the `ui/` folder. Vite proxies HTTP `/api/*` requests to the
+`api` service via `VITE_API_PROXY_TARGET=http://api:8000`. Fly uses the
+`runtime` target, which builds `dist/` and serves it with Caddy.
 
 ## Available Scripts
 

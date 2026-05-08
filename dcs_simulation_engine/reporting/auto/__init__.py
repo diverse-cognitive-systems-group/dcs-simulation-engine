@@ -29,6 +29,7 @@ from dcs_simulation_engine.reporting.auto.sections import (
     transcripts,
 )
 from dcs_simulation_engine.reporting.loader import AnalysisData
+from dcs_simulation_engine.utils.assets import resolve_assets
 
 _TODO_PLACEHOLDER = (
     '<div class="alert alert-warning mt-3" role="alert"><strong>TODO:</strong> Add your interpretations and results discussion here.</div>'
@@ -41,14 +42,14 @@ def _render_pc_coverage(data):
     pc_hids = None
     if not data.runs_df.empty and "pc_hid" in data.runs_df.columns:
         pc_hids = data.runs_df["pc_hid"].dropna().unique().tolist()
-    return coverage_human.render(_find_repo_root(), hids_filter=pc_hids or None)
+    return coverage_human.render(_find_asset_root(), hids_filter=pc_hids or None)
 
 
 def _render_npc_coverage(data):
     npc_hids = None
     if not data.runs_df.empty and "npc_hid" in data.runs_df.columns:
         npc_hids = data.runs_df["npc_hid"].dropna().unique().tolist()
-    return coverage_nonhuman.render(_find_repo_root(), hids_filter=npc_hids or None)
+    return coverage_nonhuman.render(_find_asset_root(), hids_filter=npc_hids or None)
 
 
 _pc_coverage = types.SimpleNamespace(render=_render_pc_coverage)
@@ -179,6 +180,11 @@ def _find_repo_root(start: Path | None = None) -> Path:
     return Path(__file__).parents[3]
 
 
+def _find_asset_root(start: Path | None = None) -> Path:
+    """Return the root containing report seed assets for repo or package mode."""
+    return resolve_assets(start).root
+
+
 def run_coverage_report(
     repo_root: Path | None = None,
     hids_filter: list[str] | None = None,
@@ -196,7 +202,7 @@ def run_coverage_report(
         coverage_nonhuman,
     )
 
-    root = repo_root or _find_repo_root()
+    root = repo_root or _find_asset_root()
 
     # For prod, restrict to approved characters from the release manifest.
     _no_approved_chars = False

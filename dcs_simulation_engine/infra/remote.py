@@ -14,6 +14,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from importlib import metadata
 from importlib.resources import files
 from pathlib import Path
 from typing import Any, Iterator
@@ -22,7 +23,9 @@ import httpx
 from dcs_simulation_engine.core.run_config import RunConfig
 from dcs_simulation_engine.deployments import templates as deployment_templates
 from dcs_simulation_engine.infra.fly import FlyError
+from dcs_simulation_engine.utils.assets import DCSAssets, resolve_assets
 from dcs_simulation_engine.utils.auth import validate_access_key
+from dcs_simulation_engine.utils.paths import package_root
 from jinja2 import StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -37,6 +40,7 @@ REMOTE_MONGO_READY_TIMEOUT_S = 120
 REMOTE_FLY_CONFIG_DOCKER_DIR = "../../docker"
 REMOTE_DEPLOYMENTS_DIRNAME = "deployments"
 REMOTE_ADMIN_KEY_PLACEHOLDER = "<saved-admin-key>"
+DCS_DISTRIBUTION_NAME = "dcs-simulation-engine"
 
 _deployment_template_env = SandboxedEnvironment(undefined=StrictUndefined)
 
@@ -125,6 +129,14 @@ class RemoteFlyConfigPaths:
 
 
 @dataclass(frozen=True)
+class RemoteDeployContext:
+    """Build context and artifact directory used for one remote deploy."""
+
+    root: Path
+    artifact_dir: Path
+
+
+@dataclass(frozen=True)
 class RemoteStatusResult:
     """Authenticated run status returned for CLI presentation."""
 
@@ -181,11 +193,6 @@ def _normalize_deploy_apps(deploy_apps: set[str] | None) -> list[str]:
 def app_url(app_name: str) -> str:
     """Return the public Fly URL for an app."""
     return f"https://{app_name}.fly.dev"
-
-
-def _repo_root() -> Path:
-    """Return the repository root used for deploy staging and artifacts."""
-    return Path(__file__).resolve().parents[2]
 
 
 def _fly_env(*, fly_api_token: str | None = None) -> dict[str, str]:
@@ -337,6 +344,131 @@ def _write_text(path: Path, content: str) -> Path:
     return path
 
 
+def _copy_tree(source: Path, destination: Path, *, ignore=None) -> None:
+    """Copy a directory tree, replacing any existing destination."""
+    if destination.exists():
+        shutil.rmtree(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, destination, ignore=ignore)
+
+
+def _runtime_requirements() -> str:
+    """Return package runtime dependencies as pip requirements text."""
+    try:
+        requirements = metadata.requires(DCS_DISTRIBUTION_NAME) or []
+    except metadata.PackageNotFoundError:
+        requirements = []
+
+    runtime_requirements = [req for req in requirements if "extra ==" not in req]
+    return "\n".join(runtime_requirements) + ("\n" if runtime_requirements else "")
+
+
+def _package_api_dockerfile() -> str:
+    """Return the API Dockerfile used by package-mode remote deploys."""
+    return """# syntax=docker/dockerfile:1
+
+FROM python:3.13-slim AS remote
+
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+ENV MONGO_URI="mongodb://mongo:27017/"
+ENV DCS_SERVER_HOST="0.0.0.0"
+ENV DCS_SERVER_PORT="8000"
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY dcs_simulation_engine/ ./dcs_simulation_engine/
+COPY examples/run_configs/ ./examples/run_configs/
+COPY database_seeds/ ./database_seeds/
+COPY deployments/ ./deployments/
+
+RUN printf '%s\\n' '#!/bin/sh' 'exec python -m dcs_simulation_engine.cli.app "$@"' > /usr/local/bin/dcs \\
+    && chmod +x /usr/local/bin/dcs
+
+EXPOSE 8000
+
+CMD ["dcs", "server"]
+"""
+
+
+def _package_ui_dockerfile() -> str:
+    """Return the UI Dockerfile used by package-mode remote deploys."""
+    return """# syntax=docker/dockerfile:1
+
+FROM caddy:2-alpine AS runtime
+
+WORKDIR /srv
+
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY ui_dist/ /srv/
+
+EXPOSE 8080
+"""
+
+
+def _package_caddyfile(*, api_url: str) -> str:
+    """Return a Caddyfile serving packaged UI assets and proxying API requests."""
+    api_url = api_url.rstrip("/")
+    return f""":8080 {{
+
+    handle /api/* {{
+        reverse_proxy {api_url}
+    }}
+
+    handle {{
+        root * /srv
+        try_files {{path}} /index.html
+        file_server
+    }}
+}}
+"""
+
+
+def _materialize_package_remote_context(*, assets: DCSAssets, target_root: Path, api_url: str) -> None:
+    """Create a Fly build context from installed package assets."""
+    docker_dir = target_root / "docker"
+    docker_dir.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy2(assets.docker_dir / "db.dockerfile", docker_dir / "db.dockerfile")
+    _write_text(docker_dir / "api.dockerfile", _package_api_dockerfile())
+    _write_text(docker_dir / "ui.dockerfile", _package_ui_dockerfile())
+    _write_text(docker_dir / "Caddyfile", _package_caddyfile(api_url=api_url))
+    _write_text(target_root / "requirements.txt", _runtime_requirements())
+
+    _copy_tree(assets.run_configs_dir, target_root / "examples" / "run_configs")
+    _copy_tree(assets.database_seeds_dir, target_root / "database_seeds")
+    _copy_tree(assets.ui_dist_dir, target_root / "ui_dist")
+    _copy_tree(
+        package_root(),
+        target_root / "dcs_simulation_engine",
+        ignore=shutil.ignore_patterns("package_assets", "__pycache__", "*.pyc"),
+    )
+
+
+@contextmanager
+def _remote_deploy_context(*, assets: DCSAssets, run_name: str, api_url: str) -> Iterator[RemoteDeployContext]:
+    """Yield the Fly build context used for repo or package remote deploys."""
+    if assets.mode == "repo":
+        root = assets.root
+        yield RemoteDeployContext(
+            root=root,
+            artifact_dir=_deployment_artifact_dir(root=root, run_name=run_name),
+        )
+        return
+
+    temp_root = Path(tempfile.mkdtemp(prefix="dcs-remote-deploy-"))
+    try:
+        _materialize_package_remote_context(assets=assets, target_root=temp_root, api_url=api_url)
+        yield RemoteDeployContext(
+            root=temp_root,
+            artifact_dir=_deployment_artifact_dir(root=temp_root, run_name=run_name),
+        )
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
+
 def _shell_join(parts: list[str]) -> str:
     """Return a shell-safe command string."""
     return " ".join(shlex.quote(part) for part in parts)
@@ -349,6 +481,7 @@ def _api_process_command(
     ui_url: str,
 ) -> str:
     """Build the remote-managed API server command string."""
+    deployment_slug = slugify_run_name(deployment_name)
     parts = [
         "dcs",
         "server",
@@ -358,7 +491,7 @@ def _api_process_command(
         str(REMOTE_API_PORT),
         "--remote-managed",
         "--config",
-        "/app/deployments/" + deployment_name + "/run_configs/run_config.yml",
+        "/app/deployments/" + deployment_slug + "/run_configs/run_config.yml",
     ]
     parts.extend(
         [
@@ -420,9 +553,9 @@ def _render_db_fly_toml(*, app_name: str, region: str | None) -> str:
     )
 
 
-def _deployment_artifact_dir(*, run_name: str) -> Path:
-    """Return the persistent repo-local directory for generated deploy configs."""
-    return _repo_root() / REMOTE_DEPLOYMENTS_DIRNAME / slugify_run_name(run_name)
+def _deployment_artifact_dir(*, root: Path, run_name: str) -> Path:
+    """Return the generated deploy config directory for a build context."""
+    return root / REMOTE_DEPLOYMENTS_DIRNAME / slugify_run_name(run_name)
 
 
 def _write_deployment_run_config(*, output_dir: Path, run_name: str, source_path: Path) -> Path:
@@ -478,6 +611,26 @@ def _validate_mongo_seed_path(path: Path) -> Path:
         return resolved
 
     raise RemoteLifecycleError("mongo_seed_path must be a directory, a .zip/.tar.gz/.tgz/.tar archive, or a .json/.ndjson file.")
+
+
+def _resolve_remote_mongo_seed_path(path: str | Path, *, assets: DCSAssets) -> Path:
+    """Resolve a Mongo seed source from cwd, repo/package assets, or packaged seed names."""
+    requested = Path(path).expanduser()
+    if requested.exists():
+        return _validate_mongo_seed_path(requested)
+
+    candidates: list[Path] = []
+    if not requested.is_absolute():
+        candidates.append((assets.root / requested).resolve())
+        candidates.append((assets.database_seeds_dir / requested).resolve())
+        if requested.parts[:1] == ("database_seeds",):
+            candidates.append((assets.root / requested).resolve())
+
+    for candidate in candidates:
+        if candidate.exists():
+            return _validate_mongo_seed_path(candidate)
+
+    raise RemoteLifecycleError(f"Mongo seed path not found: {path}. Pass a local seed path, or one from {assets.database_seeds_dir}.")
 
 
 @contextmanager
@@ -551,25 +704,44 @@ def _bootstrap_remote_deployment(
     return admin_key
 
 
-def load_run_config(config: str | Path) -> tuple[Path, RunConfig]:
+def _resolve_remote_run_config_path(config: str | Path, *, assets: DCSAssets) -> Path:
+    """Resolve a user-selected run config from cwd, repo/package assets, or examples."""
+    requested = Path(config).expanduser()
+    if requested.is_file():
+        return requested.resolve()
+
+    candidates: list[Path] = []
+    if not requested.is_absolute():
+        candidates.append((assets.root / requested).resolve())
+        candidates.append((assets.run_configs_dir / requested).resolve())
+        if requested.suffix == "":
+            candidates.append((assets.run_configs_dir / f"{requested.name}.yml").resolve())
+            candidates.append((assets.run_configs_dir / f"{requested.name}.yaml").resolve())
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+
+    raise RemoteLifecycleError(f"Run config not found: {config}. Pass a local config path, or one from {assets.run_configs_dir}.")
+
+
+def load_run_config(config: str | Path, *, assets: DCSAssets | None = None) -> tuple[Path, RunConfig]:
     """Resolve and load the run config selected for remote deployment."""
-    possible_path = Path(config).expanduser()
-    if possible_path.is_file():
-        resolved = possible_path.resolve()
-    else:
-        resolved = (_repo_root() / "examples" / "run_configs" / str(config)).with_suffix(".yml").resolve()
+    assets = assets or resolve_assets(Path.cwd())
+    resolved = _resolve_remote_run_config_path(config, assets=assets)
     return resolved, RunConfig.load(resolved)
 
 
 def _resolve_remote_deployment_target(
     *,
     config: str | Path | None,
+    assets: DCSAssets,
 ) -> tuple[str, Path]:
     """Return the deployment name and source run config path."""
     if config is None:
         raise RemoteLifecycleError("config is required.")
 
-    config_path, run = load_run_config(config)
+    config_path, run = load_run_config(config, assets=assets)
     return run.name, config_path
 
 
@@ -587,10 +759,11 @@ def deploy_remote_run(
     deploy_apps: set[str] | None = None,
 ) -> RemoteDeploymentResult:
     """Deploy one remote-managed stack and bootstrap its remote admin key."""
-    mongo_seed_path = _validate_mongo_seed_path(Path(mongo_seed_path))
+    assets = resolve_assets(Path.cwd())
+    mongo_seed_path = _resolve_remote_mongo_seed_path(mongo_seed_path, assets=assets)
     if admin_key is not None:
         admin_key = validate_access_key(admin_key)
-    deployment_name, config_path = _resolve_remote_deployment_target(config=config)
+    deployment_name, config_path = _resolve_remote_deployment_target(config=config, assets=assets)
     selected_apps = _normalize_deploy_apps(deploy_apps)
     is_full_deploy = selected_apps == list(REMOTE_DEPLOY_APP_ORDER)
     names = derive_remote_app_names(
@@ -616,62 +789,61 @@ def deploy_remote_run(
         ui_toml=_render_ui_fly_toml(app_name=names.ui_app, region=region),
         db_toml=_render_db_fly_toml(app_name=names.db_app, region=region),
     )
-    artifact_dir = _deployment_artifact_dir(run_name=deployment_name)
-    fly_configs = _write_remote_fly_configs(
-        output_dir=artifact_dir,
-        names=names,
-        rendered_configs=rendered_configs,
-    )
-    _write_deployment_run_config(
-        output_dir=artifact_dir,
-        run_name=deployment_name,
-        source_path=config_path,
-    )
-
-    repo_root = _repo_root()
-    if "db" in selected_apps:
-        _ensure_app_exists(names.db_app, fly_api_token=fly_api_token)
-        _ensure_volume(app_name=names.db_app, region=region, fly_api_token=fly_api_token)
-        _deploy_from_config(
-            config_path=fly_configs.db_path,
-            app_name=names.db_app,
-            cwd=repo_root,
-            fly_api_token=fly_api_token,
-        )
-        _wait_for_mongo_ready(app_name=names.db_app, fly_api_token=fly_api_token)
-
-    if "api" in selected_apps:
-        _ensure_app_exists(names.api_app, fly_api_token=fly_api_token)
-        _deploy_from_config(
-            config_path=fly_configs.api_path,
-            app_name=names.api_app,
-            cwd=repo_root,
-            fly_api_token=fly_api_token,
-            env_vars={
-                "MONGO_URI": mongo_uri,
-                "OPENROUTER_API_KEY": openrouter_key,
-            },
-        )
-        _wait_for_health(base_url=api_url)
-
     admin_api_key: str | None = None
-    if is_full_deploy:
-        admin_api_key = _bootstrap_remote_deployment(
-            api_url=api_url,
-            bootstrap_token=bootstrap_token,
-            mongo_seed_path=mongo_seed_path,
-            admin_key=admin_key,
+    with _remote_deploy_context(assets=assets, run_name=deployment_name, api_url=api_url) as deploy_context:
+        fly_configs = _write_remote_fly_configs(
+            output_dir=deploy_context.artifact_dir,
+            names=names,
+            rendered_configs=rendered_configs,
+        )
+        _write_deployment_run_config(
+            output_dir=deploy_context.artifact_dir,
+            run_name=deployment_name,
+            source_path=config_path,
         )
 
-    if "ui" in selected_apps:
-        _ensure_app_exists(names.ui_app, fly_api_token=fly_api_token)
-        _deploy_from_config(
-            config_path=fly_configs.ui_path,
-            app_name=names.ui_app,
-            cwd=repo_root,
-            fly_api_token=fly_api_token,
-            build_args={"VITE_API_ORIGIN": api_url},
-        )
+        if "db" in selected_apps:
+            _ensure_app_exists(names.db_app, fly_api_token=fly_api_token)
+            _ensure_volume(app_name=names.db_app, region=region, fly_api_token=fly_api_token)
+            _deploy_from_config(
+                config_path=fly_configs.db_path,
+                app_name=names.db_app,
+                cwd=deploy_context.root,
+                fly_api_token=fly_api_token,
+            )
+            _wait_for_mongo_ready(app_name=names.db_app, fly_api_token=fly_api_token)
+
+        if "api" in selected_apps:
+            _ensure_app_exists(names.api_app, fly_api_token=fly_api_token)
+            _deploy_from_config(
+                config_path=fly_configs.api_path,
+                app_name=names.api_app,
+                cwd=deploy_context.root,
+                fly_api_token=fly_api_token,
+                env_vars={
+                    "MONGO_URI": mongo_uri,
+                    "OPENROUTER_API_KEY": openrouter_key,
+                },
+            )
+            _wait_for_health(base_url=api_url)
+
+        if is_full_deploy:
+            admin_api_key = _bootstrap_remote_deployment(
+                api_url=api_url,
+                bootstrap_token=bootstrap_token,
+                mongo_seed_path=mongo_seed_path,
+                admin_key=admin_key,
+            )
+
+        if "ui" in selected_apps:
+            _ensure_app_exists(names.ui_app, fly_api_token=fly_api_token)
+            _deploy_from_config(
+                config_path=fly_configs.ui_path,
+                app_name=names.ui_app,
+                cwd=deploy_context.root,
+                fly_api_token=fly_api_token,
+                build_args={"VITE_API_ORIGIN": api_url},
+            )
 
     status_command = f"dcs remote status --uri {shlex.quote(api_url)} --admin-key {REMOTE_ADMIN_KEY_PLACEHOLDER}"
     save_command = (

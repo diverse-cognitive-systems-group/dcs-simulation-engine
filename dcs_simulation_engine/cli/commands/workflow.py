@@ -8,8 +8,9 @@ from typing import List, Optional
 
 import typer
 import typer.rich_utils as ru
-from dcs_simulation_engine.reporting.auto import VALID_SECTION_SLUGS, _find_repo_root, resolve_sections, run_analysis, run_coverage_report
+from dcs_simulation_engine.reporting.auto import VALID_SECTION_SLUGS, resolve_sections, run_analysis, run_coverage_report
 from dcs_simulation_engine.reporting.loader import load_all
+from dcs_simulation_engine.utils.assets import find_repo_root
 from rich.console import Console
 from rich.theme import Theme
 
@@ -53,23 +54,22 @@ ru.STYLE_ABORTED = "white"
 #   ├── report          report generation
 #   │   ├── coverage    character coverage report
 #   │   └── results     HTML report from a results directory
-#   └── admin           database / publishing operations
-#       ├── hitl        human-in-the-loop scenario testing
-#       │   ├── create  scaffold a new test cases file for a character
-#       │   ├── update  generate engine responses and/or collect feedback
-#       │   └── export  convert completed test cases -> results dir
-#       └── publish
-#           └── characters  publish evaluation results
+#   ├── hitl            human-in-the-loop scenario testing
+#   │   ├── create      scaffold a new test cases file for a character
+#   │   ├── update      generate engine responses and/or collect feedback
+#   │   └── export      convert completed test cases -> results dir
+#   └── publish
+#       └── characters  publish evaluation results
 # ---------------------------------------------------------------------------
 
 # -- hitl --
-hitl_app = typer.Typer(help="Human-in-the-loop scenario testing pipeline.")
+hitl_app = typer.Typer(help="Run human-in-the-loop evaluation workflows.")
 
 # -- report --
-report_app = typer.Typer(help="Generate HTML reports.")
+report_app = typer.Typer(help="Generate HTML reports from engine run results.")
 
-# -- admin --
-admin_publish_app = typer.Typer(help="Publish evaluation results to production.")
+# -- publish --
+publish_app = typer.Typer(help="Publish and manage character releases.")
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +85,16 @@ def _slugify(text: str) -> str:
     slug = re.sub(r"[^\w\s-]", "", slug)
     slug = re.sub(r"[\s_-]+", "_", slug)
     return slug.strip("_") or "report"
+
+
+def _require_repo_checkout(command_name: str) -> Path:
+    """Return the repo root or exit with a clear repo-only command message."""
+    repo_root = find_repo_root()
+    if repo_root is not None:
+        return repo_root
+    _console.print(f"ERROR: `dcs {command_name}` is currently available only from a repository checkout.", style="error")
+    _console.print("Run this command from the DCS repository, or install from source if you need authoring tools.", style="dim")
+    raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -255,12 +265,12 @@ def _report_results_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin publish characters
+# dcs publish characters
 # ---------------------------------------------------------------------------
 
 
-@admin_publish_app.command("characters")
-def _admin_publish_characters_cmd(
+@publish_app.command("characters")
+def _publish_characters_cmd(
     report_path: Path = typer.Argument(
         ...,
         help="Path to the simulation quality HTML report to publish from.",
@@ -289,6 +299,8 @@ def _admin_publish_characters_cmd(
     2. Adds missing characters to database_seeds/prod/characters.json
     3. Recomputes database_seeds/prod/release_manifest.json via character-release-policy.yml
     """
+    repo_root = _require_repo_checkout("publish characters")
+
     from dcs_simulation_engine.reporting.auto.publish import (
         build_char_record_from_doc,
         load_json_file,
@@ -356,7 +368,6 @@ def _admin_publish_characters_cmd(
 
     selected_rows = [rows_by_hid[h] for h in selected_hids]
 
-    repo_root = _find_repo_root()
     evals_path = repo_root / "database_seeds" / "dev" / "character_evaluations.json"
     prod_chars_path = repo_root / "database_seeds" / "prod" / "characters.json"
     dev_chars_path = repo_root / "database_seeds" / "dev" / "characters.json"
@@ -497,7 +508,7 @@ def _admin_publish_characters_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin hitl create
+# dcs hitl create
 # ---------------------------------------------------------------------------
 
 
@@ -519,9 +530,11 @@ def _hitl_create_cmd(
 
     Writes evaluations/characters/<hid>-test-cases.json with one
     scenario group per pressure category, seeded with example player messages.
-    All conversation_history fields start empty — run `dcs admin hitl update`
+    All conversation_history fields start empty — run `dcs hitl update`
     to populate them via the engine.
     """
+    _require_repo_checkout("hitl create")
+
     from dcs_simulation_engine.hitl.generate import (
         build_scaffold,
         load_character,
@@ -558,7 +571,7 @@ def _hitl_create_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin hitl update
+# dcs hitl update
 # ---------------------------------------------------------------------------
 
 
@@ -629,11 +642,13 @@ def _hitl_update_cmd(
 
     \b
     Examples:
-      dcs admin hitl update AC                                # history + responses + feedback
-      dcs admin hitl update AC --only-history                 # history only
-      dcs admin hitl update AC --skip-player-feedback         # history + responses
-      dcs admin hitl update AC --skip-simulator-responses     # history + feedback
+      dcs hitl update AC                                # history + responses + feedback
+      dcs hitl update AC --only-history                 # history only
+      dcs hitl update AC --skip-player-feedback         # history + responses
+      dcs hitl update AC --skip-simulator-responses     # history + feedback
     """
+    _require_repo_checkout("hitl update")
+
     import asyncio
 
     from dcs_simulation_engine.api.client import APIClient
@@ -651,7 +666,7 @@ def _hitl_update_cmd(
     scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
         _console.print(
-            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs admin hitl create {hid} --db <dev|prod>` first.",
+            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs hitl create {hid} --db <dev|prod>` first.",
             style="error",
         )
         raise typer.Exit(1)
@@ -666,7 +681,7 @@ def _hitl_update_cmd(
         _console.print(
             "ERROR: Could not connect to the DCS server.\n"
             f"Tried: {server_url}\n"
-            "The DCS server needs to be running to use `dcs admin hitl update`.\n"
+            "The DCS server needs to be running to use `dcs hitl update`.\n"
             f"Details: {exc}",
             style="error",
         )
@@ -707,7 +722,7 @@ def _hitl_update_cmd(
 
 
 # ---------------------------------------------------------------------------
-# dcs admin hitl export
+# dcs hitl export
 # ---------------------------------------------------------------------------
 
 
@@ -730,9 +745,11 @@ def _hitl_export_cmd(
     The output is compatible with `dcs report results`:
 
     \b
-        dcs admin hitl export AC
+        dcs hitl export AC
         dcs report results results/hitl_AC/ --only sim-quality
     """
+    repo_root = _require_repo_checkout("hitl export")
+
     from dcs_simulation_engine.hitl.export import export_results
     from dcs_simulation_engine.hitl.generate import scenarios_path_for
     from dcs_simulation_engine.hitl.responses import compute_status_summary, render_status_summary
@@ -740,13 +757,12 @@ def _hitl_export_cmd(
     scenarios_path = scenarios_path_for(hid)
     if not scenarios_path.is_file():
         _console.print(
-            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs admin hitl create {hid} --db <dev|prod>` first.",
+            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs hitl create {hid} --db <dev|prod>` first.",
             style="error",
         )
         raise typer.Exit(1)
 
     if output_dir is None:
-        repo_root = _find_repo_root()
         output_dir = repo_root / "results" / f"hitl_{hid}"
 
     with _console.status(f"Exporting {hid} scenarios to results directory...", spinner="dots"):

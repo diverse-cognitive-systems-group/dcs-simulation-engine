@@ -33,6 +33,7 @@ dependencies = [
   "pymongo (>=4.15.3,<5.0.0)",
   "pyyaml (>=6.0.2,<7.0.0)",
   "rich (>=14.1.0,<15.0.0)",
+  "seaborn>=0.13.2",
   "typer>=0.24.1",
   "uvicorn[standard] (>=0.37.0,<0.38.0)",
   "uvloop (>=0.22.1,<0.23.0)",
@@ -162,6 +163,7 @@ py-modules = ["__init__"]
 include = ["dcs_simulation_engine*"]
 
 [tool.setuptools.package-data]
+"dcs_simulation_engine" = ["package_assets/**/*"]
 "dcs_simulation_engine.deployments.templates" = ["*.j2"]
 "dcs_simulation_engine.hitl" = ["*.json"]
 "dcs_simulation_engine.reporting.auto.templates" = ["*.html"]
