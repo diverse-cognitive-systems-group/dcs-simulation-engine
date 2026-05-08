@@ -102,12 +102,9 @@ def deploy(
     config: Path = typer.Option(
         Path("examples/run_configs/demo.yml"),
         "--config",
-        exists=True,
         dir_okay=False,
         file_okay=True,
-        readable=True,
-        resolve_path=True,
-        help="Run config YAML to deploy.",
+        help="Run config YAML to deploy. Pass a local path, or a packaged example like demo.yml.",
     ),
     openrouter_key: str = typer.Option(
         ...,
@@ -124,12 +121,12 @@ def deploy(
     mongo_seed_path: Path = typer.Option(
         ...,
         "--mongo-seed-path",
-        exists=True,
         dir_okay=True,
         file_okay=True,
-        readable=True,
-        resolve_path=True,
-        help="Local seed source for Mongo bootstrap: a .zip/.tar.gz archive, a .json/.ndjson dump, or a directory.",
+        help=(
+            "Mongo bootstrap seed source: a local .zip/.tar.gz archive, .json/.ndjson dump, directory, "
+            "or packaged seed name like prod."
+        ),
     ),
     admin_key: Optional[str] = typer.Option(
         None,

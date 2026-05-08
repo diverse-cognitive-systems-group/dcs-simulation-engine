@@ -5,6 +5,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -23,10 +24,32 @@ def _write(path: Path, text: str = "asset") -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _copy_sources_from_dockerfile(path: Path) -> list[str]:
+def _copy_sources_from_dockerfile(path: Path, *, target: str | None = None) -> list[str]:
     sources: list[str] = []
+    active = target is None
+    found_target = False
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
+        if line.upper().startswith("FROM "):
+            parts = line.split()
+            stage = ""
+            if "AS" in [part.upper() for part in parts]:
+                for index, part in enumerate(parts):
+                    if part.upper() == "AS" and index + 1 < len(parts):
+                        stage = parts[index + 1]
+                        break
+            if target is None:
+                active = True
+            elif found_target:
+                active = False
+            else:
+                active = True
+                found_target = stage == target
+            continue
+
+        if not active:
+            continue
+
         if not line.startswith("COPY "):
             continue
 
@@ -38,17 +61,27 @@ def _copy_sources_from_dockerfile(path: Path) -> list[str]:
     return sources
 
 
+def _compose_builds() -> list[tuple[str, Path, str | None]]:
+    compose = yaml.safe_load((REPO_ROOT / "compose.yml").read_text(encoding="utf-8"))
+    builds: list[tuple[str, Path, str | None]] = []
+    for service_name, service in compose["services"].items():
+        build = service.get("build")
+        if isinstance(build, dict):
+            builds.append((service_name, REPO_ROOT / build["dockerfile"], build.get("target")))
+    return builds
+
+
 @pytest.mark.unit
 def test_repo_dockerfile_copy_sources_exist() -> None:
-    """Repo Dockerfiles should not reference missing build-context paths."""
+    """Compose-selected Dockerfile stages should not reference missing build-context paths."""
     missing: list[str] = []
-    for dockerfile in sorted((REPO_ROOT / "docker").glob("*.dockerfile")):
-        for source in _copy_sources_from_dockerfile(dockerfile):
+    for service_name, dockerfile, target in _compose_builds():
+        for source in _copy_sources_from_dockerfile(dockerfile, target=target):
             if source.startswith(("/", "$")):
                 continue
             source_path = REPO_ROOT / source.rstrip("/")
             if not source_path.exists():
-                missing.append(f"{dockerfile.relative_to(REPO_ROOT)}: {source}")
+                missing.append(f"{service_name} {dockerfile.relative_to(REPO_ROOT)}: {source}")
 
     assert missing == []
 

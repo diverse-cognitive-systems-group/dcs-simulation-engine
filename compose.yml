@@ -28,6 +28,7 @@ services:
     build:
       context: .
       dockerfile: docker/api.dockerfile
+      target: local
     container_name: dcs-api
     restart: unless-stopped
     depends_on:
