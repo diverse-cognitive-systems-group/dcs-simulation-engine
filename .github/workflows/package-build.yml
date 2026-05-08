@@ -71,14 +71,15 @@ jobs:
       - name: Smoke test installed wheel
         run: |
           repo_root="$PWD"
-          uv run python -m venv .package-smoke
-          .package-smoke/bin/python -m pip install --upgrade pip
-          .package-smoke/bin/python -m pip install --force-reinstall dist/*.whl
           smoke_cwd="$(mktemp -d)"
+          smoke_venv="$(mktemp -d)"
+          uv run python -m venv "$smoke_venv"
+          "$smoke_venv/bin/python" -m pip install --upgrade pip
+          "$smoke_venv/bin/python" -m pip install --force-reinstall dist/*.whl
           cd "$smoke_cwd"
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" --help
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" engine --help
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/python" - <<'PY'
+          PYTHONPATH="" "$smoke_venv/bin/dcs" --help
+          PYTHONPATH="" "$smoke_venv/bin/dcs" engine --help
+          PYTHONPATH="" "$smoke_venv/bin/python" - <<'PY'
           import importlib.resources as resources
 
           root = resources.files("dcs_simulation_engine").joinpath("package_assets")
@@ -95,11 +96,11 @@ jobs:
           if missing:
               raise SystemExit(f"Missing installed package assets: {missing}")
           PY
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" report coverage --db dev
+          PYTHONPATH="" "$smoke_venv/bin/dcs" report coverage --db dev
           test -f "$smoke_cwd/results/character_coverage_dev.html"
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" report results "$repo_root/tests/data/example_results" --only metadata --report-path "$smoke_cwd/report.html"
+          PYTHONPATH="" "$smoke_venv/bin/dcs" report results "$repo_root/tests/data/example_results" --only metadata --report-path "$smoke_cwd/report.html"
           test -f "$smoke_cwd/report.html"
-          PYTHONPATH="" DCS_ENGINE_ASSETS_DIR="$smoke_cwd/engine-assets" "$repo_root/.package-smoke/bin/python" - <<'PY'
+          PYTHONPATH="" DCS_ENGINE_ASSETS_DIR="$smoke_cwd/engine-assets" "$smoke_venv/bin/python" - <<'PY'
           from pathlib import Path
 
           from dcs_simulation_engine.cli.commands import engine
@@ -124,9 +125,9 @@ jobs:
               raise SystemExit(f"Missing materialized engine assets: {missing}")
           PY
           set +e
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" hitl create NA --db dev > "$smoke_cwd/hitl.out" 2>&1
+          PYTHONPATH="" "$smoke_venv/bin/dcs" hitl create NA --db dev > "$smoke_cwd/hitl.out" 2>&1
           hitl_exit=$?
-          PYTHONPATH="" "$repo_root/.package-smoke/bin/dcs" publish characters missing-report.html > "$smoke_cwd/publish.out" 2>&1
+          PYTHONPATH="" "$smoke_venv/bin/dcs" publish characters missing-report.html > "$smoke_cwd/publish.out" 2>&1
           publish_exit=$?
           set -e
           test "$hitl_exit" -eq 1
