@@ -138,6 +138,54 @@ def test_simulation_run_step_consumes_session_meta_on_each_connection(monkeypatc
     assert json.loads(second_ws.sent[0]) == {"type": "advance", "text": "hello"}
 
 
+def test_simulation_run_preserves_machine_readable_failure_frames(monkeypatch: pytest.MonkeyPatch) -> None:
+    """WebSocket failure metadata should parse through typed API client frames."""
+    ws = _FakeWebSocket(
+        [
+            _json_frame(
+                {
+                    "type": "session_meta",
+                    "session_id": "sess-failure",
+                    "pc_hid": "pc-a",
+                    "npc_hid": "npc-a",
+                    "has_game_feedback": False,
+                }
+            ),
+            _json_frame(
+                {
+                    "type": "event",
+                    "session_id": "sess-failure",
+                    "event_type": "error",
+                    "content": "Error: Too many failed attempts. Game over.",
+                    "failure_type": "player_turn_validation_failed",
+                    "retries_remaining": 0,
+                }
+            ),
+            _json_frame(
+                {
+                    "type": "turn_end",
+                    "session_id": "sess-failure",
+                    "turns": 1,
+                    "exited": True,
+                    "failure_type": "player_turn_validation_failed",
+                    "exit_reason": "player_validation_retry_exhausted",
+                }
+            ),
+        ]
+    )
+    monkeypatch.setattr(api_client, "connect", _ConnectFactory(ws))
+
+    with api_client.APIClient(url="http://example.test", timeout=1.0) as api:
+        run = api_client.SimulationRun(api, session_id="sess-failure", game_name="Explore", api_key=None)
+        run.step()
+
+    assert run.history[-1].failure_type == "player_turn_validation_failed"
+    assert run.history[-1].retries_remaining == 0
+    assert run._turn_end is not None
+    assert run._turn_end.failure_type == "player_turn_validation_failed"
+    assert run._turn_end.exit_reason == "player_validation_retry_exhausted"
+
+
 def test_simulation_run_get_state_consumes_session_meta_before_status(monkeypatch: pytest.MonkeyPatch) -> None:
     """get_state() should drain session_meta and opening turn before requesting status."""
     first_ws = _FakeWebSocket(

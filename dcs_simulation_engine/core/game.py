@@ -4,6 +4,10 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, AsyncIterator, Callable, ClassVar, NamedTuple
 
+from dcs_simulation_engine.core.constants import (
+    PLAYER_TURN_VALIDATION_FAILED,
+    SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
+)
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter, list_character_filter_names
 from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
@@ -21,11 +25,31 @@ class GameEvent(NamedTuple):
     content: str
     event_ts: datetime
     command_response: bool = False
+    failure_type: str | None = None
+    retries_remaining: int | None = None
+    exit_reason: str | None = None
 
     @classmethod
-    def now(cls, *, type: str, content: str, command_response: bool = False) -> "GameEvent":
+    def now(
+        cls,
+        *,
+        type: str,
+        content: str,
+        command_response: bool = False,
+        failure_type: str | None = None,
+        retries_remaining: int | None = None,
+        exit_reason: str | None = None,
+    ) -> "GameEvent":
         """Build an event stamped with the current wall-clock time."""
-        return cls(type=type, content=content, event_ts=utc_now(), command_response=command_response)
+        return cls(
+            type=type,
+            content=content,
+            event_ts=utc_now(),
+            command_response=command_response,
+            failure_type=failure_type,
+            retries_remaining=retries_remaining,
+            exit_reason=exit_reason,
+        )
 
 
 class BaseGameOverrides(BaseModel):
@@ -91,6 +115,13 @@ class Game(ABC):
     OPENING_PREFIX = "Opening scene: "
     SIMULATOR_PREFIX = "Simulator: "
     PLAYER_PREFIX = "Player"
+    PLAYER_VALIDATION_EXHAUSTED_REASON = "player_validation_retry_exhausted"
+    SIMULATOR_VALIDATION_EXHAUSTED_REASON = "simulator_validation_retry_exhausted"
+    INTERNAL_ERROR_REASON = "internal_error"
+    INTERNAL_ERROR_MESSAGE = (
+        "Oops, the simulation engine hit an internal problem. This was not caused by your action, "
+        "and there is nothing you need to fix. The game is ending now. Sorry about that."
+    )
 
     # ---- Overrides schema ------------------------------------------------
 
@@ -482,18 +513,51 @@ class Game(ABC):
         if result.ok:
             self._filtered_transcript_buffer.append(f"{self.PLAYER_PREFIX} ({self._pc.hid}): {user_input}")
             self._filtered_transcript_buffer.append(f"{self.SIMULATOR_PREFIX}{result.simulator_response}")
-        yield GameEvent.now(
-            type="ai" if result.ok else "error", content=result.simulator_response if result.ok else (result.error_message or "")
-        )
-        if not result.ok:
+            yield GameEvent.now(type="ai", content=result.simulator_response)
+            return
+
+        failure_type = getattr(result, "failure_type", None) or PLAYER_TURN_VALIDATION_FAILED
+        if failure_type == PLAYER_TURN_VALIDATION_FAILED:
             self._player_retry_budget -= 1
-            logger.debug(f"Validation failed. Retry budget remaining: {self._player_retry_budget}")
+            logger.debug(f"Player validation failed. Retry budget remaining: {self._player_retry_budget}")
             if self._player_retry_budget <= 0:
-                self.exit("retry budget exhausted")
+                self.exit(self.PLAYER_VALIDATION_EXHAUSTED_REASON)
                 yield GameEvent.now(
-                    type="info",
-                    content="You have used all your allowed retries. The game is ending.",
+                    type="error",
+                    content="Error: Too many failed attempts. Game over.",
+                    failure_type=failure_type,
+                    retries_remaining=0,
+                    exit_reason=self.PLAYER_VALIDATION_EXHAUSTED_REASON,
                 )
+                return
+
+            remaining_label = "attempt" if self._player_retry_budget == 1 else "attempts"
+            yield GameEvent.now(
+                type="error",
+                content=(
+                    f"That action was blocked: {result.error_message or 'Invalid action.'}\n\n"
+                    f"Please try a different action. Failed attempts remaining: {self._player_retry_budget} {remaining_label}."
+                ),
+                failure_type=failure_type,
+                retries_remaining=self._player_retry_budget,
+            )
+            return
+
+        if failure_type == SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED:
+            logger.error("Simulator validation exhausted retries; ending game without scoring.")
+            self.exit(self.SIMULATOR_VALIDATION_EXHAUSTED_REASON)
+            exit_reason = self.SIMULATOR_VALIDATION_EXHAUSTED_REASON
+        else:
+            logger.error("Internal simulator error; ending game without scoring.")
+            self.exit(self.INTERNAL_ERROR_REASON)
+            exit_reason = self.INTERNAL_ERROR_REASON
+
+        yield GameEvent.now(
+            type="error",
+            content=self.INTERNAL_ERROR_MESSAGE,
+            failure_type=failure_type,
+            exit_reason=exit_reason,
+        )
 
     def _consume_model_metadata(self, *, stage: str, metadata: dict[str, Any]) -> None:
         """Consume optional structured metadata attached to a model response."""

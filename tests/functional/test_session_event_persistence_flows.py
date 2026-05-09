@@ -218,7 +218,8 @@ async def test_player_validation_failures_are_persisted_with_schema(
     await session.exit_async("test complete")
 
     assert [event["type"] for event in emitted] == ["error"]
-    assert emitted[0]["content"] == "That action exceeds the player character abilities."
+    assert "That action was blocked: That action exceeds the player character abilities." in emitted[0]["content"]
+    assert emitted[0]["failure_type"] == "player_turn_validation_failed"
 
     events = _persisted_events(db, session_id=session_id)
     violations = _matching_events(
@@ -262,7 +263,9 @@ async def test_simulator_validation_failures_are_persisted_for_both_attempts(
     await session.exit_async("test complete")
 
     assert [event["type"] for event in emitted] == ["error"]
-    assert emitted[0]["content"] == "I couldn't produce a valid simulator response. Please retry your action."
+    assert "simulation engine hit an internal problem" in emitted[0]["content"]
+    assert emitted[0]["failure_type"] == "simulator_turn_validation_retry_exhausted"
+    assert emitted[0]["exit_reason"] == "simulator_validation_retry_exhausted"
 
     events = _persisted_events(db, session_id=session_id)
     violations = _matching_events(

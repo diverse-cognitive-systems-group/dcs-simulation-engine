@@ -247,8 +247,8 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
     "system_errors": {
         "summary_card": (
             "Counts of WARNING / ERROR / CRITICAL log entries, in-game error "
-            "events shown to players, and sessions that ended with retry budget "
-            "exhausted. Use as a quick severity triage before reading the tables."
+            "events shown to players, player validation lockouts, and internal "
+            "system-failure endings. Use as a quick severity triage before reading the tables."
         ),
         "log_level_breakdown": (
             "Distribution of log entries by severity level across all log files. "

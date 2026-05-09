@@ -3,7 +3,12 @@
 import pytest
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games import ai_client
-from dcs_simulation_engine.games.ai_client import SimulatorClient
+from dcs_simulation_engine.games.ai_client import (
+    INTERNAL_ERROR,
+    PLAYER_TURN_VALIDATION_FAILED,
+    SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
+    SimulatorClient,
+)
 from dcs_simulation_engine.games.prompts import VALID_NPC_ACTION, VALID_PC_ACTION
 
 
@@ -109,6 +114,35 @@ Transcript: {transcript}
 
 @pytest.mark.unit
 @pytest.mark.anyio
+async def test_simulator_client_classifies_player_validator_rejections(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Player validator rejections should be machine-readable as player-caused failures."""
+
+    async def fake_call(messages, model):
+        _ = model
+        if len(messages) == 1 and messages[0]["role"] == "system":
+            return '{"pass": false, "reason": "That action exceeds the player character abilities."}'
+        return '{"type": "ai", "content": "scene"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[],
+    )
+
+    result = await client.step("I teleport through the wall")
+
+    assert result.ok is False
+    assert result.failure_type == PLAYER_TURN_VALIDATION_FAILED
+    assert result.error_message == "That action exceeds the player character abilities."
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
 async def test_simulator_client_retries_once_then_returns_clean_error_after_double_simulator_validation_failure(
     monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
 ) -> None:
@@ -142,6 +176,7 @@ async def test_simulator_client_retries_once_then_returns_clean_error_after_doub
 
     assert result.ok is False
     assert result.error_message == "I couldn't produce a valid simulator response. Please retry your action."
+    assert result.failure_type == SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED
     assert updater_calls == 2
     assert simulator_validator_calls == 2
     assert result.updater_result is not None
@@ -175,6 +210,7 @@ async def test_simulator_client_surfaces_clean_error_when_player_validator_runti
 
     assert result.ok is False
     assert result.error_message == "I couldn't validate your action just now (validator offline). Please try again."
+    assert result.failure_type == INTERNAL_ERROR
 
 
 @pytest.mark.unit
@@ -206,6 +242,7 @@ async def test_simulator_client_surfaces_clean_error_when_updater_runtime_fails_
 
     assert result.ok is False
     assert result.error_message == "I couldn't produce a simulator response just now (updater offline). Please try again."
+    assert result.failure_type == INTERNAL_ERROR
     assert updater_calls == 2
 
 

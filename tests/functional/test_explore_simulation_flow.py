@@ -101,17 +101,22 @@ async def test_explore_incorrect_input_flow(patch_llm_client, _isolate_db_state,
     first_invalid = await session.step_async("bad move")
 
     assert [event["type"] for event in first_invalid] == ["error"]
-    assert "Invalid action: bad move" == first_invalid[0]["content"]
+    assert "That action was blocked: Invalid action: bad move" in first_invalid[0]["content"]
+    assert "Failed attempts remaining: 1 attempt." in first_invalid[0]["content"]
+    assert first_invalid[0]["failure_type"] == "player_turn_validation_failed"
+    assert first_invalid[0]["retries_remaining"] == 1
     assert not session.exited
     assert session.turns == 1
 
     second_invalid = await session.step_async("bad move again")
 
-    assert [event["type"] for event in second_invalid] == ["error", "info"]
-    assert second_invalid[0]["content"] == "Invalid action: bad move again"
-    assert "allowed retries" in second_invalid[1]["content"]
+    assert [event["type"] for event in second_invalid] == ["error"]
+    assert second_invalid[0]["content"] == "Error: Too many failed attempts. Game over."
+    assert second_invalid[0]["failure_type"] == "player_turn_validation_failed"
+    assert second_invalid[0]["retries_remaining"] == 0
+    assert second_invalid[0]["exit_reason"] == "player_validation_retry_exhausted"
     assert session.exited
-    assert session.exit_reason == "retry budget exhausted"
+    assert session.exit_reason == "player_validation_retry_exhausted"
     assert session.turns == 1
 
 

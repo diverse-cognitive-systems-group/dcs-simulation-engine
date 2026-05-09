@@ -380,7 +380,7 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
             status_frame = type(
                 "Status",
                 (),
-                {"session_id": "existing-parent", "turns": 1, "exited": False},
+                {"session_id": "existing-parent", "turns": 1, "exited": False, "exit_reason": None},
             )()
             return session_meta, status_frame
 
@@ -505,7 +505,7 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
             if session_id == "missing-parent":
                 raise RuntimeError("Session not found")
             session_meta = type("Meta", (), {"session_id": session_id})()
-            status_frame = type("Status", (), {"session_id": session_id, "turns": 1, "exited": False})()
+            status_frame = type("Status", (), {"session_id": session_id, "turns": 1, "exited": False, "exit_reason": None})()
             return session_meta, status_frame
 
         def start_game(self, body):

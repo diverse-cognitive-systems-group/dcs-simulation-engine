@@ -116,6 +116,7 @@ class SimulationRun:
             session_id=status_frame.session_id,
             turns=status_frame.turns,
             exited=status_frame.exited,
+            exit_reason=status_frame.exit_reason,
         )
         return self
 

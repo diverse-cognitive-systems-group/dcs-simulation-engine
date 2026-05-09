@@ -104,23 +104,57 @@ async def _send_events(websocket: WebSocket, session_id: str, events: list[dict[
             event_type=event_type,  # type: ignore[arg-type]
             content=str(event.get("content") or ""),
             event_id=str(event.get("event_id")) if event.get("event_id") else None,
+            failure_type=event.get("failure_type"),
+            retries_remaining=event.get("retries_remaining"),
         )
         await websocket.send_json(frame.model_dump(mode="json"))
 
 
-async def _send_turn_end(websocket: WebSocket, session_id: str, *, turns: int, exited: bool) -> None:
+def _last_failure_type(events: list[dict[str, Any]]) -> str | None:
+    """Return the most recent machine-readable failure type from a turn."""
+    for event in reversed(events):
+        failure_type = event.get("failure_type")
+        if isinstance(failure_type, str) and failure_type:
+            return failure_type
+    return None
+
+
+async def _send_turn_end(
+    websocket: WebSocket,
+    session_id: str,
+    *,
+    turns: int,
+    exited: bool,
+    failure_type: str | None = None,
+    exit_reason: str | None = None,
+) -> None:
     """Send the standardized turn-end frame."""
-    frame = WSTurnEndFrame(session_id=session_id, turns=turns, exited=exited)
+    frame = WSTurnEndFrame(
+        session_id=session_id,
+        turns=turns,
+        exited=exited,
+        failure_type=failure_type,
+        exit_reason=exit_reason,
+    )
     await websocket.send_json(frame.model_dump(mode="json"))
 
 
-async def _send_status(websocket: WebSocket, session_id: str, *, status_value: str, turns: int, exited: bool) -> None:
+async def _send_status(
+    websocket: WebSocket,
+    session_id: str,
+    *,
+    status_value: str,
+    turns: int,
+    exited: bool,
+    exit_reason: str | None = None,
+) -> None:
     """Send the standardized status frame."""
     frame = WSStatusFrame(
         session_id=session_id,
         status=status_value,  # type: ignore[arg-type]
         turns=turns,
         exited=exited,
+        exit_reason=exit_reason,
     )
     await websocket.send_json(frame.model_dump(mode="json"))
 
@@ -376,6 +410,8 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                 session_id,
                 turns=entry.manager.turns,
                 exited=entry.manager.exited,
+                failure_type=_last_failure_type(opening_events),
+                exit_reason=entry.manager.exit_reason if entry.manager.exited else None,
             )
 
         while True:
@@ -405,6 +441,8 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                     session_id,
                     turns=entry.manager.turns,
                     exited=entry.manager.exited,
+                    failure_type=_last_failure_type(events),
+                    exit_reason=entry.manager.exit_reason if entry.manager.exited else None,
                 )
                 continue
 
@@ -416,6 +454,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                     status_value=status_value,
                     turns=entry.manager.turns,
                     exited=entry.manager.exited,
+                    exit_reason=entry.manager.exit_reason if entry.manager.exited else None,
                 )
                 continue
 

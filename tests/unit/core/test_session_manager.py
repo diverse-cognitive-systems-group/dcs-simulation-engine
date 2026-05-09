@@ -15,6 +15,9 @@ pytestmark = [pytest.mark.unit]
         ("game_complete", "game_complete"),
         ("received close request", "user_close_button"),
         ("retry budget exhausted", "validation_retry_exhausted"),
+        ("player_validation_retry_exhausted", "player_validation_retry_exhausted"),
+        ("simulator_validation_retry_exhausted", "simulator_validation_retry_exhausted"),
+        ("internal_error", "internal_error"),
         ("server_error", "server_error"),
     ],
 )
