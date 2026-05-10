@@ -44,6 +44,7 @@ class GoalHorizonGame(Game):
         self._capability_prediction_confidence = ""
         self._score: dict[str, Any] = {}
         self._awaiting_confidence = False
+        self._scene_count = 1
 
     @classmethod
     def create_from_context(cls, pc: CharacterRecord, npc: CharacterRecord, **kwargs: Any) -> "GoalHorizonGame":
@@ -71,6 +72,7 @@ class GoalHorizonGame(Game):
             "capability_prediction": self._capability_prediction,
             "capability_prediction_confidence": self._capability_prediction_confidence,
             "score": dict(self._score),
+            "scene_count": self._scene_count,
         }
 
     def _import_additional_state(self, state: dict[str, Any]) -> None:
@@ -84,6 +86,7 @@ class GoalHorizonGame(Game):
         self._capability_prediction_confidence = str(state.get("capability_prediction_confidence", ""))
         score = state.get("score", {})
         self._score = dict(score) if isinstance(score, dict) else {}
+        self._scene_count = int(state.get("scene_count", 1))
 
     @property
     def capability_prediction(self) -> str:
@@ -99,6 +102,18 @@ class GoalHorizonGame(Game):
     def score(self) -> dict[str, Any]:
         """Scorer result, or empty dict."""
         return self._score
+
+    def get_command_handler(self, cmd: str):
+        """Return a handler for the given command, or None if not recognized."""
+        if cmd == "new-scene":
+            return self._handle_new_scene
+        return None
+
+    async def _handle_new_scene(self) -> AsyncIterator[GameEvent]:
+        self._scene_count += 1
+        opening = await self._engine.chat(None)
+        self._filtered_transcript_buffer.append(f"{self.OPENING_PREFIX}{opening.content}")
+        yield GameEvent.now(type="ai", content=opening.content, command_response=True)
 
     def get_help_content(self) -> str:
         """Return the /help message content."""

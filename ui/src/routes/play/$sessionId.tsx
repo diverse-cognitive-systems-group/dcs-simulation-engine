@@ -40,6 +40,10 @@ const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
     { command: '/help', description: 'Show instructions.' },
     { command: '/abilities', description: 'Show character abilities.' },
     {
+      command: '/new-scene',
+      description: 'Start a new scene (characters retain memory of prior scenes).',
+    },
+    {
       command: '/finish',
       description:
         "Submit your prediction about the simulator character's capabilities and finish the game.",

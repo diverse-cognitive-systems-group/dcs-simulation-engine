@@ -142,6 +142,7 @@ class GoalHorizon:
 
 ---
 
+- Type `/new-scene` to start a new scene.
 - Type `/abilities` for character abilities.
 - Type `/help` at any time to see this message again.\
 """

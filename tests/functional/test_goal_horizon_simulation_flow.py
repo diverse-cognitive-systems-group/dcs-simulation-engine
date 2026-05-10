@@ -6,6 +6,7 @@ import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.games import ai_client
 from dcs_simulation_engine.games.ai_client import ScorerResult
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
@@ -99,6 +100,40 @@ async def test_goal_horizon_finish_flow_routes_follow_up_input(patch_llm_client,
     assert session.turns == 1
     assert session.game.capability_prediction == "Its goals seem bounded to immediate environmental regulation."
     assert not session.exited
+
+
+async def test_goal_horizon_new_scene_excludes_prior_openings(monkeypatch, _isolate_db_state, async_mongo_provider):
+    """The /new-scene command should ask for a materially different opener."""
+    captured_prompts: list[str] = []
+    opening_responses = [
+        '{"type": "ai", "content": "You enter a new space. In this space, a quiet lab bench waits beside a shallow dish."}',
+        '{"type": "ai", "content": "You enter a new space. In this space, a loading dock ramp blocks a rolling cart."}',
+    ]
+
+    async def fake_call_openrouter(messages, model):
+        _ = model
+        captured_prompts.append(messages[0].get("content", ""))
+        return opening_responses.pop(0)
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call_openrouter)
+
+    session = await _make_session(async_mongo_provider)
+    enter_events = await session.step_async("")
+    new_scene_events = await session.step_async("/new-scene")
+
+    assert [event["type"] for event in enter_events] == ["info", "ai"]
+    assert [event["type"] for event in new_scene_events] == ["ai"]
+    assert "loading dock ramp" in new_scene_events[0]["content"]
+    assert session.game._scene_count == 2
+
+    transcript = session.game.get_transcript()
+    assert "quiet lab bench waits" in transcript
+    assert "loading dock ramp" in transcript
+    assert "--- Scene" not in transcript
+
+    assert "Scene Exclusion Instructions" not in captured_prompts[0]
+    assert "Scene Exclusion Instructions" in captured_prompts[1]
+    assert "quiet lab bench waits" in captured_prompts[1]
 
 
 async def test_goal_horizon_scoring_falls_back_on_scorer_failure(patch_llm_client, _isolate_db_state, async_mongo_provider):
