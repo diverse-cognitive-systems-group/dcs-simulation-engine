@@ -5,14 +5,7 @@ description: |
 
 # USER INTERFACE OPTIONS
 ui:
-  # Engine always launches the API, however for human players use launch_gui: true to also launch the GUI web interface
-  launch_gui: true
   registration_required: false
-
-# PLAYERS ALLOWED
-players:
-  humans:
-    all: true
 
 # GAMES INCLUDED
 games:

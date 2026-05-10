@@ -43,7 +43,6 @@ def _run_config(*, overrides_by_game: dict[str, dict[str, Any]] | None = None) -
             "name": "shared-core-games",
             "description": "Shared core game functional test run",
             "ui": {"registration_required": False},
-            "players": {"humans": {"all": True}},
             "games": [
                 {
                     "name": game,

@@ -31,7 +31,29 @@ def test_run_config_rejects_unknown_top_level_fields() -> None:
 def test_run_config_rejects_unknown_nested_fields() -> None:
     """Nested sections should forbid unknown keys except strategy params."""
     payload = _minimal_config()
-    payload["ui"] = {"launch_gui": True, "theme": "dark"}
+    payload["ui"] = {"theme": "dark"}
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        RunConfig.model_validate(payload)
+
+
+def test_run_config_rejects_legacy_players_section() -> None:
+    """Player execution belongs to runtime harness options, not run config."""
+    payload = {
+        **_minimal_config(),
+        "players": {
+            "humans": {"all": True},
+        },
+    }
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        RunConfig.model_validate(payload)
+
+
+def test_run_config_rejects_legacy_launch_gui_setting() -> None:
+    """UI launch behavior belongs to engine start flags, not run config."""
+    payload = _minimal_config()
+    payload["ui"] = {"registration_required": True, "launch_gui": True}
 
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         RunConfig.model_validate(payload)

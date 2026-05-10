@@ -5,13 +5,7 @@ description: |
 
 # USER INTERFACE OPTIONS
 ui:
-  launch_gui: false
   registration_required: true
-
-# PLAYERS ALLOWED
-players:
-  humans:
-    all: true
 
 # GAMES INCLUDED
 games:

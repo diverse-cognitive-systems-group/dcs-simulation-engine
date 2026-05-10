@@ -112,7 +112,7 @@ def test_expert_evaluation_collects_expertise_and_stores_batch_assignment(
 
 
 def test_benchmark_ai_boots_without_human_participant_flow(async_mongo_provider) -> None:
-    """Benchmark AI is covered as an API-startable model-player run only."""
+    """Benchmark AI is covered as an API-startable benchmark run."""
     config = load_run_config("benchmark-ai")
 
     with example_client(async_mongo_provider, config) as client:
@@ -120,5 +120,3 @@ def test_benchmark_ai_boots_without_human_participant_flow(async_mongo_provider)
 
     assert server_config.status_code == 200
     assert server_config.json()["run_name"] == config.name
-    assert config.has_model_players is True
-    assert config.players.humans.all is False

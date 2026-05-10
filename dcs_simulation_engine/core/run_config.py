@@ -14,33 +14,7 @@ class RunConfigUI(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    launch_gui: bool = True
     registration_required: bool = True
-
-
-class RunConfigHumans(BaseModel):
-    """Human-player admission policy for a run."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    all: bool = True
-
-
-class RunConfigModelPlayer(BaseModel):
-    """One model player configured for a headless run."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: str
-
-
-class RunConfigPlayers(BaseModel):
-    """Player populations allowed or executed by a run."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    humans: RunConfigHumans = Field(default_factory=RunConfigHumans)
-    models: list[RunConfigModelPlayer] = Field(default_factory=list)
 
 
 class RunConfigGame(BaseModel):
@@ -77,7 +51,6 @@ class RunConfig(SerdeMixin, BaseModel):
     description: str = ""
     seed: int | None = None
     ui: RunConfigUI = Field(default_factory=RunConfigUI)
-    players: RunConfigPlayers = Field(default_factory=RunConfigPlayers)
     games: list[RunConfigGame] = Field(default_factory=list)
     next_game_strategy: RunConfigNextGameStrategy
     forms: list[Form] = Field(default_factory=list)
@@ -145,11 +118,6 @@ class RunConfig(SerdeMixin, BaseModel):
     def registration_required(self) -> bool:
         """Return whether human players must register before playing."""
         return self.ui.registration_required
-
-    @property
-    def has_model_players(self) -> bool:
-        """Return whether the run config includes model players."""
-        return bool(self.players.models)
 
     @property
     def game_names(self) -> list[str]:

@@ -1,28 +1,15 @@
 # METADATA
 name: Benchmark AI Performance
 description: |
-  An engine run configuration used for benchmarking AI model performance across games and characters. Players are AI models (provider + ID or custom) executed via the engine run harness.
+  An engine run configuration used for benchmarking AI model performance across games and characters. Model players are provided to the engine command and executed by the run harness.
 
 seed: 42
 
 # USER INTERFACE OPTIONS
 ui:
-  launch_gui: false
   registration_required: true
 
-# PLAYERS ALLOWED
-players:
-  humans:
-    all: false
-  models:
-    - id: openrouter:openai-gpt-4o
-    - id: openrouter:anthropic-claude-2
-    - id: openrouter:google-palm-2.0-pro
-    - id: openrouter:deepseek-odin-1.0
-    # OR custom models:
-    # - id: "../oe/model.py"
-
-    # GAMES INCLUDED
+# GAMES INCLUDED
 games:
   - name: Infer Intent
     overrides:
