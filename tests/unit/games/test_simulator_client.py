@@ -317,12 +317,46 @@ async def test_simulator_client_updater_succeeds_after_one_simulator_validation_
 
 
 @pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_excludes_prior_opening_scenes_from_later_openers(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Later opener prompts should tell the model not to reuse earlier scenes."""
+    captured_prompts: list[str] = []
+    responses = [
+        '{"type": "ai", "content": "You enter a new space. In this space, a quiet lab bench waits."}',
+        '{"type": "ai", "content": "You enter a new space. In this space, a crowded loading dock blocks the path."}',
+    ]
+
+    async def fake_call(messages, model):
+        _ = model
+        captured_prompts.append(messages[0]["content"])
+        return responses.pop(0)
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(pc=pc, npc=npc)
+
+    await client.chat(None)
+    await client.chat(None)
+
+    assert "Scene Exclusion Instructions" not in captured_prompts[0]
+    assert "Scene Exclusion Instructions" in captured_prompts[1]
+    assert "a quiet lab bench waits" in captured_prompts[1]
+    assert client._opening_scenes == [
+        "You enter a new space. In this space, a quiet lab bench waits.",
+        "You enter a new space. In this space, a crowded loading dock blocks the path.",
+    ]
+
+
+@pytest.mark.unit
 def test_simulator_client_state_round_trip_preserves_resume_context(pc: CharacterRecord, npc: CharacterRecord) -> None:
     """SimulatorClient should persist all mutable prompt context needed for resume."""
     client = SimulatorClient(pc=pc, npc=npc)
     client._history = ["Opening scene: A quiet room.", "Player (PC): I wave."]
     client._transcript_events = ["Opening scene: A quiet room.", "Player (PC): I wave.", "Simulator: The NPC nods."]
     client._opening_metadata = {"shared_goal": "Calmly solve the puzzle."}
+    client._opening_scenes = ["A quiet room."]
 
     snapshot = client.export_state()
 
@@ -333,3 +367,32 @@ def test_simulator_client_state_round_trip_preserves_resume_context(pc: Characte
     assert restored._history == client._history
     assert restored._transcript_events == client._transcript_events
     assert restored._opening_metadata == client._opening_metadata
+    assert restored._opening_scenes == client._opening_scenes
+
+
+@pytest.mark.unit
+def test_simulator_client_import_state_derives_opening_scenes_from_legacy_history(
+    pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Older snapshots without opening_scenes should still preserve scene avoidance after resume."""
+    client = SimulatorClient(pc=pc, npc=npc)
+
+    client.import_state(
+        {
+            "history": [
+                "Opening scene: A quiet room.",
+                "Player (PC): I wave.",
+                "Simulator: The NPC nods.",
+                "Opening scene: A busy hallway.",
+            ],
+            "transcript_events": [
+                "Opening scene: A quiet room.",
+                "Player (PC): I wave.",
+                "Simulator: The NPC nods.",
+                "Opening scene: A busy hallway.",
+            ],
+            "opening_metadata": {},
+        }
+    )
+
+    assert client._opening_scenes == ["A quiet room.", "A busy hallway."]

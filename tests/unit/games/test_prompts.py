@@ -69,6 +69,22 @@ def test_build_opener_prompt_renders_character_context(character_pair) -> None:
     assert "NPC (Simulated Character)" in prompt
     assert "Player long" in prompt
     assert "NPC long" in prompt
+    assert "Scene Exclusion Instructions" not in prompt
+
+
+@pytest.mark.unit
+def test_build_opener_prompt_optionally_renders_scene_exclusions(character_pair) -> None:
+    """Opener prompt should include scene exclusions only when callers provide them."""
+    pc, npc = character_pair
+    prompt = build_opener_prompt(
+        pc,
+        npc,
+        excluded_scenes=["You enter a new space. In this space, a quiet lab bench waits."],
+    )
+
+    assert "Scene Exclusion Instructions" in prompt
+    assert "Do not reuse or closely imitate" in prompt
+    assert "a quiet lab bench waits" in prompt
 
 
 @pytest.mark.unit

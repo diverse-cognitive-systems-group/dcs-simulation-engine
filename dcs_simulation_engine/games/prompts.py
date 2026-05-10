@@ -274,7 +274,7 @@ OPENER = """You set up the scene for a text-based role-playing game. Describe ON
 - Goals: {npc_goals}
 - Example Scenes: {npc_scenarios}
 
-Rules:
+{scene_exclusion_instructions}Rules:
 - Begin with: "You enter a new space. In this space,"
 - Describe the immediate surroundings where both characters could plausibly be present.
 - Use 1–2 sentences only.
@@ -839,9 +839,37 @@ def _render_prompt(template: str, **context: object) -> str:
     return template.format(**normalized_context)
 
 
-def build_opener_prompt(pc: CharacterRecord, npc: CharacterRecord, *, template: str = OPENER) -> str:
+def _build_scene_exclusion_instructions(excluded_scenes: list[str] | None) -> str:
+    """Render optional instructions telling the opener not to repeat prior scenes."""
+    scenes = [str(scene).strip() for scene in excluded_scenes or [] if str(scene).strip()]
+    if not scenes:
+        return ""
+
+    formatted_scenes = "\n".join(f"- {scene}" for scene in scenes)
+    return (
+        "Scene Exclusion Instructions:\n"
+        "Do not reuse or closely imitate any of these previous scene setups:\n"
+        f"{formatted_scenes}\n"
+        "Generate a materially different setting, situation, and immediate context.\n\n"
+    )
+
+
+def build_opener_prompt(
+    pc: CharacterRecord,
+    npc: CharacterRecord,
+    *,
+    template: str = OPENER,
+    excluded_scenes: list[str] | None = None,
+) -> str:
     """Render the opening-scene prompt."""
-    return _render_prompt(template, **_build_character_context(pc, npc))
+    return _render_prompt(
+        template,
+        **_build_character_context(
+            pc,
+            npc,
+            scene_exclusion_instructions=_build_scene_exclusion_instructions(excluded_scenes),
+        ),
+    )
 
 
 def build_updater_prompt(

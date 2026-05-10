@@ -198,6 +198,8 @@ class ParsedSimulatorResponse(NamedTuple):
 class SimulatorClient:
     """Thin orchestrator around configurable validation and simulator advancement."""
 
+    _OPENING_SCENE_PREFIX = "Opening scene: "
+
     def __init__(
         self,
         *,
@@ -217,6 +219,7 @@ class SimulatorClient:
         self._history: list[str] = []
         self._transcript_events: list[str] = []
         self._opening_metadata: dict[str, Any] = {}
+        self._opening_scenes: list[str] = []
 
         self._player_turn_validators = (
             list(player_turn_validators) if player_turn_validators is not None else list(DEFAULT_PLAYER_TURN_VALIDATORS)
@@ -257,6 +260,7 @@ class SimulatorClient:
         """Restore conversation history from a snapshot."""
         self._history = list(history)
         self._transcript_events = list(history)
+        self._opening_scenes = self._derive_opening_scenes(self._history)
 
     def export_state(self) -> dict[str, Any]:
         """Return all mutable simulator state needed for pause/resume."""
@@ -264,6 +268,7 @@ class SimulatorClient:
             "history": list(self._history),
             "transcript_events": list(self._transcript_events),
             "opening_metadata": dict(self._opening_metadata),
+            "opening_scenes": list(self._opening_scenes),
         }
 
     def import_state(self, state: dict[str, Any]) -> None:
@@ -271,6 +276,7 @@ class SimulatorClient:
         history = state.get("history", [])
         transcript_events = state.get("transcript_events", history)
         opening_metadata = state.get("opening_metadata", {})
+        opening_scenes = state.get("opening_scenes")
 
         self._history = [str(entry) for entry in history] if isinstance(history, list) else []
         if isinstance(transcript_events, list):
@@ -278,6 +284,21 @@ class SimulatorClient:
         else:
             self._transcript_events = list(self._history)
         self._opening_metadata = dict(opening_metadata) if isinstance(opening_metadata, dict) else {}
+        if isinstance(opening_scenes, list):
+            self._opening_scenes = [str(scene) for scene in opening_scenes if str(scene).strip()]
+        else:
+            self._opening_scenes = self._derive_opening_scenes(self._history)
+
+    @classmethod
+    def _derive_opening_scenes(cls, history: list[str]) -> list[str]:
+        """Recover opening scene text from legacy history-only snapshots."""
+        scenes: list[str] = []
+        for entry in history:
+            if entry.startswith(cls._OPENING_SCENE_PREFIX):
+                scene = entry.removeprefix(cls._OPENING_SCENE_PREFIX).strip()
+                if scene:
+                    scenes.append(scene)
+        return scenes
 
     @property
     def player_turn_validators(self) -> list[str]:
@@ -336,7 +357,12 @@ class SimulatorClient:
 
     def _build_opening_scene_prompt(self) -> str:
         """Render the configured opening-scene template."""
-        return build_opener_prompt(self._pc, self._npc, template=self._opener_template)
+        return build_opener_prompt(
+            self._pc,
+            self._npc,
+            template=self._opener_template,
+            excluded_scenes=self._opening_scenes,
+        )
 
     def _build_updater_prompt(self, *, user_input: str) -> str:
         """Render the configured simulator updater prompt."""
@@ -552,6 +578,7 @@ class SimulatorClient:
         if opening.type == "error":
             raise ValueError("Opener returned an invalid JSON payload.")
         self._opening_metadata = dict(opening.metadata)
+        self._opening_scenes.append(opening.content)
         self._history.append(f"Opening scene: {opening.content}")
         self._transcript_events.append(f"Opening scene: {opening.content}")
         return opening
