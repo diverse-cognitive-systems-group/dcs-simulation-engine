@@ -1,7 +1,7 @@
 # METADATA
 name: Benchmark AI Performance
 description: |
-  An engine run configuration used for benchmarking AI model performance across games and characters. Model players are provided to the engine command and executed by the run harness.
+  An engine run configuration used for benchmarking AI model performance across games and characters. Model players can be driven by the autoplay client against a running engine API.
 
 seed: 42
 

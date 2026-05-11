@@ -10,7 +10,6 @@ import urllib.error
 import urllib.request
 from importlib import metadata
 from pathlib import Path
-from typing import Annotated
 
 import typer
 import yaml
@@ -75,19 +74,8 @@ def start(
         envvar="DCS_ENGINE_TIMEOUT_SECONDS",
         help="Seconds to wait for services to become ready.",
     ),
-    player_models: Annotated[
-        list[str] | None,
-        typer.Option(
-            "--player-model",
-            help=(
-                "Run one automated model player after the API is ready. "
-                "Repeat for multiple players. Supported forms: openrouter:<model-id>, python:<path.py>."
-            ),
-        ),
-    ] = None,
 ) -> None:
     """Start the engine."""
-    player_models = list(player_models or [])
     try:
         source_assets = resolve_assets(Path.cwd())
     except FileNotFoundError as exc:
@@ -108,7 +96,6 @@ def start(
 
     echo(ctx, "Checking prerequisites...")
     _ensure_openrouter_key(ctx)
-    _validate_player_models(ctx, player_models)
     echo(ctx, "✓ API keys provided", style="success")
     _ensure_docker_ready(ctx)
     echo(ctx, "✓ Docker ready", style="success")
@@ -166,9 +153,6 @@ def start(
             raise typer.Exit(code=1) from exc
         echo(ctx, "✓ Engine API ready", style="success")
         echo(ctx, f"Engine running at {api_url}")
-
-        if player_models:
-            _start_model_harness(ctx, api_url=api_url, player_models=player_models, timeout_seconds=timeout_seconds)
 
         if headless:
             echo(ctx, "⚠ Headless mode: default UI not started", style="warning")
@@ -284,45 +268,6 @@ def _ensure_openrouter_key(ctx: typer.Context) -> None:
     echo(ctx, "OPENROUTER_API_KEY is required to run the DCS engine locally.", style="error")
     echo(ctx, "Set it in your shell or .env file, then rerun dcs engine start.")
     raise typer.Exit(code=1)
-
-
-def _validate_player_models(ctx: typer.Context, player_models: list[str]) -> None:
-    """Validate player model specs before starting Docker services."""
-    for spec in player_models:
-        provider, separator, value = spec.partition(":")
-        provider = provider.strip().lower()
-        value = value.strip()
-        if not separator or not provider or not value:
-            echo(ctx, f"Invalid --player-model value: {spec!r}", style="error")
-            echo(ctx, "Use openrouter:<model-id> or python:<path.py>.")
-            raise typer.Exit(code=1)
-
-        if provider == "openrouter":
-            if not os.getenv("OPENROUTER_API_KEY", "").strip():
-                echo(ctx, "OPENROUTER_API_KEY is required for --player-model openrouter:<model-id>.", style="error")
-                raise typer.Exit(code=1)
-            continue
-
-        if provider == "python":
-            path = Path(value).expanduser()
-            if not path.is_file():
-                echo(ctx, f"Python player model not found: {path}", style="error")
-                raise typer.Exit(code=1)
-            if path.suffix != ".py":
-                echo(ctx, f"Python player model must be a .py file: {path}", style="error")
-                raise typer.Exit(code=1)
-            continue
-
-        echo(ctx, f"Unsupported --player-model provider: {provider}", style="error")
-        echo(ctx, "Supported providers: openrouter, python.")
-        raise typer.Exit(code=1)
-
-
-def _start_model_harness(ctx: typer.Context, *, api_url: str, player_models: list[str], timeout_seconds: int) -> None:
-    """Start the model-player harness for validated player model specs."""
-    _ = timeout_seconds
-    echo(ctx, f"Starting run harness for {len(player_models)} model player(s) against {api_url}...")
-    echo(ctx, "✓ Run harness requested", style="success")
 
 
 def _ensure_docker_ready(ctx: typer.Context) -> None:

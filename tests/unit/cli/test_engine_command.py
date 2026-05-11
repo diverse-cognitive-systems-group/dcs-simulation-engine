@@ -75,8 +75,6 @@ def test_engine_start_starts_compose_stack_with_config_override(monkeypatch: pyt
     monkeypatch.setattr(engine_command, "_run_checked", run_checked)
     monkeypatch.setattr(engine_command, "_wait_for_db", MagicMock())
     monkeypatch.setattr(engine_command, "_wait_for_http", MagicMock())
-    start_model_harness = MagicMock()
-    monkeypatch.setattr(engine_command, "_start_model_harness", start_model_harness)
 
     result = CliRunner().invoke(
         app,
@@ -106,7 +104,6 @@ def test_engine_start_starts_compose_stack_with_config_override(monkeypatch: pyt
     assert "✓ Database ready" in result.stdout
     assert "→ Access the app ui at: http://localhost:5174" in result.stdout
     assert "Stop: dcs engine stop" in result.stdout
-    start_model_harness.assert_not_called()
 
 
 @pytest.mark.unit
@@ -125,8 +122,6 @@ def test_engine_start_headless_skips_ui_and_can_follow_logs(monkeypatch: pytest.
     monkeypatch.setattr(engine_command, "_wait_for_db", MagicMock())
     monkeypatch.setattr(engine_command, "_wait_for_http", MagicMock())
     monkeypatch.setattr(engine_command, "_follow_logs", follow_logs)
-    start_model_harness = MagicMock()
-    monkeypatch.setattr(engine_command, "_start_model_harness", start_model_harness)
 
     result = CliRunner().invoke(
         app,
@@ -148,109 +143,6 @@ def test_engine_start_headless_skips_ui_and_can_follow_logs(monkeypatch: pytest.
     follow_logs.assert_called_once()
     assert follow_logs.call_args.kwargs["services"] == ["mongo", "api"]
     assert "Headless mode" in result.stdout
-    start_model_harness.assert_not_called()
-
-
-@pytest.mark.unit
-def test_engine_start_accepts_repeatable_player_model_and_starts_harness(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    """Repeatable --player-model values should be validated and handed to the model harness."""
-    custom_player = tmp_path / "player.py"
-    custom_player.write_text("async def decide(context): return 'I look around.'\n", encoding="utf-8")
-    commands: list[list[str]] = []
-    start_model_harness = MagicMock()
-
-    def run_checked(command: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        _ = env
-        commands.append(command)
-        return subprocess.CompletedProcess(command, 0)
-
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(engine_command, "_ensure_docker_ready", MagicMock())
-    monkeypatch.setattr(engine_command, "_run_checked", run_checked)
-    monkeypatch.setattr(engine_command, "_wait_for_db", MagicMock())
-    monkeypatch.setattr(engine_command, "_wait_for_http", MagicMock())
-    monkeypatch.setattr(engine_command, "_start_model_harness", start_model_harness)
-
-    result = CliRunner().invoke(
-        app,
-        [
-            "engine",
-            "start",
-            "--config",
-            "examples/run_configs/demo.yml",
-            "--headless",
-            "--no-build",
-            "--api-port",
-            "8123",
-            "--player-model",
-            "openrouter:openai/gpt-4o",
-            "--player-model",
-            f"python:{custom_player}",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert commands[-1][-2:] == ["mongo", "api"]
-    assert "ui" not in commands[-1]
-    start_model_harness.assert_called_once()
-    assert start_model_harness.call_args.kwargs["api_url"] == "http://localhost:8123"
-    assert start_model_harness.call_args.kwargs["player_models"] == [
-        "openrouter:openai/gpt-4o",
-        f"python:{custom_player}",
-    ]
-
-
-@pytest.mark.unit
-def test_engine_start_rejects_invalid_player_model_before_docker(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Malformed --player-model values should fail without touching Docker."""
-    docker_ready = MagicMock()
-
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(engine_command, "_ensure_docker_ready", docker_ready)
-
-    result = CliRunner().invoke(
-        app,
-        [
-            "engine",
-            "start",
-            "--config",
-            "examples/run_configs/demo.yml",
-            "--player-model",
-            "openrouter:",
-        ],
-    )
-
-    assert result.exit_code == 1
-    assert "Invalid --player-model value" in result.stdout
-    docker_ready.assert_not_called()
-
-
-@pytest.mark.unit
-def test_engine_start_rejects_missing_python_player_model_before_docker(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Python model player specs should point at an existing .py file."""
-    docker_ready = MagicMock()
-
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(engine_command, "_ensure_docker_ready", docker_ready)
-
-    result = CliRunner().invoke(
-        app,
-        [
-            "engine",
-            "start",
-            "--config",
-            "examples/run_configs/demo.yml",
-            "--player-model",
-            "python:/no/such/player.py",
-        ],
-    )
-
-    assert result.exit_code == 1
-    assert "Python player model not found" in result.stdout
-    docker_ready.assert_not_called()
 
 
 @pytest.mark.unit

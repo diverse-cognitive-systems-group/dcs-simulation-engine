@@ -88,6 +88,7 @@ notebooks = [
 # For example, "my-app-cli" = "my_app.main:main" below will allow a user to type my-app-cli" in the terminal
 # after this package is pip installed, to invoke the main function in the my_app package.
 [project.scripts]
+autoplay = "autoplay.cli:app"
 dcs = "dcs_simulation_engine.cli.app:app"
 
 [project.urls]
@@ -127,7 +128,7 @@ exclude = [
   "**/*.ipynb", # all notebooks
 ]
 line-length = 140
-src = ["dcs_simulation_engine", "tests"]
+src = ["autoplay", "dcs_simulation_engine", "tests"]
 
 [tool.ruff.lint]
 exclude = [
@@ -160,7 +161,7 @@ py-modules = ["__init__"]
 
 [tool.setuptools.packages.find]
 # https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
-include = ["dcs_simulation_engine*"]
+include = ["autoplay*", "dcs_simulation_engine*"]
 
 [tool.setuptools.package-data]
 "dcs_simulation_engine" = ["package_assets/**/*"]
