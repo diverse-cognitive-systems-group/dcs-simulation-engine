@@ -2,6 +2,7 @@
 
 from autoplay.driver import PlayerHarness
 from autoplay.players import (
+    MODEL_PLAYER_SYSTEM_PROMPT,
     ApiPlayer,
     OpenRouterPlayer,
     PythonModulePlayer,
@@ -19,6 +20,7 @@ __all__ = [
     "ApiPlayer",
     "AssignmentResult",
     "HarnessResult",
+    "MODEL_PLAYER_SYSTEM_PROMPT",
     "OpenRouterPlayer",
     "PlayerHarness",
     "PlayerContext",

@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import logging
 import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -11,6 +12,16 @@ import httpx
 from autoplay.types import PlayerContext
 
 _OPENROUTER_CHAT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
+MODEL_PLAYER_SYSTEM_PROMPT = (
+    "You are playing a roleplaying game as the player character. "
+    "The visible game context may include info messages that explain the objective, available commands, and how to finish. "
+    "Read those messages carefully before choosing an action. "
+    "If the game exposes /help, you may use it to request instructions. "
+    "Return exactly one next player input. "
+    "Do not include explanation or commentary."
+)
+
+logger = logging.getLogger("autoplay")
 
 
 class ApiPlayer(Protocol):
@@ -60,6 +71,7 @@ class OpenRouterPlayer:
         self.model_id = f"openrouter:{model_id.strip()}"
         self._openrouter_model = model_id.strip()
         self._timeout = timeout
+        self.system_prompt = MODEL_PLAYER_SYSTEM_PROMPT
 
     async def next_input(self, context: PlayerContext) -> str:
         """Ask the configured OpenRouter model for one player input."""
@@ -70,19 +82,29 @@ class OpenRouterPlayer:
         messages = [
             {
                 "role": "system",
-                "content": (
-                    "You are playing a DCS simulation game as the player character. "
-                    "Return exactly one next player input. Use slash commands only when appropriate. "
-                    "Do not explain your reasoning outside the player input."
-                ),
+                "content": self.system_prompt,
             },
             {"role": "user", "content": _format_context(context)},
         ]
+        payload = {"model": self._openrouter_model, "messages": messages}
+        logger.info(
+            "openrouter_prompt %s",
+            json.dumps(
+                {
+                    "model_id": self.model_id,
+                    "session_id": context.session_id,
+                    "turns": context.turns,
+                    "payload": payload,
+                },
+                ensure_ascii=True,
+                sort_keys=True,
+            ),
+        )
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
                 _OPENROUTER_CHAT_ENDPOINT,
                 headers={"Authorization": f"Bearer {key}"},
-                json={"model": self._openrouter_model, "messages": messages},
+                json=payload,
             )
             response.raise_for_status()
         payload = response.json()

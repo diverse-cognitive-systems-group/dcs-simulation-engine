@@ -1,8 +1,10 @@
 """Command line interface for autoplay."""
 
 import asyncio
+import json
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -83,6 +85,11 @@ def run(
         min=1.0,
         help="HTTP/WebSocket timeout in seconds.",
     ),
+    log_dir: Path = typer.Option(
+        Path("logs"),
+        "--log-dir",
+        help="Directory for autoplay run logs.",
+    ),
     quiet: bool = typer.Option(
         False,
         "--quiet",
@@ -97,7 +104,7 @@ def run(
         echo("At least one --model is required.", style="error", quiet=quiet)
         raise typer.Exit(code=1)
 
-    _configure_logging(quiet=quiet)
+    log_path = _configure_logging(log_dir=log_dir, quiet=quiet)
     try:
         _preflight_specs(specs)
     except Exception as exc:
@@ -109,6 +116,15 @@ def run(
     except Exception as exc:
         echo(str(exc), style="error", quiet=quiet)
         raise typer.Exit(code=1) from exc
+
+    _print_run_summary(
+        base_url=base_url,
+        players=players,
+        max_turns_per_assignment=max_turns_per_assignment,
+        timeout=timeout,
+        log_path=log_path,
+        quiet=quiet,
+    )
 
     try:
         results = asyncio.run(
@@ -160,12 +176,23 @@ async def _run_players(*, base_url: str, players: list, max_turns_per_assignment
     return results
 
 
-def _configure_logging(*, quiet: bool) -> None:
+def _configure_logging(*, log_dir: Path, quiet: bool) -> Path:
     level = logging.ERROR if quiet else logging.WARNING
     logging.basicConfig(level=level, format="%(message)s")
-    logging.getLogger("autoplay").setLevel(logging.CRITICAL)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"autoplay-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S-%f')}.log"
+    logger = logging.getLogger("autoplay")
+    for handler in list(logger.handlers):
+        logger.removeHandler(handler)
+        handler.close()
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("websockets").setLevel(logging.WARNING)
+    return log_path
 
 
 def _load_environment() -> None:
@@ -182,29 +209,89 @@ def _preflight_specs(specs: list[str]) -> None:
             raise RuntimeError("OPENROUTER_API_KEY is required for --model openrouter:<model-id>.")
 
 
+def _print_run_summary(
+    *,
+    base_url: str,
+    players: list,
+    max_turns_per_assignment: int,
+    timeout: float,
+    log_path: Path,
+    quiet: bool,
+) -> None:
+    echo("Autoplay run", style="white", quiet=quiet)
+    echo(f"  API: {base_url}", style="dim", quiet=quiet)
+    echo(f"  Models: {', '.join(player.model_id for player in players)}", style="dim", quiet=quiet)
+    echo(f"  Max turns per assignment: {max_turns_per_assignment}", style="dim", quiet=quiet)
+    echo(f"  Timeout: {timeout:g}s", style="dim", quiet=quiet)
+    echo(f"  Log file: {log_path}", style="dim", quiet=quiet)
+    prompts = sorted({str(getattr(player, "system_prompt", "")) for player in players if getattr(player, "system_prompt", "")})
+    for index, prompt in enumerate(prompts, start=1):
+        label = "Model system prompt" if len(prompts) == 1 else f"Model system prompt {index}"
+        echo(f"  {label}: {prompt}", style="dim", quiet=quiet)
+    logging.getLogger("autoplay").info(
+        "run_config %s",
+        json.dumps(
+            {
+                "base_url": base_url,
+                "models": [player.model_id for player in players],
+                "max_turns_per_assignment": max_turns_per_assignment,
+                "timeout": timeout,
+                "log_path": str(log_path),
+                "system_prompts": prompts,
+            },
+            ensure_ascii=True,
+            sort_keys=True,
+        ),
+    )
+
+
 def _event_printer(*, quiet: bool):
+    state: dict[str, dict[str, int]] = {}
+
     def print_event(event: str, payload: dict) -> None:
+        _log_event(event, payload)
         model_id = payload["model_id"]
+        model_state = state.setdefault(model_id, {"assignment": 0, "turn": 0})
         if event == "player_started":
             echo(f"  {model_id}: registered player {payload['player_id']} for {payload['run_name']}", style="dim", quiet=quiet)
         elif event == "assignment_started":
+            model_state["assignment"] += 1
+            model_state["turn"] = 0
+            characters = _character_summary(payload)
+            echo("", quiet=quiet)
+            echo(f"Assignment {model_state['assignment']}: {payload['game_name']}", style="white", quiet=quiet)
+            echo(f"Characters: {characters}", style="white", quiet=quiet)
+            echo(f"Session: {payload['session_id']}", style="dim", quiet=quiet)
+        elif event == "turn_sent":
+            model_state["turn"] += 1
+            echo("", quiet=quiet)
+            echo(f"Turn {model_state['turn']}", style="white", quiet=quiet)
+            echo(f"Player: {_shorten(str(payload['input']))}", style="dim", quiet=quiet)
+        elif event == "message_received":
+            _print_received_message(payload, quiet=quiet)
+        elif event == "assignment_exited":
+            turn_count = model_state.get("turn", 0)
+            echo("", quiet=quiet)
             echo(
-                f"  {model_id}: playing {payload['game_name']} "
-                f"(assignment {payload['assignment_id']}, session {payload['session_id']})",
-                style="dim",
+                f"Assignment {model_state['assignment']} ended after {turn_count} turn(s)",
+                style="warning",
                 quiet=quiet,
             )
-        elif event == "turn_sent":
-            echo(f"  {model_id}: turn {payload['turns']} -> {_shorten(str(payload['input']))}", style="dim", quiet=quiet)
-        elif event == "assignment_exited":
             echo(
-                f"  {model_id}: assignment exited after {payload['turns']} turn(s): {payload['reason']}",
-                style="dim",
+                f"Reason: {payload['reason']}",
+                style="warning",
                 quiet=quiet,
             )
         elif event == "assignment_failed":
+            turn_count = model_state.get("turn", 0)
+            echo("", quiet=quiet)
             echo(
-                f"  {model_id}: assignment failed after {payload['turns']} turn(s): {payload['error']}",
+                f"Assignment {model_state['assignment']} failed after {turn_count} turn(s)",
+                style="error",
+                quiet=quiet,
+            )
+            echo(
+                f"Error: {payload['error']}",
                 style="error",
                 quiet=quiet,
             )
@@ -214,6 +301,43 @@ def _event_printer(*, quiet: bool):
             echo(f"  {model_id}: no assignment available", style="warning", quiet=quiet)
 
     return print_event
+
+
+def _print_received_message(payload: dict, *, quiet: bool) -> None:
+    event_type = str(payload.get("event_type") or "")
+    role = str(payload.get("role") or "")
+    content = _shorten(str(payload.get("content") or ""))
+    if not content:
+        return
+
+    if event_type == "error":
+        echo(f"Error: {content}", style="error", quiet=quiet)
+    elif event_type == "warning":
+        echo(f"Warning: {content}", style="warning", quiet=quiet)
+    elif event_type == "info":
+        echo(f"Info: {content}", style="white", quiet=quiet)
+    elif role == "simulator":
+        echo(f"Simulator: {content}", style="dim", quiet=quiet)
+    else:
+        echo(f"Server: {content}", style="dim", quiet=quiet)
+
+
+def _log_event(event: str, payload: dict) -> None:
+    logging.getLogger("autoplay").info(
+        "event %s",
+        json.dumps({"event": event, **payload}, ensure_ascii=True, sort_keys=True),
+    )
+
+
+def _character_summary(payload: dict) -> str:
+    pc_hid = str(payload.get("pc_hid") or "")
+    npc_hid = str(payload.get("npc_hid") or "")
+    labels = []
+    if pc_hid:
+        labels.append(f"PC: {pc_hid}")
+    if npc_hid:
+        labels.append(f"NPC: {npc_hid}")
+    return ", ".join(labels) if labels else "unknown"
 
 
 def _shorten(text: str, limit: int = 96) -> str:

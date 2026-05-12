@@ -177,6 +177,10 @@ class PlayerHarness:
             assignment_id=assignment_id,
             session_id=session_id,
             game_name=str(assignment.get("game_name") or ""),
+            pc_hid=str(assignment.get("pc_hid") or ""),
+            npc_hid=str(assignment.get("npc_hid") or ""),
+            player_character_name=str(assignment.get("player_character_name") or ""),
+            simulator_character_name=str(assignment.get("simulator_character_name") or ""),
         )
 
         try:
@@ -185,6 +189,7 @@ class PlayerHarness:
                 opening_events, turn_end = await self._recv_until_turn_end(ws)
                 history.extend(self._turns_from_events(opening_events))
                 turns = int(turn_end.get("turns") or 0)
+                self._emit_turns(opening_events, assignment_id=assignment_id, session_id=session_id, turns=turns)
                 if turn_end.get("exited"):
                     return AssignmentResult(
                         assignment_id=assignment_id,
@@ -227,6 +232,7 @@ class PlayerHarness:
                     events, turn_end = await self._recv_until_turn_end(ws)
                     history.extend(self._turns_from_events(events))
                     turns = int(turn_end.get("turns") or turns)
+                    self._emit_turns(events, assignment_id=assignment_id, session_id=session_id, turns=turns)
                     last_error = self._last_error(events)
                     if turn_end.get("exited"):
                         logger.info(
@@ -311,6 +317,21 @@ class PlayerHarness:
         if self._on_event is None:
             return
         self._on_event(event, {"model_id": self.player.model_id, **payload})
+
+    def _emit_turns(self, events: list[dict[str, Any]], *, assignment_id: str, session_id: str, turns: int) -> None:
+        for turn in self._turns_from_events(events):
+            if not turn.content.strip():
+                continue
+            self._emit(
+                "message_received",
+                assignment_id=assignment_id,
+                session_id=session_id,
+                turns=turns,
+                role=turn.role,
+                event_type=turn.event_type,
+                content=turn.content,
+                failure_type=turn.failure_type,
+            )
 
     def _ws_url(self, session_id: str) -> str:
         parsed = urlparse(self.base_url)
