@@ -102,14 +102,6 @@ function normalizeGameName(value: string): string {
   return value.replace(/[\s_-]+/g, '').toLowerCase()
 }
 
-function formatElapsed(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
 function shuffleMessages(messages: string[]): string[] {
   const shuffled = [...messages]
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -144,7 +136,6 @@ function PlayPage() {
   const [input, setInput] = useState('')
   const [feedbackPendingEventId, setFeedbackPendingEventId] = useState<string | null>(null)
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [thinkingMessageIndex, setThinkingMessageIndex] = useState(0)
   const [longThinking, setLongThinking] = useState(false)
   const [thinkingMessageQueue, setThinkingMessageQueue] = useState(() =>
@@ -153,7 +144,6 @@ function PlayPage() {
   const [longThinkingMessageQueue, setLongThinkingMessageQueue] = useState(() =>
     shuffleMessages(LONG_THINKING_MESSAGES),
   )
-  const startTimeRef = useRef(Date.now())
   // bottomRef is attached to a sentinel div at the end of the message list so we can
   // scroll it into view whenever a new message arrives.
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -190,16 +180,6 @@ function PlayPage() {
       window.clearTimeout(longThinkingTimeoutId)
     }
   }, [waiting])
-
-  // Elapsed timer — counts up every second until the session ends.
-  const sessionEnded = wsState === 'closed' || exited
-  useEffect(() => {
-    if (sessionEnded) return
-    const id = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000))
-    }, 1000)
-    return () => clearInterval(id)
-  }, [sessionEnded])
 
   const availableCommands = useMemo(() => {
     return GAME_COMMANDS[normalizeGameName(gameName ?? '')] ?? []
@@ -369,9 +349,6 @@ function PlayPage() {
           <h1 className="font-semibold text-sm">{gameName || 'Game'}</h1>
           <Badge variant="outline" className="text-xs">
             Turn {turns}
-          </Badge>
-          <Badge variant="outline" className="text-xs tabular-nums">
-            {formatElapsed(elapsedSeconds)}
           </Badge>
           {pcHid && (
             <Badge variant="secondary" className="text-xs" title="Your character">
