@@ -71,7 +71,7 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
         response = await client.post(
             _CHAT_ENDPOINT,
             headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model, "messages": messages},
+            json={"model": model, "messages": messages, "max_completion_tokens": 1024},
             timeout=None,
         )
         if response.is_error:

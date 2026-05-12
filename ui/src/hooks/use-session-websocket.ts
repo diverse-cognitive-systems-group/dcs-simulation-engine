@@ -28,13 +28,12 @@ export interface ChatMessage {
   feedback?: MessageFeedback
   // Unix timestamp (ms) set when the message is added to the list.
   timestamp: number
-  // True for messages replayed from a previous session on resume.
-  isHistorical?: boolean
 }
 
 type WsState = 'connecting' | 'auth' | 'ready' | 'closed' | 'error'
 
-export function useSessionWebSocket(sessionId: string) {
+export function useSessionWebSocket(sessionId: string, options: { enabled?: boolean } = {}) {
+  const enabled = options.enabled ?? true
   // useState holds reactive values that cause the component to re-render when they change.
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [wsState, setWsState] = useState<WsState>('connecting')
@@ -67,6 +66,12 @@ export function useSessionWebSocket(sessionId: string) {
   // takes over. We also only close sockets that are still CONNECTING or OPEN.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only re-connect on sessionId change
   useEffect(() => {
+    if (!enabled) {
+      setWsState('closed')
+      setWaiting(false)
+      return
+    }
+
     let cancelled = false
 
     const socket = new WebSocket(resolveWebSocketUrl(`/api/play/game/${sessionId}/ws`))
@@ -133,7 +138,6 @@ export function useSessionWebSocket(sessionId: string) {
             content: frame.content,
             eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),
-            isHistorical: true,
           },
         ])
       }
@@ -193,7 +197,7 @@ export function useSessionWebSocket(sessionId: string) {
         socket.close()
       }
     }
-  }, [sessionId])
+  }, [sessionId, enabled])
 
   // useCallback memoizes the function so its reference stays stable across renders,
   // which matters here because sendTurn is used in JSX event handlers.

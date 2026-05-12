@@ -446,11 +446,17 @@ function playerCharacterLabel(item: Pick<AssignmentSummary, 'player_character_na
 }
 
 function isAssignmentContinuable(status: AssignmentSummary['status']) {
-  return status !== 'completed'
+  return status === 'assigned' || status === 'in_progress'
 }
 
-function assignmentActionLabel(_status: AssignmentSummary['status']) {
-  return 'Continue'
+function assignmentActionLabel(status: AssignmentSummary['status']) {
+  return status === 'assigned' ? 'Start' : 'Continue'
+}
+
+function assignmentStatusLabel(status: AssignmentSummary['status']) {
+  if (status === 'assigned') return 'Ready'
+  if (status === 'in_progress') return 'In Progress'
+  return 'Done'
 }
 
 function FormOverlay(props: {
@@ -701,9 +707,6 @@ function RunPage() {
     (nextAssignment.reason === 'unavailable' || nextAssignment.reason === 'quota_closed')
 
   const lockedAssignment = nextAssignment?.mode === 'locked' ? nextAssignment.assignment : null
-  const unfinishedAssignmentCount = (data?.assignments ?? []).filter(
-    (assignment) => assignment.status !== 'completed',
-  ).length
 
   useEffect(() => {
     const nextForms = data?.pending_form_groups?.[0]?.forms ?? []
@@ -897,9 +900,6 @@ function RunPage() {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle>Gameplay Sessions</CardTitle>
-              {unfinishedAssignmentCount > 0 && (
-                <Badge variant="secondary">{unfinishedAssignmentCount} unfinished</Badge>
-              )}
             </div>
             <CardDescription>Active and completed gameplay sessions.</CardDescription>
           </CardHeader>
@@ -991,8 +991,14 @@ function RunPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <Badge variant={assignment.status === 'completed' ? 'default' : 'secondary'}>
-                        {titleCase(assignment.status)}
+                      <Badge
+                        variant={
+                          assignment.status === 'completed' || assignment.status === 'interrupted'
+                            ? 'default'
+                            : 'secondary'
+                        }
+                      >
+                        {assignmentStatusLabel(assignment.status)}
                       </Badge>
                       {isAssignmentContinuable(assignment.status) && (
                         <Button
