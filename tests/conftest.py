@@ -24,7 +24,7 @@ from loguru import logger
 from openai import OpenAI
 from pymongo.database import Database
 
-LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"
+LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss,SSS} pytest {level} {file.name}:{line} | {message}"
 
 # TODO: clean up this file (AND ALL TESTS)
 
