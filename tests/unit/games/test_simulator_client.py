@@ -1,5 +1,7 @@
 """Unit tests for SimulatorClient behavior."""
 
+import asyncio
+
 import pytest
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.games import ai_client
@@ -314,6 +316,66 @@ async def test_simulator_client_updater_succeeds_after_one_simulator_validation_
     assert result.updater_result is not None
     assert result.updater_result.retries_used == 1
     assert validator_calls == 2
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_validators_run_in_parallel_after_updater_and_fast_fail(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Simulator validators should run after updater generation, in parallel, with fast-fail cancellation."""
+    slow_validator = "RULE: SLOW-SIM-VALIDATOR\nReturn pass slowly."
+    fast_fail_validator = "RULE: FAST-FAIL-SIM-VALIDATOR\nReturn failure quickly."
+    updater_completed = False
+    slow_started = asyncio.Event()
+    slow_cancelled = asyncio.Event()
+    active_simulator_validators = 0
+    max_active_simulator_validators = 0
+
+    async def fake_call(messages, model):
+        nonlocal active_simulator_validators, max_active_simulator_validators, updater_completed
+        _ = model
+        if len(messages) > 1:
+            updater_completed = True
+            return '{"type": "ai", "content": "scene"}'
+
+        prompt = messages[0]["content"]
+        if "RULE: SLOW-SIM-VALIDATOR" in prompt or "RULE: FAST-FAIL-SIM-VALIDATOR" in prompt:
+            assert updater_completed is True
+            active_simulator_validators += 1
+            max_active_simulator_validators = max(max_active_simulator_validators, active_simulator_validators)
+            try:
+                if "RULE: SLOW-SIM-VALIDATOR" in prompt:
+                    slow_started.set()
+                    await asyncio.sleep(60)
+                    return '{"pass": true}'
+                await slow_started.wait()
+                return '{"pass": false, "reason": "fast simulator failure"}'
+            except asyncio.CancelledError:
+                slow_cancelled.set()
+                raise
+            finally:
+                active_simulator_validators -= 1
+
+        return '{"pass": true}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[slow_validator, fast_fail_validator],
+    )
+
+    result = await client.step("I wave")
+
+    assert result.ok is False
+    assert result.failure_type == SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED
+    assert max_active_simulator_validators == 2
+    assert slow_cancelled.is_set()
+    assert result.updater_result is not None
+    assert result.updater_result.validation_failures[0].message == "fast simulator failure"
 
 
 @pytest.mark.unit

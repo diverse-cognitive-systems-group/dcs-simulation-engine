@@ -24,6 +24,35 @@ import { requireAuth, rootRoute } from '../__root'
 
 // TODO: We should probably have a shared config file for both server and UI
 const MAX_INPUT_LENGTH = 350
+const THINKING_MESSAGE_INTERVAL_MS = 6000
+const LONG_THINKING_MESSAGE_DELAY_MS = 15000
+const THINKING_MESSAGES = [
+  'Evaluating context',
+  'Considering objectives',
+  'Resolving character decisions',
+  'Projecting outcomes',
+  'Weighing possibilities',
+  'Tracing likely reactions',
+  'Checking implications',
+  'Balancing constraints',
+  'Synthesizing results',
+  'Reviewing the situation',
+  'Mapping next steps',
+  'Reconciling details',
+  'Estimating consequences',
+  'Comparing possible paths',
+  'Drawing the threads together',
+]
+const LONG_THINKING_MESSAGES = [
+  'Still working through the possibilities',
+  'Taking a little longer to reason this through',
+  'Checking the details carefully',
+  'Resolving a complex turn',
+  'Working through a few more details',
+  'Spending extra time on this one',
+  'Keeping at it',
+  'Almost there',
+]
 
 interface CommandSuggestion {
   command: string
@@ -81,6 +110,17 @@ function formatElapsed(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+function shuffleMessages(messages: string[]): string[] {
+  const shuffled = [...messages]
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const current = shuffled[i]
+    shuffled[i] = shuffled[j]
+    shuffled[j] = current
+  }
+  return shuffled
+}
+
 function PlayPage() {
   const { sessionId } = useParams({ from: '/play/$sessionId' })
   const { gameName, runName } = useSearch({ from: '/play/$sessionId' })
@@ -105,6 +145,14 @@ function PlayPage() {
   const [feedbackPendingEventId, setFeedbackPendingEventId] = useState<string | null>(null)
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [thinkingMessageIndex, setThinkingMessageIndex] = useState(0)
+  const [longThinking, setLongThinking] = useState(false)
+  const [thinkingMessageQueue, setThinkingMessageQueue] = useState(() =>
+    shuffleMessages(THINKING_MESSAGES),
+  )
+  const [longThinkingMessageQueue, setLongThinkingMessageQueue] = useState(() =>
+    shuffleMessages(LONG_THINKING_MESSAGES),
+  )
   const startTimeRef = useRef(Date.now())
   // bottomRef is attached to a sentinel div at the end of the message list so we can
   // scroll it into view whenever a new message arrives.
@@ -119,6 +167,29 @@ function PlayPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, waiting])
+
+  useEffect(() => {
+    setThinkingMessageIndex(0)
+    setLongThinking(false)
+    if (!waiting) return
+
+    setThinkingMessageQueue(shuffleMessages(THINKING_MESSAGES))
+    setLongThinkingMessageQueue(shuffleMessages(LONG_THINKING_MESSAGES))
+
+    const intervalId = window.setInterval(() => {
+      setThinkingMessageIndex((current) => current + 1)
+    }, THINKING_MESSAGE_INTERVAL_MS)
+    const longThinkingTimeoutId = window.setTimeout(() => {
+      setThinkingMessageIndex(0)
+      setLongThinkingMessageQueue(shuffleMessages(LONG_THINKING_MESSAGES))
+      setLongThinking(true)
+    }, LONG_THINKING_MESSAGE_DELAY_MS)
+
+    return () => {
+      window.clearInterval(intervalId)
+      window.clearTimeout(longThinkingTimeoutId)
+    }
+  }, [waiting])
 
   // Elapsed timer — counts up every second until the session ends.
   const sessionEnded = wsState === 'closed' || exited
@@ -287,6 +358,9 @@ function PlayPage() {
   // Send is blocked while the simulation is loading or awaiting the next turn response.
   // turns === 0 means the initial simulator message hasn't arrived yet (game not started).
   const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting || turns === 0
+  const thinkingMessages = longThinking ? longThinkingMessageQueue : thinkingMessageQueue
+  const thinkingMessage =
+    thinkingMessages[thinkingMessageIndex % thinkingMessages.length] ?? THINKING_MESSAGES[0]
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -366,11 +440,24 @@ function PlayPage() {
           {/* Animated "thinking" indicator shown while waiting for the AI response */}
           {waiting && (
             <div className="flex justify-start">
-              <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
-              </div>
+              <output
+                className="inline-flex max-w-[min(82vw,32rem)] items-center gap-2.5 rounded-2xl rounded-bl-sm bg-muted/85 px-3.5 py-2.5 text-muted-foreground shadow-sm"
+                aria-live="polite"
+              >
+                <span
+                  className="relative flex h-4 w-4 shrink-0 items-center justify-center"
+                  aria-hidden="true"
+                >
+                  <span className="absolute h-4 w-4 rounded-full border border-muted-foreground/20" />
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground/70 animate-pulse" />
+                </span>
+                <span className="text-sm leading-5">{thinkingMessage}</span>
+                <span className="flex shrink-0 items-center gap-1 pl-0.5" aria-hidden="true">
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:0ms]" />
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:150ms]" />
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground/70 animate-bounce [animation-delay:300ms]" />
+                </span>
+              </output>
             </div>
           )}
 

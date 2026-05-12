@@ -443,6 +443,9 @@ class SimulatorClient:
             for task in asyncio.as_completed(validator_tasks):
                 validator_name, result = await task
                 if result.get("type") == "error":
+                    for pending_task in validator_tasks:
+                        if not pending_task.done():
+                            pending_task.cancel()
                     raise ValueError(f"{validator_name} returned an invalid JSON payload.")
                 error_message = self._validation_error(result, default_message="Invalid action.")
                 if error_message is not None:
@@ -459,6 +462,11 @@ class SimulatorClient:
                         if not pending_task.done():
                             pending_task.cancel()
                     break
+        except Exception:
+            for pending_task in validator_tasks:
+                if not pending_task.done():
+                    pending_task.cancel()
+            raise
         finally:
             await asyncio.gather(*validator_tasks, return_exceptions=True)
 
@@ -494,31 +502,61 @@ class SimulatorClient:
         simulator_response: str,
     ) -> list[SimulatorValidationFailure]:
         """Validate one generated simulator response against its configured validator ensemble."""
-        failures: list[SimulatorValidationFailure] = []
-        for index, validator_template in enumerate(self._simulator_turn_validators, start=1):
-            validator_name = self._validator_name(validator_template, fallback=f"simulator validator {index}")
-            result = await self._run_validator(
-                self._build_simulator_validator_prompt(
-                    validator_template=validator_template,
+        validator_tasks = [
+            asyncio.create_task(
+                self._run_simulator_validator(
+                    validator_template,
                     user_input=user_input,
                     simulator_response=simulator_response,
+                    fallback=f"simulator validator {index}",
                 )
             )
-            if result.get("type") == "error":
-                raise ValueError(f"{validator_name} returned an invalid JSON payload.")
-            error_message = self._validation_error(result, default_message="Invalid simulator response.")
-            if error_message is not None:
-                logger.info(f"Simulator validation failed: {validator_name} - {error_message}")
-                failures.append(
-                    SimulatorValidationFailure(
-                        stage="simulator_validation",
-                        validator_name=validator_name,
-                        message=error_message,
-                        raw_result=result,
+            for index, validator_template in enumerate(self._simulator_turn_validators, start=1)
+        ]
+        failures: list[SimulatorValidationFailure] = []
+        try:
+            for task in asyncio.as_completed(validator_tasks):
+                validator_name, result = await task
+                if result.get("type") == "error":
+                    raise ValueError(f"{validator_name} returned an invalid JSON payload.")
+                error_message = self._validation_error(result, default_message="Invalid simulator response.")
+                if error_message is not None:
+                    logger.info(f"Simulator validation failed: {validator_name} - {error_message}")
+                    failures.append(
+                        SimulatorValidationFailure(
+                            stage="simulator_validation",
+                            validator_name=validator_name,
+                            message=error_message,
+                            raw_result=result,
+                        )
                     )
-                )
-                break
+                    for pending_task in validator_tasks:
+                        if not pending_task.done():
+                            pending_task.cancel()
+                    break
+        finally:
+            await asyncio.gather(*validator_tasks, return_exceptions=True)
+
         return failures
+
+    async def _run_simulator_validator(
+        self,
+        validator_template: str,
+        *,
+        user_input: str,
+        simulator_response: str,
+        fallback: str,
+    ) -> tuple[str, dict[str, Any]]:
+        """Execute one configured simulator-response validator."""
+        validator_name = self._validator_name(validator_template, fallback=fallback)
+        result = await self._run_validator(
+            self._build_simulator_validator_prompt(
+                validator_template=validator_template,
+                user_input=user_input,
+                simulator_response=simulator_response,
+            )
+        )
+        return validator_name, result
 
     async def _cancel_tasks(self, *tasks: asyncio.Task[Any]) -> None:
         """Cancel unfinished tasks and absorb cancellation errors."""
