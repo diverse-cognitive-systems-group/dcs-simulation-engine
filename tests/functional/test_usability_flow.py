@@ -72,3 +72,39 @@ def test_usability_run_forms_assignments_and_sessions_flow(patch_llm_client, asy
     assert final_setup["assignment_completed"] is True
     assert final_setup["pending_form_groups"] == []
     assert final_setup["next_assignment"]["mode"] == "none"
+
+
+def test_interrupted_run_assignment_cannot_start_or_resume_session(patch_llm_client, async_mongo_provider) -> None:
+    """Interrupted gameplay should remain terminal at the session-start boundary."""
+    _ = patch_llm_client
+    config = load_run_config("usability")
+
+    with example_client(async_mongo_provider, config) as client:
+        auth_payload = register_player(client)
+        headers = auth_headers(auth_payload)
+
+        setup_payload = run_setup(client, headers)
+        submit_pending_group(client, headers, setup_payload, event="before_all_assignments")
+
+        setup_payload = run_setup(client, headers)
+        assignment = choose_or_locked_assignment(client, headers, setup_payload)
+        create_run_session(client, headers, assignment_id=assignment["assignment_id"])
+
+        asyncio.run(
+            async_mongo_provider.update_assignment_status(
+                assignment_id=assignment["assignment_id"],
+                status="interrupted",
+            )
+        )
+
+        response = client.post(
+            "/api/run/sessions",
+            headers=headers,
+            json={
+                "source": "run",
+                "assignment_id": assignment["assignment_id"],
+            },
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Interrupted assignments cannot be resumed."

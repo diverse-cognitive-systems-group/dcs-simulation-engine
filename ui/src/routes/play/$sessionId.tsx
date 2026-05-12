@@ -1,6 +1,7 @@
 // Live play page at /play/:sessionId. Connects to the game session via WebSocket,
 // renders the chat transcript, and lets the player submit turns.
 
+import { useQuery } from '@tanstack/react-query'
 import { createRoute, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -8,14 +9,14 @@ import {
   useSubmitSessionEventFeedbackApiSessionsSessionIdEventsEventIdFeedbackPost,
 } from '@/api/generated'
 import type { SubmitSessionEventFeedbackResponse } from '@/api/generated/model'
-import { HttpError } from '@/api/http'
+import { HttpError, httpClient } from '@/api/http'
 import { ChatMessageBubble } from '@/components/chat-message'
 import { FatalErrorOverlay } from '@/components/fatal-error-overlay'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import type { MessageFeedback } from '@/hooks/use-session-websocket'
+import type { ChatMessage, EventType, MessageFeedback } from '@/hooks/use-session-websocket'
 import { useSessionWebSocket } from '@/hooks/use-session-websocket'
 import { unwrapOrvalData } from '@/lib/orval-response'
 import { getServerConfig } from '@/lib/server-config'
@@ -57,6 +58,41 @@ const LONG_THINKING_MESSAGES = [
 interface CommandSuggestion {
   command: string
   description: string
+}
+
+interface ReconstructionSession {
+  session_id?: string
+  status?: string
+  game_name?: string
+  pc_hid?: string | null
+  npc_hid?: string | null
+  turns_completed?: number | null
+}
+
+interface ReconstructionFeedback {
+  liked?: boolean
+  comment?: string | null
+  doesnt_make_sense?: boolean
+  out_of_character?: boolean
+  other?: boolean
+  submitted_at?: string
+}
+
+interface ReconstructionEvent {
+  seq?: number
+  event_id?: string
+  event_ts?: string
+  direction?: string
+  event_type?: string
+  content?: string
+  turn_index?: number
+  visible_to_user?: boolean
+  feedback?: ReconstructionFeedback | null
+}
+
+interface SessionReconstruction {
+  session?: ReconstructionSession
+  events?: ReconstructionEvent[]
 }
 
 const GAME_COMMANDS: Record<string, CommandSuggestion[]> = {
@@ -102,6 +138,69 @@ function normalizeGameName(value: string): string {
   return value.replace(/[\s_-]+/g, '').toLowerCase()
 }
 
+function isTerminalSessionStatus(status: string | undefined): boolean {
+  return status === 'closed' || status === 'error'
+}
+
+function feedbackFromReconstruction(
+  feedback: ReconstructionFeedback | null | undefined,
+): MessageFeedback | undefined {
+  if (!feedback || typeof feedback.liked !== 'boolean') return undefined
+  return {
+    liked: feedback.liked,
+    comment: feedback.comment ?? '',
+    doesntMakeSense: Boolean(feedback.doesnt_make_sense),
+    outOfCharacter: Boolean(feedback.out_of_character),
+    other: Boolean(feedback.other),
+    submittedAt: feedback.submitted_at ?? new Date().toISOString(),
+  }
+}
+
+function eventTypeFromReconstruction(event: ReconstructionEvent): EventType {
+  const eventType = String(event.event_type ?? 'info').toLowerCase()
+  const direction = String(event.direction ?? 'outbound').toLowerCase()
+
+  if (eventType === 'message') return direction === 'inbound' ? 'info' : 'ai'
+  if (eventType === 'error') return 'error'
+  if (eventType === 'warning') return 'warning'
+  return 'info'
+}
+
+function messagesFromReconstruction(
+  reconstruction: SessionReconstruction | undefined,
+): ChatMessage[] {
+  return (reconstruction?.events ?? [])
+    .filter((event) => {
+      const eventType = String(event.event_type ?? '').toLowerCase()
+      if (event.visible_to_user === false) return false
+      return !['session_start', 'session_end'].includes(eventType)
+    })
+    .map((event, index) => {
+      const direction = String(event.direction ?? 'outbound').toLowerCase()
+      return {
+        id: event.event_id ?? `${event.seq ?? index}`,
+        role: direction === 'inbound' ? 'user' : 'ai',
+        eventType: eventTypeFromReconstruction(event),
+        content: event.content ?? '',
+        eventId: event.event_id,
+        feedback: feedbackFromReconstruction(event.feedback),
+        timestamp: event.event_ts ? new Date(event.event_ts).getTime() : Date.now(),
+      }
+    })
+}
+
+function turnsFromReconstruction(reconstruction: SessionReconstruction | undefined): number {
+  const turnsCompleted = reconstruction?.session?.turns_completed
+  if (typeof turnsCompleted === 'number') return turnsCompleted
+
+  return Math.max(
+    0,
+    ...(reconstruction?.events ?? []).map((event) =>
+      typeof event.turn_index === 'number' ? event.turn_index : 0,
+    ),
+  )
+}
+
 function shuffleMessages(messages: string[]): string[] {
   const shuffled = [...messages]
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -117,6 +216,13 @@ function PlayPage() {
   const { sessionId } = useParams({ from: '/play/$sessionId' })
   const { gameName, runName } = useSearch({ from: '/play/$sessionId' })
   const navigate = useNavigate()
+  const { data: reconstruction, isLoading: reconstructionLoading } = useQuery({
+    queryKey: ['session-reconstruction', sessionId],
+    queryFn: () => httpClient<SessionReconstruction>(`/api/sessions/${sessionId}/reconstruction`),
+    retry: false,
+  })
+  const terminalReconstruction = isTerminalSessionStatus(reconstruction?.session?.status)
+  const shouldConnectWebSocket = !reconstructionLoading && !terminalReconstruction
   // useSessionWebSocket opens the WebSocket connection and returns reactive state plus
   // action callbacks; see hooks/use-session-websocket.ts for the protocol details.
   const {
@@ -131,7 +237,7 @@ function PlayPage() {
     hasGameFeedback,
     sendTurn,
     setMessageFeedback,
-  } = useSessionWebSocket(sessionId)
+  } = useSessionWebSocket(sessionId, { enabled: shouldConnectWebSocket })
 
   const [input, setInput] = useState('')
   const [feedbackPendingEventId, setFeedbackPendingEventId] = useState<string | null>(null)
@@ -156,7 +262,7 @@ function PlayPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — scroll on both new messages and waiting-state change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, waiting])
+  }, [messages, reconstruction, waiting])
 
   useEffect(() => {
     setThinkingMessageIndex(0)
@@ -201,13 +307,25 @@ function PlayPage() {
     setSelectedCommandIndex((current) => Math.min(current, commandSuggestions.length - 1))
   }, [commandSuggestions])
 
-  const isConnecting = wsState === 'connecting' || wsState === 'auth'
+  const readOnlyMessages = useMemo(
+    () => messagesFromReconstruction(reconstruction),
+    [reconstruction],
+  )
+  const displayMessages = terminalReconstruction ? readOnlyMessages : messages
+  const displayTurns = terminalReconstruction ? turnsFromReconstruction(reconstruction) : turns
+  const displayExited = terminalReconstruction || exited
+  const displayPcHid = terminalReconstruction ? (reconstruction?.session?.pc_hid ?? null) : pcHid
+  const displayNpcHid = terminalReconstruction ? (reconstruction?.session?.npc_hid ?? null) : npcHid
+
+  const isConnecting =
+    !terminalReconstruction &&
+    (reconstructionLoading || wsState === 'connecting' || wsState === 'auth')
   const isError = wsState === 'error'
-  const isClosed = wsState === 'closed' || exited
+  const isClosed = terminalReconstruction || wsState === 'closed' || exited
   // Allow drafting at all times except terminal states (closed/error).
   const inputDisabled = isClosed || isError
-  const gameReady = wsState === 'ready' && turns > 0 && !isReplaying
-  const canSubmitTurn = gameReady && !waiting && !exited && !inputDisabled && !!input.trim()
+  const gameReady = shouldConnectWebSocket && wsState === 'ready' && turns > 0 && !isReplaying
+  const canSubmitTurn = gameReady && !waiting && !displayExited && !inputDisabled && !!input.trim()
 
   function submitInput() {
     const text = input.trim()
@@ -349,16 +467,16 @@ function PlayPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="font-semibold text-sm">{gameName || 'Game'}</h1>
           <Badge variant="outline" className="text-xs">
-            Turn {turns}
+            Turn {displayTurns}
           </Badge>
-          {pcHid && (
+          {displayPcHid && (
             <Badge variant="secondary" className="text-xs" title="Your character">
-              Player Character: {pcHid}
+              Player Character: {displayPcHid}
             </Badge>
           )}
-          {npcHid && (
+          {displayNpcHid && (
             <Badge variant="secondary" className="text-xs" title="Simulator character">
-              Simulator Character: {npcHid}
+              Simulator Character: {displayNpcHid}
             </Badge>
           )}
           {isClosed && (
@@ -374,7 +492,7 @@ function PlayPage() {
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto w-full max-w-[96vw] sm:max-w-[92vw] lg:max-w-[86vw] xl:max-w-[80vw] space-y-3">
-          {(isConnecting || (turns === 0 && wsState === 'ready')) && (
+          {(isConnecting || (!terminalReconstruction && turns === 0 && wsState === 'ready')) && (
             <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
               {/* CSS-only spinner: a bordered circle with one colored arc, rotated by animation */}
               <div className="w-6 h-6 rounded-full border-2 border-muted/70 border-t-primary animate-spin" />
@@ -389,7 +507,7 @@ function PlayPage() {
             />
           )}
 
-          {messages.map((msg) => (
+          {displayMessages.map((msg) => (
             <ChatMessageBubble
               key={msg.id}
               message={msg}
@@ -423,7 +541,7 @@ function PlayPage() {
             </div>
           )}
 
-          {exited && (
+          {displayExited && (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <div>
                 <Badge variant="secondary">Simulation ended</Badge>

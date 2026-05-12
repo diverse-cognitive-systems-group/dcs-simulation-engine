@@ -87,6 +87,20 @@ async def _sync_run_assignment_if_needed(*, provider: Any, entry: Any) -> None:
     )
 
 
+async def _terminal_assignment_status(*, provider: Any, assignment_id: str | None) -> str | None:
+    """Return terminal run assignment status when the session is no longer playable."""
+    if assignment_id is None:
+        return None
+    getter = getattr(provider, "get_assignment", None)
+    if getter is None:
+        return None
+    assignment = await maybe_await(getter(assignment_id=assignment_id))
+    status_value = getattr(assignment, "status", None) if assignment is not None else None
+    if status_value in {"completed", "interrupted"}:
+        return status_value
+    return None
+
+
 async def _send_error(websocket: WebSocket, detail: str) -> None:
     """Send a standardized error frame to the client."""
     await websocket.send_json(WSErrorFrame(detail=detail).model_dump(mode="json"))
@@ -369,6 +383,18 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
 
         if entry.player_id != player.id:
             await _send_error(websocket, "Unauthorized for this session")
+            await websocket.close()
+            return
+
+        if _session_status(entry.status, entry.manager.exited) == "closed":
+            await _send_error(websocket, "Session is closed")
+            await websocket.close()
+            return
+
+        assignment_status = await _terminal_assignment_status(provider=provider, assignment_id=entry.assignment_id)
+        if assignment_status is not None:
+            registry.close(session_id)
+            await _send_error(websocket, "Session is closed")
             await websocket.close()
             return
 

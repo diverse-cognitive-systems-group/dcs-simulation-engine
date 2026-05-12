@@ -446,11 +446,17 @@ function playerCharacterLabel(item: Pick<AssignmentSummary, 'player_character_na
 }
 
 function isAssignmentContinuable(status: AssignmentSummary['status']) {
-  return status !== 'completed'
+  return status === 'assigned' || status === 'in_progress'
 }
 
-function assignmentActionLabel(_status: AssignmentSummary['status']) {
-  return 'Continue'
+function assignmentActionLabel(status: AssignmentSummary['status']) {
+  return status === 'assigned' ? 'Start' : 'Continue'
+}
+
+function assignmentStatusLabel(status: AssignmentSummary['status']) {
+  if (status === 'assigned') return 'Ready'
+  if (status === 'in_progress') return 'In Progress'
+  return 'Done'
 }
 
 function FormOverlay(props: {
@@ -991,8 +997,14 @@ function RunPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <Badge variant={assignment.status === 'completed' ? 'default' : 'secondary'}>
-                        {titleCase(assignment.status)}
+                      <Badge
+                        variant={
+                          assignment.status === 'completed' || assignment.status === 'interrupted'
+                            ? 'default'
+                            : 'secondary'
+                        }
+                      >
+                        {assignmentStatusLabel(assignment.status)}
                       </Badge>
                       {isAssignmentContinuable(assignment.status) && (
                         <Button

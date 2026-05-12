@@ -488,6 +488,8 @@ class EngineRunManager:
             raise ValueError("No matching assignment is available for this player.")
         if assignment.status == "completed":
             raise ValueError("Completed assignments cannot be resumed.")
+        if assignment.status == "interrupted":
+            raise ValueError("Interrupted assignments cannot be resumed.")
         config = cls.get_run_config()
         assignments = await maybe_await(provider.list_assignments(player_id=player.id))
         pending_groups = await cls.pending_form_groups_async(

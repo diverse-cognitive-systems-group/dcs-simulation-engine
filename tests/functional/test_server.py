@@ -1111,6 +1111,12 @@ def test_run_websocket_close_updates_assignment_status(client: TestClient) -> No
     kwargs = handle_terminal_mock.await_args.kwargs
     assert kwargs["assignment_id"] == "asg-live-1"
 
+    with client.websocket_connect(f"/api/play/game/{session_id}/ws") as ws:
+        ws.send_json({"type": "auth", "api_key": "valid-key"})
+        error_frame = ws.receive_json()
+        assert error_frame["type"] == "error"
+        assert error_frame["detail"] == "Session is closed"
+
 
 @pytest.mark.functional
 def test_run_multiple_assignments_can_each_be_resumed(
