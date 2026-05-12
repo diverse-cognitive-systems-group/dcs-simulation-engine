@@ -707,9 +707,6 @@ function RunPage() {
     (nextAssignment.reason === 'unavailable' || nextAssignment.reason === 'quota_closed')
 
   const lockedAssignment = nextAssignment?.mode === 'locked' ? nextAssignment.assignment : null
-  const unfinishedAssignmentCount = (data?.assignments ?? []).filter(
-    (assignment) => assignment.status !== 'completed',
-  ).length
 
   useEffect(() => {
     const nextForms = data?.pending_form_groups?.[0]?.forms ?? []
@@ -903,9 +900,6 @@ function RunPage() {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle>Gameplay Sessions</CardTitle>
-              {unfinishedAssignmentCount > 0 && (
-                <Badge variant="secondary">{unfinishedAssignmentCount} unfinished</Badge>
-              )}
             </div>
             <CardDescription>Active and completed gameplay sessions.</CardDescription>
           </CardHeader>
