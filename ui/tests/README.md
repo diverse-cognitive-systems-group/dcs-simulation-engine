@@ -15,6 +15,8 @@ When frontend tests are added, include tests for:
 - Errored or closed saved game session IDs are cleared instead of showing Resume Game.
 - Refreshing a completed, interrupted, or errored play page restores the ended read-only transcript instead of restarting gameplay.
 - Opening the same live play session in a second tab shows that the session is already open elsewhere.
+- Directly opening a play URL in anonymous mode creates anonymous auth before connecting the WebSocket.
+- Directly opening a play URL in registration-required mode gates on sign-in instead of creating anonymous auth.
 - Resumed sessions show the correct message/events
 - Refresh button doesn't change anything - just reloads current session/state
 - Back button ...

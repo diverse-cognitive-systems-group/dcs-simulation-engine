@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import type { ChatMessage, EventType, MessageFeedback } from '@/hooks/use-session-websocket'
 import { useSessionWebSocket } from '@/hooks/use-session-websocket'
+import { ensureAnonymousAuth } from '@/lib/auth'
 import { unwrapOrvalData } from '@/lib/orval-response'
 import { getServerConfig } from '@/lib/server-config'
 import { cn } from '@/lib/utils'
@@ -618,7 +619,9 @@ export const playRoute = createRoute({
     const serverConfig = await getServerConfig()
     if (serverConfig.authentication_required) {
       await requireAuth()
+      return
     }
+    await ensureAnonymousAuth()
   },
   component: PlayPage,
 })
