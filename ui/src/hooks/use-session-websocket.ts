@@ -28,8 +28,6 @@ export interface ChatMessage {
   feedback?: MessageFeedback
   // Unix timestamp (ms) set when the message is added to the list.
   timestamp: number
-  // True for messages replayed from a previous session on resume.
-  isHistorical?: boolean
 }
 
 type WsState = 'connecting' | 'auth' | 'ready' | 'closed' | 'error'
@@ -133,7 +131,6 @@ export function useSessionWebSocket(sessionId: string) {
             content: frame.content,
             eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),
-            isHistorical: true,
           },
         ])
       }
