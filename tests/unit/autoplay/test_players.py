@@ -1,11 +1,11 @@
 """Unit tests for autoplay player adapters."""
 
 import json
-import logging
 
 import pytest
 from autoplay import MODEL_PLAYER_SYSTEM_PROMPT, OpenRouterPlayer, PlayerContext, PlayerTurn
 from autoplay import players as players_module
+from loguru import logger
 
 pytestmark = pytest.mark.unit
 
@@ -38,17 +38,13 @@ class _FakeAsyncClient:
 
 
 @pytest.mark.anyio
-async def test_openrouter_prompt_includes_visible_opening_context_and_is_logged(monkeypatch, caplog) -> None:
+async def test_openrouter_prompt_includes_visible_opening_context_and_is_logged(monkeypatch) -> None:
     """OpenRouter prompt payloads should include visible game context and be logged."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     _FakeAsyncClient.requests = []
     monkeypatch.setattr(players_module.httpx, "AsyncClient", _FakeAsyncClient)
-    autoplay_logger = logging.getLogger("autoplay")
-    for handler in list(autoplay_logger.handlers):
-        autoplay_logger.removeHandler(handler)
-        handler.close()
-    autoplay_logger.propagate = True
-    caplog.set_level(logging.INFO, logger="autoplay")
+    log_messages: list[str] = []
+    sink_id = logger.add(log_messages.append, level="INFO", format="{message}")
     player = OpenRouterPlayer(model_id="openai/test-model", timeout=3.0)
     context = PlayerContext(
         run_name="run",
@@ -64,7 +60,10 @@ async def test_openrouter_prompt_includes_visible_opening_context_and_is_logged(
         ),
     )
 
-    response = await player.next_input(context)
+    try:
+        response = await player.next_input(context)
+    finally:
+        logger.remove(sink_id)
 
     assert response == "I inspect the room."
     assert len(_FakeAsyncClient.requests) == 1
@@ -74,8 +73,8 @@ async def test_openrouter_prompt_includes_visible_opening_context_and_is_logged(
     assert "Use /help to see available commands." in payload["messages"][1]["content"]
     assert "You enter a quiet room." in payload["messages"][1]["content"]
 
-    prompt_records = [record for record in caplog.records if "openrouter_prompt" in record.message]
-    assert prompt_records
-    logged = json.loads(prompt_records[0].message.partition("openrouter_prompt ")[2])
+    prompt_messages = [message for message in log_messages if "openrouter_prompt" in message]
+    assert prompt_messages
+    logged = json.loads(prompt_messages[0].partition("openrouter_prompt ")[2])
     assert logged["payload"] == payload
     assert logged["session_id"] == "session-1"

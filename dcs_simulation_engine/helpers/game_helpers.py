@@ -34,7 +34,7 @@ def create_game_from_template(name: str, template: str | Path | None = None) -> 
         encoding="utf-8",
     )
 
-    logger.info("Copied game template %s -> %s", template_path, dest)
+    logger.info("Copied game template {} -> {}", template_path, dest)
     return dest
 
 
