@@ -201,9 +201,17 @@ function PlayPage() {
     setSelectedCommandIndex((current) => Math.min(current, commandSuggestions.length - 1))
   }, [commandSuggestions])
 
+  const isConnecting = wsState === 'connecting' || wsState === 'auth'
+  const isError = wsState === 'error'
+  const isClosed = wsState === 'closed' || exited
+  // Allow drafting at all times except terminal states (closed/error).
+  const inputDisabled = isClosed || isError
+  const gameReady = wsState === 'ready' && turns > 0 && !isReplaying
+  const canSubmitTurn = gameReady && !waiting && !exited && !inputDisabled && !!input.trim()
+
   function submitInput() {
     const text = input.trim()
-    if (!text || exited || wsState !== 'ready' || waiting) return
+    if (!canSubmitTurn) return
     sendTurn(text)
     setInput('')
   }
@@ -236,7 +244,7 @@ function PlayPage() {
       const selectedSuggestion = commandSuggestions[selectedCommandIndex] ?? commandSuggestions[0]
       const typedCommand = input.trim().toLowerCase()
       const canAutocompleteWithEnter =
-        selectedSuggestion && typedCommand !== selectedSuggestion.command
+        canSubmitTurn && selectedSuggestion && typedCommand !== selectedSuggestion.command
 
       if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && canAutocompleteWithEnter)) {
         e.preventDefault()
@@ -248,10 +256,11 @@ function PlayPage() {
     }
 
     // Enter alone submits; Shift+Enter inserts a newline.
-    const canSubmit = !waiting && !exited && wsState === 'ready' && !!input.trim()
-    if (e.key === 'Enter' && !e.shiftKey && canSubmit) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      submitInput()
+      if (canSubmitTurn) {
+        submitInput()
+      }
     }
   }
 
@@ -329,15 +338,7 @@ function PlayPage() {
     }
   }
 
-  const isConnecting = wsState === 'connecting' || wsState === 'auth'
-  const isError = wsState === 'error'
-  const isClosed = wsState === 'closed' || exited
-  // Allow drafting at all times except terminal states (closed/error).
-  const inputDisabled = isClosed || isError
-
-  // Send is blocked while the simulation is loading or awaiting the next turn response.
-  // turns === 0 means the initial simulator message hasn't arrived yet (game not started).
-  const sendDisabled = !input.trim() || inputDisabled || isConnecting || waiting || turns === 0
+  const sendDisabled = !canSubmitTurn
   const thinkingMessages = longThinking ? longThinkingMessageQueue : thinkingMessageQueue
   const thinkingMessage =
     thinkingMessages[thinkingMessageIndex % thinkingMessages.length] ?? THINKING_MESSAGES[0]
