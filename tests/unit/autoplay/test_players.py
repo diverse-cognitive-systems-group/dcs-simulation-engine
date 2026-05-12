@@ -1,7 +1,5 @@
 """Unit tests for autoplay player adapters."""
 
-import json
-
 import pytest
 from autoplay import MODEL_PLAYER_SYSTEM_PROMPT, OpenRouterPlayer, PlayerContext, PlayerTurn
 from autoplay import players as players_module
@@ -38,8 +36,8 @@ class _FakeAsyncClient:
 
 
 @pytest.mark.anyio
-async def test_openrouter_prompt_includes_visible_opening_context_and_is_logged(monkeypatch) -> None:
-    """OpenRouter prompt payloads should include visible game context and be logged."""
+async def test_openrouter_prompt_includes_visible_opening_context_and_logs_summary(monkeypatch) -> None:
+    """OpenRouter prompts should include visible context while logs stay compact."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     _FakeAsyncClient.requests = []
     monkeypatch.setattr(players_module.httpx, "AsyncClient", _FakeAsyncClient)
@@ -73,8 +71,9 @@ async def test_openrouter_prompt_includes_visible_opening_context_and_is_logged(
     assert "Use /help to see available commands." in payload["messages"][1]["content"]
     assert "You enter a quiet room." in payload["messages"][1]["content"]
 
-    prompt_messages = [message for message in log_messages if "openrouter_prompt" in message]
+    prompt_messages = [message for message in log_messages if "OpenRouter request" in message]
     assert prompt_messages
-    logged = json.loads(prompt_messages[0].partition("openrouter_prompt ")[2])
-    assert logged["payload"] == payload
-    assert logged["session_id"] == "session-1"
+    assert "model=openrouter:openai/test-model" in prompt_messages[0]
+    assert "session=session-1" in prompt_messages[0]
+    assert "history_events=2" in prompt_messages[0]
+    assert "payload" not in prompt_messages[0]

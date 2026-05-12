@@ -84,20 +84,15 @@ class OpenRouterPlayer:
             },
             {"role": "user", "content": _format_context(context)},
         ]
-        payload = {"model": self._openrouter_model, "messages": messages}
+        payload = {"model": self._openrouter_model, "messages": messages, "max_completion_tokens": 1024}
         logger.info(
-            "openrouter_prompt {}",
-            json.dumps(
-                {
-                    "model_id": self.model_id,
-                    "session_id": context.session_id,
-                    "turns": context.turns,
-                    "payload": payload,
-                },
-                ensure_ascii=True,
-                sort_keys=True,
-            ),
+            "OpenRouter request: model={} session={} turn={} history_events={}",
+            self.model_id,
+            context.session_id,
+            context.turns,
+            len(context.history),
         )
+        logger.debug("OpenRouter payload:\n{}", json.dumps(payload, indent=2, ensure_ascii=True, sort_keys=True))
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
                 _OPENROUTER_CHAT_ENDPOINT,

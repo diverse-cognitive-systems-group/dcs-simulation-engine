@@ -1,7 +1,6 @@
 """Command line interface for autoplay."""
 
 import asyncio
-import json
 import logging
 import os
 import sys
@@ -52,6 +51,7 @@ cli_theme = Theme(
 )
 console = Console(theme=cli_theme)
 app = typer.Typer(rich_markup_mode="rich", help="Run automated API players against a live DCS engine.")
+LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss,SSS} autoplay {level} {file.name}:{line} | {message}"
 
 
 def echo(message: str, style: str = "white", *, quiet: bool = False) -> None:
@@ -181,13 +181,13 @@ async def _run_players(*, base_url: str, players: list, max_turns_per_assignment
 def _configure_logging(*, log_dir: Path, quiet: bool) -> Path:
     logger.remove()
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"autoplay-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S-%f')}.log"
+    log_path = log_dir / f"autoplay_{datetime.now(UTC).strftime('%Y%m%d')}.log"
     console_level = "ERROR" if quiet else "WARNING"
     logger.add(sys.stderr, level=console_level, format="{message}")
     logger.add(
         log_path,
         level="INFO",
-        format="{time:YYYY-MM-DD HH:mm:ss.SSS} {level} {message}",
+        format=LOG_FORMAT,
         encoding="utf-8",
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -228,49 +228,59 @@ def _print_run_summary(
     for index, prompt in enumerate(prompts, start=1):
         label = "Model system prompt" if len(prompts) == 1 else f"Model system prompt {index}"
         echo(f"  {label}: {prompt}", style="dim", quiet=quiet)
-    logger.info(
-        "run_config {}",
-        json.dumps(
-            {
-                "base_url": base_url,
-                "models": [player.model_id for player in players],
-                "max_turns_per_assignment": max_turns_per_assignment,
-                "timeout": timeout,
-                "log_path": str(log_path),
-                "system_prompts": prompts,
-            },
-            ensure_ascii=True,
-            sort_keys=True,
-        ),
-    )
+    logger.info("Autoplay run started")
+    logger.info("API: {}", base_url)
+    logger.info("Models: {}", ", ".join(player.model_id for player in players))
+    logger.info("Max turns per assignment: {}", max_turns_per_assignment)
+    logger.info("Timeout: {}s", f"{timeout:g}")
+    logger.info("Log file: {}", log_path)
+    for index, prompt in enumerate(prompts, start=1):
+        label = "Model system prompt" if len(prompts) == 1 else f"Model system prompt {index}"
+        logger.info("{}: {}", label, _single_line(prompt, limit=600))
 
 
 def _event_printer(*, quiet: bool):
     state: dict[str, dict[str, int]] = {}
 
     def print_event(event: str, payload: dict) -> None:
-        _log_event(event, payload)
         model_id = payload["model_id"]
         model_state = state.setdefault(model_id, {"assignment": 0, "turn": 0})
         if event == "player_started":
+            logger.info("Player registered: model={} player={} run={}", model_id, payload["player_id"], payload["run_name"])
             echo(f"  {model_id}: registered player {payload['player_id']} for {payload['run_name']}", style="dim", quiet=quiet)
         elif event == "assignment_started":
             model_state["assignment"] += 1
             model_state["turn"] = 0
             characters = _character_summary(payload)
+            logger.info(
+                "Assignment {} started: {} ({}, session={}, assignment={})",
+                model_state["assignment"],
+                payload["game_name"],
+                characters,
+                payload["session_id"],
+                payload["assignment_id"],
+            )
             echo("", quiet=quiet)
             echo(f"Assignment {model_state['assignment']}: {payload['game_name']}", style="white", quiet=quiet)
             echo(f"Characters: {characters}", style="white", quiet=quiet)
             echo(f"Session: {payload['session_id']}", style="dim", quiet=quiet)
         elif event == "turn_sent":
             model_state["turn"] += 1
+            logger.info("Turn {} player input: {}", model_state["turn"], _single_line(str(payload["input"])))
             echo("", quiet=quiet)
             echo(f"Turn {model_state['turn']}", style="white", quiet=quiet)
             echo(f"Player: {_shorten(str(payload['input']))}", style="dim", quiet=quiet)
         elif event == "message_received":
+            _log_received_message(payload)
             _print_received_message(payload, quiet=quiet)
         elif event == "assignment_exited":
             turn_count = model_state.get("turn", 0)
+            logger.info(
+                "Assignment {} exited after {} turn(s): {}",
+                model_state["assignment"],
+                turn_count,
+                payload["reason"],
+            )
             echo("", quiet=quiet)
             echo(
                 f"Assignment {model_state['assignment']} ended after {turn_count} turn(s)",
@@ -284,6 +294,12 @@ def _event_printer(*, quiet: bool):
             )
         elif event == "assignment_failed":
             turn_count = model_state.get("turn", 0)
+            logger.error(
+                "Assignment {} failed after {} turn(s): {}",
+                model_state["assignment"],
+                turn_count,
+                _single_line(str(payload["error"]), limit=1200),
+            )
             echo("", quiet=quiet)
             echo(
                 f"Assignment {model_state['assignment']} failed after {turn_count} turn(s)",
@@ -296,8 +312,10 @@ def _event_printer(*, quiet: bool):
                 quiet=quiet,
             )
         elif event == "player_completed":
+            logger.info("Player completed all assignments: model={}", model_id)
             echo(f"  {model_id}: run assignments complete", style="success", quiet=quiet)
         elif event == "no_assignment":
+            logger.warning("No assignment available: model={}", model_id)
             echo(f"  {model_id}: no assignment available", style="warning", quiet=quiet)
 
     return print_event
@@ -322,11 +340,32 @@ def _print_received_message(payload: dict, *, quiet: bool) -> None:
         echo(f"Server: {content}", style="dim", quiet=quiet)
 
 
-def _log_event(event: str, payload: dict) -> None:
-    logger.info(
-        "event {}",
-        json.dumps({"event": event, **payload}, ensure_ascii=True, sort_keys=True),
-    )
+def _log_received_message(payload: dict) -> None:
+    label = _message_label(payload)
+    content = _format_log_content(str(payload.get("content") or ""))
+    if not content:
+        return
+
+    if payload.get("event_type") == "error":
+        _log_content(logger.error, label, content)
+    elif payload.get("event_type") == "warning":
+        _log_content(logger.warning, label, content)
+    else:
+        _log_content(logger.info, label, content)
+
+
+def _message_label(payload: dict) -> str:
+    event_type = str(payload.get("event_type") or "")
+    role = str(payload.get("role") or "")
+    if event_type == "error":
+        return "Server error"
+    if event_type == "warning":
+        return "Server warning"
+    if event_type == "info":
+        return "Info"
+    if role == "simulator":
+        return "Simulator"
+    return "Server"
 
 
 def _character_summary(payload: dict) -> str:
@@ -345,6 +384,31 @@ def _shorten(text: str, limit: int = 96) -> str:
     if len(collapsed) <= limit:
         return collapsed
     return f"{collapsed[: limit - 3]}..."
+
+
+def _single_line(text: str, limit: int = 240) -> str:
+    collapsed = " ".join(text.split())
+    if len(collapsed) <= limit:
+        return collapsed
+    return f"{collapsed[: limit - 3]}..."
+
+
+def _format_log_content(text: str, limit: int = 2000) -> str:
+    content = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if len(content) <= limit:
+        return content
+    return f"{content[: limit - 3]}..."
+
+
+def _log_content(log_method, label: str, content: str) -> None:
+    if "\n" in content:
+        log_method("{}:\n{}", label, _indent(content))
+    else:
+        log_method("{}: {}", label, content)
+
+
+def _indent(text: str) -> str:
+    return "\n".join(f"  {line}" if line else "" for line in text.splitlines())
 
 
 def main() -> None:
