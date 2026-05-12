@@ -39,7 +39,6 @@ def _run_config(*, registration_required: bool) -> RunConfig:
             "name": "api-usage-registration" if registration_required else "api-usage-anonymous",
             "description": "API usage example smoke test",
             "ui": {"registration_required": registration_required},
-            "players": {"humans": {"all": True}},
             "games": [
                 {"name": "Explore"},
                 {"name": "Infer Intent"},

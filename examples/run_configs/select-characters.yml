@@ -7,13 +7,7 @@ seed: 42
 
 # USER INTERFACE OPTIONS
 ui:
-  launch_gui: true
   registration_required: false
-
-# PLAYERS ALLOWED
-players:
-  humans:
-    all: true
 
 # GAMES INCLUDED
 games:

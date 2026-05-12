@@ -50,12 +50,9 @@ def test_demo_run_config_contract() -> None:
 
 
 def test_benchmark_ai_run_config_contract() -> None:
-    """Benchmark AI is a headless model-player run, not a human participant flow."""
+    """Benchmark AI declares the benchmark run; model players are provided at engine startup."""
     config = load_run_config("benchmark-ai")
 
-    assert config.has_model_players is True
-    assert config.players.humans.all is False
-    assert config.ui.launch_gui is False
     assert config.forms == []
     assert config.assignment_strategy.strategy == "next_incomplete_combination"
 
