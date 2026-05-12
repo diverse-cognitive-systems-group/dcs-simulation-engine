@@ -65,3 +65,68 @@ def test_character_summary_uses_hids_only() -> None:
             "simulator_character_name": "AS",
         }
     ) == "PC: NA, NPC: AS"
+
+
+def test_event_printer_displays_and_logs_transcript_events(tmp_path, capsys) -> None:
+    """CLI transcript events should be readable and persisted to the autoplay log."""
+    cli._configure_logging(log_dir=tmp_path, quiet=False)
+    printer = cli._event_printer(quiet=False)
+    base_payload = {"model_id": "scripted"}
+
+    printer(
+        "assignment_started",
+        {
+            **base_payload,
+            "game_name": "Explore",
+            "pc_hid": "NA",
+            "npc_hid": "AS",
+            "session_id": "session-1",
+            "assignment_id": "assignment-1",
+        },
+    )
+    printer(
+        "message_received",
+        {
+            **base_payload,
+            "role": "server",
+            "event_type": "info",
+            "content": "Use /help to see available commands.",
+        },
+    )
+    printer("turn_sent", {**base_payload, "turns": 1, "input": "I look around."})
+    printer(
+        "message_received",
+        {
+            **base_payload,
+            "role": "simulator",
+            "event_type": "ai",
+            "content": "You see a quiet room.",
+        },
+    )
+    printer(
+        "message_received",
+        {
+            **base_payload,
+            "role": "server",
+            "event_type": "error",
+            "content": "That action failed.",
+        },
+    )
+    printer("assignment_exited", {**base_payload, "turns": 2, "reason": "done"})
+
+    output = capsys.readouterr().out
+    assert "Assignment 1: Explore" in output
+    assert "Characters: PC: NA, NPC: AS" in output
+    assert "Info: Use /help to see available commands." in output
+    assert "Turn 1" in output
+    assert "Player: I look around." in output
+    assert "Simulator: You see a quiet room." in output
+    assert "Error: That action failed." in output
+    assert "Assignment 1 ended after 1 turn(s)" in output
+
+    logs = list(tmp_path.glob("autoplay-*.log"))
+    assert len(logs) == 1
+    log_text = logs[0].read_text(encoding="utf-8")
+    for expected in ["assignment_started", "message_received", "turn_sent", "assignment_exited"]:
+        assert expected in log_text
+    assert "Use /help to see available commands." in log_text

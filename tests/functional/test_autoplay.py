@@ -10,7 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 import uvicorn
-from autoplay import PlayerHarness, ScriptedPlayer
+from autoplay import PlayerContext, PlayerHarness, ScriptedPlayer
 from dcs_simulation_engine.api.app import create_app
 from dcs_simulation_engine.core.run_config import RunConfig
 
@@ -41,6 +41,23 @@ _SCRIPTS_BY_GAME = {
         "The hardest part was coordinating timing and communication.",
     ],
 }
+
+
+class InspectingPlayer:
+    """Scripted player that records the contexts it receives."""
+
+    def __init__(self, inputs: list[str]) -> None:
+        """Store scripted inputs for later decisions."""
+        self.model_id = "inspecting"
+        self.inputs = list(inputs)
+        self.contexts: list[PlayerContext] = []
+
+    async def next_input(self, context: PlayerContext) -> str:
+        """Record the context and return the next scripted input."""
+        self.contexts.append(context)
+        if self.inputs:
+            return self.inputs.pop(0)
+        return "/finish"
 
 
 def _run_config(
@@ -188,6 +205,44 @@ async def test_autoplay_fails_loudly_on_pending_forms(
     with _live_server(provider=async_mongo_provider, run_config=run_config) as base_url:
         with pytest.raises(RuntimeError, match="does not submit forms yet"):
             await PlayerHarness(base_url=base_url, player=player).run()
+
+
+@pytest.mark.anyio
+async def test_autoplay_player_context_includes_opening_info_and_simulator_events(
+    async_mongo_provider,
+    patch_llm_client,
+) -> None:
+    """Model players should see the same opening guidance and scene a human sees."""
+    _ = patch_llm_client
+    run_config = _run_config(game_name="Explore")
+    player = InspectingPlayer(inputs=["/finish"])
+
+    with _live_server(provider=async_mongo_provider, run_config=run_config) as base_url:
+        result = await PlayerHarness(base_url=base_url, player=player, max_turns_per_assignment=4).run()
+
+    assert result.assignments[0].status == "completed"
+    assert player.contexts, "autoplay should ask the player for at least one decision"
+    first_context = player.contexts[0]
+    assert any(turn.event_type == "info" and "/help" in turn.content for turn in first_context.history)
+    assert any(turn.role == "simulator" and turn.event_type == "ai" and turn.content for turn in first_context.history)
+
+
+@pytest.mark.anyio
+async def test_autoplay_interrupts_assignment_at_max_turns(
+    async_mongo_provider,
+    patch_llm_client,
+) -> None:
+    """Autoplay should stop an assignment when its turn budget is exhausted."""
+    _ = patch_llm_client
+    run_config = _run_config(game_name="Explore")
+    player = ScriptedPlayer(default_script=["I keep looking around."])
+
+    with _live_server(provider=async_mongo_provider, run_config=run_config) as base_url:
+        result = await PlayerHarness(base_url=base_url, player=player, max_turns_per_assignment=2).run()
+
+    assert len(result.assignments) == 1
+    assert result.assignments[0].status == "interrupted"
+    assert result.assignments[0].error == "max_turns_per_assignment reached: 2"
 
 
 @pytest.mark.unit

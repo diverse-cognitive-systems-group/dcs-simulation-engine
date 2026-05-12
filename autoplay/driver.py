@@ -81,7 +81,7 @@ class PlayerHarness:
                 )
                 refreshed_setup = await self._run_setup(client, api_key=api_key)
                 backend_status = self._assignment_status(refreshed_setup, assignment_id=assignment_result.assignment_id)
-                if backend_status is not None:
+                if backend_status is not None and assignment_result.status in {"completed", "exited"}:
                     assignment_result.status = backend_status
                 result.assignments.append(assignment_result)
                 if assignment_result.status != "completed":

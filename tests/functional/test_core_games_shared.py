@@ -1,4 +1,4 @@
-"""Shared functional tests parametrized over all 5 games.
+"""Shared functional tests parametrized over all built-in games.
 
 Validates behaviors that every game must exhibit:
 - Help content includes all required sections
@@ -21,7 +21,7 @@ pytestmark = [pytest.mark.functional, pytest.mark.anyio]
 TEST_PLAYER_ID = ObjectId()
 FINISH_COMMAND = "/finish"
 
-ALL_GAMES = ["explore", "Infer Intent", "Goal Horizon", "foresight", "teamwork"]
+ALL_GAMES = sorted(game_cls.GAME_NAME for game_cls in SessionManager._builtin_game_classes().values())
 
 # Sections that must appear in /help output for every game
 _REQUIRED_HELP_SECTIONS = [
