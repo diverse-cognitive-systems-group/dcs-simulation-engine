@@ -404,9 +404,7 @@ class SimulatorClient:
 
     async def _run_validator(self, system_prompt: str) -> dict[str, Any]:
         raw = await _call_openrouter_with_retry([{"role": "system", "content": system_prompt}], self._validator_model)
-        result = _parse_json_response(raw)
-        logger.debug(f"Validator result: {result}")
-        return result
+        return _parse_json_response(raw)
 
     async def _run_player_validator(self, validator_template: str, user_input: str) -> tuple[str, dict[str, Any]]:
         """Execute one configured player-turn validator."""
@@ -442,6 +440,12 @@ class SimulatorClient:
         try:
             for task in asyncio.as_completed(validator_tasks):
                 validator_name, result = await task
+                logger.debug(
+                    "Player validator result: {} pass={} result={}",
+                    validator_name,
+                    result.get("pass"),
+                    result,
+                )
                 if result.get("type") == "error":
                     for pending_task in validator_tasks:
                         if not pending_task.done():
@@ -517,6 +521,12 @@ class SimulatorClient:
         try:
             for task in asyncio.as_completed(validator_tasks):
                 validator_name, result = await task
+                logger.debug(
+                    "Simulator validator result: {} pass={} result={}",
+                    validator_name,
+                    result.get("pass"),
+                    result,
+                )
                 if result.get("type") == "error":
                     raise ValueError(f"{validator_name} returned an invalid JSON payload.")
                 error_message = self._validation_error(result, default_message="Invalid simulator response.")
