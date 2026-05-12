@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -13,6 +14,7 @@ import typer.rich_utils as ru
 from autoplay.driver import PlayerHarness
 from autoplay.players import player_from_spec
 from dotenv import load_dotenv
+from loguru import logger
 from rich.console import Console
 from rich.theme import Theme
 
@@ -177,19 +179,17 @@ async def _run_players(*, base_url: str, players: list, max_turns_per_assignment
 
 
 def _configure_logging(*, log_dir: Path, quiet: bool) -> Path:
-    level = logging.ERROR if quiet else logging.WARNING
-    logging.basicConfig(level=level, format="%(message)s")
+    logger.remove()
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"autoplay-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S-%f')}.log"
-    logger = logging.getLogger("autoplay")
-    for handler in list(logger.handlers):
-        logger.removeHandler(handler)
-        handler.close()
-    handler = logging.FileHandler(log_path, encoding="utf-8")
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
+    console_level = "ERROR" if quiet else "WARNING"
+    logger.add(sys.stderr, level=console_level, format="{message}")
+    logger.add(
+        log_path,
+        level="INFO",
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} {level} {message}",
+        encoding="utf-8",
+    )
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("websockets").setLevel(logging.WARNING)
     return log_path
@@ -228,8 +228,8 @@ def _print_run_summary(
     for index, prompt in enumerate(prompts, start=1):
         label = "Model system prompt" if len(prompts) == 1 else f"Model system prompt {index}"
         echo(f"  {label}: {prompt}", style="dim", quiet=quiet)
-    logging.getLogger("autoplay").info(
-        "run_config %s",
+    logger.info(
+        "run_config {}",
         json.dumps(
             {
                 "base_url": base_url,
@@ -323,8 +323,8 @@ def _print_received_message(payload: dict, *, quiet: bool) -> None:
 
 
 def _log_event(event: str, payload: dict) -> None:
-    logging.getLogger("autoplay").info(
-        "event %s",
+    logger.info(
+        "event {}",
         json.dumps({"event": event, **payload}, ensure_ascii=True, sort_keys=True),
     )
 

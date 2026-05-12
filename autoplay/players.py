@@ -2,7 +2,6 @@
 
 import importlib.util
 import json
-import logging
 import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -10,6 +9,7 @@ from typing import Any, Protocol
 
 import httpx
 from autoplay.types import PlayerContext
+from loguru import logger
 
 _OPENROUTER_CHAT_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 MODEL_PLAYER_SYSTEM_PROMPT = (
@@ -20,8 +20,6 @@ MODEL_PLAYER_SYSTEM_PROMPT = (
     "Return exactly one next player input. "
     "Do not include explanation or commentary."
 )
-
-logger = logging.getLogger("autoplay")
 
 
 class ApiPlayer(Protocol):
@@ -88,7 +86,7 @@ class OpenRouterPlayer:
         ]
         payload = {"model": self._openrouter_model, "messages": messages}
         logger.info(
-            "openrouter_prompt %s",
+            "openrouter_prompt {}",
             json.dumps(
                 {
                     "model_id": self.model_id,
