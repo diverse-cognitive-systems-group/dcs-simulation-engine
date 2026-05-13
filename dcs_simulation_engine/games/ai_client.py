@@ -16,6 +16,7 @@ from dcs_simulation_engine.core.constants import (
     SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.errors import ModelProviderError
 from dcs_simulation_engine.games.prompts import (
     DEFAULT_PLAYER_TURN_VALIDATORS,
     DEFAULT_SIMULATOR_TURN_VALIDATORS,
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
 DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
+_OPENROUTER_PROVIDER = "openrouter"
 
 
 def set_fake_ai_response(value: str | None) -> None:
@@ -61,6 +63,75 @@ def _get_api_key() -> str:
     return key
 
 
+def _provider_display_name(provider: str) -> str:
+    if provider == _OPENROUTER_PROVIDER:
+        return "OpenRouter"
+    return provider.title()
+
+
+def _clean_provider_message(message: Any) -> str:
+    return " ".join(str(message or "").split())
+
+
+def _provider_error_user_message(*, provider: str, model: str, status_code: int | None, provider_message: str) -> str:
+    provider_label = _provider_display_name(provider)
+    if status_code == 402:
+        return (
+            f"Model provider error: {provider_label} needs more credits for {model}. "
+            "Add credits, choose a cheaper model, or reduce token usage."
+        )
+    if provider_message:
+        return f"Model provider error from {provider_label} for {model}: {provider_message}"
+    return f"Model provider error from {provider_label} for {model}."
+
+
+def _provider_error_from_response(response: httpx.Response, model: str) -> ModelProviderError:
+    provider_message = ""
+    provider_code: str | None = None
+    try:
+        payload = response.json()
+    except Exception:
+        payload = None
+
+    if isinstance(payload, dict):
+        error = payload.get("error")
+        if isinstance(error, dict):
+            provider_message = _clean_provider_message(error.get("message"))
+            code = error.get("code")
+            provider_code = str(code) if code is not None else None
+        else:
+            provider_message = _clean_provider_message(payload.get("message") or payload.get("detail"))
+
+    status_code = int(response.status_code)
+    if not provider_message:
+        provider_message = _clean_provider_message(getattr(response, "reason_phrase", "")) or f"HTTP {status_code}"
+
+    retryable = status_code in {408, 429} or status_code >= 500
+    error = ModelProviderError(
+        provider=_OPENROUTER_PROVIDER,
+        model=model,
+        status_code=status_code,
+        provider_code=provider_code,
+        provider_message=provider_message,
+        user_message=_provider_error_user_message(
+            provider=_OPENROUTER_PROVIDER,
+            model=model,
+            status_code=status_code,
+            provider_message=provider_message,
+        ),
+        retryable=retryable,
+    )
+    logger.error(
+        "LLM provider error: provider={} model={} status={} code={} message={}",
+        error.provider,
+        error.model,
+        error.status_code,
+        error.provider_code,
+        error.provider_message,
+    )
+    return error
+
+
 async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
     """Send a chat completions request and return the assistant's reply text."""
     if _FAKE_AI_RESPONSE is not None:
@@ -75,21 +146,25 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
             timeout=None,
         )
         if response.is_error:
-            raise httpx.HTTPStatusError(
-                f"{response.status_code}: {response.text}",
-                request=response.request,
-                response=response,
-            )
+            raise _provider_error_from_response(response, model)
     data = response.json()
     return data["choices"][0]["message"]["content"]
+
+
+def _should_retry_llm_error(exc: Exception) -> bool:
+    if isinstance(exc, ModelProviderError):
+        return exc.retryable
+    return isinstance(exc, httpx.HTTPError)
 
 
 async def _call_openrouter_with_retry(messages: list[dict[str, str]], model: str) -> str:
     """Call _call_openrouter with 1 automatic retry on transient failure."""
     try:
         return await _call_openrouter(messages, model)
-    except Exception:
-        logger.warning("LLM call failed; retrying once.")
+    except Exception as exc:
+        if not _should_retry_llm_error(exc):
+            raise
+        logger.warning("LLM call failed for model {}; retrying once. Error: {}", model, exc)
         return await _call_openrouter(messages, model)
 
 
@@ -638,6 +713,9 @@ class SimulatorClient:
 
         try:
             player_validation_failures = await player_validation_task
+        except ModelProviderError:
+            await self._cancel_tasks(updater_generation_task)
+            raise
         except Exception as exc:
             await self._cancel_tasks(updater_generation_task)
             logger.exception("Player validation failed due to LLM/runtime error.")
@@ -667,6 +745,8 @@ class SimulatorClient:
                 user_input=user_input,
                 initial_response=initial_response,
             )
+        except ModelProviderError:
+            raise
         except Exception as exc:
             logger.exception("Simulator updater failed due to LLM/runtime error.")
             return SimulatorTurnResult(

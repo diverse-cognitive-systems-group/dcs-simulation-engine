@@ -36,8 +36,10 @@ from dcs_simulation_engine.api.models import (
     parse_ws_request,
 )
 from dcs_simulation_engine.api.registry import hydrate_session_async
+from dcs_simulation_engine.core.constants import MODEL_PROVIDER_ERROR
 from dcs_simulation_engine.core.engine_run_manager import EngineRunManager
 from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.errors import ModelProviderError
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from loguru import logger
 
@@ -101,9 +103,37 @@ async def _terminal_assignment_status(*, provider: Any, assignment_id: str | Non
     return None
 
 
-async def _send_error(websocket: WebSocket, detail: str) -> None:
+async def _send_error(
+    websocket: WebSocket,
+    detail: str,
+    *,
+    failure_type: str | None = None,
+    provider: str | None = None,
+    provider_status_code: int | None = None,
+    provider_code: str | None = None,
+) -> None:
     """Send a standardized error frame to the client."""
-    await websocket.send_json(WSErrorFrame(detail=detail).model_dump(mode="json"))
+    await websocket.send_json(
+        WSErrorFrame(
+            detail=detail,
+            failure_type=failure_type,  # type: ignore[arg-type]
+            provider=provider,
+            provider_status_code=provider_status_code,
+            provider_code=provider_code,
+        ).model_dump(mode="json")
+    )
+
+
+async def _send_model_provider_error(websocket: WebSocket, exc: ModelProviderError) -> None:
+    """Send a standardized provider-error frame to the client."""
+    await _send_error(
+        websocket,
+        exc.user_message,
+        failure_type=MODEL_PROVIDER_ERROR,
+        provider=exc.provider,
+        provider_status_code=exc.status_code,
+        provider_code=exc.provider_code,
+    )
 
 
 async def _send_events(websocket: WebSocket, session_id: str, events: list[dict[str, Any]]) -> None:
@@ -120,6 +150,9 @@ async def _send_events(websocket: WebSocket, session_id: str, events: list[dict[
             event_id=str(event.get("event_id")) if event.get("event_id") else None,
             failure_type=event.get("failure_type"),
             retries_remaining=event.get("retries_remaining"),
+            provider=str(event.get("provider")) if event.get("provider") else None,
+            provider_status_code=event.get("provider_status_code"),
+            provider_code=str(event.get("provider_code")) if event.get("provider_code") else None,
         )
         await websocket.send_json(frame.model_dump(mode="json"))
 
@@ -526,6 +559,28 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
             exc.reason,
         )
 
+    except ModelProviderError as exc:
+        entry = registry.get(session_id)
+        if entry is not None:
+            registry.set_ws_connected(session_id, False)
+            if not entry.manager.exited:
+                try:
+                    await _finalize_exit_with_retry(
+                        manager=entry.manager,
+                        reason=MODEL_PROVIDER_ERROR,
+                        session_id=session_id,
+                    )
+                    registry.close(session_id)
+                    await _sync_run_assignment_if_needed(provider=provider, entry=entry)
+                except Exception:
+                    logger.exception("Failed to finalize session after model provider websocket error: {}", session_id)
+        logger.error("Model provider websocket error for session {}: {}", session_id, exc.user_message)
+        try:
+            await _send_model_provider_error(websocket, exc)
+            await websocket.close()
+        except Exception:
+            logger.debug("WebSocket already closed while sending model provider error frame")
+
     except Exception:
         entry = registry.get(session_id)
         if entry is not None:
@@ -543,7 +598,7 @@ async def play_ws(websocket: WebSocket, session_id: str) -> None:
                     logger.exception("Failed to finalize session after internal websocket error: {}", session_id)
         logger.exception("Unhandled websocket error for session {}", session_id)
         try:
-            await _send_error(websocket, "Internal server error")
+            await _send_error(websocket, "Internal server error", failure_type="internal_error")
             await websocket.close()
         except Exception:
             logger.debug("WebSocket already closed while sending internal error frame")

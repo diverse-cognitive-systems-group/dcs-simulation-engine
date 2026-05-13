@@ -364,7 +364,7 @@ class SessionManager:
 
         if self._recorder_open and self._recorder is not None:
             normalized = self._normalize_termination_reason(reason)
-            status = "error" if normalized in {"server_error", "internal_error", "simulator_validation_retry_exhausted"} else "closed"
+            status = "error" if self._is_error_termination(normalized) else "closed"
             if self._validation_recorder is not None:
                 await self._validation_recorder.flush_pending()
             await self._recorder.finalize(
@@ -545,6 +545,12 @@ class SessionManager:
                 payload["retries_remaining"] = event.retries_remaining
             if event.exit_reason is not None:
                 payload["exit_reason"] = event.exit_reason
+            if event.provider is not None:
+                payload["provider"] = event.provider
+            if event.provider_status_code is not None:
+                payload["provider_status_code"] = event.provider_status_code
+            if event.provider_code is not None:
+                payload["provider_code"] = event.provider_code
             self._events.append(payload)
             if self._recorder_open and self._recorder is not None:
                 persisted_event_type, persisted_event_source = self._classify_persisted_outbound_event(event)
@@ -621,6 +627,16 @@ class SessionManager:
             return "simulator_validation_retry_exhausted"
         if reason_l in {"internal_error"}:
             return "internal_error"
+        if reason_l in {"model_provider_error"}:
+            return "model_provider_error"
         if reason_l in {"server_error", "internal_server_error"}:
             return "server_error"
         return reason_l
+
+    def _is_error_termination(self, reason: str) -> bool:
+        return reason in {
+            "server_error",
+            "internal_error",
+            "simulator_validation_retry_exhausted",
+            "model_provider_error",
+        }

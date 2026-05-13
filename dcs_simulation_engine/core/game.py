@@ -5,12 +5,14 @@ from datetime import datetime
 from typing import Any, AsyncIterator, Callable, ClassVar, NamedTuple
 
 from dcs_simulation_engine.core.constants import (
+    MODEL_PROVIDER_ERROR,
     PLAYER_TURN_VALIDATION_FAILED,
     SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter, list_character_filter_names
 from dcs_simulation_engine.dal.character_filters.base import CharacterFilter
+from dcs_simulation_engine.errors import ModelProviderError
 from dcs_simulation_engine.utils.time import utc_now
 from loguru import logger
 from pydantic import BaseModel, ConfigDict
@@ -28,6 +30,9 @@ class GameEvent(NamedTuple):
     failure_type: str | None = None
     retries_remaining: int | None = None
     exit_reason: str | None = None
+    provider: str | None = None
+    provider_status_code: int | None = None
+    provider_code: str | None = None
 
     @classmethod
     def now(
@@ -39,6 +44,9 @@ class GameEvent(NamedTuple):
         failure_type: str | None = None,
         retries_remaining: int | None = None,
         exit_reason: str | None = None,
+        provider: str | None = None,
+        provider_status_code: int | None = None,
+        provider_code: str | None = None,
     ) -> "GameEvent":
         """Build an event stamped with the current wall-clock time."""
         return cls(
@@ -49,6 +57,9 @@ class GameEvent(NamedTuple):
             failure_type=failure_type,
             retries_remaining=retries_remaining,
             exit_reason=exit_reason,
+            provider=provider,
+            provider_status_code=provider_status_code,
+            provider_code=provider_code,
         )
 
 
@@ -118,6 +129,7 @@ class Game(ABC):
     PLAYER_VALIDATION_EXHAUSTED_REASON = "player_validation_retry_exhausted"
     SIMULATOR_VALIDATION_EXHAUSTED_REASON = "simulator_validation_retry_exhausted"
     INTERNAL_ERROR_REASON = "internal_error"
+    MODEL_PROVIDER_ERROR_REASON = MODEL_PROVIDER_ERROR
     INTERNAL_ERROR_MESSAGE = (
         "Oops, the simulation engine hit an internal problem. This was not caused by your action, "
         "and there is nothing you need to fix. The game is ending now. Sorry about that."
@@ -482,7 +494,13 @@ class Game(ABC):
         if not self._entered:
             self._entered = True
             yield GameEvent.now(type="info", content=self.get_setup_content())
-            opening = await self._engine.chat(None)
+            try:
+                opening = await self._engine.chat(None)
+            except ModelProviderError as exc:
+                logger.error("Opening scene failed due to model provider error: {}", exc.user_message)
+                self.exit(self.MODEL_PROVIDER_ERROR_REASON)
+                yield self._model_provider_error_event(exc)
+                return
             self._consume_model_metadata(stage="opening", metadata=opening.metadata)
             self._filtered_transcript_buffer.append(f"{self.OPENING_PREFIX}{opening.content}")
             yield GameEvent.now(type=opening.type, content=opening.content)
@@ -508,7 +526,13 @@ class Game(ABC):
             )
             return
 
-        result = await self._engine.step(user_input)
+        try:
+            result = await self._engine.step(user_input)
+        except ModelProviderError as exc:
+            logger.error("Simulator turn failed due to model provider error: {}", exc.user_message)
+            self.exit(self.MODEL_PROVIDER_ERROR_REASON)
+            yield self._model_provider_error_event(exc)
+            return
         self._consume_turn_metadata(result)
         if result.ok:
             self._filtered_transcript_buffer.append(f"{self.PLAYER_PREFIX} ({self._pc.hid}): {user_input}")
@@ -557,6 +581,18 @@ class Game(ABC):
             content=self.INTERNAL_ERROR_MESSAGE,
             failure_type=failure_type,
             exit_reason=exit_reason,
+        )
+
+    def _model_provider_error_event(self, exc: ModelProviderError) -> GameEvent:
+        """Build a visible terminal event for an upstream model provider failure."""
+        return GameEvent.now(
+            type="error",
+            content=exc.user_message,
+            failure_type=MODEL_PROVIDER_ERROR,
+            exit_reason=self.MODEL_PROVIDER_ERROR_REASON,
+            provider=exc.provider,
+            provider_status_code=exc.status_code,
+            provider_code=exc.provider_code,
         )
 
     def _consume_model_metadata(self, *, stage: str, metadata: dict[str, Any]) -> None:

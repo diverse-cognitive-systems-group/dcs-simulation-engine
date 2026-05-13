@@ -1,9 +1,11 @@
 """Unit tests for base Game defaults exercised through ExploreGame."""
 
 import pytest
+from dcs_simulation_engine.core.constants import MODEL_PROVIDER_ERROR
 from dcs_simulation_engine.core.game import Game, GameEvent
 from dcs_simulation_engine.dal.base import CharacterRecord
 from dcs_simulation_engine.dal.character_filters import get_character_filter
+from dcs_simulation_engine.errors import ModelProviderError
 from dcs_simulation_engine.games.ai_client import (
     SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
     ParsedSimulatorResponse,
@@ -396,6 +398,40 @@ async def test_explore_step_enter_flow_emits_setup_and_opening(pc: CharacterReco
     assert game.get_transcript() == "Opening scene: The room hums quietly around you."
 
 
+async def test_explore_step_opening_provider_error_is_visible_and_terminal(
+    pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Opening provider failures should be visible to clients without leaking as generic engine errors."""
+    engine = StubEngine()
+    game = ExploreGame(pc=pc, npc=npc, engine=engine)
+
+    async def fail_chat(user_input: str | None) -> ParsedSimulatorResponse:
+        raise ModelProviderError(
+            provider="openrouter",
+            model="openai/gpt-5-mini",
+            status_code=402,
+            provider_code="402",
+            provider_message="This request requires more credits.",
+            user_message="Model provider error: OpenRouter needs more credits for openai/gpt-5-mini.",
+            retryable=False,
+        )
+
+    engine.chat = fail_chat  # type: ignore[method-assign]
+
+    events = await _drain(game)
+
+    assert [event.type for event in events] == ["info", "error"]
+    assert events[1].content == "Model provider error: OpenRouter needs more credits for openai/gpt-5-mini."
+    assert events[1].failure_type == MODEL_PROVIDER_ERROR
+    assert events[1].exit_reason == MODEL_PROVIDER_ERROR
+    assert events[1].provider == "openrouter"
+    assert events[1].provider_status_code == 402
+    assert events[1].provider_code == "402"
+    assert game.exited is True
+    assert game.exit_reason == MODEL_PROVIDER_ERROR
+    assert game.get_transcript() == ""
+
+
 async def test_explore_step_help_abilities_and_finish_are_command_responses(pc: CharacterRecord, npc: CharacterRecord) -> None:
     """ExploreGame uses the base command routing for help, abilities, and finish."""
     engine = StubEngine()
@@ -492,6 +528,40 @@ async def test_explore_step_simulator_validation_failure_exits_without_charging_
     assert game.exited is True
     assert game.exit_reason == "simulator_validation_retry_exhausted"
     assert game._player_retry_budget == 2
+
+
+async def test_explore_step_turn_provider_error_is_visible_and_terminal(
+    pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Provider failures during a player turn should end the session as provider errors."""
+    engine = StubEngine(step_results=[_ok_turn()])
+    game = ExploreGame(pc=pc, npc=npc, engine=engine)
+    await _drain(game)
+
+    async def fail_step(user_input: str) -> SimulatorTurnResult:
+        raise ModelProviderError(
+            provider="openrouter",
+            model="openai/gpt-5-mini",
+            status_code=402,
+            provider_code="402",
+            provider_message="This request requires more credits.",
+            user_message="Model provider error: OpenRouter needs more credits for openai/gpt-5-mini.",
+            retryable=False,
+        )
+
+    engine.step = fail_step  # type: ignore[method-assign]
+
+    events = await _drain(game, "look around")
+
+    assert [event.type for event in events] == ["error"]
+    assert events[0].failure_type == MODEL_PROVIDER_ERROR
+    assert events[0].exit_reason == MODEL_PROVIDER_ERROR
+    assert events[0].provider == "openrouter"
+    assert events[0].provider_status_code == 402
+    assert events[0].provider_code == "402"
+    assert game.exited is True
+    assert game.exit_reason == MODEL_PROVIDER_ERROR
+    assert "look around" not in game.get_transcript()
 
 
 async def test_explore_transcript_includes_only_opening_and_successful_turns(pc: CharacterRecord, npc: CharacterRecord) -> None:
