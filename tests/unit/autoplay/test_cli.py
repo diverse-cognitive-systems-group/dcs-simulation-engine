@@ -48,10 +48,13 @@ def test_openrouter_preflight_reads_dotenv(monkeypatch, tmp_path) -> None:
     assert "Max turns per assignment: 3" in result.stdout
     assert "Timeout: 2s" in result.stdout
     assert "Model system prompt:" in result.stdout
-    logs = list((tmp_path / "runlogs").glob("autoplay-*.log"))
+    logs = list((tmp_path / "runlogs").glob("autoplay_*.log"))
     assert len(logs) == 1
     log_text = logs[0].read_text(encoding="utf-8")
-    assert "run_config" in log_text
+    assert " autoplay INFO cli.py:" in log_text
+    assert " | Autoplay run started" in log_text
+    assert "Autoplay run started" in log_text
+    assert "Models: openrouter:openai/gpt-4.1-mini" in log_text
     assert "info messages that explain the objective" in log_text
 
 
@@ -124,9 +127,16 @@ def test_event_printer_displays_and_logs_transcript_events(tmp_path, capsys) -> 
     assert "Error: That action failed." in output
     assert "Assignment 1 ended after 1 turn(s)" in output
 
-    logs = list(tmp_path.glob("autoplay-*.log"))
+    logs = list(tmp_path.glob("autoplay_*.log"))
     assert len(logs) == 1
     log_text = logs[0].read_text(encoding="utf-8")
-    for expected in ["assignment_started", "message_received", "turn_sent", "assignment_exited"]:
+    for expected in [
+        "Assignment 1 started: Explore",
+        "Info: Use /help to see available commands.",
+        "Turn 1 player input: I look around.",
+        "Simulator: You see a quiet room.",
+        "Server error: That action failed.",
+        "Assignment 1 exited after 1 turn(s): done",
+    ]:
         assert expected in log_text
-    assert "Use /help to see available commands." in log_text
+    assert "event {" not in log_text

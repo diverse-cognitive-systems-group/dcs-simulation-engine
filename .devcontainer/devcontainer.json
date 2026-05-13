@@ -51,7 +51,8 @@
                 "tamasfe.even-better-toml",
                 "wholroyd.jinja",
                 "mechatroner.rainbow-csv",
-                "google.geminicodeassist"
+                "google.geminicodeassist",
+                "wilfredinni.log-whisperer"
             ],
             "settings": {
                 "editor.formatOnSave": true,

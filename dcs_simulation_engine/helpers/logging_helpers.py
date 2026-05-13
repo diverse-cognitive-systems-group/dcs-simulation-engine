@@ -36,7 +36,7 @@ def configure_logger(source: str, quiet: bool = False, verbose: int = 0) -> None
     logger.add(
         sink=str(log_path),
         level="DEBUG",
-        format=("{time:YYYY-MM-DD HH:mm:ss} | {level:^7} | {file.name}:{line} | {message}"),
+        format=(f"{{time:YYYY-MM-DD HH:mm:ss,SSS}} {source} {{level}} {{file.name}}:{{line}} | {{message}}"),
         rotation="00:00",
         retention="7 days",
         compression="zip",

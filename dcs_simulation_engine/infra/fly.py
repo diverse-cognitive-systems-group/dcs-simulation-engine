@@ -170,7 +170,7 @@ def load_env(env_file: Optional[Path] = Path(".env")) -> LoadedEnv:
     """Load env vars from .env and ensure FLY_API_TOKEN exists in environment."""
     if env_file is None or not env_file.exists():
         if env_file is not None:
-            logger.warning("%s not found — skipping env file load.", env_file)
+            logger.warning("{} not found — skipping env file load.", env_file)
         dotenv_vars: Dict[str, str] = {}
     else:
         raw = dotenv_values(env_file)
@@ -206,7 +206,7 @@ def ensure_app_exists(app_name: str) -> None:
     result = subprocess.run(["flyctl", "apps", "list"], capture_output=True, text=True)
     if result.returncode != 0:
         logger.warning(
-            "Failed to list apps (exit %s), proceeding to deploy anyway.",
+            "Failed to list apps (exit {}), proceeding to deploy anyway.",
             result.returncode,
         )
         return
@@ -216,11 +216,11 @@ def ensure_app_exists(app_name: str) -> None:
             continue
         name = line.split()[0]
         if name == app_name:
-            logger.info("App %r already exists.", app_name)
+            logger.info("App {!r} already exists.", app_name)
             return
 
     cmd = ["flyctl", "apps", "create", app_name]
-    logger.info("App %r not found. Creating via: %s", app_name, " ".join(cmd))
+    logger.info("App {!r} not found. Creating via: {}", app_name, " ".join(cmd))
     subprocess.run(cmd, check=True)
 
 
@@ -308,7 +308,7 @@ def deploy_app(
 
     try:
         deploy_cmd = build_deploy_cmd(fly_toml, app_name, dotenv_vars)
-        logger.info("Deploying with: %s", " ".join(deploy_cmd))
+        logger.info("Deploying with: {}", " ".join(deploy_cmd))
         subprocess.run(deploy_cmd, check=True)
     except subprocess.CalledProcessError as e:
         raise FlyError(f"flyctl deploy failed (exit {e.returncode})") from e

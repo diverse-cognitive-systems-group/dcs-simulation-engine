@@ -34,6 +34,7 @@
 * Fail loudly; don’t hide errors
 * Keep code simple and obvious
 * Follow PEP 8 when it helps, ignore it when it doesn’t
+* For Loguru calls, use brace-style formatting with deferred arguments, e.g. `logger.info("Session {} created", session_id)`. Do not use stdlib `%` placeholders like `%s`, `%d`, or `%r` with Loguru because Loguru formats messages with `str.format()`.
 
 For internal API/Engine code in this part of the monorepo:
 

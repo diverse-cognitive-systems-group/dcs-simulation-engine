@@ -71,7 +71,7 @@ class SessionRegistry:
         )
         with self._lock:
             self._store[session_id] = entry
-        logger.info("Session %s created (%d active)", session_id, self.size)
+        logger.info("Session {} created ({} active)", session_id, self.size)
         return entry
 
     def reinsert(self, session_id: str, entry: SessionEntry) -> None:
@@ -87,7 +87,7 @@ class SessionRegistry:
                 raise ValueError(f"Session {session_id} already exists in registry; skipping reinsert.")
             self._pending_hydration.discard(session_id)
             self._store[session_id] = entry
-        logger.info("Session %s reinserted from snapshot (%d active)", session_id, self.size)
+        logger.info("Session {} reinserted from snapshot ({} active)", session_id, self.size)
 
     def get(self, session_id: str) -> SessionEntry | None:
         """Get a session entry by id, or None if it does not exist."""
@@ -170,7 +170,7 @@ class SessionRegistry:
         with self._lock:
             entry = self._store.pop(session_id, None)
         if entry is not None:
-            logger.info("Session %s removed (%d remaining)", session_id, self.size)
+            logger.info("Session {} removed ({} remaining)", session_id, self.size)
         return entry
 
     @property
@@ -198,7 +198,7 @@ class SessionRegistry:
                 if not entry.manager.exited:
                     await entry.manager.exit_async("session ttl expired")
             except Exception:
-                logger.exception("Failed to exit stale session cleanly: %s", session_id)
+                logger.exception("Failed to exit stale session cleanly: {}", session_id)
 
             if provider is not None and entry.assignment_id is not None:
                 try:
@@ -209,19 +209,19 @@ class SessionRegistry:
                         )
                     )
                     logger.info(
-                        "Marked assignment %s interrupted after TTL expiry of session %s.",
+                        "Marked assignment {} interrupted after TTL expiry of session {}.",
                         entry.assignment_id,
                         session_id,
                     )
                 except Exception:
                     logger.exception(
-                        "Failed to mark assignment %s interrupted after TTL expiry of session %s.",
+                        "Failed to mark assignment {} interrupted after TTL expiry of session {}.",
                         entry.assignment_id,
                         session_id,
                     )
 
         if stale_ids:
-            logger.warning("Swept %d stale session(s)", len(stale_ids))
+            logger.warning("Swept {} stale session(s)", len(stale_ids))
         return stale_ids
 
     def set_provider(self, provider: Any) -> None:
@@ -272,17 +272,17 @@ async def hydrate_session_async(
     from dcs_simulation_engine.utils.async_utils import maybe_await
 
     if not registry.claim_hydration(session_id):
-        logger.info("Session %s hydration already in progress; skipping duplicate attempt.", session_id)
+        logger.info("Session {} hydration already in progress; skipping duplicate attempt.", session_id)
         return None
 
     try:
         session_record = await maybe_await(provider.get_session(session_id=session_id, player_id=player_id))
         if session_record is None:
-            logger.info("Session %s not found in DB; cannot hydrate.", session_id)
+            logger.info("Session {} not found in DB; cannot hydrate.", session_id)
             return None
         if session_record.status != "paused":
             logger.info(
-                "Session %s has status=%r; only paused sessions can be hydrated.",
+                "Session {} has status={!r}; only paused sessions can be hydrated.",
                 session_id,
                 session_record.status,
             )
@@ -290,7 +290,7 @@ async def hydrate_session_async(
 
         runtime_state = session_record.data.get(MongoColumns.RUNTIME_STATE)
         if not runtime_state:
-            logger.warning("Session %s has no runtime_state snapshot; cannot hydrate.", session_id)
+            logger.warning("Session {} has no runtime_state snapshot; cannot hydrate.", session_id)
             return None
 
         try:
@@ -300,7 +300,7 @@ async def hydrate_session_async(
                 provider=provider,
             )
         except ValueError as exc:
-            logger.warning("Session %s hydration failed: %s", session_id, exc)
+            logger.warning("Session {} hydration failed: {}", session_id, exc)
             return None
 
         assignment_record = await maybe_await(provider.get_assignment_for_session_id(session_id=session_id))
@@ -319,10 +319,10 @@ async def hydrate_session_async(
             registry.reinsert(session_id, entry)
         except ValueError:
             # Another coroutine won the race and already inserted; use theirs.
-            logger.info("Session %s was inserted by a concurrent hydration; discarding duplicate.", session_id)
+            logger.info("Session {} was inserted by a concurrent hydration; discarding duplicate.", session_id)
             return registry.get(session_id)
 
-        logger.info("Session %s hydrated from snapshot successfully.", session_id)
+        logger.info("Session {} hydrated from snapshot successfully.", session_id)
         return entry
 
     finally:

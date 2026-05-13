@@ -1,7 +1,6 @@
 """Client-side autoplay driver."""
 
 import json
-import logging
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
@@ -17,9 +16,8 @@ from autoplay.types import (
 from dcs_simulation_engine.api.models import (
     WSAdvanceRequest,
 )
+from loguru import logger
 from websockets.asyncio.client import connect
-
-logger = logging.getLogger(__name__)
 
 
 class PlayerHarness:
@@ -54,20 +52,20 @@ class PlayerHarness:
                 api_key=api_key,
                 run_name=str(server_config["run_name"]),
             )
-            logger.info("autoplay player_started model=%s player_id=%s", self.player.model_id, player_id)
+            logger.debug("autoplay player_started model={} player_id={}", self.player.model_id, player_id)
             self._emit("player_started", player_id=player_id, run_name=result.run_name)
 
             while True:
                 setup = await self._run_setup(client, api_key=api_key)
                 self._reject_pending_forms(setup)
                 if setup.get("assignment_completed"):
-                    logger.info("autoplay player_completed model=%s player_id=%s", self.player.model_id, player_id)
+                    logger.debug("autoplay player_completed model={} player_id={}", self.player.model_id, player_id)
                     self._emit("player_completed", player_id=player_id)
                     return result
 
                 assignment = await self._resolve_assignment(client, setup=setup, api_key=api_key)
                 if assignment is None:
-                    logger.info("autoplay no_assignment model=%s player_id=%s", self.player.model_id, player_id)
+                    logger.debug("autoplay no_assignment model={} player_id={}", self.player.model_id, player_id)
                     self._emit("no_assignment", player_id=player_id)
                     return result
 
@@ -165,8 +163,8 @@ class PlayerHarness:
         history: list[PlayerTurn] = []
         last_error: str | None = None
         turns = 0
-        logger.info(
-            "autoplay assignment_started model=%s assignment_id=%s session_id=%s game=%s",
+        logger.debug(
+            "autoplay assignment_started model={} assignment_id={} session_id={} game={}",
             self.player.model_id,
             assignment_id,
             session_id,
@@ -213,8 +211,8 @@ class PlayerHarness:
                     )
                     player_input = await self.player.next_input(context)
                     history.append(PlayerTurn(role="player", content=player_input))
-                    logger.info(
-                        "autoplay turn_sent model=%s assignment_id=%s session_id=%s turns=%s input=%r",
+                    logger.debug(
+                        "autoplay turn_sent model={} assignment_id={} session_id={} turns={} input={!r}",
                         self.player.model_id,
                         assignment_id,
                         session_id,
@@ -235,8 +233,8 @@ class PlayerHarness:
                     self._emit_turns(events, assignment_id=assignment_id, session_id=session_id, turns=turns)
                     last_error = self._last_error(events)
                     if turn_end.get("exited"):
-                        logger.info(
-                            "autoplay assignment_exited model=%s assignment_id=%s session_id=%s turns=%s reason=%s",
+                        logger.debug(
+                            "autoplay assignment_exited model={} assignment_id={} session_id={} turns={} reason={}",
                             self.player.model_id,
                             assignment_id,
                             session_id,
@@ -267,11 +265,12 @@ class PlayerHarness:
                 error=f"max_turns_per_assignment reached: {self.max_turns_per_assignment}",
             )
         except Exception as exc:
-            logger.error(
-                "autoplay assignment_failed model=%s assignment_id=%s session_id=%s",
+            logger.debug(
+                "autoplay assignment_failed model={} assignment_id={} session_id={} error={}",
                 self.player.model_id,
                 assignment_id,
                 session_id,
+                exc,
             )
             self._emit(
                 "assignment_failed",

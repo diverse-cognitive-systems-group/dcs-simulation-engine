@@ -100,7 +100,7 @@ def main(
 ) -> None:
     """Initialize global CLI options and context."""
     ctx.obj = GlobalOptions(quiet=quiet, yes=yes, config=config, mongo_uri=mongo_uri, server_url=server_url)
-    configure_logger(source="dcs-cli", quiet=quiet, verbose=verbose)
+    configure_logger(source="dcs", quiet=quiet, verbose=verbose)
 
 
 if __name__ == "__main__":

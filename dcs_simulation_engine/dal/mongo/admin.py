@@ -116,7 +116,7 @@ class MongoAdmin:
         """Drop and repopulate a collection with docs. Returns inserted count."""
         coll.drop()
         if not docs:
-            logger.info("Dropped '%s'; creating empty collection.", coll.name)
+            logger.info("Dropped '{}'; creating empty collection.", coll.name)
             try:
                 coll.database.create_collection(coll.name)
             except CollectionInvalid:
@@ -135,7 +135,7 @@ class MongoAdmin:
             fields = spec["fields"]
             unique = spec.get("unique", False)
             coll.create_index(fields, unique=unique)
-            logger.info("Created index on %s: %s (unique=%s)", coll.name, fields, unique)
+            logger.info("Created index on {}: {} (unique={})", coll.name, fields, unique)
 
     def seed_database(self, seed_dir: Path) -> int:
         """Seed all collections from seed_dir. Existing collections are dropped and replaced."""
