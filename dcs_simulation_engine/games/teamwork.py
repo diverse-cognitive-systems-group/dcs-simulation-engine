@@ -10,7 +10,6 @@ from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import Teamwork as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
 from dcs_simulation_engine.games.prompts import OPENER_WITH_SHARED_GOAL, SCORER_SHARED_GOAL, build_scorer_prompt
-from loguru import logger
 
 
 class TeamworkGame(Game):
@@ -144,7 +143,10 @@ class TeamworkGame(Game):
         self._challenges = user_input
         self._in_finish_flow = False
 
-        await self._score_teamwork()
+        error_event = await self._run_finish_scoring(self._score_teamwork)
+        if error_event is not None:
+            yield error_event
+            return
 
         if self._show_final_score:
             yield GameEvent.now(type="info", content=format_score_markdown(self._score))
@@ -154,30 +156,23 @@ class TeamworkGame(Game):
 
     async def _score_teamwork(self) -> None:
         """Score the player's teamwork reflection against collaborative performance."""
-        try:
-            transcript = self.get_transcript().strip()
-            if not transcript:
-                raise ValueError("Teamwork scoring requires a non-empty transcript.")
+        transcript = self.get_transcript().strip()
+        if not transcript:
+            self._score = self._zero_score("No interaction was recorded before finishing.")
+            return
 
-            prompt = build_scorer_prompt(
-                scoring_template=SCORER_SHARED_GOAL,
-                npc=self._npc,
-                pc=self._pc,
-                transcript=transcript,
-                shared_goal=self._shared_goal,
-                guess=self._challenges,
-            )
+        if not self._challenges.strip():
+            self._score = self._zero_score("No teamwork reflection was provided before finishing.")
+            return
 
-            result = await self._scorer.score(prompt=prompt, transcript=transcript)
-            self._score = result.evaluation or {}
+        prompt = build_scorer_prompt(
+            scoring_template=SCORER_SHARED_GOAL,
+            npc=self._npc,
+            pc=self._pc,
+            transcript=transcript,
+            shared_goal=self._shared_goal,
+            guess=self._challenges,
+        )
 
-            if not isinstance(self._score, dict):
-                raise ValueError("Invalid scorer output format.")
-
-        except Exception:
-            logger.exception("Failed to compute final score.")
-            self._score = {
-                "tier": None,
-                "score": None,
-                "reasoning": "Final score couldn't be computed.",
-            }
+        result = await self._scorer.score(prompt=prompt, transcript=transcript)
+        self._score = result.evaluation or {}

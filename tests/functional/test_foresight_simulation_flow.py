@@ -6,6 +6,7 @@ import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.errors import ModelProviderError
 from dcs_simulation_engine.games.ai_client import ScorerResult
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
@@ -78,22 +79,41 @@ async def test_foresight_help_and_abilities_hide_npc_details(patch_llm_client, _
     assert not session.exited
 
 
-async def test_foresight_scoring_falls_back_on_scorer_failure(patch_llm_client, _isolate_db_state, async_mongo_provider):
-    """Foresight should emit fallback score content if scoring fails."""
+async def test_foresight_scorer_provider_failure_is_terminal(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Foresight should surface scorer provider failures instead of emitting a fake score."""
     session = await _make_session(async_mongo_provider)
     await session.step_async("")
     await session.step_async("I step closer and predict FW will retreat.")
 
     async def _broken_score(*, prompt: str, transcript: str) -> ScorerResult:
-        raise RuntimeError("scorer offline")
+        raise ModelProviderError(
+            provider="openrouter",
+            model="test-model",
+            status_code=402,
+            provider_message="credits exhausted",
+        )
 
     session.game._scorer.score = _broken_score  # type: ignore[method-assign]
 
     finish_events = await session.step_async("/finish")
 
+    assert [event["type"] for event in finish_events] == ["error"]
+    assert finish_events[0]["failure_type"] == "model_provider_error"
+    assert finish_events[0]["exit_reason"] == "model_provider_error"
+    assert "needs more credits" in finish_events[0]["content"]
+    assert session.exited
+
+
+async def test_foresight_missing_prediction_scores_zero(patch_llm_client, _isolate_db_state, async_mongo_provider):
+    """Finishing without making a prediction is a valid zero-score outcome."""
+    session = await _make_session(async_mongo_provider)
+    await session.step_async("")
+
+    finish_events = await session.step_async("/finish")
+
     assert [event["type"] for event in finish_events] == ["info", "info"]
-    assert "Final score could not be computed." in finish_events[0]["content"]
-    assert session.game.score["score"] is None
+    assert "Score: 0" in finish_events[0]["content"]
+    assert session.game.score["score"] == 0
     assert session.exited
 
 

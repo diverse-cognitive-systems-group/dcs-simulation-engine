@@ -2,9 +2,10 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, AsyncIterator, Callable, ClassVar, NamedTuple
+from typing import Any, AsyncIterator, Awaitable, Callable, ClassVar, NamedTuple
 
 from dcs_simulation_engine.core.constants import (
+    INTERNAL_ERROR,
     MODEL_PROVIDER_ERROR,
     PLAYER_TURN_VALIDATION_FAILED,
     SIMULATOR_RECOVERY_BUDGET_EXHAUSTED,
@@ -649,6 +650,34 @@ class Game(ABC):
             provider_status_code=exc.status_code,
             provider_code=exc.provider_code,
         )
+
+    def _internal_error_event(self) -> GameEvent:
+        """Build a visible terminal event for an internal game failure."""
+        return GameEvent.now(
+            type="error",
+            content=self.INTERNAL_ERROR_MESSAGE,
+            failure_type=INTERNAL_ERROR,
+            exit_reason=self.INTERNAL_ERROR_REASON,
+        )
+
+    async def _run_finish_scoring(self, scorer: Callable[[], Awaitable[None]]) -> GameEvent | None:
+        """Run final scoring and return a terminal error event if scoring fails."""
+        try:
+            await scorer()
+        except ModelProviderError as exc:
+            logger.error("Final scoring failed due to model provider error: {}", exc.user_message)
+            self.exit(self.MODEL_PROVIDER_ERROR_REASON)
+            return self._model_provider_error_event(exc)
+        except Exception:
+            logger.exception("Final scoring failed due to an internal error.")
+            self.exit(self.INTERNAL_ERROR_REASON)
+            return self._internal_error_event()
+        return None
+
+    @staticmethod
+    def _zero_score(reasoning: str) -> dict[str, Any]:
+        """Build a valid score for a completed game with no supporting player evidence."""
+        return {"tier": 0, "score": 0, "reasoning": reasoning}
 
     def _consume_model_metadata(self, *, stage: str, metadata: dict[str, Any]) -> None:
         """Consume optional structured metadata attached to a model response."""

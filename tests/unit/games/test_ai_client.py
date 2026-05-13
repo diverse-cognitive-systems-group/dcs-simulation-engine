@@ -297,6 +297,31 @@ async def test_scorer_surfaces_provider_error_when_output_contract_fails_after_r
 
 
 @pytest.mark.unit
+@pytest.mark.anyio
+async def test_scorer_surfaces_provider_error_when_invalid_json_after_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated invalid scorer JSON should become a diagnostic provider error."""
+    calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal calls
+        _ = messages, model
+        calls += 1
+        return "not json"
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    with pytest.raises(ModelProviderError) as exc_info:
+        await ScorerClient(model="test-model").score(prompt="Score this", transcript="Transcript")
+
+    assert calls == 2
+    assert exc_info.value.provider == "openrouter"
+    assert exc_info.value.provider_code == "model_output_contract_error"
+    assert exc_info.value.provider_message == "scorer: response was not valid JSON"
+
+
+@pytest.mark.unit
 def test_extract_response_metadata_prefers_metadata_object() -> None:
     """Metadata payload should win over legacy duplicated top-level keys."""
     payload = {"type": "ai", "content": "scene", "metadata": {"shared_goal": "to repair the door"}, "shared_goal": "legacy"}

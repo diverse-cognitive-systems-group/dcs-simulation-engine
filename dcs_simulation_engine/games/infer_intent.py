@@ -10,7 +10,6 @@ from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import InferIntent as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
 from dcs_simulation_engine.games.prompts import SCORER_GOAL_INFERENCE, build_scorer_prompt
-from loguru import logger
 
 
 class InferIntentGame(Game):
@@ -138,7 +137,10 @@ class InferIntentGame(Game):
         self._goal_inference_confidence = user_input
         self._in_finish_flow = False
 
-        await self._score_goal_inference()
+        error_event = await self._run_finish_scoring(self._score_goal_inference)
+        if error_event is not None:
+            yield error_event
+            return
 
         if self._show_final_score:
             yield GameEvent.now(type="info", content=format_score_markdown(self._score))
@@ -148,29 +150,21 @@ class InferIntentGame(Game):
 
     async def _score_goal_inference(self) -> None:
         """Score the player's goal inference."""
-        try:
-            transcript = self.get_transcript().strip()
-            if not transcript:
-                raise ValueError("Infer Intent scoring requires a non-empty transcript.")
+        transcript = self.get_transcript().strip()
+        if not transcript:
+            self._score = self._zero_score("No interaction was recorded before finishing.")
+            return
 
-            prompt = build_scorer_prompt(
-                scoring_template=SCORER_GOAL_INFERENCE,
-                npc=self._npc,
-                transcript=transcript,
-                guess=self._goal_inference,
-            )
+        if not self._goal_inference.strip():
+            self._score = self._zero_score("No goal inference was provided before finishing.")
+            return
 
-            result = await self._scorer.score(prompt=prompt, transcript=transcript)
-            self._score = result.evaluation or {}
+        prompt = build_scorer_prompt(
+            scoring_template=SCORER_GOAL_INFERENCE,
+            npc=self._npc,
+            transcript=transcript,
+            guess=self._goal_inference,
+        )
 
-            # Guard against malformed scorer output
-            if not isinstance(self._score, dict):
-                raise ValueError("Invalid scorer output format.")
-
-        except Exception:
-            logger.exception("Failed to compute final score.")
-            self._score = {
-                "tier": None,
-                "score": None,
-                "reasoning": "Final score couldn't be computed.",
-            }
+        result = await self._scorer.score(prompt=prompt, transcript=transcript)
+        self._score = result.evaluation or {}
