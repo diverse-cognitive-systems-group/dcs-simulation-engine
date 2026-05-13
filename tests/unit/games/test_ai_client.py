@@ -64,6 +64,12 @@ def test_call_openrouter_uses_http_when_fake_disabled(monkeypatch: pytest.Monkey
             state["post_called"] = True
             assert kwargs["headers"] == {"Authorization": "Bearer test-key"}
             assert kwargs["json"]["model"] == "openai/gpt-5-mini"
+            timeout = kwargs["timeout"]
+            assert isinstance(timeout, httpx.Timeout)
+            assert timeout.connect == 10.0
+            assert timeout.read == 300.0
+            assert timeout.write == 30.0
+            assert timeout.pool == 10.0
             return FakeResponse()
 
     monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
@@ -77,6 +83,19 @@ def test_call_openrouter_uses_http_when_fake_disabled(monkeypatch: pytest.Monkey
 
     assert state["post_called"] is True
     assert result == "real-http-result"
+
+
+@pytest.mark.unit
+def test_call_openrouter_timeout_allows_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OpenRouter read timeout should be configurable for longer reasoning models."""
+    monkeypatch.setenv("OPENROUTER_TIMEOUT_SECONDS", "180")
+
+    timeout = ai_client._openrouter_timeout()
+
+    assert timeout.connect == 10.0
+    assert timeout.read == 180.0
+    assert timeout.write == 30.0
+    assert timeout.pool == 10.0
 
 
 @pytest.mark.unit

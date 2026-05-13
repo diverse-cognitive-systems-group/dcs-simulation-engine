@@ -37,6 +37,7 @@ _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
 _OPENROUTER_PROVIDER = "openrouter"
 _MODEL_OUTPUT_PROVIDER_CODE = "model_output_contract_error"
+_DEFAULT_OPENROUTER_TIMEOUT_SECONDS = 300.0
 
 
 def set_fake_ai_response(value: str | None) -> None:
@@ -62,6 +63,17 @@ def _get_api_key() -> str:
     if not key:
         raise RuntimeError("OPENROUTER_API_KEY is missing.")
     return key
+
+
+def _openrouter_timeout() -> httpx.Timeout:
+    """Return the OpenRouter timeout, allowing long non-streaming reasoning calls."""
+    timeout_seconds = float(os.getenv("OPENROUTER_TIMEOUT_SECONDS", _DEFAULT_OPENROUTER_TIMEOUT_SECONDS))
+    return httpx.Timeout(
+        connect=10.0,
+        read=timeout_seconds,
+        write=30.0,
+        pool=10.0,
+    )
 
 
 def _provider_display_name(provider: str) -> str:
@@ -187,7 +199,7 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
             _CHAT_ENDPOINT,
             headers={"Authorization": f"Bearer {api_key}"},
             json={"model": model, "messages": messages, "max_completion_tokens": 1024},
-            timeout=None,
+            timeout=_openrouter_timeout(),
         )
         if response.is_error:
             raise _provider_error_from_response(response, model)
