@@ -156,6 +156,26 @@ def _provider_error_from_response(response: httpx.Response, model: str) -> Model
     return error
 
 
+def _provider_error_from_http_error(exc: httpx.HTTPError, model: str) -> ModelProviderError:
+    """Convert transport-level provider failures into structured provider errors."""
+    provider_message = _clean_provider_message(str(exc)) or exc.__class__.__name__
+    error = ModelProviderError(
+        provider=_OPENROUTER_PROVIDER,
+        model=model,
+        provider_code=exc.__class__.__name__,
+        provider_message=provider_message,
+        retryable=False,
+    )
+    logger.error(
+        "LLM provider transport error: provider={} model={} code={} message={}",
+        error.provider,
+        error.model,
+        error.provider_code,
+        error.provider_message,
+    )
+    return error
+
+
 async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
     """Send a chat completions request and return the assistant's reply text."""
     if _FAKE_AI_RESPONSE is not None:
@@ -204,7 +224,10 @@ async def _call_openrouter_with_retry(messages: list[dict[str, str]], model: str
         if not _should_retry_llm_error(exc):
             raise
         logger.warning("LLM call failed for model {}; retrying once. Error: {}", model, exc)
-        return await _call_openrouter(messages, model)
+        try:
+            return await _call_openrouter(messages, model)
+        except httpx.HTTPError as retry_exc:
+            raise _provider_error_from_http_error(retry_exc, model) from retry_exc
 
 
 def _parse_json_response(raw: str) -> dict[str, Any]:

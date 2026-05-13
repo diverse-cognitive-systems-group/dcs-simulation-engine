@@ -218,14 +218,22 @@ async def test_call_openrouter_with_retry_succeeds_on_second_attempt(monkeypatch
 @pytest.mark.unit
 @pytest.mark.anyio
 async def test_call_openrouter_with_retry_raises_after_two_failures(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Retry wrapper should propagate the exception after both attempts fail."""
+    """Retry wrapper should convert exhausted transport failures into provider errors."""
+    calls = 0
 
     async def fake_call(messages, model):
+        nonlocal calls
+        calls += 1
         raise httpx.ConnectError("persistent failure")
 
     monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
-    with pytest.raises(httpx.ConnectError, match="persistent failure"):
+    with pytest.raises(ModelProviderError) as exc_info:
         await ai_client._call_openrouter_with_retry([], "model")
+    assert calls == 2
+    assert exc_info.value.provider == "openrouter"
+    assert exc_info.value.model == "model"
+    assert exc_info.value.provider_code == "ConnectError"
+    assert exc_info.value.provider_message == "persistent failure"
 
 
 @pytest.mark.unit
