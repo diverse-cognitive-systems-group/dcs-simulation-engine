@@ -499,6 +499,16 @@ class SimulatorClient:
             raise ValueError("Updater returned an invalid JSON payload.")
         return response
 
+    async def _generate_simulator_response_with_retry(self, *, user_input: str) -> ParsedSimulatorResponse:
+        """Generate a simulator response, retrying one non-provider updater failure."""
+        try:
+            return await self._generate_simulator_response(user_input=user_input)
+        except ModelProviderError:
+            raise
+        except Exception as exc:
+            logger.warning("Simulator updater generation failed; retrying once. Error: {}", exc)
+            return await self._generate_simulator_response(user_input=user_input)
+
     @staticmethod
     def _validation_error(result: dict[str, Any], *, default_message: str) -> str | None:
         if result.get("pass") is False:
@@ -670,7 +680,7 @@ class SimulatorClient:
         )
         if failures:
             retries_used = 1
-            response = await self._generate_simulator_response(user_input=user_input)
+            response = await self._generate_simulator_response_with_retry(user_input=user_input)
             failures = await self._validate_simulator_response(
                 user_input=user_input,
                 simulator_response=response.content,
@@ -709,7 +719,7 @@ class SimulatorClient:
     async def step(self, user_input: str) -> SimulatorTurnResult:
         """Validate player input, then generate and validate one simulator response."""
         player_validation_task = asyncio.create_task(self._collect_player_validation_failures(user_input))
-        updater_generation_task = asyncio.create_task(self._generate_simulator_response(user_input=user_input))
+        updater_generation_task = asyncio.create_task(self._generate_simulator_response_with_retry(user_input=user_input))
 
         try:
             player_validation_failures = await player_validation_task

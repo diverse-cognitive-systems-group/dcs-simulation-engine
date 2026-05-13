@@ -260,12 +260,14 @@ async def test_simulator_validation_failures_are_persisted_for_both_attempts(
     await session.step_async("")
 
     emitted = await session.step_async("I wait.")
-    await session.exit_async("test complete")
 
     assert [event["type"] for event in emitted] == ["error"]
-    assert "simulation engine hit an internal problem" in emitted[0]["content"]
+    assert "could not resolve that action" in emitted[0]["content"]
     assert emitted[0]["failure_type"] == "simulator_turn_validation_retry_exhausted"
-    assert emitted[0]["exit_reason"] == "simulator_validation_retry_exhausted"
+    assert emitted[0]["retries_remaining"] == 2
+    assert "exit_reason" not in emitted[0]
+    assert not session.exited
+    await session.exit_async("test complete")
 
     events = _persisted_events(db, session_id=session_id)
     violations = _matching_events(

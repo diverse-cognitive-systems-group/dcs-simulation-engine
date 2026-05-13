@@ -143,6 +143,7 @@ def test_explore_parse_overrides_accepts_common_base_fields() -> None:
             "max_turns": 10,
             "max_playtime": 300,
             "player_retry_budget": 4,
+            "simulator_recovery_budget": 5,
             "max_input_length": 120,
             "pcs_allowed": "human-normative",
             "npcs_allowed": "hypersensitive",
@@ -152,6 +153,7 @@ def test_explore_parse_overrides_accepts_common_base_fields() -> None:
     assert overrides.max_turns == 10
     assert overrides.max_playtime == 300
     assert overrides.player_retry_budget == 4
+    assert overrides.simulator_recovery_budget == 5
     assert overrides.max_input_length == 120
     assert overrides.pcs_allowed == "human-normative"
     assert overrides.npcs_allowed == "hypersensitive"
@@ -169,6 +171,8 @@ def test_explore_create_from_context_uses_default_base_configuration(pc: Charact
 
     assert isinstance(game._engine, SimulatorClient)
     assert game._player_retry_budget == ExploreGame.DEFAULT_PLAYER_RETRY_BUDGET
+    assert game._simulator_recovery_budget == ExploreGame.DEFAULT_SIMULATOR_RECOVERY_BUDGET
+    assert game._simulator_recovery_failures == 0
     assert game._max_input_length == ExploreGame.DEFAULT_MAX_INPUT_LENGTH
     assert game._pcs_allowed.name == "pc-eligible"
     assert game._npcs_allowed.name == "all"
@@ -184,6 +188,7 @@ def test_explore_state_round_trip_restores_shared_game_fields(pc: CharacterRecor
     game._entered = True
     game._exit_reason = "paused"
     game._player_retry_budget = 2
+    game._simulator_recovery_failures = 1
     game._in_finish_flow = True
     game._filtered_transcript_buffer = ["Opening scene: The room hums quietly."]
     engine._history = ["Opening scene: The room hums quietly."]
@@ -196,6 +201,7 @@ def test_explore_state_round_trip_restores_shared_game_fields(pc: CharacterRecor
 
     assert restored.export_state() == snapshot
     assert restored._player_retry_budget == 2
+    assert restored._simulator_recovery_failures == 1
     assert restored._in_finish_flow is True
     assert restored.get_transcript() == "Opening scene: The room hums quietly."
 
@@ -206,12 +212,14 @@ def test_explore_create_from_context_applies_each_supported_base_override(pc: Ch
         pc,
         npc,
         player_retry_budget=3,
+        simulator_recovery_budget=4,
         max_input_length=80,
         pcs_allowed="human-normative",
         npcs_allowed="hypersensitive",
     )
 
     assert game._player_retry_budget == 3
+    assert game._simulator_recovery_budget == 4
     assert game._max_input_length == 80
     assert game._pcs_allowed.name == "human-normative"
     assert game._npcs_allowed.name == "hypersensitive"
@@ -292,6 +300,8 @@ def test_explore_parse_overrides_rejects_numeric_values_outside_allowed_range() 
     """Shared numeric override bounds are enforced during parse_overrides()."""
     with pytest.raises(ValueError, match=r"max_turns"):
         ExploreGame.parse_overrides({"max_turns": 1_000_000})
+    with pytest.raises(ValueError, match=r"simulator_recovery_budget"):
+        ExploreGame.parse_overrides({"simulator_recovery_budget": 0})
 
 
 def test_explore_create_from_context_rejects_invalid_shared_override_values(
@@ -511,23 +521,50 @@ async def test_explore_step_failed_validation_exhausts_retry_budget(pc: Characte
     assert engine.step_calls == ["bad action", "bad action again"]
 
 
-async def test_explore_step_simulator_validation_failure_exits_without_charging_player(
+async def test_explore_step_simulator_validation_failure_allows_recovery_without_charging_player(
     pc: CharacterRecord, npc: CharacterRecord
 ) -> None:
-    """Simulator validation failures should end as system failures, not player retry failures."""
-    engine = StubEngine(step_results=[_simulator_invalid_turn()])
+    """Simulator validation failures should ask for another action without charging player retry budget."""
+    engine = StubEngine(step_results=[_simulator_invalid_turn(), _ok_turn("The flatworm continues forward.")])
     game = ExploreGame(pc=pc, npc=npc, engine=engine, player_retry_budget=2)
     await _drain(game)
 
     events = await _drain(game, "reasonable action")
+    recovery_events = await _drain(game, "different action")
 
     assert [event.type for event in events] == ["error"]
-    assert "simulation engine hit an internal problem" in events[0].content
+    assert "could not resolve that action" in events[0].content
     assert events[0].failure_type == "simulator_turn_validation_retry_exhausted"
-    assert events[0].exit_reason == "simulator_validation_retry_exhausted"
-    assert game.exited is True
-    assert game.exit_reason == "simulator_validation_retry_exhausted"
+    assert events[0].retries_remaining == 2
+    assert events[0].exit_reason is None
+    assert recovery_events[0].type == "ai"
+    assert game.exited is False
+    assert game.exit_reason == ""
     assert game._player_retry_budget == 2
+    assert game._simulator_recovery_failures == 0
+
+
+async def test_explore_step_simulator_recovery_budget_exits_without_counting_turns(
+    pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Consecutive simulator validation failures should eventually become terminal system failures."""
+    engine = StubEngine(step_results=[_simulator_invalid_turn(), _simulator_invalid_turn()])
+    game = ExploreGame(pc=pc, npc=npc, engine=engine, simulator_recovery_budget=2)
+    await _drain(game)
+
+    first_events = await _drain(game, "reasonable action")
+    second_events = await _drain(game, "another reasonable action")
+
+    assert first_events[0].failure_type == "simulator_turn_validation_retry_exhausted"
+    assert first_events[0].retries_remaining == 1
+    assert first_events[0].exit_reason is None
+    assert second_events[0].failure_type == "simulator_recovery_budget_exhausted"
+    assert second_events[0].retries_remaining == 0
+    assert second_events[0].exit_reason == "simulator_recovery_budget_exhausted"
+    assert game.exited is True
+    assert game.exit_reason == "simulator_recovery_budget_exhausted"
+    assert "reasonable action" not in game.get_transcript()
+    assert "another reasonable action" not in game.get_transcript()
 
 
 async def test_explore_step_turn_provider_error_is_visible_and_terminal(

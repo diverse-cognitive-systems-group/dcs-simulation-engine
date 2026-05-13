@@ -11,6 +11,7 @@ EventType = Literal["ai", "info", "error", "warning"]
 FailureType = Literal[
     "player_turn_validation_failed",
     "simulator_turn_validation_retry_exhausted",
+    "simulator_recovery_budget_exhausted",
     "internal_error",
     "model_provider_error",
 ]

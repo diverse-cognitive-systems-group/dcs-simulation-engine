@@ -625,6 +625,8 @@ class SessionManager:
             return "player_validation_retry_exhausted"
         if reason_l in {"simulator_validation_retry_exhausted"}:
             return "simulator_validation_retry_exhausted"
+        if reason_l in {"simulator_recovery_budget_exhausted"}:
+            return "simulator_recovery_budget_exhausted"
         if reason_l in {"internal_error"}:
             return "internal_error"
         if reason_l in {"model_provider_error"}:
@@ -638,5 +640,6 @@ class SessionManager:
             "server_error",
             "internal_error",
             "simulator_validation_retry_exhausted",
+            "simulator_recovery_budget_exhausted",
             "model_provider_error",
         }

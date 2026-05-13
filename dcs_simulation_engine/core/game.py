@@ -7,6 +7,7 @@ from typing import Any, AsyncIterator, Callable, ClassVar, NamedTuple
 from dcs_simulation_engine.core.constants import (
     MODEL_PROVIDER_ERROR,
     PLAYER_TURN_VALIDATION_FAILED,
+    SIMULATOR_RECOVERY_BUDGET_EXHAUSTED,
     SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
@@ -76,6 +77,7 @@ class BaseGameOverrides(BaseModel):
     max_playtime: int | None = None
 
     player_retry_budget: int | None = None
+    simulator_recovery_budget: int | None = None
     max_input_length: int | None = None
     pcs_allowed: str | None = None
     npcs_allowed: str | None = None
@@ -106,6 +108,8 @@ class Game(ABC):
     ALLOWED_MAX_PLAYTIME_RANGE: ClassVar[NumericRange] = (1, 3600)
     DEFAULT_PLAYER_RETRY_BUDGET = 10
     ALLOWED_PLAYER_RETRY_BUDGET_RANGE: ClassVar[NumericRange] = (0, 10)
+    DEFAULT_SIMULATOR_RECOVERY_BUDGET = 3
+    ALLOWED_SIMULATOR_RECOVERY_BUDGET_RANGE: ClassVar[NumericRange] = (1, 10)
     DEFAULT_MAX_INPUT_LENGTH = 350
     ALLOWED_MAX_INPUT_LENGTH_RANGE: ClassVar[NumericRange] = (1, 350)
     DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("pc-eligible")
@@ -128,8 +132,14 @@ class Game(ABC):
     PLAYER_PREFIX = "Player"
     PLAYER_VALIDATION_EXHAUSTED_REASON = "player_validation_retry_exhausted"
     SIMULATOR_VALIDATION_EXHAUSTED_REASON = "simulator_validation_retry_exhausted"
+    SIMULATOR_RECOVERY_BUDGET_EXHAUSTED_REASON = SIMULATOR_RECOVERY_BUDGET_EXHAUSTED
     INTERNAL_ERROR_REASON = "internal_error"
     MODEL_PROVIDER_ERROR_REASON = MODEL_PROVIDER_ERROR
+    SIMULATOR_RETRY_MESSAGE = "The simulator could not resolve that action cleanly. Try a different action or rephrase."
+    SIMULATOR_RECOVERY_BUDGET_EXHAUSTED_MESSAGE = (
+        "The simulator could not produce a valid response after several attempts. "
+        "This was not caused by your action, and the game is ending now."
+    )
     INTERNAL_ERROR_MESSAGE = (
         "Oops, the simulation engine hit an internal problem. This was not caused by your action, "
         "and there is nothing you need to fix. The game is ending now. Sorry about that."
@@ -258,6 +268,11 @@ class Game(ABC):
             allowed_range=cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
         )
         cls._validate_override_number(
+            field_name="simulator_recovery_budget",
+            value=overrides.simulator_recovery_budget,
+            allowed_range=cls.ALLOWED_SIMULATOR_RECOVERY_BUDGET_RANGE,
+        )
+        cls._validate_override_number(
             field_name="max_input_length",
             value=overrides.max_input_length,
             allowed_range=cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
@@ -372,6 +387,11 @@ class Game(ABC):
             allowed_range=cls.ALLOWED_PLAYER_RETRY_BUDGET_RANGE,
         )
         cls._validate_default_in_range(
+            field_name="DEFAULT_SIMULATOR_RECOVERY_BUDGET",
+            value=cls.DEFAULT_SIMULATOR_RECOVERY_BUDGET,
+            allowed_range=cls.ALLOWED_SIMULATOR_RECOVERY_BUDGET_RANGE,
+        )
+        cls._validate_default_in_range(
             field_name="DEFAULT_MAX_INPUT_LENGTH",
             value=cls.DEFAULT_MAX_INPUT_LENGTH,
             allowed_range=cls.ALLOWED_MAX_INPUT_LENGTH_RANGE,
@@ -410,6 +430,11 @@ class Game(ABC):
             "player_retry_budget": (
                 overrides.player_retry_budget if overrides.player_retry_budget is not None else cls.DEFAULT_PLAYER_RETRY_BUDGET
             ),
+            "simulator_recovery_budget": (
+                overrides.simulator_recovery_budget
+                if overrides.simulator_recovery_budget is not None
+                else cls.DEFAULT_SIMULATOR_RECOVERY_BUDGET
+            ),
             "max_input_length": (overrides.max_input_length if overrides.max_input_length is not None else cls.DEFAULT_MAX_INPUT_LENGTH),
             "pcs_allowed": cls._resolve_character_filter(
                 override_value=overrides.pcs_allowed,
@@ -434,6 +459,7 @@ class Game(ABC):
         npc: CharacterRecord,
         engine: Any,  # SimulatorClient from ai_client.py
         player_retry_budget: int | None = None,
+        simulator_recovery_budget: int | None = None,
         max_input_length: int | None = None,
         pcs_allowed: CharacterFilter | None = None,
         npcs_allowed: CharacterFilter | None = None,
@@ -443,6 +469,10 @@ class Game(ABC):
         self._npc = npc
         self._engine = engine
         self._player_retry_budget = player_retry_budget if player_retry_budget is not None else type(self).DEFAULT_PLAYER_RETRY_BUDGET
+        self._simulator_recovery_budget = (
+            simulator_recovery_budget if simulator_recovery_budget is not None else type(self).DEFAULT_SIMULATOR_RECOVERY_BUDGET
+        )
+        self._simulator_recovery_failures = 0
         self._max_input_length = max_input_length if max_input_length is not None else type(self).DEFAULT_MAX_INPUT_LENGTH
         self._pcs_allowed = pcs_allowed if pcs_allowed is not None else type(self).DEFAULT_PCS_FILTER
         self._npcs_allowed = npcs_allowed if npcs_allowed is not None else type(self).DEFAULT_NPCS_FILTER
@@ -535,6 +565,7 @@ class Game(ABC):
             return
         self._consume_turn_metadata(result)
         if result.ok:
+            self._simulator_recovery_failures = 0
             self._filtered_transcript_buffer.append(f"{self.PLAYER_PREFIX} ({self._pc.hid}): {user_input}")
             self._filtered_transcript_buffer.append(f"{self.SIMULATOR_PREFIX}{result.simulator_response}")
             yield GameEvent.now(type="ai", content=result.simulator_response)
@@ -568,9 +599,33 @@ class Game(ABC):
             return
 
         if failure_type == SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED:
-            logger.error("Simulator validation exhausted retries; ending game without scoring.")
-            self.exit(self.SIMULATOR_VALIDATION_EXHAUSTED_REASON)
-            exit_reason = self.SIMULATOR_VALIDATION_EXHAUSTED_REASON
+            self._simulator_recovery_failures += 1
+            remaining = self._simulator_recovery_budget - self._simulator_recovery_failures
+            logger.warning(
+                "Simulator validation exhausted turn retries. Consecutive failures: {}/{}",
+                self._simulator_recovery_failures,
+                self._simulator_recovery_budget,
+            )
+            if remaining > 0:
+                attempt_label = "attempt" if remaining == 1 else "attempts"
+                yield GameEvent.now(
+                    type="error",
+                    content=f"{self.SIMULATOR_RETRY_MESSAGE} Simulator recovery attempts remaining: {remaining} {attempt_label}.",
+                    failure_type=failure_type,
+                    retries_remaining=remaining,
+                )
+                return
+
+            logger.error("Simulator recovery budget exhausted; ending game without scoring.")
+            self.exit(self.SIMULATOR_RECOVERY_BUDGET_EXHAUSTED_REASON)
+            yield GameEvent.now(
+                type="error",
+                content=self.SIMULATOR_RECOVERY_BUDGET_EXHAUSTED_MESSAGE,
+                failure_type=SIMULATOR_RECOVERY_BUDGET_EXHAUSTED,
+                retries_remaining=0,
+                exit_reason=self.SIMULATOR_RECOVERY_BUDGET_EXHAUSTED_REASON,
+            )
+            return
         else:
             logger.error("Internal simulator error; ending game without scoring.")
             self.exit(self.INTERNAL_ERROR_REASON)
@@ -727,6 +782,7 @@ class Game(ABC):
             "exited": self._exited,
             "exit_reason": self._exit_reason,
             "player_retry_budget": self._player_retry_budget,
+            "simulator_recovery_failures": self._simulator_recovery_failures,
             "in_finish_flow": self._in_finish_flow,
             "filtered_transcript_buffer": list(self._filtered_transcript_buffer),
             "engine_state": self._export_engine_state(),
@@ -745,6 +801,7 @@ class Game(ABC):
         self._exited = bool(state.get("exited", False))
         self._exit_reason = str(state.get("exit_reason", ""))
         self._player_retry_budget = int(state.get("player_retry_budget", legacy_retry_budget))
+        self._simulator_recovery_failures = int(state.get("simulator_recovery_failures", 0))
         self._in_finish_flow = bool(state.get("in_finish_flow", False))
 
         transcript_buffer = state.get("filtered_transcript_buffer")

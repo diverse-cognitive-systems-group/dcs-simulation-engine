@@ -76,6 +76,7 @@ async def test_submit_form_group_stores_entry_form_in_forms_collection(async_mon
         ("retry budget exhausted", False),
         ("player_validation_retry_exhausted", False),
         ("simulator_validation_retry_exhausted", False),
+        ("simulator_recovery_budget_exhausted", False),
         ("internal_error", False),
         ("websocket_disconnect", False),
         ("server_error", False),

@@ -290,6 +290,7 @@ async def test_expose_overrides_available(game, patch_llm_client, _isolate_db_st
         "max_turns": 2,
         "max_playtime": 2,
         "player_retry_budget": 1,
+        "simulator_recovery_budget": 2,
         "max_input_length": 80,
         "pcs_allowed": "human-normative",
         "npcs_allowed": "all",

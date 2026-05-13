@@ -110,7 +110,11 @@ def _summary_card(data: AnalysisData) -> str:
         n_player_lockout = int(
             reasons.str.contains("player_validation_retry_exhausted|validation_retry_exhausted|retry_budget|retry budget").sum()
         )
-        n_internal_terminal = int(reasons.str.contains("simulator_validation_retry_exhausted|internal_error|server_error").sum())
+        n_internal_terminal = int(
+            reasons.str.contains(
+                "simulator_validation_retry_exhausted|simulator_recovery_budget_exhausted|internal_error|server_error"
+            ).sum()
+        )
 
     rows = [
         ("Log WARNINGs", str(warnings)),
