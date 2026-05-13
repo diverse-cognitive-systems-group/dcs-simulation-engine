@@ -24,6 +24,7 @@ class WebSocketFrameError(RuntimeError):
     """Structured websocket error frame received from the engine."""
 
     def __init__(self, frame: dict[str, Any]) -> None:
+        """Extract details from the error frame, if present."""
         self.frame = frame
         self.detail = str(frame.get("detail") or "Unknown websocket error")
         self.failure_type = self._str_or_none(frame.get("failure_type"))
@@ -461,9 +462,7 @@ class PlayerHarness:
                     event_type=event_type,
                     content=str(event.get("content") or ""),
                     failure_type=event.get("failure_type"),
-                    retries_remaining=(
-                        event.get("retries_remaining") if isinstance(event.get("retries_remaining"), int) else None
-                    ),
+                    retries_remaining=(event.get("retries_remaining") if isinstance(event.get("retries_remaining"), int) else None),
                     provider=event.get("provider") if isinstance(event.get("provider"), str) else None,
                     provider_status_code=(
                         event.get("provider_status_code") if isinstance(event.get("provider_status_code"), int) else None
@@ -481,9 +480,7 @@ class PlayerHarness:
 
     def _failure_details(self, events: list[dict[str, Any]], turn_end: dict[str, Any]) -> dict[str, Any]:
         event = self._last_error_event(events)
-        failure_type = self._str_or_none(turn_end.get("failure_type")) or self._str_or_none(
-            event.get("failure_type")
-        )
+        failure_type = self._str_or_none(turn_end.get("failure_type")) or self._str_or_none(event.get("failure_type"))
         exit_reason = self._str_or_none(turn_end.get("exit_reason"))
         if failure_type is None and not self._is_error_exit(exit_reason):
             return {}

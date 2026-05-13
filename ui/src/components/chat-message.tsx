@@ -44,7 +44,7 @@ function errorHeader(message: ChatMessage): string {
 function displayContent(message: ChatMessage): string {
   if (message.failureType === 'model_provider_error') {
     return (
-      "The provider for this game is currently unavailable." +
+      'The provider for this game is currently unavailable.' +
       'The game host should check their provider account before gameplay can continue.'
     )
   }
