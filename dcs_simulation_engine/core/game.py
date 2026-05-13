@@ -602,7 +602,7 @@ class Game(ABC):
             self._simulator_recovery_failures += 1
             remaining = self._simulator_recovery_budget - self._simulator_recovery_failures
             logger.warning(
-                "Simulator validation exhausted turn retries. Consecutive failures: {}/{}",
+                "Simulator validation exhausted turn retries. Consecutive failures: {}/{}. Check validation_violation events for details.",
                 self._simulator_recovery_failures,
                 self._simulator_recovery_budget,
             )

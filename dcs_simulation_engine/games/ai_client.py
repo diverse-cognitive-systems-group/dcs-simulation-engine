@@ -16,7 +16,7 @@ from dcs_simulation_engine.core.constants import (
     SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
-from dcs_simulation_engine.errors import ModelProviderError
+from dcs_simulation_engine.errors import ModelOutputContractError, ModelProviderError
 from dcs_simulation_engine.games.prompts import (
     DEFAULT_PLAYER_TURN_VALIDATORS,
     DEFAULT_SIMULATOR_TURN_VALIDATORS,
@@ -36,6 +36,7 @@ DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
 _OPENROUTER_PROVIDER = "openrouter"
+_MODEL_OUTPUT_PROVIDER_CODE = "model_output_contract_error"
 
 
 def set_fake_ai_response(value: str | None) -> None:
@@ -83,6 +84,47 @@ def _provider_error_user_message(*, provider: str, model: str, status_code: int 
     if provider_message:
         return f"Model provider error from {provider_label} for {model}: {provider_message}"
     return f"Model provider error from {provider_label} for {model}."
+
+
+def _model_output_provider_error(exc: ModelOutputContractError) -> ModelProviderError:
+    """Convert exhausted model-output contract failures into provider-level failures."""
+    provider_message = f"{exc.component}: {exc.detail}"
+    raw = (exc.raw_response or "").replace("\n", " ")
+    if len(raw) > 600:
+        raw = f"{raw[:600]}..."
+    logger.error(
+        "Model output contract failed after retry: component={} model={} detail={} raw_response={!r}",
+        exc.component,
+        exc.model,
+        exc.detail,
+        raw,
+    )
+    return ModelProviderError(
+        provider=_OPENROUTER_PROVIDER,
+        model=exc.model,
+        provider_code=_MODEL_OUTPUT_PROVIDER_CODE,
+        provider_message=provider_message,
+        user_message=(
+            f"Model provider error: {_provider_display_name(_OPENROUTER_PROVIDER)} returned unusable output "
+            f"for {exc.model}. The host may need to retry or switch models."
+        ),
+        retryable=False,
+    )
+
+
+def _contract_retry_instruction(component: str, exc: ModelOutputContractError) -> str:
+    """Build corrective feedback for one model-output contract retry."""
+    if component == "validator":
+        schema = '{"pass": true} or {"pass": false, "reason": "<brief explanation>"}'
+    elif component == "scorer":
+        schema = '{"tier": <int 0-3>, "score": <int 0-100>, "reasoning": "<non-empty string>"}'
+    else:
+        schema = '{"type": "ai", "content": "<non-empty string>", "metadata": {}}'
+    return (
+        f"Your previous {component} response did not match the required output contract: {exc.detail}.\n"
+        f"Return ONLY valid JSON matching this schema: {schema}\n"
+        "Do not include Markdown fences, prose outside JSON, null content, or missing required fields."
+    )
 
 
 def _provider_error_from_response(response: httpx.Response, model: str) -> ModelProviderError:
@@ -147,8 +189,23 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
         )
         if response.is_error:
             raise _provider_error_from_response(response, model)
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
+    try:
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise ModelOutputContractError(
+            component="chat completion",
+            model=model,
+            detail=f"provider response did not include assistant message content ({exc})",
+        ) from exc
+    if not isinstance(content, str):
+        raise ModelOutputContractError(
+            component="chat completion",
+            model=model,
+            detail="assistant message content must be a string",
+            raw_response=json.dumps(data, default=str),
+        )
+    return content
 
 
 def _should_retry_llm_error(exc: Exception) -> bool:
@@ -418,14 +475,53 @@ class SimulatorClient:
                 return stripped[:80]
         return fallback
 
-    async def _call_json_prompt(self, *, system_prompt: str, user_input: str | None, model: str) -> ParsedSimulatorResponse:
+    async def _call_json_prompt(
+        self,
+        *,
+        system_prompt: str,
+        user_input: str | None,
+        model: str,
+        component: str,
+        corrective_feedback: str | None = None,
+    ) -> ParsedSimulatorResponse:
         """Execute a prompt and return normalized content plus optional metadata."""
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input or "Begin."}]
+        if corrective_feedback is not None:
+            messages.append({"role": "user", "content": corrective_feedback})
         raw = await _call_openrouter_with_retry(messages, model)
+        if not isinstance(raw, str):
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response content must be a string",
+            )
         parsed = _parse_json_response(raw)
+        if parsed.get("type") == "error":
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response was not valid JSON",
+                raw_response=raw,
+            )
+        response_type = parsed.get("type", "ai")
+        content = parsed.get("content")
+        if not isinstance(response_type, str) or response_type not in {"ai", "info", "warning"}:
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response type must be one of: ai, info, warning",
+                raw_response=raw,
+            )
+        if not isinstance(content, str) or not content.strip():
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response content must be a non-empty string",
+                raw_response=raw,
+            )
         return ParsedSimulatorResponse(
-            type=str(parsed.get("type", "ai")),
-            content=str(parsed.get("content", raw)),
+            type=response_type,
+            content=content,
             metadata=_extract_response_metadata(parsed),
             raw_response=raw,
         )
@@ -477,9 +573,48 @@ class SimulatorClient:
             validator_template=validator_template,
         )
 
+    async def _run_validator_once(self, system_prompt: str, *, corrective_feedback: str | None = None) -> dict[str, Any]:
+        messages = [{"role": "system", "content": system_prompt}]
+        if corrective_feedback is not None:
+            messages.append({"role": "user", "content": corrective_feedback})
+        raw = await _call_openrouter_with_retry(messages, self._validator_model)
+        if not isinstance(raw, str):
+            raise ModelOutputContractError(
+                component="validator",
+                model=self._validator_model,
+                detail="response content must be a string",
+            )
+        result = _parse_json_response(raw)
+        if result.get("type") == "error":
+            raise ModelOutputContractError(
+                component="validator",
+                model=self._validator_model,
+                detail="response was not valid JSON",
+                raw_response=raw,
+            )
+        if not isinstance(result.get("pass"), bool):
+            raise ModelOutputContractError(
+                component="validator",
+                model=self._validator_model,
+                detail="response must include a boolean pass field",
+                raw_response=raw,
+            )
+        return result
+
     async def _run_validator(self, system_prompt: str) -> dict[str, Any]:
-        raw = await _call_openrouter_with_retry([{"role": "system", "content": system_prompt}], self._validator_model)
-        return _parse_json_response(raw)
+        try:
+            return await self._run_validator_once(system_prompt)
+        except ModelProviderError:
+            raise
+        except ModelOutputContractError as exc:
+            logger.warning("Validator output contract failed; retrying once. Error: {}", exc)
+            try:
+                return await self._run_validator_once(
+                    system_prompt,
+                    corrective_feedback=_contract_retry_instruction("validator", exc),
+                )
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc) from retry_exc
 
     async def _run_player_validator(self, validator_template: str, user_input: str) -> tuple[str, dict[str, Any]]:
         """Execute one configured player-turn validator."""
@@ -488,26 +623,37 @@ class SimulatorClient:
             self._build_player_validator_prompt(validator_template=validator_template, user_input=user_input)
         )
 
-    async def _generate_simulator_response(self, *, user_input: str) -> ParsedSimulatorResponse:
+    async def _generate_simulator_response(
+        self,
+        *,
+        user_input: str,
+        corrective_feedback: str | None = None,
+    ) -> ParsedSimulatorResponse:
         """Generate the next immediate simulator response."""
         response = await self._call_json_prompt(
             system_prompt=self._build_updater_prompt(user_input=user_input),
             user_input=user_input,
             model=self._updater_model,
+            component="updater",
+            corrective_feedback=corrective_feedback,
         )
-        if response.type == "error":
-            raise ValueError("Updater returned an invalid JSON payload.")
         return response
 
     async def _generate_simulator_response_with_retry(self, *, user_input: str) -> ParsedSimulatorResponse:
-        """Generate a simulator response, retrying one non-provider updater failure."""
+        """Generate a simulator response, retrying one model-output contract failure."""
         try:
             return await self._generate_simulator_response(user_input=user_input)
         except ModelProviderError:
             raise
-        except Exception as exc:
+        except ModelOutputContractError as exc:
             logger.warning("Simulator updater generation failed; retrying once. Error: {}", exc)
-            return await self._generate_simulator_response(user_input=user_input)
+            try:
+                return await self._generate_simulator_response(
+                    user_input=user_input,
+                    corrective_feedback=_contract_retry_instruction("updater", exc),
+                )
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc) from retry_exc
 
     @staticmethod
     def _validation_error(result: dict[str, Any], *, default_message: str) -> str | None:
@@ -703,13 +849,25 @@ class SimulatorClient:
 
     async def chat(self, user_input: str | None) -> ParsedSimulatorResponse:
         """Generate the opening scene without player-input validation."""
-        opening = await self._call_json_prompt(
-            system_prompt=self._build_opening_scene_prompt(),
-            user_input=user_input,
-            model=self._opener_model,
-        )
-        if opening.type == "error":
-            raise ValueError("Opener returned an invalid JSON payload.")
+        try:
+            opening = await self._call_json_prompt(
+                system_prompt=self._build_opening_scene_prompt(),
+                user_input=user_input,
+                model=self._opener_model,
+                component="opener",
+            )
+        except ModelOutputContractError as exc:
+            logger.warning("Opening scene generation failed; retrying once. Error: {}", exc)
+            try:
+                opening = await self._call_json_prompt(
+                    system_prompt=self._build_opening_scene_prompt(),
+                    user_input=user_input,
+                    model=self._opener_model,
+                    component="opener",
+                    corrective_feedback=_contract_retry_instruction("opener", exc),
+                )
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc) from retry_exc
         self._opening_metadata = dict(opening.metadata)
         self._opening_scenes.append(opening.content)
         self._history.append(f"Opening scene: {opening.content}")
@@ -731,7 +889,7 @@ class SimulatorClient:
             logger.exception("Player validation failed due to LLM/runtime error.")
             return SimulatorTurnResult(
                 ok=False,
-                error_message=f"I couldn't validate your action just now ({exc}). Please try again.",
+                error_message=f"The simulation engine hit an internal problem while validating the action ({exc}).",
                 failure_type=INTERNAL_ERROR,
             )
 
@@ -761,7 +919,7 @@ class SimulatorClient:
             logger.exception("Simulator updater failed due to LLM/runtime error.")
             return SimulatorTurnResult(
                 ok=False,
-                error_message=f"I couldn't produce a simulator response just now ({exc}). Please try again.",
+                error_message=f"The simulation engine hit an internal problem while producing a simulator response ({exc}).",
                 failure_type=INTERNAL_ERROR,
                 pc_validation_failures=player_validation_failures,
             )
@@ -811,6 +969,34 @@ class ScorerClient:
         """Initialise with model identifier only."""
         self._model = model
 
+    def _parse_score_response(self, raw: str) -> ScorerResult:
+        if not isinstance(raw, str):
+            raise ModelOutputContractError(
+                component="scorer",
+                model=self._model,
+                detail="response content must be a string",
+            )
+        stripped = _strip_json_fences(raw)
+        parsed = _parse_json_response(raw)
+        if parsed.get("type") == "error":
+            raise ModelOutputContractError(
+                component="scorer",
+                model=self._model,
+                detail="response was not valid JSON",
+                raw_response=raw,
+            )
+        try:
+            result = _normalize_evaluation(parsed)
+        except ValueError as exc:
+            raise ModelOutputContractError(
+                component="scorer",
+                model=self._model,
+                detail=str(exc),
+                raw_response=raw,
+            ) from exc
+        logger.debug(f"ScorerClient result: {result}")
+        return ScorerResult(evaluation=result, raw_json=stripped)
+
     async def score(self, *, prompt: str, transcript: str) -> ScorerResult:
         """Execute a rendered scoring prompt and return parsed + raw JSON results."""
         if not prompt.strip():
@@ -818,8 +1004,17 @@ class ScorerClient:
         if not transcript.strip():
             raise ValueError("Scoring transcript must be non-empty.")
 
-        raw = await _call_openrouter_with_retry([{"role": "user", "content": prompt}], self._model)
-        stripped = _strip_json_fences(raw)
-        result = _normalize_evaluation(_parse_json_response(raw))
-        logger.debug(f"ScorerClient result: {result}")
-        return ScorerResult(evaluation=result, raw_json=stripped)
+        try:
+            raw = await _call_openrouter_with_retry([{"role": "user", "content": prompt}], self._model)
+            return self._parse_score_response(raw)
+        except ModelOutputContractError as exc:
+            logger.warning("Scorer output contract failed; retrying once. Error: {}", exc)
+            retry_prompt = f"{prompt}\n\n{_contract_retry_instruction('scorer', exc)}"
+            try:
+                retry_raw = await _call_openrouter_with_retry(
+                    [{"role": "user", "content": retry_prompt}],
+                    self._model,
+                )
+                return self._parse_score_response(retry_raw)
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc) from retry_exc

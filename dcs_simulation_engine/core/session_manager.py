@@ -564,6 +564,12 @@ class SessionManager:
                     command_name=outbound_command_name,
                     command_args=outbound_command_args,
                     event_ts=event.event_ts,
+                    failure_type=event.failure_type,
+                    retries_remaining=event.retries_remaining,
+                    exit_reason=event.exit_reason,
+                    provider=event.provider,
+                    provider_status_code=event.provider_status_code,
+                    provider_code=event.provider_code,
                 )
                 payload["event_id"] = recorded.event_id
             emitted.append(payload)

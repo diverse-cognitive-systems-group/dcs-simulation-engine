@@ -60,3 +60,17 @@ def _default_user_message(
     if message:
         return f"Model provider error from {provider_label} for {model}: {message}"
     return f"Model provider error from {provider_label} for {model}."
+
+
+@dataclass
+class ModelOutputContractError(APIRequestError):
+    """Raised when a model response does not match the expected payload contract."""
+
+    component: str
+    model: str
+    detail: str
+    raw_response: str | None = None
+
+    def __post_init__(self) -> None:
+        """Generate a user-friendly message."""
+        super().__init__(f"{self.component} returned invalid model output for {self.model}: {self.detail}")

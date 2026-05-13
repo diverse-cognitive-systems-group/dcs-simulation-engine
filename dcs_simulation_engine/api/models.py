@@ -439,6 +439,11 @@ class WSReplayEventFrame(BaseModel):
     content: str
     event_id: str | None = None
     role: Literal["user", "ai"] = "ai"
+    failure_type: FailureType | None = None
+    retries_remaining: int | None = None
+    provider: str | None = None
+    provider_status_code: int | None = None
+    provider_code: str | None = None
 
 
 class WSReplayEndFrame(BaseModel):

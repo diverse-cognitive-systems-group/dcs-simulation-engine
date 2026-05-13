@@ -215,6 +215,9 @@ async def _send_replay(websocket: WebSocket, session_id: str, provider: Any, tur
         direction = str(getattr(event, "direction", None) or "outbound").lower()
         content = str(getattr(event, "content", None) or "")
         event_id = getattr(event, "event_id", None)
+        data = getattr(event, "data", {})
+        if not isinstance(data, dict):
+            data = {}
 
         # Skip internal lifecycle events (session_start, session_end).
         if event_type in {"session_start", "session_end"}:
@@ -239,6 +242,11 @@ async def _send_replay(websocket: WebSocket, session_id: str, provider: Any, tur
             content=content,
             event_id=str(event_id) if event_id else None,
             role=role,  # type: ignore[arg-type]
+            failure_type=data.get("failure_type"),
+            retries_remaining=data.get("retries_remaining"),
+            provider=data.get("provider"),
+            provider_status_code=data.get("provider_status_code"),
+            provider_code=data.get("provider_code"),
         )
         await websocket.send_json(frame.model_dump(mode="json"))
 
