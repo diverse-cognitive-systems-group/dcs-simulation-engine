@@ -222,6 +222,16 @@ async def test_player_validation_failures_are_persisted_with_schema(
     assert emitted[0]["failure_type"] == "player_turn_validation_failed"
 
     events = _persisted_events(db, session_id=session_id)
+    error_events = _matching_events(
+        events,
+        direction="outbound",
+        event_source="system",
+        event_type="error",
+    )
+    assert len(error_events) == 1
+    assert error_events[0][MongoColumns.FAILURE_TYPE] == "player_turn_validation_failed"
+    assert error_events[0][MongoColumns.RETRIES_REMAINING] == emitted[0]["retries_remaining"]
+
     violations = _matching_events(
         events,
         direction="internal",
@@ -270,6 +280,16 @@ async def test_simulator_validation_failures_are_persisted_for_both_attempts(
     await session.exit_async("test complete")
 
     events = _persisted_events(db, session_id=session_id)
+    error_events = _matching_events(
+        events,
+        direction="outbound",
+        event_source="system",
+        event_type="error",
+    )
+    assert len(error_events) == 1
+    assert error_events[0][MongoColumns.FAILURE_TYPE] == "simulator_turn_validation_retry_exhausted"
+    assert error_events[0][MongoColumns.RETRIES_REMAINING] == 2
+
     violations = _matching_events(
         events,
         direction="internal",

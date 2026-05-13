@@ -5,9 +5,9 @@ from typing import Any
 
 import httpx
 import pytest
-from dcs_simulation_engine.errors import ModelProviderError
+from dcs_simulation_engine.errors import ModelOutputContractError, ModelProviderError
 from dcs_simulation_engine.games import ai_client
-from dcs_simulation_engine.games.ai_client import _extract_response_metadata
+from dcs_simulation_engine.games.ai_client import ScorerClient, _extract_response_metadata
 
 
 @pytest.mark.unit
@@ -134,6 +134,44 @@ def test_call_openrouter_raises_sanitized_model_provider_error_for_402(monkeypat
 
 
 @pytest.mark.unit
+def test_call_openrouter_rejects_null_message_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Null provider content is a model-output contract failure, not a local AttributeError."""
+    ai_client.set_fake_ai_response(None)
+    monkeypatch.setattr(ai_client, "_get_api_key", lambda: "test-key")
+
+    class FakeResponse:
+        is_error = False
+        status_code = 200
+        text = ""
+
+        def json(self) -> dict[str, Any]:
+            return {"choices": [{"message": {"content": None}}]}
+
+    class FakeAsyncClient:
+        async def __aenter__(self) -> "FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(self, *args: Any, **kwargs: Any) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
+
+    with pytest.raises(ModelOutputContractError) as exc_info:
+        asyncio.run(
+            ai_client._call_openrouter(
+                messages=[{"role": "system", "content": "go"}],
+                model="openai/gpt-5-mini",
+            )
+        )
+
+    assert exc_info.value.component == "chat completion"
+    assert exc_info.value.detail == "assistant message content must be a string"
+
+
+@pytest.mark.unit
 def test_validate_openrouter_configuration_raises_when_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -213,6 +251,49 @@ async def test_call_openrouter_with_retry_does_not_retry_nonretryable_provider_e
     with pytest.raises(ModelProviderError):
         await ai_client._call_openrouter_with_retry([], "model")
     assert calls == 1
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_scorer_retries_once_when_output_contract_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Malformed scorer output should get one corrective retry before succeeding."""
+    calls: list[list[dict[str, str]]] = []
+
+    async def fake_call(messages, model):
+        _ = model
+        calls.append(messages)
+        if len(calls) == 1:
+            return None
+        return '{"tier": 2, "score": 75, "reasoning": "clear"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    result = await ScorerClient(model="test-model").score(prompt="Score this", transcript="Transcript")
+
+    assert result.evaluation == {"tier": 2, "score": 75, "reasoning": "clear"}
+    assert len(calls) == 2
+    assert "previous scorer response" in calls[1][0]["content"]
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_scorer_surfaces_provider_error_when_output_contract_fails_after_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated malformed scorer output should become a diagnostic provider error."""
+
+    async def fake_call(messages, model):
+        _ = messages, model
+        return '{"tier": null, "score": 75, "reasoning": "clear"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    with pytest.raises(ModelProviderError) as exc_info:
+        await ScorerClient(model="test-model").score(prompt="Score this", transcript="Transcript")
+
+    assert exc_info.value.provider == "openrouter"
+    assert exc_info.value.provider_code == "model_output_contract_error"
+    assert exc_info.value.provider_message == "scorer: Invalid inference evaluation payload: {'tier': None, 'score': 75, 'reasoning': 'clear'}"
 
 
 @pytest.mark.unit

@@ -20,6 +20,27 @@ from loguru import logger
 from websockets.asyncio.client import connect
 
 
+class WebSocketFrameError(RuntimeError):
+    """Structured websocket error frame received from the engine."""
+
+    def __init__(self, frame: dict[str, Any]) -> None:
+        self.frame = frame
+        self.detail = str(frame.get("detail") or "Unknown websocket error")
+        self.failure_type = self._str_or_none(frame.get("failure_type"))
+        self.provider = self._str_or_none(frame.get("provider"))
+        self.provider_status_code = self._int_or_none(frame.get("provider_status_code"))
+        self.provider_code = self._str_or_none(frame.get("provider_code"))
+        super().__init__(self.detail)
+
+    @staticmethod
+    def _str_or_none(value: Any) -> str | None:
+        return value if isinstance(value, str) and value else None
+
+    @staticmethod
+    def _int_or_none(value: Any) -> int | None:
+        return value if isinstance(value, int) else None
+
+
 class PlayerHarness:
     """Drive API-visible player actions against a running DCS API server."""
 
@@ -189,12 +210,14 @@ class PlayerHarness:
                 turns = int(turn_end.get("turns") or 0)
                 self._emit_turns(opening_events, assignment_id=assignment_id, session_id=session_id, turns=turns)
                 if turn_end.get("exited"):
+                    failure = self._failure_details(opening_events, turn_end)
                     return AssignmentResult(
                         assignment_id=assignment_id,
                         game_name=str(assignment["game_name"]),
                         session_id=session_id,
                         status="exited",
                         turns=turns,
+                        **failure,
                     )
 
                 while turns < self.max_turns_per_assignment:
@@ -233,6 +256,7 @@ class PlayerHarness:
                     self._emit_turns(events, assignment_id=assignment_id, session_id=session_id, turns=turns)
                     last_error = self._last_error(events)
                     if turn_end.get("exited"):
+                        failure = self._failure_details(events, turn_end)
                         logger.debug(
                             "autoplay assignment_exited model={} assignment_id={} session_id={} turns={} reason={}",
                             self.player.model_id,
@@ -247,6 +271,7 @@ class PlayerHarness:
                             session_id=session_id,
                             turns=turns,
                             reason=str(turn_end.get("exit_reason") or "exited"),
+                            **failure,
                         )
                         return AssignmentResult(
                             assignment_id=assignment_id,
@@ -254,6 +279,7 @@ class PlayerHarness:
                             session_id=session_id,
                             status="exited",
                             turns=turns,
+                            **failure,
                         )
 
             return AssignmentResult(
@@ -263,6 +289,45 @@ class PlayerHarness:
                 status="interrupted",
                 turns=turns,
                 error=f"max_turns_per_assignment reached: {self.max_turns_per_assignment}",
+            )
+        except WebSocketFrameError as exc:
+            error = self._format_failure_message(
+                content=exc.detail,
+                failure_type=exc.failure_type,
+                provider=exc.provider,
+                provider_status_code=exc.provider_status_code,
+                provider_code=exc.provider_code,
+            )
+            logger.debug(
+                "autoplay assignment_failed model={} assignment_id={} session_id={} failure_type={} error={}",
+                self.player.model_id,
+                assignment_id,
+                session_id,
+                exc.failure_type,
+                exc.detail,
+            )
+            self._emit(
+                "assignment_failed",
+                assignment_id=assignment_id,
+                session_id=session_id,
+                turns=turns,
+                error=error,
+                failure_type=exc.failure_type,
+                provider=exc.provider,
+                provider_status_code=exc.provider_status_code,
+                provider_code=exc.provider_code,
+            )
+            return AssignmentResult(
+                assignment_id=assignment_id,
+                game_name=str(assignment["game_name"]),
+                session_id=session_id,
+                status="error",
+                turns=turns,
+                error=error,
+                failure_type=exc.failure_type,
+                provider=exc.provider,
+                provider_status_code=exc.provider_status_code,
+                provider_code=exc.provider_code,
             )
         except Exception as exc:
             logger.debug(
@@ -330,6 +395,10 @@ class PlayerHarness:
                 event_type=turn.event_type,
                 content=turn.content,
                 failure_type=turn.failure_type,
+                retries_remaining=turn.retries_remaining,
+                provider=turn.provider,
+                provider_status_code=turn.provider_status_code,
+                provider_code=turn.provider_code,
             )
 
     def _ws_url(self, session_id: str) -> str:
@@ -347,7 +416,7 @@ class PlayerHarness:
         if not isinstance(frame, dict):
             raise RuntimeError("Expected JSON object websocket frame")
         if frame.get("type") == "error":
-            raise RuntimeError(str(frame.get("detail") or "Unknown websocket error"))
+            raise WebSocketFrameError(frame)
         return frame
 
     async def _recv_expected(self, ws: Any, expected_type: str) -> dict[str, Any]:
@@ -392,6 +461,14 @@ class PlayerHarness:
                     event_type=event_type,
                     content=str(event.get("content") or ""),
                     failure_type=event.get("failure_type"),
+                    retries_remaining=(
+                        event.get("retries_remaining") if isinstance(event.get("retries_remaining"), int) else None
+                    ),
+                    provider=event.get("provider") if isinstance(event.get("provider"), str) else None,
+                    provider_status_code=(
+                        event.get("provider_status_code") if isinstance(event.get("provider_status_code"), int) else None
+                    ),
+                    provider_code=event.get("provider_code") if isinstance(event.get("provider_code"), str) else None,
                 )
             )
         return turns
@@ -401,3 +478,90 @@ class PlayerHarness:
             if event.get("event_type") == "error":
                 return str(event.get("content") or "")
         return None
+
+    def _failure_details(self, events: list[dict[str, Any]], turn_end: dict[str, Any]) -> dict[str, Any]:
+        event = self._last_error_event(events)
+        failure_type = self._str_or_none(turn_end.get("failure_type")) or self._str_or_none(
+            event.get("failure_type")
+        )
+        exit_reason = self._str_or_none(turn_end.get("exit_reason"))
+        if failure_type is None and not self._is_error_exit(exit_reason):
+            return {}
+        provider = self._str_or_none(event.get("provider"))
+        provider_status_code = self._int_or_none(event.get("provider_status_code"))
+        provider_code = self._str_or_none(event.get("provider_code"))
+        content = str(event.get("content") or exit_reason or "Session exited")
+        return {
+            "error": self._format_failure_message(
+                content=content,
+                failure_type=failure_type,
+                provider=provider,
+                provider_status_code=provider_status_code,
+                provider_code=provider_code,
+            ),
+            "failure_type": failure_type,
+            "exit_reason": exit_reason,
+            "provider": provider,
+            "provider_status_code": provider_status_code,
+            "provider_code": provider_code,
+        }
+
+    def _last_error_event(self, events: list[dict[str, Any]]) -> dict[str, Any]:
+        for event in reversed(events):
+            if event.get("event_type") == "error":
+                return event
+        return {}
+
+    @staticmethod
+    def _is_error_exit(exit_reason: str | None) -> bool:
+        return exit_reason in {
+            "internal_error",
+            "model_provider_error",
+            "player_validation_retry_exhausted",
+            "simulator_validation_retry_exhausted",
+            "simulator_recovery_budget_exhausted",
+            "server_error",
+        }
+
+    @classmethod
+    def _format_failure_message(
+        cls,
+        *,
+        content: str,
+        failure_type: str | None,
+        provider: str | None = None,
+        provider_status_code: int | None = None,
+        provider_code: str | None = None,
+    ) -> str:
+        label = cls._failure_label(failure_type)
+        details = []
+        if provider:
+            details.append(f"provider={provider}")
+        if provider_status_code is not None:
+            details.append(f"status={provider_status_code}")
+        if provider_code:
+            details.append(f"code={provider_code}")
+        suffix = f" ({', '.join(details)})" if details else ""
+        return f"{label}: {content}{suffix}"
+
+    @staticmethod
+    def _failure_label(failure_type: str | None) -> str:
+        if failure_type == "model_provider_error":
+            return "Provider error"
+        if failure_type == "internal_error":
+            return "Engine error"
+        if failure_type == "simulator_recovery_budget_exhausted":
+            return "Simulator recovery exhausted"
+        if failure_type == "simulator_turn_validation_retry_exhausted":
+            return "Retryable simulator issue"
+        if failure_type == "player_turn_validation_failed":
+            return "Player validation"
+        return "Server error"
+
+    @staticmethod
+    def _str_or_none(value: Any) -> str | None:
+        return value if isinstance(value, str) and value else None
+
+    @staticmethod
+    def _int_or_none(value: Any) -> int | None:
+        return value if isinstance(value, int) else None
