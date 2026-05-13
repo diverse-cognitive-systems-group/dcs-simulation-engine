@@ -74,18 +74,6 @@ def _clean_provider_message(message: Any) -> str:
     return " ".join(str(message or "").split())
 
 
-def _provider_error_user_message(*, provider: str, model: str, status_code: int | None, provider_message: str) -> str:
-    provider_label = _provider_display_name(provider)
-    if status_code == 402:
-        return (
-            f"Model provider error: {provider_label} needs more credits for {model}. "
-            "Add credits, choose a cheaper model, or reduce token usage."
-        )
-    if provider_message:
-        return f"Model provider error from {provider_label} for {model}: {provider_message}"
-    return f"Model provider error from {provider_label} for {model}."
-
-
 def _model_output_provider_error(exc: ModelOutputContractError) -> ModelProviderError:
     """Convert exhausted model-output contract failures into provider-level failures."""
     provider_message = f"{exc.component}: {exc.detail}"
@@ -155,12 +143,6 @@ def _provider_error_from_response(response: httpx.Response, model: str) -> Model
         status_code=status_code,
         provider_code=provider_code,
         provider_message=provider_message,
-        user_message=_provider_error_user_message(
-            provider=_OPENROUTER_PROVIDER,
-            model=model,
-            status_code=status_code,
-            provider_message=provider_message,
-        ),
         retryable=retryable,
     )
     logger.error(
@@ -677,11 +659,6 @@ class SimulatorClient:
                     result.get("pass"),
                     result,
                 )
-                if result.get("type") == "error":
-                    for pending_task in validator_tasks:
-                        if not pending_task.done():
-                            pending_task.cancel()
-                    raise ValueError(f"{validator_name} returned an invalid JSON payload.")
                 error_message = self._validation_error(result, default_message="Invalid action.")
                 if error_message is not None:
                     logger.info(f"Player validation failed: {validator_name} - {error_message}")
@@ -758,8 +735,6 @@ class SimulatorClient:
                     result.get("pass"),
                     result,
                 )
-                if result.get("type") == "error":
-                    raise ValueError(f"{validator_name} returned an invalid JSON payload.")
                 error_message = self._validation_error(result, default_message="Invalid simulator response.")
                 if error_message is not None:
                     logger.info(f"Simulator validation failed: {validator_name} - {error_message}")
