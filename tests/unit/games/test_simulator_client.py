@@ -212,7 +212,7 @@ async def test_simulator_client_surfaces_clean_error_when_player_validator_runti
     result = await client.step("I wave")
 
     assert result.ok is False
-    assert result.error_message == "The simulation engine hit an internal problem while validating the action (validator offline)."
+    assert result.error_message == "The simulation engine hit an internal problem while validating the action."
     assert result.failure_type == INTERNAL_ERROR
 
 
@@ -244,10 +244,7 @@ async def test_simulator_client_surfaces_clean_error_when_updater_runtime_fails(
     result = await client.step("I wave")
 
     assert result.ok is False
-    assert (
-        result.error_message
-        == "The simulation engine hit an internal problem while producing a simulator response (updater offline)."
-    )
+    assert result.error_message == "The simulation engine hit an internal problem while producing a simulator response."
     assert result.failure_type == INTERNAL_ERROR
     assert updater_calls == 1
 

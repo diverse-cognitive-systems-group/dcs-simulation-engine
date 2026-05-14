@@ -894,12 +894,12 @@ class SimulatorClient:
         except ModelProviderError:
             await self._cancel_tasks(updater_generation_task)
             raise
-        except Exception as exc:
+        except Exception:
             await self._cancel_tasks(updater_generation_task)
             logger.exception("Player validation failed due to LLM/runtime error.")
             return SimulatorTurnResult(
                 ok=False,
-                error_message=f"The simulation engine hit an internal problem while validating the action ({exc}).",
+                error_message="The simulation engine hit an internal problem while validating the action.",
                 failure_type=INTERNAL_ERROR,
             )
 
@@ -925,11 +925,11 @@ class SimulatorClient:
             )
         except ModelProviderError:
             raise
-        except Exception as exc:
+        except Exception:
             logger.exception("Simulator updater failed due to LLM/runtime error.")
             return SimulatorTurnResult(
                 ok=False,
-                error_message=f"The simulation engine hit an internal problem while producing a simulator response ({exc}).",
+                error_message="The simulation engine hit an internal problem while producing a simulator response.",
                 failure_type=INTERNAL_ERROR,
                 pc_validation_failures=player_validation_failures,
             )
