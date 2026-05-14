@@ -14,7 +14,6 @@ from dcs_simulation_engine.games.prompts import (
     SCORER_NEXT_ACTION,
     build_scorer_prompt,
 )
-from loguru import logger
 
 
 class ForesightGame(Game):
@@ -117,7 +116,10 @@ class ForesightGame(Game):
 
     async def on_finish(self) -> AsyncIterator[GameEvent]:
         """Score the final prediction, then exit."""
-        await self._score_prediction()
+        error_event = await self._run_finish_scoring(self._score_prediction)
+        if error_event is not None:
+            yield error_event
+            return
 
         if self._show_final_score:
             yield GameEvent.now(type="info", content=format_score_markdown(self._score))
@@ -131,35 +133,25 @@ class ForesightGame(Game):
 
     async def _score_prediction(self) -> None:
         """Score the player's latest next-action prediction."""
-        try:
-            transcript = self.get_transcript().strip()
-            if not transcript:
-                raise ValueError("Foresight scoring requires a non-empty transcript.")
+        transcript = self.get_transcript().strip()
+        if not transcript:
+            self._score = self._zero_score("No interaction was recorded before finishing.")
+            return
 
-            guess = self._get_latest_prediction_guess(transcript)
-            if not guess:
-                raise ValueError("Foresight scoring requires a recorded prediction.")
+        guess = self._get_latest_prediction_guess(transcript)
+        if not guess:
+            self._score = self._zero_score("No next-action prediction was recorded before finishing.")
+            return
 
-            prompt = build_scorer_prompt(
-                scoring_template=SCORER_NEXT_ACTION,
-                npc=self._npc,
-                transcript=transcript,
-                guess=guess,
-            )
+        prompt = build_scorer_prompt(
+            scoring_template=SCORER_NEXT_ACTION,
+            npc=self._npc,
+            transcript=transcript,
+            guess=guess,
+        )
 
-            result = await self._scorer.score(prompt=prompt, transcript=transcript)
-            self._score = result.evaluation or {}
-
-            if not isinstance(self._score, dict):
-                raise ValueError("Invalid scorer output format.")
-
-        except Exception:
-            logger.exception("Failed to compute final score.")
-            self._score = {
-                "tier": None,
-                "score": None,
-                "reasoning": "Final score could not be computed.",
-            }
+        result = await self._scorer.score(prompt=prompt, transcript=transcript)
+        self._score = result.evaluation or {}
 
     def _get_latest_prediction_guess(self, transcript: str) -> str:
         """Return the latest prediction from stored state or transcript."""

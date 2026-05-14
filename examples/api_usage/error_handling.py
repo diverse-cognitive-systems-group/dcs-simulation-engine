@@ -12,11 +12,13 @@ PREFERRED_PC = "NA"
 PREFERRED_NPC = "NA"
 
 PLAYER_FAULT = "player_turn_validation_failed"
-SYSTEM_FAULTS = {"simulator_turn_validation_retry_exhausted", "internal_error"}
+SIMULATOR_RETRYABLE_FAULT = "simulator_turn_validation_retry_exhausted"
+SYSTEM_FAULTS = {"simulator_recovery_budget_exhausted", "internal_error", "model_provider_error"}
 
 TurnClassification = Literal[
     "no_error",
     "player_retryable",
+    "simulator_retryable",
     "player_terminal",
     "system_terminal",
     "unknown_error",
@@ -53,6 +55,8 @@ def classify_error_event(event: WSEventFrame | None) -> TurnClassification:
         if event.retries_remaining is not None and event.retries_remaining > 0:
             return "player_retryable"
         return "player_terminal"
+    if event.failure_type == SIMULATOR_RETRYABLE_FAULT:
+        return "simulator_retryable"
     if event.failure_type in SYSTEM_FAULTS:
         return "system_terminal"
     return "unknown_error"
@@ -119,6 +123,10 @@ def main() -> None:
                 print(f"retry_action={safer_action}")
                 run.step(safer_action)
                 print(f"retry_output={run.simulator_output or '<no simulator output>'}")
+            elif classification == "simulator_retryable":
+                assert error is not None
+                print(f"failure_type={error.failure_type}")
+                print("The simulator could not resolve that action. Try rephrasing or choose another action.")
             elif classification == "player_terminal":
                 assert error is not None
                 print(f"failure_type={error.failure_type}")

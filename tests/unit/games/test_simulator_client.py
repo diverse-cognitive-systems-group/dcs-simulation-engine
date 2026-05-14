@@ -4,6 +4,7 @@ import asyncio
 
 import pytest
 from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.errors import ModelProviderError
 from dcs_simulation_engine.games import ai_client
 from dcs_simulation_engine.games.ai_client import (
     INTERNAL_ERROR,
@@ -56,7 +57,7 @@ async def test_simulator_client_runs_player_validators_before_updaters(
         role = messages[0]["role"]
         calls.append((len(messages), role, messages[0]["content"]))
         if len(messages) == 1:
-            return '{"type": "info", "content": "ok"}'
+            return '{"pass": true}'
         return '{"type": "ai", "content": "resolved"}'
 
     monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
@@ -89,7 +90,7 @@ async def test_simulator_client_uses_configured_templates(
     async def fake_call(messages, model):
         captured_system_prompts.append(messages[0]["content"])
         if len(messages) == 1:
-            return '{"type": "info", "content": "ok"}'
+            return '{"pass": true}'
         return '{"type": "ai", "content": "scene"}'
 
     monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
@@ -211,16 +212,16 @@ async def test_simulator_client_surfaces_clean_error_when_player_validator_runti
     result = await client.step("I wave")
 
     assert result.ok is False
-    assert result.error_message == "I couldn't validate your action just now (validator offline). Please try again."
+    assert result.error_message == "The simulation engine hit an internal problem while validating the action."
     assert result.failure_type == INTERNAL_ERROR
 
 
 @pytest.mark.unit
 @pytest.mark.anyio
-async def test_simulator_client_surfaces_clean_error_when_updater_runtime_fails_after_retry(
+async def test_simulator_client_surfaces_clean_error_when_updater_runtime_fails(
     monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
 ) -> None:
-    """Updater runtime failures should retry once, then surface the clean simulator-turn error."""
+    """Updater runtime failures should not be retried as model-output contract failures."""
     updater_calls = 0
 
     async def fake_call(messages, model):
@@ -243,18 +244,19 @@ async def test_simulator_client_surfaces_clean_error_when_updater_runtime_fails_
     result = await client.step("I wave")
 
     assert result.ok is False
-    assert result.error_message == "I couldn't produce a simulator response just now (updater offline). Please try again."
+    assert result.error_message == "The simulation engine hit an internal problem while producing a simulator response."
     assert result.failure_type == INTERNAL_ERROR
-    assert updater_calls == 2
+    assert updater_calls == 1
 
 
 @pytest.mark.unit
 @pytest.mark.anyio
-async def test_simulator_client_retries_once_when_updater_llm_call_fails(
+async def test_simulator_client_retries_once_when_updater_output_contract_fails(
     monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
 ) -> None:
-    """Desired future behavior: retry one updater LLM failure before surfacing the clean error."""
+    """Malformed updater output should retry once before succeeding."""
     updater_calls = 0
+    updater_messages: list[list[dict[str, str]]] = []
 
     async def fake_call(messages, model):
         nonlocal updater_calls
@@ -262,8 +264,9 @@ async def test_simulator_client_retries_once_when_updater_llm_call_fails(
         if len(messages) == 1 and messages[0]["role"] == "system":
             return '{"pass": true, "reason": "ok"}'
         updater_calls += 1
+        updater_messages.append(messages)
         if updater_calls == 1:
-            raise RuntimeError("transient updater failure")
+            return "not json"
         return '{"type": "ai", "content": "scene"}'
 
     monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
@@ -279,6 +282,75 @@ async def test_simulator_client_retries_once_when_updater_llm_call_fails(
 
     assert result.ok is True
     assert updater_calls == 2
+    assert any("previous updater response" in message["content"] for message in updater_messages[1])
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_surfaces_clean_error_when_updater_output_contract_fails_after_retry(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Malformed updater output should surface as provider failure after retry."""
+    updater_calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal updater_calls
+        _ = model
+        if len(messages) == 1 and messages[0]["role"] == "system":
+            return '{"pass": true}'
+        updater_calls += 1
+        return '{"type": "ai", "content": null}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[],
+    )
+
+    with pytest.raises(ModelProviderError) as excinfo:
+        await client.step("I wave")
+
+    assert excinfo.value.provider == "openrouter"
+    assert excinfo.value.provider_code == "model_output_contract_error"
+    assert "updater" in (excinfo.value.provider_message or "")
+    assert updater_calls == 2
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_simulator_client_surfaces_provider_error_when_validator_output_contract_fails_after_retry(
+    monkeypatch: pytest.MonkeyPatch, pc: CharacterRecord, npc: CharacterRecord
+) -> None:
+    """Malformed validator output should surface as provider failure after corrective retry."""
+    validator_calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal validator_calls
+        _ = model
+        if "RULE: VALID-PC-ACTION" in messages[0]["content"]:
+            validator_calls += 1
+            return "not json"
+        return '{"type": "ai", "content": "scene"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    client = SimulatorClient(
+        pc=pc,
+        npc=npc,
+        player_turn_validators=[VALID_PC_ACTION],
+        simulator_turn_validators=[],
+    )
+
+    with pytest.raises(ModelProviderError) as excinfo:
+        await client.step("I wave")
+
+    assert excinfo.value.provider == "openrouter"
+    assert excinfo.value.provider_code == "model_output_contract_error"
+    assert "validator" in (excinfo.value.provider_message or "")
+    assert validator_calls == 2
 
 
 @pytest.mark.unit

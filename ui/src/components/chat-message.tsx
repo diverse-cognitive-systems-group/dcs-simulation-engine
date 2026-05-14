@@ -20,6 +20,52 @@ const EVENT_STYLES: Record<EventType, string> = {
 
 const MAX_COMMENT_LENGTH = 500
 
+function errorHeader(message: ChatMessage): string {
+  if (message.eventType === 'warning') return 'Warning'
+
+  if (message.failureType === 'player_turn_validation_failed') {
+    return (message.retriesRemaining ?? 0) > 0 ? 'Try again' : 'Too many failed attempts'
+  }
+  if (message.failureType === 'simulator_turn_validation_retry_exhausted') {
+    return 'Try another action'
+  }
+  if (message.failureType === 'simulator_recovery_budget_exhausted') {
+    return 'Simulator recovery exhausted'
+  }
+  if (message.failureType === 'model_provider_error') {
+    return 'Model provider error'
+  }
+  if (message.failureType === 'internal_error') {
+    return 'Engine error'
+  }
+  return 'Server error'
+}
+
+function displayContent(message: ChatMessage): string {
+  if (message.failureType === 'model_provider_error') {
+    return (
+      'The provider for this game is currently unavailable.' +
+      'The game host should check their provider account before gameplay can continue.'
+    )
+  }
+  return message.content
+}
+
+function providerDetails(message: ChatMessage): string | null {
+  const details = []
+  if (message.provider) details.push(message.provider)
+  if (typeof message.providerStatusCode === 'number')
+    details.push(`status ${message.providerStatusCode}`)
+  if (
+    message.providerCode &&
+    message.providerCode !== 'model_output_contract_error' &&
+    message.providerCode !== String(message.providerStatusCode)
+  ) {
+    details.push(`code ${message.providerCode}`)
+  }
+  return details.length ? details.join(' · ') : null
+}
+
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -100,6 +146,8 @@ export function ChatMessageBubble({
   const outOfCharacter = confirmedFeedback?.outOfCharacter ?? false
   const isInfo = eventType === 'info'
   const activeLiked = composerOpen ? draftLiked : (confirmedFeedback?.liked ?? null)
+  const providerDetail = providerDetails(message)
+  const content = displayContent(message)
 
   function resetDraftFromConfirmed() {
     setDraftLiked(confirmedFeedback?.liked ?? null)
@@ -216,7 +264,7 @@ export function ChatMessageBubble({
         <div className={cn('text-sm', style || 'bg-muted rounded-2xl rounded-bl-sm px-4 py-2')}>
           {(eventType === 'error' || eventType === 'warning') && (
             <p className="mb-1 font-semibold text-xs uppercase tracking-wide">
-              {eventType === 'error' ? 'Try again' : 'Warning'}
+              {errorHeader(message)}
             </p>
           )}
           {/*
@@ -226,8 +274,9 @@ export function ChatMessageBubble({
             `prose-sm` keeps the font size small to match the chat context.
           */}
           <div className="prose prose-sm dark:prose-invert max-w-none [&_code]:rounded [&_code]:bg-muted/70 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.95em] [&_code::before]:content-none [&_code::after]:content-none">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
+            <ReactMarkdown>{content}</ReactMarkdown>
           </div>
+          {providerDetail && <p className="mt-2 text-xs opacity-80">{providerDetail}</p>}
         </div>
         <div className={cn('flex flex-col gap-2', isInfo ? 'items-center' : 'items-start')}>
           <span className={cn('text-[10px] text-muted-foreground', isInfo ? '' : 'pl-1')}>

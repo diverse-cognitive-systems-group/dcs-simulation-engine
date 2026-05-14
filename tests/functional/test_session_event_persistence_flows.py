@@ -9,6 +9,7 @@ import pytest
 from bson import ObjectId
 from dcs_simulation_engine.core.session_manager import SessionManager
 from dcs_simulation_engine.dal.mongo.const import MongoColumns
+from dcs_simulation_engine.errors import ModelProviderError
 from dcs_simulation_engine.games.ai_client import ScorerResult
 from pymongo.database import Database
 
@@ -193,6 +194,34 @@ async def test_evaluation_score_events_persist_as_system_info_rows(
     assert score_rows[0][MongoColumns.TURN_INDEX] == session.turns + 1
 
 
+async def test_scorer_provider_failure_finalizes_persisted_session_as_error(
+    patch_llm_client: Any,
+    async_mongo_provider: Any,
+) -> None:
+    """Scorer provider failures should be visible to monitoring as terminal errors."""
+    _ = patch_llm_client
+    session, session_id, db = await _make_persisted_session(game="foresight", async_mongo_provider=async_mongo_provider)
+    await session.step_async("")
+    await session.step_async("I step closer and predict FW will retreat.")
+
+    async def _broken_score(*, prompt: str, transcript: str) -> ScorerResult:
+        raise ModelProviderError(
+            provider="openrouter",
+            model="test-model",
+            status_code=402,
+            provider_message="credits exhausted",
+        )
+
+    session.game._scorer.score = _broken_score  # type: ignore[method-assign]
+
+    finish_events = await session.step_async("/finish")
+
+    session_doc = db[MongoColumns.SESSIONS].find_one({MongoColumns.SESSION_ID: session_id})
+    assert finish_events[0]["failure_type"] == "model_provider_error"
+    assert session_doc[MongoColumns.TERMINATION_REASON] == "model_provider_error"
+    assert session_doc[MongoColumns.STATUS] == "error"
+
+
 async def test_player_validation_failures_are_persisted_with_schema(
     monkeypatch: pytest.MonkeyPatch,
     async_mongo_provider: Any,
@@ -222,6 +251,16 @@ async def test_player_validation_failures_are_persisted_with_schema(
     assert emitted[0]["failure_type"] == "player_turn_validation_failed"
 
     events = _persisted_events(db, session_id=session_id)
+    error_events = _matching_events(
+        events,
+        direction="outbound",
+        event_source="system",
+        event_type="error",
+    )
+    assert len(error_events) == 1
+    assert error_events[0][MongoColumns.FAILURE_TYPE] == "player_turn_validation_failed"
+    assert error_events[0][MongoColumns.RETRIES_REMAINING] == emitted[0]["retries_remaining"]
+
     violations = _matching_events(
         events,
         direction="internal",
@@ -260,14 +299,26 @@ async def test_simulator_validation_failures_are_persisted_for_both_attempts(
     await session.step_async("")
 
     emitted = await session.step_async("I wait.")
-    await session.exit_async("test complete")
 
     assert [event["type"] for event in emitted] == ["error"]
-    assert "simulation engine hit an internal problem" in emitted[0]["content"]
+    assert "could not resolve that action" in emitted[0]["content"]
     assert emitted[0]["failure_type"] == "simulator_turn_validation_retry_exhausted"
-    assert emitted[0]["exit_reason"] == "simulator_validation_retry_exhausted"
+    assert emitted[0]["retries_remaining"] == 2
+    assert "exit_reason" not in emitted[0]
+    assert not session.exited
+    await session.exit_async("test complete")
 
     events = _persisted_events(db, session_id=session_id)
+    error_events = _matching_events(
+        events,
+        direction="outbound",
+        event_source="system",
+        event_type="error",
+    )
+    assert len(error_events) == 1
+    assert error_events[0][MongoColumns.FAILURE_TYPE] == "simulator_turn_validation_retry_exhausted"
+    assert error_events[0][MongoColumns.RETRIES_REMAINING] == 2
+
     violations = _matching_events(
         events,
         direction="internal",

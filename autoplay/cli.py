@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import os
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -56,7 +55,7 @@ LOG_FORMAT = "{time:YYYY-MM-DD HH:mm:ss,SSS} autoplay {level} {file.name}:{line}
 
 def echo(message: str, style: str = "white", *, quiet: bool = False) -> None:
     """Print one message using the same visual style as the DCS CLI."""
-    if quiet:
+    if quiet and style != "error":
         return
     console.print(message, style=style)
 
@@ -152,9 +151,9 @@ def run(
             quiet=quiet,
         )
         for assignment in result.assignments:
-            if assignment.error:
+            if assignment.status != "completed":
                 echo(
-                    f"  {assignment.game_name}: {assignment.status} after {assignment.turns} turn(s): {assignment.error}",
+                    f"  {assignment.game_name}: {assignment.status} after {assignment.turns} turn(s)",
                     style="error",
                     quiet=quiet,
                 )
@@ -182,8 +181,6 @@ def _configure_logging(*, log_dir: Path, quiet: bool) -> Path:
     logger.remove()
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"autoplay_{datetime.now(UTC).strftime('%Y%m%d')}.log"
-    console_level = "ERROR" if quiet else "WARNING"
-    logger.add(sys.stderr, level=console_level, format="{message}")
     logger.add(
         log_path,
         level="INFO",
@@ -244,13 +241,14 @@ def _event_printer(*, quiet: bool):
 
     def print_event(event: str, payload: dict) -> None:
         model_id = payload["model_id"]
-        model_state = state.setdefault(model_id, {"assignment": 0, "turn": 0})
+        model_state = state.setdefault(model_id, {"assignment": 0, "completed_turns": 0, "pending_turn": 0})
         if event == "player_started":
             logger.info("Player registered: model={} player={} run={}", model_id, payload["player_id"], payload["run_name"])
             echo(f"  {model_id}: registered player {payload['player_id']} for {payload['run_name']}", style="dim", quiet=quiet)
         elif event == "assignment_started":
             model_state["assignment"] += 1
-            model_state["turn"] = 0
+            model_state["completed_turns"] = 0
+            model_state["pending_turn"] = 0
             characters = _character_summary(payload)
             logger.info(
                 "Assignment {} started: {} ({}, session={}, assignment={})",
@@ -261,20 +259,46 @@ def _event_printer(*, quiet: bool):
                 payload["assignment_id"],
             )
             echo("", quiet=quiet)
-            echo(f"Assignment {model_state['assignment']}: {payload['game_name']}", style="white", quiet=quiet)
-            echo(f"Characters: {characters}", style="white", quiet=quiet)
+            echo(f"Assignment {model_state['assignment']}: {payload['game_name']}", style="dim", quiet=quiet)
+            echo(f"Characters: {characters}", style="dim", quiet=quiet)
             echo(f"Session: {payload['session_id']}", style="dim", quiet=quiet)
         elif event == "turn_sent":
-            model_state["turn"] += 1
-            logger.info("Turn {} player input: {}", model_state["turn"], _single_line(str(payload["input"])))
+            completed_turns = _payload_turns(payload, fallback=model_state.get("completed_turns", 0))
+            model_state["completed_turns"] = completed_turns
+            logger.info(
+                "Player (turn {}): {}",
+                completed_turns + 1,
+                _single_line(str(payload["input"])),
+            )
             echo("", quiet=quiet)
-            echo(f"Turn {model_state['turn']}", style="white", quiet=quiet)
+            pending_turn = completed_turns + 1
+            if model_state.get("pending_turn") != pending_turn:
+                model_state["pending_turn"] = pending_turn
+                echo(f"Turn {pending_turn}", style="dim", quiet=quiet)
             echo(f"Player: {_shorten(str(payload['input']))}", style="dim", quiet=quiet)
         elif event == "message_received":
+            event_type = str(payload.get("event_type") or "")
+            role = str(payload.get("role") or "")
+            if event_type == "ai" and role == "simulator":
+                completed_turns = model_state.get("completed_turns", 0)
+                pending_turn = model_state.get("pending_turn", 0)
+                frame_turns = _payload_turns(
+                    payload,
+                    fallback=pending_turn if pending_turn > 0 else completed_turns + 1,
+                )
+                if pending_turn <= 0:
+                    echo("", quiet=quiet)
+                    echo(_simulator_turn_label(frame_turns=frame_turns, completed_turns=completed_turns), style="dim", quiet=quiet)
+                if frame_turns > completed_turns:
+                    model_state["completed_turns"] = frame_turns
+                if pending_turn > 0 and frame_turns >= pending_turn:
+                    model_state["pending_turn"] = 0
             _log_received_message(payload)
             _print_received_message(payload, quiet=quiet)
         elif event == "assignment_exited":
-            turn_count = model_state.get("turn", 0)
+            turn_count = _payload_turns(payload, fallback=model_state.get("completed_turns", 0))
+            model_state["completed_turns"] = turn_count
+            error = payload.get("error")
             logger.info(
                 "Assignment {} exited after {} turn(s): {}",
                 model_state["assignment"],
@@ -292,8 +316,15 @@ def _event_printer(*, quiet: bool):
                 style="warning",
                 quiet=quiet,
             )
+            if error:
+                echo(
+                    str(error),
+                    style="error",
+                    quiet=quiet,
+                )
         elif event == "assignment_failed":
-            turn_count = model_state.get("turn", 0)
+            turn_count = _payload_turns(payload, fallback=model_state.get("completed_turns", 0))
+            model_state["completed_turns"] = turn_count
             logger.error(
                 "Assignment {} failed after {} turn(s): {}",
                 model_state["assignment"],
@@ -307,7 +338,7 @@ def _event_printer(*, quiet: bool):
                 quiet=quiet,
             )
             echo(
-                f"Error: {payload['error']}",
+                str(payload["error"]),
                 style="error",
                 quiet=quiet,
             )
@@ -321,6 +352,23 @@ def _event_printer(*, quiet: bool):
     return print_event
 
 
+def _payload_turns(payload: dict, *, fallback: int = 0) -> int:
+    """Return the backend completed-turn count from an event payload."""
+    raw_turns = payload.get("turns")
+    if raw_turns is None or raw_turns == "":
+        return fallback
+    try:
+        return int(raw_turns)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _simulator_turn_label(*, frame_turns: int, completed_turns: int) -> str:
+    if completed_turns == 0 and frame_turns == 1:
+        return "Turn 1 · Scene"
+    return f"Turn {frame_turns}"
+
+
 def _print_received_message(payload: dict, *, quiet: bool) -> None:
     event_type = str(payload.get("event_type") or "")
     role = str(payload.get("role") or "")
@@ -329,11 +377,11 @@ def _print_received_message(payload: dict, *, quiet: bool) -> None:
         return
 
     if event_type == "error":
-        echo(f"Error: {content}", style="error", quiet=quiet)
+        echo(f"{_failure_label(payload.get('failure_type'))}: {content}", style="error", quiet=quiet)
     elif event_type == "warning":
         echo(f"Warning: {content}", style="warning", quiet=quiet)
     elif event_type == "info":
-        echo(f"Info: {content}", style="white", quiet=quiet)
+        echo(f"Info: {content}", style="dim", quiet=quiet)
     elif role == "simulator":
         echo(f"Simulator: {content}", style="dim", quiet=quiet)
     else:
@@ -358,7 +406,7 @@ def _message_label(payload: dict) -> str:
     event_type = str(payload.get("event_type") or "")
     role = str(payload.get("role") or "")
     if event_type == "error":
-        return "Server error"
+        return _failure_label(payload.get("failure_type"))
     if event_type == "warning":
         return "Server warning"
     if event_type == "info":
@@ -366,6 +414,20 @@ def _message_label(payload: dict) -> str:
     if role == "simulator":
         return "Simulator"
     return "Server"
+
+
+def _failure_label(failure_type: object) -> str:
+    if failure_type == "model_provider_error":
+        return "Provider error"
+    if failure_type == "internal_error":
+        return "Engine error"
+    if failure_type == "simulator_recovery_budget_exhausted":
+        return "Simulator recovery exhausted"
+    if failure_type == "simulator_turn_validation_retry_exhausted":
+        return "Retryable simulator issue"
+    if failure_type == "player_turn_validation_failed":
+        return "Player validation"
+    return "Server error"
 
 
 def _character_summary(payload: dict) -> str:

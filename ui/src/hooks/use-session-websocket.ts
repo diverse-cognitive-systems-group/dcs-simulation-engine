@@ -23,6 +23,10 @@ export interface ChatMessage {
   eventType?: EventType
   failureType?: string
   retriesRemaining?: number
+  exitReason?: string
+  provider?: string
+  providerStatusCode?: number
+  providerCode?: string
   content: string
   eventId?: string
   feedback?: MessageFeedback
@@ -39,6 +43,7 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
   const [wsState, setWsState] = useState<WsState>('connecting')
   const [turns, setTurns] = useState(0)
   const [exited, setExited] = useState(false)
+  const [exitReason, setExitReason] = useState<string | null>(null)
   const [pcHid, setPcHid] = useState<string | null>(null)
   const [npcHid, setNpcHid] = useState<string | null>(null)
   const [hasGameFeedback, setHasGameFeedback] = useState(false)
@@ -77,6 +82,8 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
     const socket = new WebSocket(resolveWebSocketUrl(`/api/play/game/${sessionId}/ws`))
     ws.current = socket
     setWsState('connecting')
+    setExited(false)
+    setExitReason(null)
 
     socket.onopen = () => {
       if (cancelled) return
@@ -93,17 +100,29 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
       const frame = JSON.parse(ev.data as string)
 
       if (frame.type === 'error') {
-        setWsState('error')
+        const failureType = typeof frame.failure_type === 'string' ? frame.failure_type : undefined
+        const isStructuredFailure = !!failureType
+        setWsState(isStructuredFailure ? 'closed' : 'error')
+        if (isStructuredFailure) {
+          setExited(true)
+          setExitReason(failureType)
+        }
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: 'ai',
             eventType: 'error',
-            failureType: typeof frame.failure_type === 'string' ? frame.failure_type : undefined,
+            failureType,
             retriesRemaining:
               typeof frame.retries_remaining === 'number' ? frame.retries_remaining : undefined,
-            content: frame.detail,
+            provider: typeof frame.provider === 'string' ? frame.provider : undefined,
+            providerStatusCode:
+              typeof frame.provider_status_code === 'number'
+                ? frame.provider_status_code
+                : undefined,
+            providerCode: typeof frame.provider_code === 'string' ? frame.provider_code : undefined,
+            content: String(frame.detail ?? 'Unknown websocket error'),
             timestamp: Date.now(),
           },
         ])
@@ -135,6 +154,12 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
             failureType: typeof frame.failure_type === 'string' ? frame.failure_type : undefined,
             retriesRemaining:
               typeof frame.retries_remaining === 'number' ? frame.retries_remaining : undefined,
+            provider: typeof frame.provider === 'string' ? frame.provider : undefined,
+            providerStatusCode:
+              typeof frame.provider_status_code === 'number'
+                ? frame.provider_status_code
+                : undefined,
+            providerCode: typeof frame.provider_code === 'string' ? frame.provider_code : undefined,
             content: frame.content,
             eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),
@@ -157,6 +182,12 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
             failureType: typeof frame.failure_type === 'string' ? frame.failure_type : undefined,
             retriesRemaining:
               typeof frame.retries_remaining === 'number' ? frame.retries_remaining : undefined,
+            provider: typeof frame.provider === 'string' ? frame.provider : undefined,
+            providerStatusCode:
+              typeof frame.provider_status_code === 'number'
+                ? frame.provider_status_code
+                : undefined,
+            providerCode: typeof frame.provider_code === 'string' ? frame.provider_code : undefined,
             content: frame.content,
             eventId: typeof frame.event_id === 'string' ? frame.event_id : undefined,
             timestamp: Date.now(),
@@ -168,6 +199,7 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
       if (frame.type === 'turn_end') {
         setTurns(frame.turns as number)
         setWaiting(false)
+        if (typeof frame.exit_reason === 'string') setExitReason(frame.exit_reason)
         if (frame.exited) setExited(true)
       }
 
@@ -226,6 +258,7 @@ export function useSessionWebSocket(sessionId: string, options: { enabled?: bool
     wsState,
     turns,
     exited,
+    exitReason,
     waiting,
     isReplaying,
     pcHid,

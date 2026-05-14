@@ -16,6 +16,15 @@ from dcs_simulation_engine.core.constants import (
     SIMULATOR_TURN_VALIDATION_RETRY_EXHAUSTED,
 )
 from dcs_simulation_engine.dal.base import CharacterRecord
+from dcs_simulation_engine.errors import ModelOutputContractError, ModelProviderError
+from dcs_simulation_engine.games.const import (
+    DEFAULT_MODEL,
+    DEFAULT_OPENROUTER_MAX_COMPLETION_TOKENS,
+    DEFAULT_OPENROUTER_TIMEOUT_SECONDS,
+    DEFAULT_RAW_RESPONSE_LOG_CHARS,
+    MODEL_OUTPUT_PROVIDER_CODE,
+    OPENROUTER_PROVIDER,
+)
 from dcs_simulation_engine.games.prompts import (
     DEFAULT_PLAYER_TURN_VALIDATORS,
     DEFAULT_SIMULATOR_TURN_VALIDATORS,
@@ -31,7 +40,6 @@ from loguru import logger
 if TYPE_CHECKING:
     from dcs_simulation_engine.core.session_event_recorder import ValidationEventRecorder
 
-DEFAULT_MODEL = "openai/gpt-5-mini"
 _CHAT_ENDPOINT = f"{OPENROUTER_BASE_URL}/chat/completions"
 _FAKE_AI_RESPONSE: str | None = None
 
@@ -61,6 +69,276 @@ def _get_api_key() -> str:
     return key
 
 
+def _openrouter_timeout() -> httpx.Timeout:
+    """Return the OpenRouter timeout, allowing long non-streaming reasoning calls."""
+    timeout_seconds = float(os.getenv("OPENROUTER_TIMEOUT_SECONDS", DEFAULT_OPENROUTER_TIMEOUT_SECONDS))
+    return httpx.Timeout(
+        connect=10.0,
+        read=timeout_seconds,
+        write=30.0,
+        pool=10.0,
+    )
+
+
+def _provider_display_name(provider: str) -> str:
+    if provider == OPENROUTER_PROVIDER:
+        return "OpenRouter"
+    return provider.title()
+
+
+def _clean_provider_message(message: Any) -> str:
+    return " ".join(str(message or "").split())
+
+
+def _raw_response_log_limit() -> int:
+    """Return the maximum raw model response chars to persist in diagnostics."""
+    raw_value = os.getenv("DCS_MODEL_RAW_RESPONSE_LOG_CHARS", "").strip()
+    if not raw_value:
+        return DEFAULT_RAW_RESPONSE_LOG_CHARS
+    try:
+        return max(0, int(raw_value))
+    except ValueError:
+        return DEFAULT_RAW_RESPONSE_LOG_CHARS
+
+
+def _raw_response_detail(raw_response: str | None) -> dict[str, Any]:
+    """Return raw response diagnostics without letting one log row grow unbounded."""
+    raw = raw_response or ""
+    limit = _raw_response_log_limit()
+    return {
+        "raw_response": raw[:limit],
+        "raw_response_chars": len(raw),
+        "raw_response_truncated": len(raw) > limit,
+        "raw_response_log_limit": limit,
+    }
+
+
+def _model_response_summary(raw_response: str | None) -> dict[str, Any]:
+    """Extract searchable metadata from common model response payloads."""
+    if not raw_response:
+        return {"raw_response_format": "empty"}
+    try:
+        payload = json.loads(raw_response)
+    except json.JSONDecodeError:
+        return {"raw_response_format": "text"}
+    if not isinstance(payload, dict):
+        return {"raw_response_format": type(payload).__name__}
+
+    summary: dict[str, Any] = {
+        "raw_response_format": "json",
+        "response_id": payload.get("id"),
+        "object": payload.get("object"),
+        "created": payload.get("created"),
+        "model": payload.get("model"),
+        "provider": payload.get("provider"),
+        "system_fingerprint": payload.get("system_fingerprint"),
+        "service_tier": payload.get("service_tier"),
+    }
+    if "usage" in payload:
+        summary["usage"] = payload.get("usage")
+
+    choices = payload.get("choices")
+    if not isinstance(choices, list) or not choices:
+        summary["choices_count"] = len(choices) if isinstance(choices, list) else 0
+        return summary
+
+    first_choice = choices[0]
+    if not isinstance(first_choice, dict):
+        summary["first_choice_type"] = type(first_choice).__name__
+        return summary
+
+    summary.update(
+        {
+            "choices_count": len(choices),
+            "choice_index": first_choice.get("index"),
+            "finish_reason": first_choice.get("finish_reason"),
+            "native_finish_reason": first_choice.get("native_finish_reason"),
+        }
+    )
+    message = first_choice.get("message")
+    if not isinstance(message, dict):
+        summary["message_type"] = type(message).__name__
+        return summary
+
+    content = message.get("content")
+    reasoning = message.get("reasoning")
+    reasoning_details = message.get("reasoning_details")
+    summary.update(
+        {
+            "message_role": message.get("role"),
+            "message_content_type": type(content).__name__,
+            "message_content_is_null": content is None,
+            "message_content_chars": len(content) if isinstance(content, str) else None,
+            "message_refusal_is_null": message.get("refusal") is None,
+            "message_has_reasoning": reasoning is not None,
+            "message_reasoning_chars": len(reasoning) if isinstance(reasoning, str) else None,
+            "message_reasoning_details_count": len(reasoning_details) if isinstance(reasoning_details, list) else None,
+        }
+    )
+    if isinstance(reasoning_details, list):
+        summary["message_reasoning_detail_types"] = [
+            item.get("type") if isinstance(item, dict) else type(item).__name__ for item in reasoning_details[:10]
+        ]
+    return summary
+
+
+def _contract_failure_detail(
+    exc: ModelOutputContractError,
+    *,
+    operation: str,
+    attempt: int,
+    will_retry: bool,
+) -> dict[str, Any]:
+    """Build structured diagnostics for persisted model-output contract logs."""
+    detail = {
+        "operation": operation,
+        "component": exc.component,
+        "model": exc.model,
+        "contract_detail": exc.detail,
+        "attempt": attempt,
+        "will_retry": will_retry,
+        "retry_exhausted": not will_retry,
+        "model_response": _model_response_summary(exc.raw_response),
+    }
+    detail.update(_raw_response_detail(exc.raw_response))
+    return detail
+
+
+def _log_model_output_contract_failure(
+    exc: ModelOutputContractError,
+    *,
+    operation: str,
+    attempt: int,
+    will_retry: bool,
+) -> None:
+    """Persist a concise contract failure message with full structured diagnostics."""
+    detail = _contract_failure_detail(exc, operation=operation, attempt=attempt, will_retry=will_retry)
+    model_response = detail["model_response"]
+    log = logger.bind(detail=detail, throttle=False)
+    message = (
+        "Model output contract failed: operation={} component={} model={} attempt={} "
+        "will_retry={} detail={} response_id={} finish_reason={} native_finish_reason={}"
+    )
+    args = (
+        operation,
+        exc.component,
+        exc.model,
+        attempt,
+        will_retry,
+        exc.detail,
+        model_response.get("response_id"),
+        model_response.get("finish_reason"),
+        model_response.get("native_finish_reason"),
+    )
+    if will_retry:
+        log.warning(message, *args)
+    else:
+        log.error(message, *args)
+
+
+def _model_output_provider_error(
+    exc: ModelOutputContractError,
+    *,
+    operation: str = "model_output",
+    attempt: int = 2,
+) -> ModelProviderError:
+    """Convert exhausted model-output contract failures into provider-level failures."""
+    provider_message = f"{exc.component}: {exc.detail}"
+    _log_model_output_contract_failure(
+        exc,
+        operation=operation,
+        attempt=attempt,
+        will_retry=False,
+    )
+    return ModelProviderError(
+        provider=OPENROUTER_PROVIDER,
+        model=exc.model,
+        provider_code=MODEL_OUTPUT_PROVIDER_CODE,
+        provider_message=provider_message,
+        user_message=(
+            f"Model provider error: {_provider_display_name(OPENROUTER_PROVIDER)} returned unusable output "
+            f"for {exc.model}. The game host needs to check this out before you can continue."
+        ),
+        retryable=False,
+    )
+
+
+def _contract_retry_instruction(component: str, exc: ModelOutputContractError) -> str:
+    """Build corrective feedback for one model-output contract retry."""
+    if component == "validator":
+        schema = '{"pass": true} or {"pass": false, "reason": "<brief explanation>"}'
+    elif component == "scorer":
+        schema = '{"tier": <int 0-3>, "score": <int 0-100>, "reasoning": "<non-empty string>"}'
+    else:
+        schema = '{"type": "ai", "content": "<non-empty string>", "metadata": {}}'
+    return (
+        f"Your previous {component} response did not match the required output contract: {exc.detail}.\n"
+        f"Return ONLY valid JSON matching this schema: {schema}\n"
+        "Do not include Markdown fences, prose outside JSON, null content, or missing required fields."
+    )
+
+
+def _provider_error_from_response(response: httpx.Response, model: str) -> ModelProviderError:
+    provider_message = ""
+    provider_code: str | None = None
+    try:
+        payload = response.json()
+    except Exception:
+        payload = None
+
+    if isinstance(payload, dict):
+        error = payload.get("error")
+        if isinstance(error, dict):
+            provider_message = _clean_provider_message(error.get("message"))
+            code = error.get("code")
+            provider_code = str(code) if code is not None else None
+        else:
+            provider_message = _clean_provider_message(payload.get("message") or payload.get("detail"))
+
+    status_code = int(response.status_code)
+    if not provider_message:
+        provider_message = _clean_provider_message(getattr(response, "reason_phrase", "")) or f"HTTP {status_code}"
+
+    retryable = status_code in {408, 429} or status_code >= 500
+    error = ModelProviderError(
+        provider=OPENROUTER_PROVIDER,
+        model=model,
+        status_code=status_code,
+        provider_code=provider_code,
+        provider_message=provider_message,
+        retryable=retryable,
+    )
+    logger.error(
+        "LLM provider error: provider={} model={} status={} code={} message={}",
+        error.provider,
+        error.model,
+        error.status_code,
+        error.provider_code,
+        error.provider_message,
+    )
+    return error
+
+
+def _provider_error_from_http_error(exc: httpx.HTTPError, model: str) -> ModelProviderError:
+    """Convert transport-level provider failures into structured provider errors."""
+    provider_message = _clean_provider_message(str(exc)) or exc.__class__.__name__
+    error = ModelProviderError(
+        provider=OPENROUTER_PROVIDER,
+        model=model,
+        provider_code=exc.__class__.__name__,
+        provider_message=provider_message,
+        retryable=False,
+    )
+    logger.error(
+        "LLM provider transport error: provider={} model={} code={} message={}",
+        error.provider,
+        error.model,
+        error.provider_code,
+        error.provider_message,
+    )
+    return error
+
+
 async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
     """Send a chat completions request and return the assistant's reply text."""
     if _FAKE_AI_RESPONSE is not None:
@@ -71,26 +349,57 @@ async def _call_openrouter(messages: list[dict[str, str]], model: str) -> str:
         response = await client.post(
             _CHAT_ENDPOINT,
             headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model, "messages": messages, "max_completion_tokens": 1024},
-            timeout=None,
+            json={"model": model, "messages": messages, "max_completion_tokens": DEFAULT_OPENROUTER_MAX_COMPLETION_TOKENS},
+            timeout=_openrouter_timeout(),
         )
         if response.is_error:
-            raise httpx.HTTPStatusError(
-                f"{response.status_code}: {response.text}",
-                request=response.request,
-                response=response,
-            )
-    data = response.json()
-    return data["choices"][0]["message"]["content"]
+            raise _provider_error_from_response(response, model)
+    try:
+        data = response.json()
+    except json.JSONDecodeError as exc:
+        raise ModelOutputContractError(
+            component="chat completion",
+            model=model,
+            detail=f"provider response was not valid JSON ({exc})",
+            raw_response=response.text,
+        ) from exc
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ModelOutputContractError(
+            component="chat completion",
+            model=model,
+            detail=f"provider response did not include assistant message content ({exc})",
+            raw_response=json.dumps(data, default=str),
+        ) from exc
+    if not isinstance(content, str):
+        raise ModelOutputContractError(
+            component="chat completion",
+            model=model,
+            detail="assistant message content must be a string",
+            raw_response=json.dumps(data, default=str),
+        )
+    return content
+
+
+def _should_retry_llm_error(exc: Exception) -> bool:
+    if isinstance(exc, ModelProviderError):
+        return exc.retryable
+    return isinstance(exc, httpx.HTTPError)
 
 
 async def _call_openrouter_with_retry(messages: list[dict[str, str]], model: str) -> str:
     """Call _call_openrouter with 1 automatic retry on transient failure."""
     try:
         return await _call_openrouter(messages, model)
-    except Exception:
-        logger.warning("LLM call failed; retrying once.")
-        return await _call_openrouter(messages, model)
+    except Exception as exc:
+        if not _should_retry_llm_error(exc):
+            raise
+        logger.warning("LLM call failed for model {}; retrying once. Error: {}", model, exc)
+        try:
+            return await _call_openrouter(messages, model)
+        except httpx.HTTPError as retry_exc:
+            raise _provider_error_from_http_error(retry_exc, model) from retry_exc
 
 
 def _parse_json_response(raw: str) -> dict[str, Any]:
@@ -343,14 +652,53 @@ class SimulatorClient:
                 return stripped[:80]
         return fallback
 
-    async def _call_json_prompt(self, *, system_prompt: str, user_input: str | None, model: str) -> ParsedSimulatorResponse:
+    async def _call_json_prompt(
+        self,
+        *,
+        system_prompt: str,
+        user_input: str | None,
+        model: str,
+        component: str,
+        corrective_feedback: str | None = None,
+    ) -> ParsedSimulatorResponse:
         """Execute a prompt and return normalized content plus optional metadata."""
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input or "Begin."}]
+        if corrective_feedback is not None:
+            messages.append({"role": "user", "content": corrective_feedback})
         raw = await _call_openrouter_with_retry(messages, model)
+        if not isinstance(raw, str):
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response content must be a string",
+            )
         parsed = _parse_json_response(raw)
+        if parsed.get("type") == "error":
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response was not valid JSON",
+                raw_response=raw,
+            )
+        response_type = parsed.get("type", "ai")
+        content = parsed.get("content")
+        if not isinstance(response_type, str) or response_type not in {"ai", "info", "warning"}:
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response type must be one of: ai, info, warning",
+                raw_response=raw,
+            )
+        if not isinstance(content, str) or not content.strip():
+            raise ModelOutputContractError(
+                component=component,
+                model=model,
+                detail="response content must be a non-empty string",
+                raw_response=raw,
+            )
         return ParsedSimulatorResponse(
-            type=str(parsed.get("type", "ai")),
-            content=str(parsed.get("content", raw)),
+            type=response_type,
+            content=content,
             metadata=_extract_response_metadata(parsed),
             raw_response=raw,
         )
@@ -402,9 +750,48 @@ class SimulatorClient:
             validator_template=validator_template,
         )
 
+    async def _run_validator_once(self, system_prompt: str, *, corrective_feedback: str | None = None) -> dict[str, Any]:
+        messages = [{"role": "system", "content": system_prompt}]
+        if corrective_feedback is not None:
+            messages.append({"role": "user", "content": corrective_feedback})
+        raw = await _call_openrouter_with_retry(messages, self._validator_model)
+        if not isinstance(raw, str):
+            raise ModelOutputContractError(
+                component="validator",
+                model=self._validator_model,
+                detail="response content must be a string",
+            )
+        result = _parse_json_response(raw)
+        if result.get("type") == "error":
+            raise ModelOutputContractError(
+                component="validator",
+                model=self._validator_model,
+                detail="response was not valid JSON",
+                raw_response=raw,
+            )
+        if not isinstance(result.get("pass"), bool):
+            raise ModelOutputContractError(
+                component="validator",
+                model=self._validator_model,
+                detail="response must include a boolean pass field",
+                raw_response=raw,
+            )
+        return result
+
     async def _run_validator(self, system_prompt: str) -> dict[str, Any]:
-        raw = await _call_openrouter_with_retry([{"role": "system", "content": system_prompt}], self._validator_model)
-        return _parse_json_response(raw)
+        try:
+            return await self._run_validator_once(system_prompt)
+        except ModelProviderError:
+            raise
+        except ModelOutputContractError as exc:
+            _log_model_output_contract_failure(exc, operation="validator", attempt=1, will_retry=True)
+            try:
+                return await self._run_validator_once(
+                    system_prompt,
+                    corrective_feedback=_contract_retry_instruction("validator", exc),
+                )
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc, operation="validator", attempt=2) from retry_exc
 
     async def _run_player_validator(self, validator_template: str, user_input: str) -> tuple[str, dict[str, Any]]:
         """Execute one configured player-turn validator."""
@@ -413,16 +800,37 @@ class SimulatorClient:
             self._build_player_validator_prompt(validator_template=validator_template, user_input=user_input)
         )
 
-    async def _generate_simulator_response(self, *, user_input: str) -> ParsedSimulatorResponse:
+    async def _generate_simulator_response(
+        self,
+        *,
+        user_input: str,
+        corrective_feedback: str | None = None,
+    ) -> ParsedSimulatorResponse:
         """Generate the next immediate simulator response."""
         response = await self._call_json_prompt(
             system_prompt=self._build_updater_prompt(user_input=user_input),
             user_input=user_input,
             model=self._updater_model,
+            component="updater",
+            corrective_feedback=corrective_feedback,
         )
-        if response.type == "error":
-            raise ValueError("Updater returned an invalid JSON payload.")
         return response
+
+    async def _generate_simulator_response_with_retry(self, *, user_input: str) -> ParsedSimulatorResponse:
+        """Generate a simulator response, retrying one model-output contract failure."""
+        try:
+            return await self._generate_simulator_response(user_input=user_input)
+        except ModelProviderError:
+            raise
+        except ModelOutputContractError as exc:
+            _log_model_output_contract_failure(exc, operation="updater", attempt=1, will_retry=True)
+            try:
+                return await self._generate_simulator_response(
+                    user_input=user_input,
+                    corrective_feedback=_contract_retry_instruction("updater", exc),
+                )
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc, operation="updater", attempt=2) from retry_exc
 
     @staticmethod
     def _validation_error(result: dict[str, Any], *, default_message: str) -> str | None:
@@ -446,11 +854,6 @@ class SimulatorClient:
                     result.get("pass"),
                     result,
                 )
-                if result.get("type") == "error":
-                    for pending_task in validator_tasks:
-                        if not pending_task.done():
-                            pending_task.cancel()
-                    raise ValueError(f"{validator_name} returned an invalid JSON payload.")
                 error_message = self._validation_error(result, default_message="Invalid action.")
                 if error_message is not None:
                     logger.info(f"Player validation failed: {validator_name} - {error_message}")
@@ -527,8 +930,6 @@ class SimulatorClient:
                     result.get("pass"),
                     result,
                 )
-                if result.get("type") == "error":
-                    raise ValueError(f"{validator_name} returned an invalid JSON payload.")
                 error_message = self._validation_error(result, default_message="Invalid simulator response.")
                 if error_message is not None:
                     logger.info(f"Simulator validation failed: {validator_name} - {error_message}")
@@ -595,7 +996,7 @@ class SimulatorClient:
         )
         if failures:
             retries_used = 1
-            response = await self._generate_simulator_response(user_input=user_input)
+            response = await self._generate_simulator_response_with_retry(user_input=user_input)
             failures = await self._validate_simulator_response(
                 user_input=user_input,
                 simulator_response=response.content,
@@ -618,13 +1019,25 @@ class SimulatorClient:
 
     async def chat(self, user_input: str | None) -> ParsedSimulatorResponse:
         """Generate the opening scene without player-input validation."""
-        opening = await self._call_json_prompt(
-            system_prompt=self._build_opening_scene_prompt(),
-            user_input=user_input,
-            model=self._opener_model,
-        )
-        if opening.type == "error":
-            raise ValueError("Opener returned an invalid JSON payload.")
+        try:
+            opening = await self._call_json_prompt(
+                system_prompt=self._build_opening_scene_prompt(),
+                user_input=user_input,
+                model=self._opener_model,
+                component="opener",
+            )
+        except ModelOutputContractError as exc:
+            _log_model_output_contract_failure(exc, operation="opener", attempt=1, will_retry=True)
+            try:
+                opening = await self._call_json_prompt(
+                    system_prompt=self._build_opening_scene_prompt(),
+                    user_input=user_input,
+                    model=self._opener_model,
+                    component="opener",
+                    corrective_feedback=_contract_retry_instruction("opener", exc),
+                )
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc, operation="opener", attempt=2) from retry_exc
         self._opening_metadata = dict(opening.metadata)
         self._opening_scenes.append(opening.content)
         self._history.append(f"Opening scene: {opening.content}")
@@ -634,16 +1047,19 @@ class SimulatorClient:
     async def step(self, user_input: str) -> SimulatorTurnResult:
         """Validate player input, then generate and validate one simulator response."""
         player_validation_task = asyncio.create_task(self._collect_player_validation_failures(user_input))
-        updater_generation_task = asyncio.create_task(self._generate_simulator_response(user_input=user_input))
+        updater_generation_task = asyncio.create_task(self._generate_simulator_response_with_retry(user_input=user_input))
 
         try:
             player_validation_failures = await player_validation_task
-        except Exception as exc:
+        except ModelProviderError:
+            await self._cancel_tasks(updater_generation_task)
+            raise
+        except Exception:
             await self._cancel_tasks(updater_generation_task)
             logger.exception("Player validation failed due to LLM/runtime error.")
             return SimulatorTurnResult(
                 ok=False,
-                error_message=f"I couldn't validate your action just now ({exc}). Please try again.",
+                error_message="The simulation engine hit an internal problem while validating the action.",
                 failure_type=INTERNAL_ERROR,
             )
 
@@ -667,11 +1083,13 @@ class SimulatorClient:
                 user_input=user_input,
                 initial_response=initial_response,
             )
-        except Exception as exc:
+        except ModelProviderError:
+            raise
+        except Exception:
             logger.exception("Simulator updater failed due to LLM/runtime error.")
             return SimulatorTurnResult(
                 ok=False,
-                error_message=f"I couldn't produce a simulator response just now ({exc}). Please try again.",
+                error_message="The simulation engine hit an internal problem while producing a simulator response.",
                 failure_type=INTERNAL_ERROR,
                 pc_validation_failures=player_validation_failures,
             )
@@ -721,6 +1139,34 @@ class ScorerClient:
         """Initialise with model identifier only."""
         self._model = model
 
+    def _parse_score_response(self, raw: str) -> ScorerResult:
+        if not isinstance(raw, str):
+            raise ModelOutputContractError(
+                component="scorer",
+                model=self._model,
+                detail="response content must be a string",
+            )
+        stripped = _strip_json_fences(raw)
+        parsed = _parse_json_response(raw)
+        if parsed.get("type") == "error":
+            raise ModelOutputContractError(
+                component="scorer",
+                model=self._model,
+                detail="response was not valid JSON",
+                raw_response=raw,
+            )
+        try:
+            result = _normalize_evaluation(parsed)
+        except ValueError as exc:
+            raise ModelOutputContractError(
+                component="scorer",
+                model=self._model,
+                detail=str(exc),
+                raw_response=raw,
+            ) from exc
+        logger.debug(f"ScorerClient result: {result}")
+        return ScorerResult(evaluation=result, raw_json=stripped)
+
     async def score(self, *, prompt: str, transcript: str) -> ScorerResult:
         """Execute a rendered scoring prompt and return parsed + raw JSON results."""
         if not prompt.strip():
@@ -728,8 +1174,17 @@ class ScorerClient:
         if not transcript.strip():
             raise ValueError("Scoring transcript must be non-empty.")
 
-        raw = await _call_openrouter_with_retry([{"role": "user", "content": prompt}], self._model)
-        stripped = _strip_json_fences(raw)
-        result = _normalize_evaluation(_parse_json_response(raw))
-        logger.debug(f"ScorerClient result: {result}")
-        return ScorerResult(evaluation=result, raw_json=stripped)
+        try:
+            raw = await _call_openrouter_with_retry([{"role": "user", "content": prompt}], self._model)
+            return self._parse_score_response(raw)
+        except ModelOutputContractError as exc:
+            _log_model_output_contract_failure(exc, operation="scorer", attempt=1, will_retry=True)
+            retry_prompt = f"{prompt}\n\n{_contract_retry_instruction('scorer', exc)}"
+            try:
+                retry_raw = await _call_openrouter_with_retry(
+                    [{"role": "user", "content": retry_prompt}],
+                    self._model,
+                )
+                return self._parse_score_response(retry_raw)
+            except ModelOutputContractError as retry_exc:
+                raise _model_output_provider_error(retry_exc, operation="scorer", attempt=2) from retry_exc

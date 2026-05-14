@@ -3,7 +3,10 @@
 from typing import Any
 
 import pytest
+from dcs_simulation_engine.core.constants import MODEL_PROVIDER_ERROR
 from dcs_simulation_engine.core.session_manager import SessionManager
+from dcs_simulation_engine.errors import ModelProviderError
+from dcs_simulation_engine.games import ai_client
 from dcs_simulation_engine.games.ai_client import SimulatorComponentResult, SimulatorTurnResult
 
 pytestmark = [pytest.mark.functional, pytest.mark.anyio]
@@ -75,6 +78,67 @@ async def test_explore_full_session_flow(patch_llm_client, _isolate_db_state, as
     assert [event["type"] for event in finish_events] == ["info"]
     assert session.exited
     assert session.exit_reason == "player finished"
+
+
+async def test_explore_opening_model_provider_error_is_terminal(
+    patch_llm_client, _isolate_db_state, async_mongo_provider
+):
+    """Provider failures should surface as provider errors, not generic internal server errors."""
+    _ = patch_llm_client
+    session = await _make_session(async_mongo_provider)
+
+    async def fail_chat(user_input: str | None):
+        raise ModelProviderError(
+            provider="openrouter",
+            model="openai/gpt-5-mini",
+            status_code=402,
+            provider_code="402",
+            provider_message="This request requires more credits.",
+            user_message="Model provider error: OpenRouter needs more credits for openai/gpt-5-mini.",
+            retryable=False,
+        )
+
+    session.game._engine.chat = fail_chat  # type: ignore[method-assign]
+
+    events = await session.step_async("")
+
+    assert [event["type"] for event in events] == ["info", "error"]
+    assert events[1]["failure_type"] == MODEL_PROVIDER_ERROR
+    assert events[1]["exit_reason"] == MODEL_PROVIDER_ERROR
+    assert events[1]["provider"] == "openrouter"
+    assert events[1]["provider_status_code"] == 402
+    assert session.exited is True
+    assert session.exit_reason == MODEL_PROVIDER_ERROR
+    assert session.turns == 0
+
+
+async def test_explore_opening_model_output_contract_error_is_terminal(
+    patch_llm_client, _isolate_db_state, async_mongo_provider, monkeypatch: pytest.MonkeyPatch
+):
+    """Malformed opener output should retry once, then surface as a provider error."""
+    _ = patch_llm_client
+    session = await _make_session(async_mongo_provider)
+    opener_calls = 0
+
+    async def malformed_opener(messages, model):
+        nonlocal opener_calls
+        _ = messages, model
+        opener_calls += 1
+        return "not json"
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", malformed_opener)
+
+    events = await session.step_async("")
+
+    assert [event["type"] for event in events] == ["info", "error"]
+    assert events[1]["failure_type"] == MODEL_PROVIDER_ERROR
+    assert events[1]["exit_reason"] == MODEL_PROVIDER_ERROR
+    assert events[1]["provider"] == "openrouter"
+    assert events[1]["provider_code"] == "model_output_contract_error"
+    assert session.exited is True
+    assert session.exit_reason == MODEL_PROVIDER_ERROR
+    assert session.turns == 0
+    assert opener_calls == 2
 
 
 async def test_explore_incorrect_input_flow(patch_llm_client, _isolate_db_state, async_mongo_provider):

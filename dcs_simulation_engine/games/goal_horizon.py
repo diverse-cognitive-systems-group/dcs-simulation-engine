@@ -10,7 +10,6 @@ from dcs_simulation_engine.games.ai_client import ScorerClient, SimulatorClient
 from dcs_simulation_engine.games.const import GoalHorizon as C
 from dcs_simulation_engine.games.markdown_helpers import format_abilities_markdown, format_score_markdown
 from dcs_simulation_engine.games.prompts import SCORER_GOAL_BOUNDS, build_scorer_prompt
-from loguru import logger
 
 
 class GoalHorizonGame(Game):
@@ -157,7 +156,10 @@ class GoalHorizonGame(Game):
         self._capability_prediction_confidence = user_input
         self._in_finish_flow = False
 
-        await self._score_capability_prediction()
+        error_event = await self._run_finish_scoring(self._score_capability_prediction)
+        if error_event is not None:
+            yield error_event
+            return
 
         if self._show_final_score:
             yield GameEvent.now(type="info", content=format_score_markdown(self._score))
@@ -167,29 +169,21 @@ class GoalHorizonGame(Game):
 
     async def _score_capability_prediction(self) -> None:
         """Score the player's capability prediction."""
-        try:
-            transcript = self.get_transcript().strip()
-            if not transcript:
-                raise ValueError("Goal Horizon scoring requires a non-empty transcript.")
+        transcript = self.get_transcript().strip()
+        if not transcript:
+            self._score = self._zero_score("No interaction was recorded before finishing.")
+            return
 
-            prompt = build_scorer_prompt(
-                scoring_template=SCORER_GOAL_BOUNDS,
-                npc=self._npc,
-                transcript=transcript,
-                guess=self._capability_prediction,
-            )
+        if not self._capability_prediction.strip():
+            self._score = self._zero_score("No capability prediction was provided before finishing.")
+            return
 
-            result = await self._scorer.score(prompt=prompt, transcript=transcript)
-            self._score = result.evaluation or {}
+        prompt = build_scorer_prompt(
+            scoring_template=SCORER_GOAL_BOUNDS,
+            npc=self._npc,
+            transcript=transcript,
+            guess=self._capability_prediction,
+        )
 
-            # Guard against malformed scorer output
-            if not isinstance(self._score, dict):
-                raise ValueError("Invalid scorer output format.")
-
-        except Exception:
-            logger.exception("Failed to compute final score.")
-            self._score = {
-                "tier": None,
-                "score": None,
-                "reasoning": "Final score couldn't be computed.",
-            }
+        result = await self._scorer.score(prompt=prompt, transcript=transcript)
+        self._score = result.evaluation or {}

@@ -124,6 +124,12 @@ class SessionEventRecorder:
         command_name: str | None = None,
         command_args: str | None = None,
         event_ts: datetime | None = None,
+        failure_type: str | None = None,
+        retries_remaining: int | None = None,
+        exit_reason: str | None = None,
+        provider: str | None = None,
+        provider_status_code: int | None = None,
+        provider_code: str | None = None,
     ) -> "RecordedSessionEvent":
         return await self._enqueue_event(
             direction="outbound",
@@ -135,6 +141,12 @@ class SessionEventRecorder:
             command_name=command_name,
             command_args=command_args,
             event_ts=event_ts,
+            failure_type=failure_type,
+            retries_remaining=retries_remaining,
+            exit_reason=exit_reason,
+            provider=provider,
+            provider_status_code=provider_status_code,
+            provider_code=provider_code,
         )
 
     async def record_internal(self, *, event_type: str, detail: str, turn_index: int) -> "RecordedSessionEvent":
@@ -191,6 +203,12 @@ class SessionEventRecorder:
         command_name: str | None,
         command_args: str | None,
         event_ts: datetime | None,
+        failure_type: str | None = None,
+        retries_remaining: int | None = None,
+        exit_reason: str | None = None,
+        provider: str | None = None,
+        provider_status_code: int | None = None,
+        provider_code: str | None = None,
     ) -> "RecordedSessionEvent":
         _validate_event_classification(
             direction=direction,
@@ -215,6 +233,18 @@ class SessionEventRecorder:
             MongoColumns.COMMAND_ARGS: command_args,
             MongoColumns.VISIBLE_TO_USER: True,
         }
+        if failure_type is not None:
+            doc[MongoColumns.FAILURE_TYPE] = failure_type
+        if retries_remaining is not None:
+            doc[MongoColumns.RETRIES_REMAINING] = retries_remaining
+        if exit_reason is not None:
+            doc[MongoColumns.EXIT_REASON] = exit_reason
+        if provider is not None:
+            doc[MongoColumns.PROVIDER] = provider
+        if provider_status_code is not None:
+            doc[MongoColumns.PROVIDER_STATUS_CODE] = provider_status_code
+        if provider_code is not None:
+            doc[MongoColumns.PROVIDER_CODE] = provider_code
         await self._writer.enqueue(doc)
         return RecordedSessionEvent(event_id=event_id, seq=seq)
 

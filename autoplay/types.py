@@ -12,6 +12,10 @@ class PlayerTurn:
     content: str
     event_type: str = "message"
     failure_type: str | None = None
+    retries_remaining: int | None = None
+    provider: str | None = None
+    provider_status_code: int | None = None
+    provider_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,11 @@ class AssignmentResult:
     status: str
     turns: int = 0
     error: str | None = None
+    failure_type: str | None = None
+    exit_reason: str | None = None
+    provider: str | None = None
+    provider_status_code: int | None = None
+    provider_code: str | None = None
 
 
 @dataclass

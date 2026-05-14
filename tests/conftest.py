@@ -262,7 +262,7 @@ def sync_mongo_provider(async_mongo_provider: AsyncMongoProvider) -> SyncAsyncPr
 
 _MOCK_AI_RESPONSE = '{"type": "ai", "content": "The flatworm moves slowly across the surface."}'
 _MOCK_TEAMWORK_OPENING_RESPONSE = '{"type": "ai", "content": "You enter a new space. In this space, a loose panel hangs over a flooded control box.", "metadata": {"shared_goal": "to secure the exposed control box before the room fully floods"}}'
-_MOCK_VALIDATOR_RESPONSE = '{"type": "info", "content": "Action accepted."}'
+_MOCK_VALIDATOR_RESPONSE = '{"pass": true}'
 
 
 @pytest.fixture

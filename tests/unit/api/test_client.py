@@ -4,6 +4,7 @@ import json
 
 import pytest
 from dcs_simulation_engine.api import client as api_client
+from dcs_simulation_engine.api.models import WSErrorFrame
 
 pytestmark = pytest.mark.unit
 
@@ -184,6 +185,30 @@ def test_simulation_run_preserves_machine_readable_failure_frames(monkeypatch: p
     assert run._turn_end is not None
     assert run._turn_end.failure_type == "player_turn_validation_failed"
     assert run._turn_end.exit_reason == "player_validation_retry_exhausted"
+
+
+def test_websocket_models_preserve_provider_error_metadata() -> None:
+    """Provider error fields should be part of the public websocket contract."""
+    event_frame = api_client.WSEventFrame(
+        session_id="sess-provider",
+        event_type="error",
+        content="OpenRouter needs more credits.",
+        failure_type="model_provider_error",
+        provider="openrouter",
+        provider_status_code=402,
+        provider_code="402",
+    )
+    error_frame = WSErrorFrame(
+        detail="OpenRouter needs more credits.",
+        failure_type="model_provider_error",
+        provider="openrouter",
+        provider_status_code=402,
+        provider_code="402",
+    )
+
+    assert event_frame.model_dump(mode="json")["failure_type"] == "model_provider_error"
+    assert event_frame.model_dump(mode="json")["provider_status_code"] == 402
+    assert error_frame.model_dump(mode="json")["provider"] == "openrouter"
 
 
 def test_simulation_run_get_state_consumes_session_meta_before_status(monkeypatch: pytest.MonkeyPatch) -> None:

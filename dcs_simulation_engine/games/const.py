@@ -1,4 +1,12 @@
+"""Constants for the games module."""
 # ruff: noqa: D100, E501
+
+DEFAULT_MODEL = "openai/gpt-5-mini"
+DEFAULT_OPENROUTER_MAX_COMPLETION_TOKENS = 4096
+DEFAULT_OPENROUTER_TIMEOUT_SECONDS = 300.0
+DEFAULT_RAW_RESPONSE_LOG_CHARS = 25_000
+MODEL_OUTPUT_PROVIDER_CODE = "model_output_contract_error"
+OPENROUTER_PROVIDER = "openrouter"
 
 DEFAULT_FINISH_CONTENT = "Game finished (reason: {finish_reason})"
 DEFAULT_ABILITIES_CONTENT = """\

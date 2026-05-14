@@ -1,11 +1,14 @@
 """Unit tests for OpenRouter call behavior in ai_client."""
 
 import asyncio
+import json
 from typing import Any
 
+import httpx
 import pytest
+from dcs_simulation_engine.errors import ModelOutputContractError, ModelProviderError
 from dcs_simulation_engine.games import ai_client
-from dcs_simulation_engine.games.ai_client import _extract_response_metadata
+from dcs_simulation_engine.games.ai_client import ScorerClient, _extract_response_metadata
 
 
 @pytest.mark.unit
@@ -62,6 +65,12 @@ def test_call_openrouter_uses_http_when_fake_disabled(monkeypatch: pytest.Monkey
             state["post_called"] = True
             assert kwargs["headers"] == {"Authorization": "Bearer test-key"}
             assert kwargs["json"]["model"] == "openai/gpt-5-mini"
+            timeout = kwargs["timeout"]
+            assert isinstance(timeout, httpx.Timeout)
+            assert timeout.connect == 10.0
+            assert timeout.read == 300.0
+            assert timeout.write == 30.0
+            assert timeout.pool == 10.0
             return FakeResponse()
 
     monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
@@ -75,6 +84,215 @@ def test_call_openrouter_uses_http_when_fake_disabled(monkeypatch: pytest.Monkey
 
     assert state["post_called"] is True
     assert result == "real-http-result"
+
+
+@pytest.mark.unit
+def test_call_openrouter_timeout_allows_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OpenRouter read timeout should be configurable for longer reasoning models."""
+    monkeypatch.setenv("OPENROUTER_TIMEOUT_SECONDS", "180")
+
+    timeout = ai_client._openrouter_timeout()
+
+    assert timeout.connect == 10.0
+    assert timeout.read == 180.0
+    assert timeout.write == 30.0
+    assert timeout.pool == 10.0
+
+
+@pytest.mark.unit
+def test_call_openrouter_raises_sanitized_model_provider_error_for_402(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OpenRouter credit errors should become structured provider errors without leaking raw payload IDs."""
+    ai_client.set_fake_ai_response(None)
+    monkeypatch.setattr(ai_client, "_get_api_key", lambda: "test-key")
+
+    class FakeResponse:
+        is_error = True
+        status_code = 402
+        text = (
+            '{"error":{"message":"This request requires more credits, or fewer max_tokens.",'
+            '"code":402},"user_id":"user_should_not_leak"}'
+        )
+        request = object()
+
+        def json(self) -> dict[str, Any]:
+            return {
+                "error": {
+                    "message": "This request requires more credits, or fewer max_tokens.",
+                    "code": 402,
+                },
+                "user_id": "user_should_not_leak",
+            }
+
+    class FakeAsyncClient:
+        async def __aenter__(self) -> "FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(self, *args: Any, **kwargs: Any) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
+
+    with pytest.raises(ModelProviderError) as exc_info:
+        asyncio.run(
+            ai_client._call_openrouter(
+                messages=[{"role": "system", "content": "go"}],
+                model="openai/gpt-5-mini",
+            )
+        )
+
+    exc = exc_info.value
+    assert exc.provider == "openrouter"
+    assert exc.model == "openai/gpt-5-mini"
+    assert exc.status_code == 402
+    assert exc.provider_code == "402"
+    assert exc.retryable is False
+    assert "OpenRouter needs more credits for openai/gpt-5-mini" in exc.user_message
+    assert "user_should_not_leak" not in exc.user_message
+
+
+@pytest.mark.unit
+def test_call_openrouter_rejects_null_message_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Null provider content is a model-output contract failure, not a local AttributeError."""
+    ai_client.set_fake_ai_response(None)
+    monkeypatch.setattr(ai_client, "_get_api_key", lambda: "test-key")
+
+    class FakeResponse:
+        is_error = False
+        status_code = 200
+        text = ""
+
+        def json(self) -> dict[str, Any]:
+            return {"choices": [{"message": {"content": None}}]}
+
+    class FakeAsyncClient:
+        async def __aenter__(self) -> "FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(self, *args: Any, **kwargs: Any) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
+
+    with pytest.raises(ModelOutputContractError) as exc_info:
+        asyncio.run(
+            ai_client._call_openrouter(
+                messages=[{"role": "system", "content": "go"}],
+                model="openai/gpt-5-mini",
+            )
+        )
+
+    assert exc_info.value.component == "chat completion"
+    assert exc_info.value.detail == "assistant message content must be a string"
+    assert exc_info.value.raw_response == '{"choices": [{"message": {"content": null}}]}'
+
+
+@pytest.mark.unit
+def test_call_openrouter_includes_raw_response_when_provider_json_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Malformed provider JSON should keep the raw response for contract diagnostics."""
+    ai_client.set_fake_ai_response(None)
+    monkeypatch.setattr(ai_client, "_get_api_key", lambda: "test-key")
+
+    class FakeResponse:
+        is_error = False
+        status_code = 200
+        text = "not json"
+
+        def json(self) -> dict[str, Any]:
+            raise json.JSONDecodeError("bad json", self.text, 0)
+
+    class FakeAsyncClient:
+        async def __aenter__(self) -> "FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(self, *args: Any, **kwargs: Any) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
+
+    with pytest.raises(ModelOutputContractError) as exc_info:
+        asyncio.run(
+            ai_client._call_openrouter(
+                messages=[{"role": "system", "content": "go"}],
+                model="openai/gpt-5-mini",
+            )
+        )
+
+    assert exc_info.value.component == "chat completion"
+    assert exc_info.value.detail.startswith("provider response was not valid JSON")
+    assert exc_info.value.raw_response == "not json"
+
+
+@pytest.mark.unit
+def test_contract_failure_detail_keeps_long_raw_response_for_db_diagnostics() -> None:
+    """Contract diagnostics should preserve useful raw provider output beyond the old 600-char message cap."""
+    reasoning = "x" * 900
+    raw_response = json.dumps(
+        {
+            "id": "gen-test",
+            "object": "chat.completion",
+            "model": "openai/gpt-5-mini-2025-08-07",
+            "provider": "OpenAI",
+            "choices": [
+                {
+                    "index": 0,
+                    "finish_reason": "length",
+                    "native_finish_reason": "max_output_tokens",
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "refusal": None,
+                        "reasoning": reasoning,
+                    },
+                }
+            ],
+        }
+    )
+    exc = ModelOutputContractError(
+        component="chat completion",
+        model="openai/gpt-5-mini",
+        detail="assistant message content must be a string",
+        raw_response=raw_response,
+    )
+
+    detail = ai_client._contract_failure_detail(exc, operation="opener", attempt=2, will_retry=False)
+
+    assert detail["raw_response"] == raw_response
+    assert detail["raw_response_chars"] == len(raw_response)
+    assert detail["raw_response_truncated"] is False
+    assert detail["model_response"]["response_id"] == "gen-test"
+    assert detail["model_response"]["finish_reason"] == "length"
+    assert detail["model_response"]["native_finish_reason"] == "max_output_tokens"
+    assert detail["model_response"]["message_content_is_null"] is True
+    assert detail["model_response"]["message_reasoning_chars"] == 900
+
+
+@pytest.mark.unit
+def test_contract_failure_detail_marks_raw_response_truncation_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Very large raw responses should be capped explicitly instead of silently ellipsized in the message."""
+    monkeypatch.setenv("DCS_MODEL_RAW_RESPONSE_LOG_CHARS", "10")
+    exc = ModelOutputContractError(
+        component="opener",
+        model="model",
+        detail="response was not valid JSON",
+        raw_response="0123456789abcdef",
+    )
+
+    detail = ai_client._contract_failure_detail(exc, operation="opener", attempt=1, will_retry=True)
+
+    assert detail["raw_response"] == "0123456789"
+    assert detail["raw_response_chars"] == 16
+    assert detail["raw_response_truncated"] is True
+    assert detail["raw_response_log_limit"] == 10
+    assert detail["model_response"]["raw_response_format"] == "text"
 
 
 @pytest.mark.unit
@@ -112,7 +330,7 @@ async def test_call_openrouter_with_retry_succeeds_on_second_attempt(monkeypatch
         nonlocal calls
         calls += 1
         if calls == 1:
-            raise RuntimeError("transient failure")
+            raise httpx.ConnectError("transient failure")
         return "ok"
 
     monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
@@ -124,14 +342,115 @@ async def test_call_openrouter_with_retry_succeeds_on_second_attempt(monkeypatch
 @pytest.mark.unit
 @pytest.mark.anyio
 async def test_call_openrouter_with_retry_raises_after_two_failures(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Retry wrapper should propagate the exception after both attempts fail."""
+    """Retry wrapper should convert exhausted transport failures into provider errors."""
+    calls = 0
 
     async def fake_call(messages, model):
-        raise RuntimeError("persistent failure")
+        nonlocal calls
+        calls += 1
+        raise httpx.ConnectError("persistent failure")
 
     monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
-    with pytest.raises(RuntimeError, match="persistent failure"):
+    with pytest.raises(ModelProviderError) as exc_info:
         await ai_client._call_openrouter_with_retry([], "model")
+    assert calls == 2
+    assert exc_info.value.provider == "openrouter"
+    assert exc_info.value.model == "model"
+    assert exc_info.value.provider_code == "ConnectError"
+    assert exc_info.value.provider_message == "persistent failure"
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_call_openrouter_with_retry_does_not_retry_nonretryable_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Provider/account errors such as 402 should surface immediately."""
+    calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal calls
+        calls += 1
+        raise ModelProviderError(
+            provider="openrouter",
+            model=model,
+            status_code=402,
+            provider_code="402",
+            provider_message="This request requires more credits.",
+            user_message="Model provider error: OpenRouter needs more credits.",
+            retryable=False,
+        )
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+    with pytest.raises(ModelProviderError):
+        await ai_client._call_openrouter_with_retry([], "model")
+    assert calls == 1
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_scorer_retries_once_when_output_contract_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Malformed scorer output should get one corrective retry before succeeding."""
+    calls: list[list[dict[str, str]]] = []
+
+    async def fake_call(messages, model):
+        _ = model
+        calls.append(messages)
+        if len(calls) == 1:
+            return None
+        return '{"tier": 2, "score": 75, "reasoning": "clear"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    result = await ScorerClient(model="test-model").score(prompt="Score this", transcript="Transcript")
+
+    assert result.evaluation == {"tier": 2, "score": 75, "reasoning": "clear"}
+    assert len(calls) == 2
+    assert "previous scorer response" in calls[1][0]["content"]
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_scorer_surfaces_provider_error_when_output_contract_fails_after_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated malformed scorer output should become a diagnostic provider error."""
+
+    async def fake_call(messages, model):
+        _ = messages, model
+        return '{"tier": null, "score": 75, "reasoning": "clear"}'
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    with pytest.raises(ModelProviderError) as exc_info:
+        await ScorerClient(model="test-model").score(prompt="Score this", transcript="Transcript")
+
+    assert exc_info.value.provider == "openrouter"
+    assert exc_info.value.provider_code == "model_output_contract_error"
+    assert exc_info.value.provider_message == "scorer: Invalid inference evaluation payload: {'tier': None, 'score': 75, 'reasoning': 'clear'}"
+
+
+@pytest.mark.unit
+@pytest.mark.anyio
+async def test_scorer_surfaces_provider_error_when_invalid_json_after_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repeated invalid scorer JSON should become a diagnostic provider error."""
+    calls = 0
+
+    async def fake_call(messages, model):
+        nonlocal calls
+        _ = messages, model
+        calls += 1
+        return "not json"
+
+    monkeypatch.setattr(ai_client, "_call_openrouter", fake_call)
+
+    with pytest.raises(ModelProviderError) as exc_info:
+        await ScorerClient(model="test-model").score(prompt="Score this", transcript="Transcript")
+
+    assert calls == 2
+    assert exc_info.value.provider == "openrouter"
+    assert exc_info.value.provider_code == "model_output_contract_error"
+    assert exc_info.value.provider_message == "scorer: response was not valid JSON"
 
 
 @pytest.mark.unit

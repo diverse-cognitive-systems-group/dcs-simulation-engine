@@ -142,6 +142,15 @@ def test_api_usage_example_config_covers_all_supported_scripts() -> None:
                 content="The simulator exhausted validation retries.",
                 failure_type="simulator_turn_validation_retry_exhausted",
             ),
+            "simulator_retryable",
+        ),
+        (
+            WSEventFrame(
+                session_id="s",
+                event_type="error",
+                content="The simulator exhausted its recovery budget.",
+                failure_type="simulator_recovery_budget_exhausted",
+            ),
             "system_terminal",
         ),
         (

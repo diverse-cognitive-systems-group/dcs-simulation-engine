@@ -68,6 +68,7 @@ interface ReconstructionSession {
   pc_hid?: string | null
   npc_hid?: string | null
   turns_completed?: number | null
+  exit_reason?: string | null
 }
 
 interface ReconstructionFeedback {
@@ -89,6 +90,11 @@ interface ReconstructionEvent {
   turn_index?: number
   visible_to_user?: boolean
   feedback?: ReconstructionFeedback | null
+  failure_type?: string | null
+  retries_remaining?: number | null
+  provider?: string | null
+  provider_status_code?: number | null
+  provider_code?: string | null
 }
 
 interface SessionReconstruction {
@@ -170,11 +176,12 @@ function eventTypeFromReconstruction(event: ReconstructionEvent): EventType {
 function messagesFromReconstruction(
   reconstruction: SessionReconstruction | undefined,
 ): ChatMessage[] {
+  const replayableEventTypes = new Set(['message', 'command', 'info', 'error', 'warning'])
   return (reconstruction?.events ?? [])
     .filter((event) => {
       const eventType = String(event.event_type ?? '').toLowerCase()
       if (event.visible_to_user === false) return false
-      return !['session_start', 'session_end'].includes(eventType)
+      return replayableEventTypes.has(eventType)
     })
     .map((event, index) => {
       const direction = String(event.direction ?? 'outbound').toLowerCase()
@@ -182,12 +189,29 @@ function messagesFromReconstruction(
         id: event.event_id ?? `${event.seq ?? index}`,
         role: direction === 'inbound' ? 'user' : 'ai',
         eventType: eventTypeFromReconstruction(event),
+        failureType: event.failure_type ?? undefined,
+        retriesRemaining:
+          typeof event.retries_remaining === 'number' ? event.retries_remaining : undefined,
+        provider: event.provider ?? undefined,
+        providerStatusCode:
+          typeof event.provider_status_code === 'number' ? event.provider_status_code : undefined,
+        providerCode: event.provider_code ?? undefined,
         content: event.content ?? '',
         eventId: event.event_id,
         feedback: feedbackFromReconstruction(event.feedback),
         timestamp: event.event_ts ? new Date(event.event_ts).getTime() : Date.now(),
       }
     })
+}
+
+function terminalReasonLabel(reason: string | null | undefined): string | null {
+  if (!reason) return null
+  if (reason === 'model_provider_error') return 'Model provider error'
+  if (reason === 'internal_error') return 'Engine error'
+  if (reason === 'simulator_recovery_budget_exhausted') return 'Simulator recovery exhausted'
+  if (reason === 'player_validation_retry_exhausted') return 'Player validation exhausted'
+  if (reason === 'game_completed') return 'Game completed'
+  return reason.replaceAll('_', ' ')
 }
 
 function turnsFromReconstruction(reconstruction: SessionReconstruction | undefined): number {
@@ -231,6 +255,7 @@ function PlayPage() {
     wsState,
     turns,
     exited,
+    exitReason,
     waiting,
     isReplaying,
     pcHid,
@@ -315,11 +340,15 @@ function PlayPage() {
   const displayMessages = terminalReconstruction ? readOnlyMessages : messages
   const displayTurns = terminalReconstruction ? turnsFromReconstruction(reconstruction) : turns
   const displayExited = terminalReconstruction || exited
+  const displayExitReason = terminalReconstruction
+    ? terminalReasonLabel(reconstruction?.session?.exit_reason)
+    : terminalReasonLabel(exitReason)
   const displayPcHid = terminalReconstruction ? (reconstruction?.session?.pc_hid ?? null) : pcHid
   const displayNpcHid = terminalReconstruction ? (reconstruction?.session?.npc_hid ?? null) : npcHid
 
   const isConnecting =
     !terminalReconstruction &&
+    !displayExited &&
     (reconstructionLoading || wsState === 'connecting' || wsState === 'auth')
   const isError = wsState === 'error'
   const isClosed = terminalReconstruction || wsState === 'closed' || exited
@@ -493,7 +522,8 @@ function PlayPage() {
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto w-full max-w-[96vw] sm:max-w-[92vw] lg:max-w-[86vw] xl:max-w-[80vw] space-y-3">
-          {(isConnecting || (!terminalReconstruction && turns === 0 && wsState === 'ready')) && (
+          {(isConnecting ||
+            (!terminalReconstruction && !displayExited && turns === 0 && wsState === 'ready')) && (
             <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
               {/* CSS-only spinner: a bordered circle with one colored arc, rotated by animation */}
               <div className="w-6 h-6 rounded-full border-2 border-muted/70 border-t-primary animate-spin" />
@@ -545,7 +575,11 @@ function PlayPage() {
           {displayExited && (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <div>
-                <Badge variant="secondary">Simulation ended</Badge>
+                <Badge variant="secondary">
+                  {displayExitReason
+                    ? `Simulation ended: ${displayExitReason}`
+                    : 'Simulation ended'}
+                </Badge>
               </div>
               {hasGameFeedback && (
                 <Button className="mx-auto">Continue to Post Game Feedback</Button>
