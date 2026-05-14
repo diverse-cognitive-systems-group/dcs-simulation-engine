@@ -257,7 +257,7 @@ def _model_output_provider_error(
         provider_message=provider_message,
         user_message=(
             f"Model provider error: {_provider_display_name(OPENROUTER_PROVIDER)} returned unusable output "
-            f"for {exc.model}. The host may need to retry or switch models."
+            f"for {exc.model}. The game host needs to check this out before you can continue."
         ),
         retryable=False,
     )
