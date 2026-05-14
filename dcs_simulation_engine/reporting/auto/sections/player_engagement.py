@@ -7,7 +7,7 @@ Plotly charts:
 
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
-from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html, use_integer_ticks
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
 
@@ -59,6 +59,7 @@ def _runs_per_player(run_counts: pd.DataFrame) -> str:
         title="Runs per Player",
         labels={"player_id": "Player ID", "runs": "Run Count"},
     )
+    use_integer_ticks(fig, y=True)
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=40, b=60))
     return plotly_to_html(fig)
 
@@ -102,5 +103,6 @@ def _engagement_by(
         title=title,
         labels={column: column.replace("_", " ").title(), "runs": "Run Count"},
     )
+    use_integer_ticks(fig, y=True)
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=40, b=80))
     return plotly_to_html(fig)

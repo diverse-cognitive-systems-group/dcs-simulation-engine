@@ -36,7 +36,7 @@ _VALID_SECTION_SLUGS = [
     "sim-quality",
     "system-errors",
     "system-performance",
-    "transcripts",
+    "event-log",
 ]
 
 
@@ -77,7 +77,7 @@ def test_report_coverage_dev(tmp_path, monkeypatch):
     result = _RUNNER.invoke(app, ["report", "coverage", "--db", "dev"])
 
     assert result.exit_code == 0, result.output
-    out_html = tmp_path / "results" / "character_coverage_dev.html"
+    out_html = tmp_path / "reports" / "character_coverage_dev.html"
     assert out_html.exists(), f"Expected report at {out_html}"
     _assert_valid_html(out_html)
 
@@ -90,7 +90,7 @@ def test_report_coverage_prod(tmp_path, monkeypatch):
     result = _RUNNER.invoke(app, ["report", "coverage", "--db", "prod"])
 
     assert result.exit_code == 0, result.output
-    out_html = tmp_path / "results" / "character_coverage_prod.html"
+    out_html = tmp_path / "reports" / "character_coverage_prod.html"
     assert out_html.exists(), f"Expected report at {out_html}"
     _assert_valid_html(out_html)
 
@@ -111,6 +111,19 @@ def test_report_results_default_sections(tmp_path):
     )
 
     assert result.exit_code == 0, result.output
+    assert out.exists(), f"Expected report at {out}"
+    _assert_valid_html(out)
+
+
+@pytest.mark.functional
+def test_report_results_default_path_writes_to_reports_dir(tmp_path, monkeypatch):
+    """Dcs report results without --report-path writes to ./reports."""
+    monkeypatch.chdir(tmp_path)
+
+    result = _RUNNER.invoke(app, ["report", "results", str(_EXAMPLE_RESULTS), "--only", "metadata"])
+
+    assert result.exit_code == 0, result.output
+    out = tmp_path / "reports" / "results_report.html"
     assert out.exists(), f"Expected report at {out}"
     _assert_valid_html(out)
 

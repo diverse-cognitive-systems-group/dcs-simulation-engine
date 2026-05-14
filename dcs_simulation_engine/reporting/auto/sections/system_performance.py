@@ -1,8 +1,7 @@
 """Section 3 — System Performance.
 
 Plotly charts covering run durations, pacing, exit reasons,
-retry budget, PC/NPC pairings, and a session timeline (Gantt), followed by
-system error details.
+retry budget, PC/NPC pairings, and a session timeline (Gantt).
 """
 
 from datetime import timezone
@@ -10,8 +9,7 @@ from datetime import timezone
 import numpy as np
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
-from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html
-from dcs_simulation_engine.reporting.auto.sections import system_errors
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html, use_integer_ticks
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
 
@@ -67,9 +65,16 @@ def render(data: AnalysisData) -> str:
     )
     parts.append(_full(_lt_violin_wait_by_player_and_game(wait_turn) + chart_caption("system_performance", "lt_wait_by_player_and_game")))
     if not game_lt.empty:
+        game_duration_minutes = game_lt["game_duration_ms"] / 60_000
         parts.append(
             _full(
-                _lt_hist_kde(game_lt["game_duration_ms"], "Game Duration Distribution (All Players)", "Duration (ms)")
+                _lt_hist_kde(
+                    game_duration_minutes,
+                    "Game Duration Distribution (All Players)",
+                    "Duration (minutes)",
+                    annotation_unit="min",
+                    annotation_decimals=1,
+                )
                 + chart_caption("system_performance", "lt_hist_game_duration")
             )
         )
@@ -94,9 +99,6 @@ def render(data: AnalysisData) -> str:
                 + chart_caption("system_performance", "lt_hist_wait_close")
             )
         )
-
-    parts.append('<h3 class="h5 mt-4">System Errors</h3>')
-    parts.append(system_errors.render(data))
 
     return "\n".join(parts)
 
@@ -218,6 +220,7 @@ def _turns_vs_runtime(df: pd.DataFrame) -> str:
             "game_name": "Game",
         },
     )
+    use_integer_ticks(fig, x=True)
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=40, b=20))
     return plotly_to_html(fig)
 
@@ -237,6 +240,7 @@ def _exit_reasons(df: pd.DataFrame) -> str:
         title="Run Exit Reasons",
         labels={"termination_reason": "Exit Reason", "count": "Count"},
     )
+    use_integer_ticks(fig, y=True)
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=40, b=20))
     return plotly_to_html(fig)
 
@@ -257,6 +261,7 @@ def _retry_budget(df: pd.DataFrame) -> str:
         title="Runs by Event Count",
         labels={"last_seq": "Last Seq", "count": "Run Count"},
     )
+    use_integer_ticks(fig, x=True, y=True)
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=40, b=20))
     return plotly_to_html(fig)
 
@@ -490,7 +495,13 @@ def _lt_violin_wait_by_player_and_game(wait_df: pd.DataFrame) -> str:
     return plotly_to_html(fig)
 
 
-def _lt_hist_kde(values_series: pd.Series, title: str, xlabel: str) -> str:
+def _lt_hist_kde(
+    values_series: pd.Series,
+    title: str,
+    xlabel: str,
+    annotation_unit: str = "ms",
+    annotation_decimals: int = 0,
+) -> str:
     import plotly.graph_objects as go
 
     vals = values_series.dropna().to_numpy(dtype=float)
@@ -529,7 +540,7 @@ def _lt_hist_kde(values_series: pd.Series, title: str, xlabel: str) -> str:
             line_dash=dash,
             line_color=color,
             line_width=2,
-            annotation_text=f"{label}={val:.0f} ms",
+            annotation_text=f"{label}={val:.{annotation_decimals}f} {annotation_unit}",
             annotation_position="top right",
             annotation_font_size=10,
         )

@@ -91,7 +91,7 @@ def test_cli_reporting_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
         ],
     )
 
-    coverage_report = tmp_path / "results" / "character_coverage_dev.html"
+    coverage_report = tmp_path / "reports" / "character_coverage_dev.html"
     assert coverage_result.exit_code == 0, coverage_result.output
     assert results_result.exit_code == 0, results_result.output
     assert "<html" in coverage_report.read_text(encoding="utf-8")

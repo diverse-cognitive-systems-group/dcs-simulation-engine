@@ -6,6 +6,7 @@ showing player, game, characters, turn count, duration, exit reason, etc.
 
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import use_integer_ticks
 from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
 from dcs_simulation_engine.reporting.auto.sections.system_performance import _pairing_heatmap
 from dcs_simulation_engine.reporting.loader import AnalysisData
@@ -111,6 +112,7 @@ def _sessions_over_time(df: pd.DataFrame) -> str:
         return '<div class="alert alert-secondary">No timestamp data.</div>'
 
     fig = px.bar(daily, x="date", y="sessions", title="Sessions Over Time", labels={"date": "Date", "sessions": "Sessions Started"})
+    use_integer_ticks(fig, y=True)
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=40))
     return _plotly(fig)
 
@@ -127,6 +129,7 @@ def _exit_reasons(df: pd.DataFrame) -> str:
     fig = px.bar(
         counts, x="count", y="reason", orientation="h", title="Exit Reasons", labels={"reason": "Exit Reason", "count": "Sessions"}
     )
+    use_integer_ticks(fig, x=True)
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=40), yaxis={"categoryorder": "total ascending"})
     return _plotly(fig)
 
@@ -142,6 +145,7 @@ def _turns_distribution(df: pd.DataFrame) -> str:
         return '<div class="alert alert-secondary">No turn data.</div>'
 
     fig = px.histogram(valid, nbins=20, title="Turns Completed per Session", labels={"value": "Turns", "count": "Sessions"})
+    use_integer_ticks(fig, x=True, y=True)
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=40), showlegend=False)
     return _plotly(fig)
 
@@ -157,6 +161,7 @@ def _duration_distribution(df: pd.DataFrame) -> str:
         return '<div class="alert alert-secondary">No duration data.</div>'
 
     fig = px.histogram(valid, nbins=20, title="Session Duration Distribution", labels={"value": "Duration (min)", "count": "Sessions"})
+    use_integer_ticks(fig, y=True)
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=40), showlegend=False)
     return _plotly(fig)
 
@@ -169,6 +174,7 @@ def _runs_per_game(df: pd.DataFrame) -> str:
 
     counts = df["game_name"].fillna("unknown").value_counts().rename_axis("game").reset_index(name="sessions")
     fig = px.bar(counts, x="sessions", y="game", orientation="h", title="Runs per Game", labels={"game": "Game", "sessions": "Sessions"})
+    use_integer_ticks(fig, x=True)
     fig.update_layout(
         height=max(250, 60 + len(counts) * 30), margin=dict(l=20, r=20, t=40, b=40), yaxis={"categoryorder": "total ascending"}
     )
@@ -202,6 +208,7 @@ def _completion_by_game(df: pd.DataFrame) -> str:
         labels={"game_name": "Game", "count": "Sessions", "outcome": "Outcome"},
         color_discrete_map={"Completed": "#2ecc71", "Not Completed": "#e74c3c"},
     )
+    use_integer_ticks(fig, x=True)
     fig.update_layout(
         height=max(250, 60 + df["game_name"].nunique() * 30),
         margin=dict(l=20, r=20, t=40, b=40),
@@ -234,6 +241,7 @@ def _participation_funnel(data: "AnalysisData") -> str:
         values.append(completed_ids)
 
     fig = go.Figure(go.Funnel(y=stages, x=values, textinfo="value+percent initial"))
+    use_integer_ticks(fig, x=True)
     fig.update_layout(title="Player Participation Funnel", height=300, margin=dict(l=20, r=20, t=40, b=40))
     return _plotly(fig)
 
@@ -248,6 +256,7 @@ def _sessions_per_player(df: pd.DataFrame) -> str:
     fig = px.histogram(
         counts, nbins=max(1, counts.nunique()), title="Sessions per Player", labels={"value": "Sessions Completed", "count": "Players"}
     )
+    use_integer_ticks(fig, x=True, y=True)
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=40), showlegend=False)
     return _plotly(fig)
 

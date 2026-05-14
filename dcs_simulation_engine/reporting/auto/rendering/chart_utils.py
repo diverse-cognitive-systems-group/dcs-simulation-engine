@@ -8,6 +8,16 @@ import base64
 import io
 
 
+def use_integer_ticks(fig, *, x: bool = False, y: bool = False):
+    """Force whole-number tick labels on numeric Plotly axes."""
+    axis_options = {"dtick": 1, "tickformat": ",d"}
+    if x:
+        fig.update_xaxes(**axis_options)
+    if y:
+        fig.update_yaxes(**axis_options)
+    return fig
+
+
 def plotly_to_html(fig, div_id: str | None = None) -> str:
     """Return an embeddable HTML div for *fig*.
 

@@ -120,7 +120,7 @@ def _report_coverage_cmd(
         _console.print(f"ERROR: --db must be 'dev' or 'prod', got {db!r}.", style="error")
         raise typer.Exit(1)
 
-    out_dir = (Path.cwd() / "results").resolve()
+    out_dir = (Path.cwd() / "reports").resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     output_path = out_dir / f"character_coverage_{db}.html"
 
@@ -160,7 +160,7 @@ def _report_results_cmd(
     report_path: Optional[Path] = typer.Option(
         None,
         "--report-path",
-        help="Output path for the HTML file. Defaults to ./results/<title>.html.",
+        help="Output path for the HTML file. Defaults to ./reports/<title>.html.",
     ),
     title: Optional[str] = typer.Option(
         None,
@@ -240,7 +240,7 @@ def _report_results_cmd(
     if report_path is not None:
         output_path = report_path.resolve()
     else:
-        out_dir = (cwd / "results").resolve()
+        out_dir = (cwd / "reports").resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
         output_path = out_dir / f"{_slugify(title)}.html"
 

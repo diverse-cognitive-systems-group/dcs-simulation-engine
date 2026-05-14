@@ -11,9 +11,12 @@ Or via CLI:
 """
 
 import base64
+import io
 import types
+import zipfile
 from pathlib import Path
 
+import yaml
 from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_html
 from dcs_simulation_engine.reporting.auto.sections import (
     coverage_human,
@@ -73,7 +76,7 @@ SECTIONS = [
     ("system-errors", "Errors", system_errors, "sub"),
     ("sim-quality", "Simulation Quality", simulation_quality, "sub"),
     ("npc-coverage", "NPC Coverage", _npc_coverage, "sub"),
-    ("transcripts", "Transcripts", transcripts, "top"),
+    ("event-log", "Full Event Log", transcripts, "top"),
 ]
 
 DEFAULT_SECTIONS = [s for s in SECTIONS if s[0] != "sim-quality"]
@@ -138,6 +141,38 @@ def _read_b64(path: Path) -> str | None:
         return None
 
 
+def _b64(data: bytes) -> str:
+    return base64.b64encode(data).decode()
+
+
+def _raw_results_b64(results_dir: Path) -> str | None:
+    raw_results_path = results_dir.with_suffix(".zip")
+    if raw_results_path.is_file():
+        return _read_b64(raw_results_path)
+
+    try:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for file_path in sorted(results_dir.rglob("*")):
+                if file_path.is_file():
+                    archive.write(file_path, arcname=file_path.relative_to(results_dir.parent))
+        return _b64(buffer.getvalue())
+    except OSError:
+        return None
+
+
+def _run_config_b64(data: AnalysisData) -> str | None:
+    run_config_path = data.results_dir / "run_config.yml"
+    if run_config_path.is_file():
+        return _read_b64(run_config_path)
+
+    config = data.run.get("config_snapshot") or data.run.get("run_config")
+    if not config:
+        return None
+    content = yaml.safe_dump(config, sort_keys=False, allow_unicode=True)
+    return _b64(content.encode("utf-8"))
+
+
 def run_analysis(
     data: AnalysisData,
     title: str = "Results Report",
@@ -160,11 +195,13 @@ def run_analysis(
             fragment = fragment + _TODO_PLACEHOLDER
         rendered.append((anchor, section_title, fragment, kind))
 
-    raw_results_path = data.results_dir.with_suffix(".zip")
-    run_config_path = data.results_dir / "run_config.yml"
     artifacts = {
-        "raw_results": {"b64": _read_b64(raw_results_path), "filename": raw_results_path.name, "mime": "application/zip"},
-        "run_config": {"b64": _read_b64(run_config_path), "filename": "run_config.yml", "mime": "text/yaml"},
+        "raw_results": {
+            "b64": _raw_results_b64(data.results_dir),
+            "filename": f"{data.results_dir.name}.zip",
+            "mime": "application/zip",
+        },
+        "run_config": {"b64": _run_config_b64(data), "filename": "run_config.yml", "mime": "text/yaml"},
     }
 
     return build_html(rendered, title=title, artifacts=artifacts)

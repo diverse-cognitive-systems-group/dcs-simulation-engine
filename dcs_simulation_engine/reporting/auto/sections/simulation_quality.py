@@ -282,7 +282,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     # 4. Feedback
     feedback_fragment = player_feedback.render(char_data)
 
-    # 5. Transcripts
+    # 5. Full Event Log
     transcripts_fragment = transcripts_section.render(char_data)
 
     # --- Assemble ---
@@ -291,7 +291,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
         ("overview", "Overview", overview_fragment, "top"),
         ("scenario-coverage", "Scenario Coverage", scenario_fragment, "top"),
         ("feedback", "Feedback", feedback_fragment, "top"),
-        ("transcripts", "Transcripts", transcripts_fragment, "top"),
+        ("event-log", "Full Event Log", transcripts_fragment, "top"),
     ]
 
     char_name = char_meta.get("name") or hid
