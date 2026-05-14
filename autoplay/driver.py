@@ -19,6 +19,29 @@ from dcs_simulation_engine.api.models import (
 from loguru import logger
 from websockets.asyncio.client import connect
 
+_TERMINAL_FAILURE_TYPES = frozenset(
+    {
+        "internal_error",
+        "model_provider_error",
+        "simulator_recovery_budget_exhausted",
+    }
+)
+# TODO: Backend turn handling should enforce that any event with one of these
+# terminal failure types exits/finalizes the session before sending turn_end.
+# Autoplay currently trusts turn_end.exited as the API source of truth.
+
+
+class AutoplayHTTPStatusError(RuntimeError):
+    """Structured HTTP status error raised by autoplay API calls."""
+
+    def __init__(self, *, method: str, path: str, response: httpx.Response) -> None:
+        """Extract useful API error details for monitoring/debug output."""
+        self.method = method.upper()
+        self.path = path
+        self.status_code = response.status_code
+        self.detail = _response_error_detail(response)
+        super().__init__(f"HTTP {self.status_code} {self.method} {self.path}: {self.detail}")
+
 
 class WebSocketFrameError(RuntimeError):
     """Structured websocket error frame received from the engine."""
@@ -91,7 +114,12 @@ class PlayerHarness:
                     self._emit("no_assignment", player_id=player_id)
                     return result
 
-                session = await self._start_session(client, api_key=api_key, assignment_id=assignment["assignment_id"])
+                try:
+                    session = await self._start_session(client, api_key=api_key, assignment_id=assignment["assignment_id"])
+                except AutoplayHTTPStatusError as exc:
+                    assignment_result = self._http_assignment_failure(assignment=assignment, session_id="", turns=0, exc=exc)
+                    result.assignments.append(assignment_result)
+                    return result
                 assignment_result = await self._play_assignment(
                     api_key=api_key,
                     player_id=player_id,
@@ -99,7 +127,21 @@ class PlayerHarness:
                     assignment=assignment,
                     session=session,
                 )
-                refreshed_setup = await self._run_setup(client, api_key=api_key)
+                try:
+                    refreshed_setup = await self._run_setup(client, api_key=api_key)
+                except AutoplayHTTPStatusError as exc:
+                    assignment_result.status = "error"
+                    assignment_result.error = str(exc)
+                    assignment_result.failure_type = self._http_failure_type(exc)
+                    self._emit_assignment_failed(
+                        assignment_id=assignment_result.assignment_id,
+                        session_id=assignment_result.session_id,
+                        turns=assignment_result.turns,
+                        error=assignment_result.error,
+                        failure_type=assignment_result.failure_type,
+                    )
+                    result.assignments.append(assignment_result)
+                    return result
                 backend_status = self._assignment_status(refreshed_setup, assignment_id=assignment_result.assignment_id)
                 if backend_status is not None and assignment_result.status in {"completed", "exited"}:
                     assignment_result.status = backend_status
@@ -369,11 +411,58 @@ class PlayerHarness:
 
     async def _request_json(self, client: httpx.AsyncClient, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         response = await client.request(method, path, **kwargs)
-        response.raise_for_status()
+        if response.is_error:
+            raise AutoplayHTTPStatusError(method=method, path=path, response=response)
         payload = response.json()
         if not isinstance(payload, dict):
             raise RuntimeError(f"Expected object response from {path}")
         return payload
+
+    def _http_assignment_failure(
+        self,
+        *,
+        assignment: dict[str, Any],
+        session_id: str,
+        turns: int,
+        exc: AutoplayHTTPStatusError,
+    ) -> AssignmentResult:
+        failure_type = self._http_failure_type(exc)
+        error = str(exc)
+        assignment_id = str(assignment["assignment_id"])
+        self._emit_assignment_failed(
+            assignment_id=assignment_id,
+            session_id=session_id,
+            turns=turns,
+            error=error,
+            failure_type=failure_type,
+        )
+        return AssignmentResult(
+            assignment_id=assignment_id,
+            game_name=str(assignment["game_name"]),
+            session_id=session_id,
+            status="error",
+            turns=turns,
+            error=error,
+            failure_type=failure_type,
+        )
+
+    def _emit_assignment_failed(
+        self,
+        *,
+        assignment_id: str,
+        session_id: str,
+        turns: int,
+        error: str,
+        failure_type: str | None = None,
+    ) -> None:
+        self._emit(
+            "assignment_failed",
+            assignment_id=assignment_id,
+            session_id=session_id,
+            turns=turns,
+            error=error,
+            failure_type=failure_type,
+        )
 
     def _auth_headers(self, api_key: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {api_key}"}
@@ -556,9 +645,35 @@ class PlayerHarness:
         return "Server error"
 
     @staticmethod
+    def _http_failure_type(exc: AutoplayHTTPStatusError) -> str | None:
+        return "server_error" if exc.status_code >= 500 else None
+
+    @staticmethod
     def _str_or_none(value: Any) -> str | None:
         return value if isinstance(value, str) and value else None
 
     @staticmethod
     def _int_or_none(value: Any) -> int | None:
         return value if isinstance(value, int) else None
+
+
+def _response_error_detail(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except Exception:
+        return _single_line(response.text or response.reason_phrase or "HTTP error")
+
+    if isinstance(payload, dict):
+        for key in ("detail", "error", "message"):
+            value = payload.get(key)
+            if value:
+                return _single_line(json.dumps(value, ensure_ascii=True) if isinstance(value, (dict, list)) else str(value))
+        return _single_line(json.dumps(payload, ensure_ascii=True, sort_keys=True))
+    return _single_line(str(payload))
+
+
+def _single_line(text: str, *, limit: int = 800) -> str:
+    clean = " ".join(text.split())
+    if len(clean) <= limit:
+        return clean
+    return f"{clean[:limit]}..."

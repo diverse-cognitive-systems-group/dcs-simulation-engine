@@ -259,22 +259,22 @@ def _event_printer(*, quiet: bool):
                 payload["assignment_id"],
             )
             echo("", quiet=quiet)
-            echo(f"Assignment {model_state['assignment']}: {payload['game_name']}", style="white", quiet=quiet)
-            echo(f"Characters: {characters}", style="white", quiet=quiet)
+            echo(f"Assignment {model_state['assignment']}: {payload['game_name']}", style="dim", quiet=quiet)
+            echo(f"Characters: {characters}", style="dim", quiet=quiet)
             echo(f"Session: {payload['session_id']}", style="dim", quiet=quiet)
         elif event == "turn_sent":
             completed_turns = _payload_turns(payload, fallback=model_state.get("completed_turns", 0))
             model_state["completed_turns"] = completed_turns
             logger.info(
-                "Player input after {} completed turn(s): {}",
-                completed_turns,
+                "Player (turn {}): {}",
+                completed_turns + 1,
                 _single_line(str(payload["input"])),
             )
             echo("", quiet=quiet)
             pending_turn = completed_turns + 1
             if model_state.get("pending_turn") != pending_turn:
                 model_state["pending_turn"] = pending_turn
-                echo(f"Turn {pending_turn}", style="white", quiet=quiet)
+                echo(f"Turn {pending_turn}", style="dim", quiet=quiet)
             echo(f"Player: {_shorten(str(payload['input']))}", style="dim", quiet=quiet)
         elif event == "message_received":
             event_type = str(payload.get("event_type") or "")
@@ -288,7 +288,7 @@ def _event_printer(*, quiet: bool):
                 )
                 if pending_turn <= 0:
                     echo("", quiet=quiet)
-                    echo(_simulator_turn_label(frame_turns=frame_turns, completed_turns=completed_turns), style="white", quiet=quiet)
+                    echo(_simulator_turn_label(frame_turns=frame_turns, completed_turns=completed_turns), style="dim", quiet=quiet)
                 if frame_turns > completed_turns:
                     model_state["completed_turns"] = frame_turns
                 if pending_turn > 0 and frame_turns >= pending_turn:
@@ -381,7 +381,7 @@ def _print_received_message(payload: dict, *, quiet: bool) -> None:
     elif event_type == "warning":
         echo(f"Warning: {content}", style="warning", quiet=quiet)
     elif event_type == "info":
-        echo(f"Info: {content}", style="white", quiet=quiet)
+        echo(f"Info: {content}", style="dim", quiet=quiet)
     elif role == "simulator":
         echo(f"Simulator: {content}", style="dim", quiet=quiet)
     else:
