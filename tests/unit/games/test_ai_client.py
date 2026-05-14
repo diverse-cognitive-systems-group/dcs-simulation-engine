@@ -1,6 +1,7 @@
 """Unit tests for OpenRouter call behavior in ai_client."""
 
 import asyncio
+import json
 from typing import Any
 
 import httpx
@@ -188,6 +189,110 @@ def test_call_openrouter_rejects_null_message_content(monkeypatch: pytest.Monkey
 
     assert exc_info.value.component == "chat completion"
     assert exc_info.value.detail == "assistant message content must be a string"
+    assert exc_info.value.raw_response == '{"choices": [{"message": {"content": null}}]}'
+
+
+@pytest.mark.unit
+def test_call_openrouter_includes_raw_response_when_provider_json_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Malformed provider JSON should keep the raw response for contract diagnostics."""
+    ai_client.set_fake_ai_response(None)
+    monkeypatch.setattr(ai_client, "_get_api_key", lambda: "test-key")
+
+    class FakeResponse:
+        is_error = False
+        status_code = 200
+        text = "not json"
+
+        def json(self) -> dict[str, Any]:
+            raise json.JSONDecodeError("bad json", self.text, 0)
+
+    class FakeAsyncClient:
+        async def __aenter__(self) -> "FakeAsyncClient":
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(self, *args: Any, **kwargs: Any) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_client.httpx, "AsyncClient", FakeAsyncClient)
+
+    with pytest.raises(ModelOutputContractError) as exc_info:
+        asyncio.run(
+            ai_client._call_openrouter(
+                messages=[{"role": "system", "content": "go"}],
+                model="openai/gpt-5-mini",
+            )
+        )
+
+    assert exc_info.value.component == "chat completion"
+    assert exc_info.value.detail.startswith("provider response was not valid JSON")
+    assert exc_info.value.raw_response == "not json"
+
+
+@pytest.mark.unit
+def test_contract_failure_detail_keeps_long_raw_response_for_db_diagnostics() -> None:
+    """Contract diagnostics should preserve useful raw provider output beyond the old 600-char message cap."""
+    reasoning = "x" * 900
+    raw_response = json.dumps(
+        {
+            "id": "gen-test",
+            "object": "chat.completion",
+            "model": "openai/gpt-5-mini-2025-08-07",
+            "provider": "OpenAI",
+            "choices": [
+                {
+                    "index": 0,
+                    "finish_reason": "length",
+                    "native_finish_reason": "max_output_tokens",
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "refusal": None,
+                        "reasoning": reasoning,
+                    },
+                }
+            ],
+        }
+    )
+    exc = ModelOutputContractError(
+        component="chat completion",
+        model="openai/gpt-5-mini",
+        detail="assistant message content must be a string",
+        raw_response=raw_response,
+    )
+
+    detail = ai_client._contract_failure_detail(exc, operation="opener", attempt=2, will_retry=False)
+
+    assert detail["raw_response"] == raw_response
+    assert detail["raw_response_chars"] == len(raw_response)
+    assert detail["raw_response_truncated"] is False
+    assert detail["model_response"]["response_id"] == "gen-test"
+    assert detail["model_response"]["finish_reason"] == "length"
+    assert detail["model_response"]["native_finish_reason"] == "max_output_tokens"
+    assert detail["model_response"]["message_content_is_null"] is True
+    assert detail["model_response"]["message_reasoning_chars"] == 900
+
+
+@pytest.mark.unit
+def test_contract_failure_detail_marks_raw_response_truncation_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Very large raw responses should be capped explicitly instead of silently ellipsized in the message."""
+    monkeypatch.setenv("DCS_MODEL_RAW_RESPONSE_LOG_CHARS", "10")
+    exc = ModelOutputContractError(
+        component="opener",
+        model="model",
+        detail="response was not valid JSON",
+        raw_response="0123456789abcdef",
+    )
+
+    detail = ai_client._contract_failure_detail(exc, operation="opener", attempt=1, will_retry=True)
+
+    assert detail["raw_response"] == "0123456789"
+    assert detail["raw_response_chars"] == 16
+    assert detail["raw_response_truncated"] is True
+    assert detail["raw_response_log_limit"] == 10
+    assert detail["model_response"]["raw_response_format"] == "text"
 
 
 @pytest.mark.unit
