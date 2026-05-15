@@ -214,8 +214,7 @@ def _per_npc_scores_table(
 def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     """Build a standalone per-character quality HTML report for the given NPC HID."""
     from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_html
-    from dcs_simulation_engine.reporting.auto.sections import player_feedback
-    from dcs_simulation_engine.reporting.auto.sections import transcripts as transcripts_section
+    from dcs_simulation_engine.reporting.auto.sections import event_log, player_feedback
 
     # --- Character metadata ---
     char_meta: dict = {"hid": hid}
@@ -283,7 +282,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     feedback_fragment = player_feedback.render(char_data)
 
     # 5. Full Event Log
-    transcripts_fragment = transcripts_section.render(char_data)
+    event_log_fragment = event_log.render(char_data)
 
     # --- Assemble ---
     sections = [
@@ -291,7 +290,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
         ("overview", "Overview", overview_fragment, "top"),
         ("scenario-coverage", "Scenario Coverage", scenario_fragment, "top"),
         ("feedback", "Feedback", feedback_fragment, "top"),
-        ("event-log", "Full Event Log", transcripts_fragment, "top"),
+        ("event-log", "Full Event Log", event_log_fragment, "top"),
     ]
 
     char_name = char_meta.get("name") or hid

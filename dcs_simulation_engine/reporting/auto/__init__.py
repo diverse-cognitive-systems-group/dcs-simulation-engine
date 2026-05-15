@@ -21,6 +21,7 @@ from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_ht
 from dcs_simulation_engine.reporting.auto.sections import (
     coverage_human,
     coverage_nonhuman,
+    event_log,
     form_responses,
     metadata,
     player_feedback,
@@ -29,7 +30,6 @@ from dcs_simulation_engine.reporting.auto.sections import (
     simulation_quality,
     system_errors,
     system_performance,
-    transcripts,
 )
 from dcs_simulation_engine.reporting.loader import AnalysisData
 from dcs_simulation_engine.utils.assets import resolve_assets
@@ -76,7 +76,7 @@ SECTIONS = [
     ("system-errors", "Errors", system_errors, "sub"),
     ("sim-quality", "Simulation Quality", simulation_quality, "sub"),
     ("npc-coverage", "NPC Coverage", _npc_coverage, "sub"),
-    ("event-log", "Full Event Log", transcripts, "top"),
+    ("event-log", "Full Event Log", event_log, "top"),
 ]
 
 DEFAULT_SECTIONS = [s for s in SECTIONS if s[0] != "sim-quality"]
