@@ -9,7 +9,12 @@ from datetime import timezone
 import numpy as np
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
-from dcs_simulation_engine.reporting.auto.rendering.chart_utils import add_short_player_id_column, plotly_to_html, short_player_id, use_integer_ticks
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import (
+    add_short_player_id_column,
+    plotly_to_html,
+    short_player_id,
+    use_integer_ticks,
+)
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
 

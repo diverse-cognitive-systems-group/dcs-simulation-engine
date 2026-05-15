@@ -1,36 +1,28 @@
 """Tests for whole-number report chart axes."""
 
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
-from dcs_simulation_engine.reporting.auto.sections import player_feedback, runs_overview, system_performance
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import use_integer_ticks
+from dcs_simulation_engine.reporting.auto.sections import system_performance
 
 pytestmark = pytest.mark.unit
 
 
-def test_turns_distribution_uses_integer_ticks_for_turns_and_sessions() -> None:
-    html = runs_overview._turns_distribution(pd.DataFrame({"turns_completed": [1, 2, 2, 3]}))
+def test_use_integer_ticks_updates_requested_axes() -> None:
+    """Integer tick helper should configure both requested Plotly axes."""
+    fig = go.Figure(go.Bar(x=[1, 2], y=[3, 4]))
 
-    assert html.count('"dtick":1') >= 2
-    assert html.count('"tickformat":",d"') >= 2
+    use_integer_ticks(fig, x=True, y=True)
 
-
-def test_flags_over_turns_uses_integer_ticks_for_turns_and_counts() -> None:
-    html = player_feedback._flags_over_turns_chart(
-        pd.DataFrame(
-            {
-                "turn_index": [1, 2, 2],
-                "feedback.liked": [False, False, False],
-                "feedback.out_of_character": [True, False, True],
-                "feedback.doesnt_make_sense": [False, True, False],
-            }
-        )
-    )
-
-    assert html.count('"dtick":1') >= 2
-    assert html.count('"tickformat":",d"') >= 2
+    assert fig.layout.xaxis.dtick == 1
+    assert fig.layout.xaxis.tickformat == ",d"
+    assert fig.layout.yaxis.dtick == 1
+    assert fig.layout.yaxis.tickformat == ",d"
 
 
 def test_game_duration_distribution_can_render_minutes_axis() -> None:
+    """Game duration distribution should render minute units."""
     html = system_performance._lt_hist_kde(
         pd.Series([1.5, 2.0, 2.5]),
         "Game Duration Distribution (All Players)",

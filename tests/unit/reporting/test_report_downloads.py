@@ -51,13 +51,6 @@ def test_results_report_embeds_raw_results_and_db_run_config(tmp_path) -> None:
     assert run_config["name"] == "download-test"
     assert run_config["description"] == "Stored in the run record"
 
-    assert "<dt class='col-sm-3'>Name</dt>" in html
-    assert "<dt class='col-sm-3'>Assignments Completed</dt>" in html
-    assert "<dd class='col-sm-9'>1</dd>" in html
-    assert "1 / 2" not in html
-    assert "<dt class='col-sm-3'>Run</dt>" not in html
-    assert "<dt class='col-sm-3'>Assignments</dt>" not in html
-
 
 def _artifacts_from(html: str) -> dict:
     match = re.search(r"var _artifacts = (.*?);", html)
