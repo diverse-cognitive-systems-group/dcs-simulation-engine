@@ -8,7 +8,7 @@ Renders:
 
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
-from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html, use_integer_ticks
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html, short_player_id, use_integer_ticks
 from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
@@ -262,7 +262,7 @@ def _flags_over_turns_by_player(edf: pd.DataFrame) -> str:
         visible = [(i // n_flag_types == p_idx) for i in range(len(players) * n_flag_types)]
         buttons.append(
             dict(
-                label=str(player),
+                label=short_player_id(player),
                 method="update",
                 args=[
                     {"visible": visible},

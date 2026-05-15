@@ -9,7 +9,7 @@ from datetime import timezone
 import numpy as np
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
-from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html, use_integer_ticks
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import add_short_player_id_column, plotly_to_html, short_player_id, use_integer_ticks
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
 
@@ -281,7 +281,15 @@ def _session_timeline(df: pd.DataFrame) -> str:
     gantt["session_ended_at"] = gantt["session_ended_at"].fillna(now)
     gantt = gantt.sort_values("session_started_at")
 
-    gantt["session_label"] = gantt.get("session_id", gantt.index).astype(str)
+    hover_data = [c for c in ["pc_hid", "npc_hid"] if c in gantt.columns]
+    if "player_id" in gantt.columns:
+        gantt = add_short_player_id_column(gantt)
+        gantt["session_label"] = gantt["player_label"]
+        gantt = gantt.drop(columns=["player_id"])
+        hover_data.insert(0, "player_label")
+    else:
+        gantt["session_label"] = gantt.get("session_id", gantt.index).astype(str)
+
     if "game_name" in gantt.columns:
         gantt["session_label"] = gantt["game_name"].fillna("Run") + " • " + gantt["session_label"]
 
@@ -292,7 +300,8 @@ def _session_timeline(df: pd.DataFrame) -> str:
         y="session_label",
         color="termination_reason" if "termination_reason" in gantt.columns else None,
         title="Session Timeline",
-        hover_data=[c for c in ["player_id", "pc_hid", "npc_hid"] if c in gantt.columns],
+        labels={"player_label": "Player"},
+        hover_data=hover_data,
     )
     fig.update_yaxes(autorange="reversed")
     fig.update_layout(height=max(350, 24 * len(gantt)), margin=dict(l=20, r=20, t=40, b=20))
@@ -413,11 +422,12 @@ def _lt_violin_game_by_player(game_df: pd.DataFrame) -> str:
     fig = go.Figure()
     for player in sorted(game_df["player_id"].unique()):
         sub = game_df[game_df["player_id"] == player]
+        player_label = short_player_id(player)
         fig.add_trace(
             go.Violin(
-                x=[str(player)] * len(sub),
+                x=[player_label] * len(sub),
                 y=sub["game_duration_ms"],
-                name=str(player),
+                name=player_label,
                 box_visible=True,
                 meanline_visible=True,
                 points=False,
@@ -443,11 +453,12 @@ def _lt_violin_wait_by_player(wait_df: pd.DataFrame) -> str:
     fig = go.Figure()
     for player in sorted(wait_df["player_id"].dropna().unique()):
         sub = wait_df[wait_df["player_id"] == player]
+        player_label = short_player_id(player)
         fig.add_trace(
             go.Violin(
-                x=[str(player)] * len(sub),
+                x=[player_label] * len(sub),
                 y=sub["wait_response_duration_ms"],
-                name=str(player),
+                name=player_label,
                 box_visible=True,
                 meanline_visible=True,
                 points=False,
@@ -472,10 +483,10 @@ def _lt_violin_wait_by_player_and_game(wait_df: pd.DataFrame) -> str:
 
     fig = go.Figure()
     for game in sorted(wait_df["game_label"].dropna().unique()):
-        sub = wait_df[wait_df["game_label"] == game]
+        sub = add_short_player_id_column(wait_df[wait_df["game_label"] == game])
         fig.add_trace(
             go.Violin(
-                x=sub["player_id"].astype(str),
+                x=sub["player_label"],
                 y=sub["wait_response_duration_ms"],
                 name=game,
                 legendgroup=game,

@@ -193,7 +193,7 @@ def _completion_by_game(df: pd.DataFrame) -> str:
 
     tmp = df[["game_name", status_col]].copy()
     tmp["game_name"] = tmp["game_name"].fillna("unknown")
-    tmp["completed"] = tmp[status_col].fillna("").str.lower().eq("completed")
+    tmp["completed"] = tmp[status_col].map(_is_completed_session_status)
     tmp["outcome"] = tmp["completed"].map({True: "Completed", False: "Not Completed"})
 
     grouped = tmp.groupby(["game_name", "outcome"]).size().reset_index(name="count")
@@ -220,30 +220,87 @@ def _completion_by_game(df: pd.DataFrame) -> str:
 def _participation_funnel(data: "AnalysisData") -> str:
     import plotly.graph_objects as go
 
-    df = data.runs_df
-    assigned = len(data.assignments_df) if not data.assignments_df.empty else None
-    started = df["player_id"].nunique() if "player_id" in df.columns else 0
-
-    status_col = next((c for c in ("termination_reason", "status") if c in df.columns), None)
-    if status_col is not None:
-        completed_ids = df.loc[df[status_col].fillna("").str.lower().eq("completed"), "player_id"].nunique()
-    else:
-        completed_ids = None
-
-    stages, values = [], []
-    if assigned:
-        stages.append("Assigned")
-        values.append(assigned)
-    stages.append("Started (≥1 session)")
-    values.append(started)
-    if completed_ids is not None:
-        stages.append("Completed (≥1 session)")
-        values.append(completed_ids)
+    stages, values, title = _participation_funnel_values(data)
 
     fig = go.Figure(go.Funnel(y=stages, x=values, textinfo="value+percent initial"))
     use_integer_ticks(fig, x=True)
-    fig.update_layout(title="Player Participation Funnel", height=300, margin=dict(l=20, r=20, t=40, b=40))
+    fig.update_layout(title=title, height=300, margin=dict(l=20, r=20, t=40, b=40))
     return _plotly(fig)
+
+
+def _participation_funnel_values(data: "AnalysisData") -> tuple[list[str], list[int], str]:
+    assignments = data.assignments_df
+    if not assignments.empty:
+        assigned = len(assignments)
+        started = _started_assignments_count(assignments, data.runs_df)
+        completed = _completed_assignments_count(assignments)
+        return (
+            ["Assignments Created", "Assignments Started", "Assignments Completed"],
+            [assigned, started, completed],
+            "Assignment Participation Funnel",
+        )
+
+    df = data.runs_df
+    started = int(df["player_id"].nunique()) if "player_id" in df.columns else 0
+    completed = _completed_players_count(df)
+    stages = ["Started (>=1 session)"]
+    values = [started]
+    if completed is not None:
+        stages.append("Completed (>=1 session)")
+        values.append(completed)
+    return stages, values, "Player Participation Funnel"
+
+
+def _started_assignments_count(assignments: pd.DataFrame, runs_df: pd.DataFrame) -> int:
+    started_ids: set[str] = set()
+    if "assignment_id" in runs_df.columns:
+        started_ids.update(runs_df["assignment_id"].dropna().astype(str))
+
+    if "assignment_id" in assignments.columns:
+        status_mask = _assignment_started_mask(assignments)
+        started_ids.update(assignments.loc[status_mask, "assignment_id"].dropna().astype(str))
+        return len(started_ids)
+
+    return int(_assignment_started_mask(assignments).sum())
+
+
+def _assignment_started_mask(assignments: pd.DataFrame) -> pd.Series:
+    mask = pd.Series(False, index=assignments.index)
+    if "status" in assignments.columns:
+        status = assignments["status"].fillna("").astype(str).str.lower()
+        mask = mask | status.isin({"in_progress", "completed", "interrupted", "error"})
+    if "started_at" in assignments.columns:
+        mask = mask | assignments["started_at"].notna()
+    if "completed_at" in assignments.columns:
+        mask = mask | assignments["completed_at"].notna()
+    return mask
+
+
+def _completed_assignments_count(assignments: pd.DataFrame) -> int:
+    mask = pd.Series(False, index=assignments.index)
+    if "status" in assignments.columns:
+        mask = mask | assignments["status"].fillna("").astype(str).str.lower().eq("completed")
+    if "completed_at" in assignments.columns:
+        mask = mask | assignments["completed_at"].notna()
+    return int(mask.sum())
+
+
+def _completed_players_count(df: pd.DataFrame) -> int | None:
+    if "player_id" not in df.columns:
+        return None
+
+    status_col = next((c for c in ("termination_reason", "status") if c in df.columns), None)
+    if status_col is None:
+        return None
+
+    return int(df.loc[df[status_col].map(_is_completed_session_status), "player_id"].nunique())
+
+
+def _is_completed_session_status(value) -> bool:
+    if pd.isna(value):
+        return False
+    status = str(value).strip().lower()
+    return status == "completed" or status == "game_completed" or status.startswith("stopping_condition_met")
 
 
 def _sessions_per_player(df: pd.DataFrame) -> str:

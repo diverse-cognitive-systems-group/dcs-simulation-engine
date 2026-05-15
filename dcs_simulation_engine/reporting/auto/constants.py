@@ -41,7 +41,11 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "and structured survey responses. Use this to connect player sentiment "
         "to specific moments in gameplay."
     ),
-    "player_performance": ("Outcome metrics measuring how well players performed during gameplay. (Not yet implemented.)"),
+    "player_performance": (
+        "Player outcome metrics from scored gameplay sessions. Use this section "
+        "to compare score results by player, game, session depth, and individual "
+        "scored run."
+    ),
     "system_errors": (
         "Error and log diagnostics across the run: a summary card, "
         "player-facing error events delivered during sessions, and the full "
@@ -105,9 +109,9 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "assignment imbalances early."
         ),
         "participation_funnel": (
-            "Players at each stage: assigned → started at least one session → "
-            "completed at least one session. The size of each drop reveals "
-            "where participants disengaged."
+            "Assignments at each stage when assignment records are available; "
+            "otherwise players who started and completed at least one session. "
+            "The size of each drop reveals where participants disengaged."
         ),
         "completion_by_game": (
             "Completed vs. non-completed sessions for each game. Games with "
@@ -123,6 +127,33 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "One row per gameplay session with player, characters, turn count, "
             "duration, and exit reason. Filter by any column or export to CSV / "
             "Excel for further analysis."
+        ),
+    },
+    "player_performance": {
+        "score_by_game": (
+            "Average score for each game across all scored sessions. Use this "
+            "to spot games where players consistently perform better or worse."
+        ),
+        "score_by_player": (
+            "Average score for each player across scored sessions. Large "
+            "differences can indicate skill variation, assignment imbalance, "
+            "or player-specific comprehension issues."
+        ),
+        "score_distribution": (
+            "Distribution of individual session scores. Clustering near zero or "
+            "near the maximum helps distinguish broad task failure from broad success."
+        ),
+        "score_vs_turns": (
+            "Score compared with turns completed. This helps show whether longer "
+            "sessions tend to produce stronger scored outcomes."
+        ),
+        "player_game_table": (
+            "Score summary grouped by player and game, including scored session "
+            "counts and average, median, minimum, and maximum scores."
+        ),
+        "scored_sessions_table": (
+            "One row per scored session with player, game, characters, score, "
+            "tier, turns, duration, exit reason, and scorer reasoning when available."
         ),
     },
     "system_performance": {
