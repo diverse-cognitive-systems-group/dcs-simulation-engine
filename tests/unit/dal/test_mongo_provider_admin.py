@@ -93,6 +93,29 @@ async def test_seed_database_drops_and_replaces_collections(async_mongo_provider
     assert db["widgets"].find_one({})["x"] == 99
 
 
+async def test_seed_database_skips_release_manifest_metadata(async_mongo_provider, tmp_path):
+    """Prod seed directories may include release_manifest.json without creating a collection."""
+    db = async_mongo_provider.get_db()
+    (tmp_path / "widgets.json").write_text('[{"x": 99}]', encoding="utf-8")
+    (tmp_path / "release_manifest.json").write_text(
+        json.dumps(
+            {
+                "policy_version": "character-release-policy-v1",
+                "engine_version": "dcs-se@0.1.0",
+                "generated_at": "",
+                "approved_characters": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    total = MongoAdmin(db=db).seed_database(seed_dir=tmp_path)
+
+    assert total == 1
+    assert db["widgets"].count_documents({}) == 1
+    assert "release_manifest" not in db.list_collection_names()
+
+
 async def test_seed_database_restores_default_indexes_after_drop(async_mongo_provider, tmp_path):
     """seed_database reapplies baseline indexes after collection drops."""
     db = async_mongo_provider.get_db()
