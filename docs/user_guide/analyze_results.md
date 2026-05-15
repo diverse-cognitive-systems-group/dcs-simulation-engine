@@ -1,23 +1,62 @@
-# Analyze Gameplay Results
+# Analyze Results
 
-⚠️ Note: This page is incomplete and/or missing information.
+Run results are database exports that include gameplay sessions, events, player metadata, form responses, logs, and run metadata. You can generate an HTML report from any exported results directory.
 
-Engine runs produce results that contain all the raw data from the run including the whole database, logs and metadata so the run is reproducible (useful for research user cases).
+## Export Local Results
 
-> Note: the results can be dumped/exported at any time during a run using the `dcs save` command, however by default its exported at the end of the run.
+Dump the local database into a timestamped directory under `runs/`:
 
-## Generate report
-
-A report that contains key metrics and visualizations summarizing the run can be generated with the command below. The report is customizable and extensible, and you can add your own custom analyses and visualizations to it. 
-
-For a deeper analysis of results, you can checkout the code and use the manual analysis notebooks that the DCS group uses internally or create your own.
-
-```bash
-dcs report results <path/to/results>
+```sh
+dcs database dump runs
 ```
 
-By default, generated reports are written to `reports/`.
+Then stop the local engine when you are done:
 
-### Custom Reports
+```sh
+dcs engine stop
+```
 
-DCS group uses custom reports for studying the usability, simulation quality and performance benchmarking various AI players. 
+## Export Remote Results
+
+Download results while keeping the remote deployment running:
+
+```sh
+dcs remote save --uri <remote_api_url> --admin-key <admin_key> --save-db-path runs/<run_results>.tar.gz
+```
+
+Or save results and destroy the remote Fly apps:
+
+```sh
+dcs remote stop \
+  --uri <remote_api_url> \
+  --admin-key <admin_key> \
+  --save-db-path runs/<run_results>.tar.gz \
+  --api-app <api_app> \
+  --ui-app <ui_app> \
+  --db-app <db_app>
+```
+
+If `DCS_ADMIN_KEY` is set in your environment, you can omit `--admin-key`.
+
+## Generate a Report
+
+Generate the default HTML report:
+
+```sh
+dcs report results runs/<path_to_dumped_run_results>
+```
+
+By default, reports are written to `reports/`. To choose the output path:
+
+```sh
+dcs report results runs/<path_to_dumped_run_results> --report-path reports/my-report.html
+```
+
+Useful report options:
+
+- `--open` opens the report in your browser after generation
+- `--only <section>` renders only selected sections
+- `--include <section>` adds sections to the default report
+- `--exclude <section>` removes sections from the default report
+
+For deeper analysis, use the exported JSON files directly in your own notebooks or scripts.

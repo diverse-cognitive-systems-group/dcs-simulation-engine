@@ -8,8 +8,6 @@ Assignment strategies control what gameplay scenario (game + characters) is avai
 
 To customize assignment strategies, check out the code and implement the `AssignmentStrategy` interface in `dcs_simulation_engine/core/assignment_strategies.py`. Then reference your strategy by name in a run configuration.
 
-⚠️ Note: This feature is incomplete or missing.
-
 ## Custom Character Filters
 
 Character filters allow users to specify useful categories of PCs/NPCs allowed in gameplay. For example, if a user wants only neurodivergent non-player characters, they can use the built-in `neurodivergent` filter by name.
@@ -29,6 +27,20 @@ Then run the engine with the filter referenced by name in the run config and onl
 ## Custom Characters
 
 To customize (add/modify) characters, check out the codebase and use the workflow below.
+
+```mermaid
+flowchart LR
+    Sheet["1. Create or edit<br/>character sheet"]
+    HITL["2. Run HITL<br/>scenario evaluation"]
+    Report["3. Generate<br/>quality report"]
+    Publish["4. Publish<br/>for review"]
+
+    Sheet --> HITL
+    HITL -->|"iterate until sufficient"| Sheet
+    HITL --> Report
+    Report -->|"insufficient"| HITL
+    Report -->|"sufficient"| Publish
+```
 
 ### 1. Create character sheet(s)
 
@@ -105,6 +117,19 @@ Then open a PR that includes:
 ## Custom Games
 
 To customize games, beyond their existing exposed configuration options, check out the codebase and use the workflow below.
+
+```mermaid
+flowchart LR
+    Implement["1. Implement<br/>game interface"]
+    Configure["2. Add game<br/>to run config"]
+    Test["3. Test<br/>and run"]
+    Publish["4. Publish<br/>or deploy"]
+
+    Implement --> Configure
+    Configure --> Test
+    Test -->|"needs changes"| Implement
+    Test -->|"ready"| Publish
+```
 
 ### 1. Implement the Game Interface
 

@@ -12,6 +12,10 @@ DCS-SE's [core characters](design/characters.md) are grounded in real-world cogn
 
 In this example, users run `/examples/run_configs/training.yml`. It specifies that the engine should run the Teamwork game with neurotypical player characters and neurodivergent non-player characters. It also includes a basic intake form collecting training participation consent and the Teamwork game by default evaluates how well players work with non-player characters to accomplish a shared goal.
 
+```sh
+dcs engine start --config examples/run_configs/training.yml
+```
+
 After gameplay, managers or facilitators can review participant results and feedback, such as:
 
 - What participants learned
@@ -42,6 +46,10 @@ Example research question:
 
 In this example, users run `/examples/run_configs/benchmark-humans.yml`, which specifies a progressive divergence configuration. This means that the engine will simulate interactions with characters that become increasingly divergent across runs, allowing researchers to observe how understanding evolves as cognitive differences increase.
 
+```sh
+dcs engine start --config examples/run_configs/benchmark-humans.yml
+```
+
 ### Example: Social Science Research on Learning Across Cognitive Differences
 
 Researchers can also study how quickly different populations learn to effectively engage with a specific cognitive profile.
@@ -66,6 +74,10 @@ This allows researchers to measure:
 
 By comparing these metrics across populations, researchers can identify which groups adapt more quickly or effectively to specific forms of cognitive difference.
 
+```sh
+dcs engine start --config examples/run_configs/usability.yml
+```
+
 ### Example: Exobiology Research on Alien Cognition
 
 DCS-SE can also be used to explore interactions with hypothetical or non-human cognitive systems.
@@ -76,6 +88,10 @@ Example research questions:
 - What interaction strategies emerge when shared assumptions (e.g., perception, goals, or logic) are absent?
 
 Researchers can define entirely novel cognitive architectures—e.g., agents with non-linear perception, unfamiliar reward systems, or non-human communication modalities—and observe how players adapt.
+
+```sh
+dcs engine start --config examples/run_configs/select-characters.yml
+```
 
 ## AI Practitioners
 
@@ -100,6 +116,10 @@ Researchers may:
 
 This setup supports the emergence of adaptive strategies, goal formation, and context-sensitive behavior.
 
+```sh
+dcs engine start --config examples/run_configs/demo.yml
+```
+
 ### Example: Benchmarking Static AI Systems
 
 Static models can be evaluated across standardized scenarios to measure performance in interacting with diverse cognitive profiles.
@@ -112,3 +132,7 @@ Example evaluation dimensions:
 - Inclusivity of interaction strategies
 
 Using fixed configurations (e.g., /examples/run_configs/benchmark-ai.yml), practitioners can compare models across identical conditions, enabling reproducible benchmarking.
+
+```sh
+dcs engine start --config examples/run_configs/benchmark-ai.yml
+```

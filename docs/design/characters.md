@@ -1,6 +1,6 @@
 # Characters
 
-*Characters* are cognitive systems that can be used as player characters (PCs) or non-player characters (NPCs) in simulations.
+*Characters* are cognitive systems that can be used as player characters (PCs) or non-player characters (NPCs) in simulations. DCS maintains a database of core characters used extensively for internal research and evaluation.
 
 Each character is a fixed snapshot of a cognitive system, including its persona, abilities, constraints, and goals.
 

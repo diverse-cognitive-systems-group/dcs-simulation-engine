@@ -1,7 +1,5 @@
 # Configure an engine run
 
-⚠️ Note: This page is incomplete and/or missing information.
-
 A run configuration specifies how the engine should be run including:
 
 - what players (human and/or AI) are participating
@@ -10,52 +8,101 @@ A run configuration specifies how the engine should be run including:
 
 ---
 
-## Example Configs
+## Detailed Configuration Option Reference
 
-These examples are provided in `examples/run_configs` of the main repository and can be used as templates for your own configurations.
+> Note: Simpler example configurations are provided in `examples/run_configs` and can be used directly or adapted as templates for your own runs.
 
-| Example File | Description | Use Case |
-|---|---|---|
-| `benchmark-ai.yml` | Runs the engine with specified AI models (e.g. GPT-4o, Claude, your own custom models) so users can see how well they perform across various scenarios. | Used by AI researchers to examine how well their models engage with various simulated diverse cognitive systems. |
-| `benchmark-humans.yml` | Runs the engine so humans can play and users can see how they perform across various scenarios. | Used by psychology researchers to examine how well humans engage with various simulated diverse cognitive systems. |
-| `evaluate-batches.yml` | Runs the engine so that humans can evaluate batches of characters across scenarios based on player expertise. | Used by AI researchers and DCS maintainers to evaluate the quality of simulated characters by having experts evaluate them. |
-| `evaluate-specific.yml` | Runs the engine for humans to play with specific scenarios. | Used by AI researchers and DCS maintainers to conduct targeted evaluations of individual characters. |
-| `training.yml` | Runs the engine so that human players can learn how to engage with divergent humans. | Used in leadership training and other training contexts to expose neurotypical huamn players to individuals with diverse abilities, cognitive profiles, etc. (i.e. neurodivergence). |
-| `usability.yml` | Runs the engine so human players can evaluate the usability of the system. | Used by DCS maintainers to evaluate the usability of the GUI. |
+```yml
+# Human-readable run name. Used as the run identity in stored run metadata.
+name: Example Run
 
----
+# Optional longer description shown in run/admin contexts.
+description: |
+  A short explanation of what this run is for.
 
-## Configurations
+# Optional deterministic seed used by assignment strategies that need stable ordering and LLMs that support seeding.
+seed: 42
 
-***Run configurations include only the minimal parameters needed to support DCS use cases. The goal is not maximum configurability, but enabling the engine to run across different players (AI and human) and scenarios (games and characters), with data captured at defined points so users can evaluate performance, analyze behavior, and iterate on experiments.***
+# User-interface behavior for human players.
+ui:
+  # true: players must register/authenticate before play.
+  # false: anonymous/free-play style access.
+  registration_required: true
 
-## Specify metadata
-This captures the identity of the run and what its for.
-- **`name`** — unique identifier used in API routes
-- **`description`** — human-readable summary
+# Games included in this run. If empty, no assignments can be created by the
+# built-in assignment strategies, so real configs should list at least one.
+games:
+  - name: Explore # Must match a registered game name.
+    overrides:
+      # Common overrides supported by every game.
+      max_turns: 50 # 1-500; hard turn limit for a session.
+      max_playtime: 1800 # 1-3600 seconds; wall-clock session limit.
+      player_retry_budget: 10 # 0-10; invalid player actions allowed before exit.
+      simulator_recovery_budget: 3 # 1-10; simulator recovery attempts.
+      max_input_length: 350 # 1-350 characters per player input.
 
-## Define who the **players** are
-This controls whether GUI is launched in addition to the API. If only AI players are listed, no GUI is launched for the run.
+      # Character filter names used to restrict allowed PCs/NPCs.
+      # PCs allow: pc-eligible, human-normative, divergent, hypersensitive,
+      # hyposensitive, neurotypical, neurodivergent, physical-divergence.
+      pcs_allowed: pc-eligible
+      # NPCs may use any registered character filter, including all, divergent,
+      # neurodivergent, neurotypical, hypersensitive, and hyposensitive.
+      npcs_allowed: all
 
-- **`players`** — list of players allowed to participate in the run (e.g. `human`, `gpt-4o`, `claude-2`, etc.)
+      # Game-specific overrides supported by Infer Intent, Foresight,
+      # Goal Horizon, and Teamwork. Explore has no additional overrides.
+      show_npc_details: false # Show hidden NPC details in the UI/setup flow.
+      show_final_score: true # Show the final scoring/evaluation output.
 
-### Define what forms players see and when
-Forms are used for showing surveys, questionnaires, consent forms, and instructions at different events during the run. They are configured in the run config rather than being hard-coded into registration.
+# Assignment policy for choosing the next game + PC + NPC triplet.
+next_game_strategy:
+  strategy:
+    # Built-in strategy ids:
+    # - full_character_access
+    # - unplayed_combination_choice
+    # - expertise_matched_character_choice
+    # - next_incomplete_combination
+    # - least_played_combination_next
+    # - progressive_divergence_assignment
+    # - max_contrast_pairing
+    # - expertise_matched_character_next
+    # - expertise_matched_character_batch
+    # - random_unique_game
+    id: full_character_access
 
-Events include:
+    # Optional shared strategy settings.
+    quota_per_game: null # Positive integer quota per configured game, or null for open-ended.
+    max_assignments_per_player: 3 # Positive integer cap; defaults to 3 when omitted.
+    seed: 42 # Optional strategy-specific seed; falls back to top-level seed/name.
+    pc_eligible_only: false # Restrict PC choices to characters marked PC-eligible.
+    allow_choice_if_multiple: true # Let the UI expose multiple eligible choices when available.
+    require_completion: false # true: finish active assignment before receiving another.
 
-- before_all_assignments
-- before_assignment
-- after_assignment
-- after_all_assignments
+# Forms shown at lifecycle trigger points. Use null or [] when no forms are needed.
+forms:
+  - name: intake # Normalized to lowercase snake_case; must be unique.
+    trigger:
+      # Supported events:
+      # - before_all_assignments
+      # - before_assignment
+      # - after_assignment
+      # - after_all_assignments
+      event: before_all_assignments
+      match: null # Must be null for current built-in triggers.
+    questions:
+      - key: experience_level # Optional; auto-generated from prompt if omitted.
+        prompt: How familiar are you with DCS-SE?
+        # Supported answer types:
+        # string, bool, single_choice, multi_choice, number, email, phone.
+        answer_type: single_choice
+        options: # Required for single_choice and multi_choice; invalid otherwise.
+          - New to it
+          - Some experience
+          - Experienced
+        required: true
 
-### Define what games should be included
-Games listed are the ones that the assignment strategy (below) will pull from when creating assignments. It includes the game and any game-specific configurations exposed in that game definition. Omitting games list will pull from all core games with default configurations.
-
-### Define how players get to gameplay sessions (**assignment strategy**)
-
-Assignment strategy controls which game + player-character + simulator-character triplets come up for players and how much control they have over what they play next.
-
-You can write your own assignment strategy and point to it or use provided ones.
-- random_unique_game: assign allowed game triplets in deterministic random order while ensuring each player receives each configured game at most once
-- ...
+      - key: extra_context
+        prompt: Anything else you want the researchers to know?
+        answer_type: string
+        required: false
+```
