@@ -60,7 +60,7 @@ def test_report_coverage_uses_packaged_assets_from_non_repo_cwd(tmp_path: Path, 
     result = _RUNNER.invoke(app, ["report", "coverage", "--db", "dev"])
 
     assert result.exit_code == 0, result.output
-    report_path = workdir / "results" / "character_coverage_dev.html"
+    report_path = workdir / "reports" / "character_coverage_dev.html"
     assert report_path.is_file()
     html = report_path.read_text(encoding="utf-8")
     assert "<html" in html

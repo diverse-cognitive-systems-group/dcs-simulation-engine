@@ -15,7 +15,6 @@ def render(data: AnalysisData) -> str:
     cfg = run.get("config_snapshot") or {}
 
     n_players = len(data.players_df)
-    n_assignments = len(data.assignments_df)
     if not data.assignments_df.empty:
         if "status" in data.assignments_df.columns:
             n_assignments_completed = int(data.assignments_df["status"].fillna("").eq("completed").sum())
@@ -26,17 +25,14 @@ def render(data: AnalysisData) -> str:
     else:
         n_assignments_completed = 0
 
-    pct = f" ({n_assignments_completed / n_assignments:.0%})" if n_assignments else ""
-    assignments_str = f"{n_assignments_completed} / {n_assignments}{pct}"
-
     n_games_played = int(data.runs_df["game_name"].nunique()) if not data.runs_df.empty and "game_name" in data.runs_df.columns else 0
 
     rows = [
-        ("Run", _esc(run.get("name") or "—")),
+        ("Name", _esc(run.get("name") or "—")),
         ("Description", _esc(cfg.get("description") or run.get("description") or "—")),
         ("Players", str(n_players)),
         ("Games Played", str(n_games_played)),
-        ("Assignments", assignments_str),
+        ("Assignments Completed", str(n_assignments_completed)),
     ]
 
     dl_items = "".join(f"<dt class='col-sm-3'>{label}</dt><dd class='col-sm-9'>{value}</dd>" for label, value in rows)

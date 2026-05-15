@@ -91,4 +91,5 @@ ui/openapi.snapshot.json
 runs/
 deployments/
 results/
+reports/
 profiles/

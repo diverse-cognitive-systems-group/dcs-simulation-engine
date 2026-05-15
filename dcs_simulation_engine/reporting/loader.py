@@ -509,7 +509,6 @@ def _load_persisted_logs(path: Path) -> pd.DataFrame:
     if df.empty:
         return df
 
-    df["log_file"] = path.name
     df["event_idx"] = range(len(df))
     df["parse_error"] = False
 

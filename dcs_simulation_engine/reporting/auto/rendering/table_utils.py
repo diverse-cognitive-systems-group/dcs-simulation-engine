@@ -9,6 +9,9 @@ DataTables Bootstrap 5 + Buttons plugins from CDN (all in <head>).
 import html as _html
 
 import pandas as pd
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import short_player_id
+
+_PLAYER_ID_COLUMNS = {"player_id", "access_key"}
 
 
 def df_to_datatable(
@@ -50,9 +53,17 @@ def df_to_datatable(
     column_filters:
         Add per-column search inputs in a second header row (default True).
     """
+    source_columns = list(columns) if columns else list(df.columns)
     display = df[columns].copy() if columns else df.copy()
     if rename:
         display = display.rename(columns=rename)
+
+    for source_col in source_columns:
+        if source_col not in _PLAYER_ID_COLUMNS:
+            continue
+        display_col = rename.get(source_col, source_col) if rename else source_col
+        if display_col in display.columns:
+            display[display_col] = display[display_col].map(short_player_id)
 
     # Convert timestamps to ISO strings for readability
     for col in display.select_dtypes(include=["datetimetz", "datetime64[ns, UTC]", "datetime"]).columns:

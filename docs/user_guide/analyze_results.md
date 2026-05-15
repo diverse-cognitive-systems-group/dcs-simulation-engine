@@ -13,8 +13,10 @@ A report that contains key metrics and visualizations summarizing the run can be
 For a deeper analysis of results, you can checkout the code and use the manual analysis notebooks that the DCS group uses internally or create your own.
 
 ```bash
-dcs report <path/to/results>
+dcs report results <path/to/results>
 ```
+
+By default, generated reports are written to `reports/`.
 
 ### Custom Reports
 

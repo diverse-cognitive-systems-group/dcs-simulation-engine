@@ -1,44 +1,53 @@
 """Section 10 — System Errors.
 
-Three views of errors:
+Two views of errors:
   1. Summary stats card — log-level counts, in-game error event count,
      validation-lockout and internal-failure session counts.
   2. Charts — log level breakdown (bar) + in-game error events per session (bar).
-  3. Tables — top error messages, in-game error events, raw filtered log table.
+  3. Tables — player-facing error events and the full logs collection.
 """
 
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
+from dcs_simulation_engine.reporting.auto.rendering.chart_utils import use_integer_ticks
 from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
-# ---------------------------------------------------------------------------
-# Column definitions for the raw log table (unchanged from original)
-# ---------------------------------------------------------------------------
-
-_LOG_COLUMNS = [
+_PREFERRED_LOG_COLUMNS = [
     "timestamp",
+    "event_ts",
+    "persisted_at",
+    "source",
     "level",
+    "level_no",
     "log_file",
     "module",
     "function",
     "line",
     "message",
     "exception",
+    "event_id",
+    "event_idx",
+    "parse_error",
 ]
 
 _LOG_RENAME = {
     "timestamp": "Timestamp",
+    "event_ts": "Event Timestamp",
+    "persisted_at": "Persisted At",
+    "source": "Source",
     "level": "Level",
+    "level_no": "Level No",
     "log_file": "Log File",
     "module": "Module",
     "function": "Function",
     "line": "Line",
     "message": "Message",
     "exception": "Exception",
+    "event_id": "Event ID",
+    "event_idx": "Event Index",
+    "parse_error": "Parse Error",
 }
-
-_LEVEL_COL_INDEX = 1  # 0-based index of "Level" in _LOG_COLUMNS, used in JS
 
 
 # ---------------------------------------------------------------------------
@@ -66,17 +75,13 @@ def render(data: AnalysisData) -> str:
     )
     parts.append(f'<div class="row">{row_charts}</div>')
 
-    parts.append('<h3 class="h5 mt-4 mb-2">Top Error Messages</h3>')
-    parts.append(_top_error_messages(data))
-    parts.append(chart_caption("system_errors", "top_error_messages"))
-
-    parts.append('<h3 class="h5 mt-4 mb-2">In-Game Error Events</h3>')
+    parts.append('<h3 class="h5 mt-4 mb-2">Player-Facing Error Events</h3>')
     parts.append(_inplay_error_events_table(data))
     parts.append(chart_caption("system_errors", "inplay_error_events_table"))
 
-    parts.append('<h3 class="h5 mt-4 mb-2">Engine Log Errors</h3>')
-    parts.append(_log_errors_table(data))
-    parts.append(chart_caption("system_errors", "errors_log_table"))
+    parts.append('<h3 class="h5 mt-4 mb-2">Engine Logs</h3>')
+    parts.append(_logs_table(data))
+    parts.append(chart_caption("system_errors", "logs_table"))
 
     return "\n".join(parts)
 
@@ -162,6 +167,7 @@ def _log_level_breakdown(logs_df: pd.DataFrame) -> str:
         color="level",
         color_discrete_map=color_map,
     )
+    use_integer_ticks(fig, x=True)
     fig.update_layout(
         height=300,
         margin=dict(l=20, r=20, t=40, b=40),
@@ -208,6 +214,7 @@ def _error_events_per_session(data: AnalysisData) -> str:
         title="In-Game Error Events per Session",
         labels={"label": "Session", "errors": "Error Events"},
     )
+    use_integer_ticks(fig, x=True)
     fig.update_layout(
         height=max(250, 60 + len(counts) * 28),
         margin=dict(l=20, r=20, t=40, b=40),
@@ -219,22 +226,6 @@ def _error_events_per_session(data: AnalysisData) -> str:
 # ---------------------------------------------------------------------------
 # Tables
 # ---------------------------------------------------------------------------
-
-
-def _top_error_messages(data: AnalysisData) -> str:
-    errors_df = data.errors_df
-    if errors_df.empty or "message" not in errors_df.columns:
-        return _no_engine_log_errors_message(data)
-
-    top = errors_df["message"].fillna("").value_counts().head(20).rename_axis("message").reset_index(name="count")
-    return df_to_datatable(
-        top,
-        table_id="top-errors-table",
-        columns=["message", "count"],
-        rename={"message": "Error Message", "count": "Occurrences"},
-        truncate_cols=["message"],
-        truncate_at=300,
-    )
 
 
 def _inplay_error_events_table(data: AnalysisData) -> str:
@@ -268,37 +259,39 @@ def _inplay_error_events_table(data: AnalysisData) -> str:
         table_id="inplay-errors-table",
         columns=cols,
         rename={k: v for k, v in rename.items() if k in cols},
-        truncate_cols=["content"],
-        truncate_at=400,
     )
 
 
-def _log_errors_table(data: AnalysisData) -> str:
-    df = data.errors_df
+def _logs_table(data: AnalysisData) -> str:
+    df = data.logs_df
 
     if df.empty:
-        return _no_engine_log_errors_message(data)
+        return _no_engine_logs_message(data)
 
-    cols = [c for c in _LOG_COLUMNS if c in df.columns]
-    rename = {k: v for k, v in _LOG_RENAME.items() if k in cols}
+    preferred = [c for c in _PREFERRED_LOG_COLUMNS if c in df.columns]
+    remaining = [c for c in df.columns if c not in preferred]
+    cols = preferred + remaining
+    rename = {col: _LOG_RENAME.get(col, col.replace("_", " ").title()) for col in cols}
 
     table_html = df_to_datatable(
         df,
-        table_id="errors-table",
+        table_id="engine-logs-table",
         columns=cols,
         rename=rename,
-        truncate_cols=["message", "exception"],
-        truncate_at=300,
     )
 
+    if "level" not in cols:
+        return table_html
+
+    level_col_index = cols.index("level")
     highlight_script = f"""
 <script>
 $(document).ready(function () {{
-    var table = $('#errors-table').DataTable();
-    $('#errors-table tbody').on('draw.dt', function () {{
+    var table = $('#engine-logs-table').DataTable();
+    table.on('draw.dt', function () {{
         table.rows().every(function () {{
             var data = this.data();
-            var level = data[{_LEVEL_COL_INDEX}];
+            var level = data[{level_col_index}];
             var row = this.node();
             if (level === 'ERROR' || level === 'CRITICAL') {{
                 $(row).addClass('table-danger');
@@ -324,12 +317,7 @@ def _plotly(fig) -> str:
     return plotly_to_html(fig)
 
 
-def _no_engine_log_errors_message(data: AnalysisData) -> str:
+def _no_engine_logs_message(data: AnalysisData) -> str:
     if data.logs_source:
-        if data.logs_df.empty:
-            return (
-                f'<div class="alert alert-success">{data.logs_source} was found, '
-                "but no engine log entries were recorded for this run.</div>"
-            )
-        return '<div class="alert alert-success">No WARNING, ERROR, or CRITICAL engine log events were recorded.</div>'
+        return f'<div class="alert alert-success">{data.logs_source} was found, but no engine log entries were recorded for this run.</div>'
     return '<div class="alert alert-secondary">No engine log source was found in this results directory.</div>'

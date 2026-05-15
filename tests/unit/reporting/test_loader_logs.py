@@ -2,8 +2,11 @@
 
 import json
 
+import pytest
 from dcs_simulation_engine.reporting.auto.sections import system_errors
 from dcs_simulation_engine.reporting.loader import load_all
+
+pytestmark = pytest.mark.unit
 
 
 def test_load_all_reads_persisted_logs_json(tmp_path) -> None:
@@ -30,7 +33,7 @@ def test_load_all_reads_persisted_logs_json(tmp_path) -> None:
     assert len(data.logs_df) == 1
     assert data.logs_df.iloc[0]["message"] == "Persisted DB log"
     assert data.logs_df.iloc[0]["level"] == "ERROR"
-    assert data.logs_df.iloc[0]["log_file"] == "logs.json"
+    assert "log_file" not in data.logs_df.columns
     assert data.logs_source == "logs.json"
     assert len(data.errors_df) == 1
 
@@ -47,3 +50,32 @@ def test_system_errors_reports_empty_persisted_logs_as_clean_state(tmp_path) -> 
     assert "logs.json was found, but no engine log entries were recorded for this run." in html
     assert "No log files found" not in html
     assert "No error log data available" not in html
+
+
+def test_system_errors_logs_table_shows_all_columns_without_truncating_messages(tmp_path) -> None:
+    """Engine logs table should include all loaded fields and full messages."""
+    long_message = ("Diagnostic detail " * 80).strip()
+    logs = [
+        {
+            "event_id": "log-1",
+            "event_ts": "2026-05-04T12:00:00+00:00",
+            "persisted_at": "2026-05-04T12:00:01+00:00",
+            "source": "dcs-api",
+            "level": "ERROR",
+            "level_no": 40,
+            "message": long_message,
+            "module": "example",
+            "function": "run",
+            "line": 12,
+            "custom_context": "included",
+        }
+    ]
+    (tmp_path / "logs.json").write_text(json.dumps(logs), encoding="utf-8")
+
+    data = load_all(tmp_path)
+    html = system_errors.render(data)
+
+    assert 'id="engine-logs-table"' in html
+    assert "<th>Custom Context</th>" in html
+    assert long_message in html
+    assert f'title="{long_message}' not in html

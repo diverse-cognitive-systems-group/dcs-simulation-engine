@@ -1,6 +1,6 @@
-"""Section 7 — Transcripts.
+"""Section 7 — Full Event Log.
 
-Transcript-focused session-events DataTable. PC/NPC/player columns are joined
+Session-events DataTable. PC/NPC/player columns are joined
 from runs_df since session_events only carries session_id.
 """
 
@@ -54,12 +54,10 @@ def render(data: AnalysisData) -> str:
 
     table = df_to_datatable(
         df,
-        table_id="transcripts-table",
+        table_id="event-log-table",
         columns=cols,
         rename=rename,
         truncate_cols=["content"],
         truncate_at=400,
     )
-    return (
-        section_intro("transcripts") + '<h3 class="h5 mb-2">Session Events</h3>' + table + chart_caption("transcripts", "transcripts_table")
-    )
+    return section_intro("event_log") + '<h3 class="h5 mb-2">Events</h3>' + table + chart_caption("event_log", "event_log_table")

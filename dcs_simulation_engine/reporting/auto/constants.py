@@ -20,7 +20,7 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "Scenario Coverage measures the fraction of the 12 pressure categories represented in the character's evaluated sessions."
     ),
     "runs_overview": (
-        "Health snapshot of all gameplay sessions: character pairings, daily "
+        "Snapshot of all gameplay sessions: character pairings, daily "
         "activity, exit reasons, session length and depth, game coverage, and "
         "how participation funneled from assignment through completion. "
         "Start here to spot data gaps or imbalances before reading deeper sections."
@@ -41,18 +41,21 @@ SECTION_DESCRIPTIONS: dict[str, str] = {
         "and structured survey responses. Use this to connect player sentiment "
         "to specific moments in gameplay."
     ),
-    "player_performance": ("Outcome metrics measuring how well players performed during gameplay. (Not yet implemented.)"),
-    "system_errors": (
-        "Three views of errors across the run: a summary card, "
-        "in-game error events delivered to players (from session events), "
-        "and filtered engine log entries. Use this section to distinguish "
-        "player-visible failures from internal warnings, and to spot "
-        "recurring or session-specific problems."
+    "player_performance": (
+        "Player outcome metrics from scored gameplay sessions. Use this section "
+        "to compare score results by player, game, session depth, and individual "
+        "scored run."
     ),
-    "transcripts": (
-        "Turn-by-turn event log for all sessions. Filter by session, player, "
-        "PC, or NPC to read specific exchanges. Use alongside Feedback to "
-        "find the dialogue that prompted a reaction."
+    "system_errors": (
+        "Error and log diagnostics across the run: a summary card, "
+        "player-facing error events delivered during sessions, and the full "
+        "engine logs collection. Use this section to distinguish player-visible "
+        "failures from internal warnings and trace-level details."
+    ),
+    "event_log": (
+        "Complete event history for all sessions. To view only user-facing "
+        "transcript messages, filter Type to message and Source to user or "
+        "npc. Filter by session, player, PC, or NPC to read specific exchanges."
     ),
 }
 
@@ -106,9 +109,9 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "assignment imbalances early."
         ),
         "participation_funnel": (
-            "Players at each stage: assigned → started at least one session → "
-            "completed at least one session. The size of each drop reveals "
-            "where participants disengaged."
+            "Assignments at each stage when assignment records are available; "
+            "otherwise players who started and completed at least one session. "
+            "The size of each drop reveals where participants disengaged."
         ),
         "completion_by_game": (
             "Completed vs. non-completed sessions for each game. Games with "
@@ -124,6 +127,33 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "One row per gameplay session with player, characters, turn count, "
             "duration, and exit reason. Filter by any column or export to CSV / "
             "Excel for further analysis."
+        ),
+    },
+    "player_performance": {
+        "score_by_game": (
+            "Average score for each game across all scored sessions. Use this "
+            "to spot games where players consistently perform better or worse."
+        ),
+        "score_by_player": (
+            "Average score for each player across scored sessions. Large "
+            "differences can indicate skill variation, assignment imbalance, "
+            "or player-specific comprehension issues."
+        ),
+        "score_distribution": (
+            "Distribution of individual session scores. Clustering near zero or "
+            "near the maximum helps distinguish broad task failure from broad success."
+        ),
+        "score_vs_turns": (
+            "Score compared with turns completed. This helps show whether longer "
+            "sessions tend to produce stronger scored outcomes."
+        ),
+        "player_game_table": (
+            "Score summary grouped by player and game, including scored session "
+            "counts and average, median, minimum, and maximum scores."
+        ),
+        "scored_sessions_table": (
+            "One row per scored session with player, game, characters, score, "
+            "tier, turns, duration, exit reason, and scorer reasoning when available."
         ),
     },
     "system_performance": {
@@ -259,28 +289,23 @@ CHART_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "Number of in-game error events (event_type='error') per session. "
             "Sessions with multiple errors likely had a degraded player experience."
         ),
-        "top_error_messages": (
-            "The 20 most frequent distinct error messages from the engine logs. "
-            "High-count messages indicate systematic failures worth fixing; "
-            "low-count messages are likely one-offs."
-        ),
         "inplay_error_events_table": (
             "Every error event delivered to a player during gameplay, with "
             "session, player, game, turn, and message content. Cross-reference "
-            "with the Transcripts section to see surrounding dialogue."
+            "with the Full Event Log section to see surrounding dialogue."
         ),
-        "errors_log_table": (
-            "Raw WARNING / ERROR / CRITICAL log entries from engine log files. "
-            "Rows are highlighted by severity. Use the search box to filter by "
-            "module, function, or message text."
+        "logs_table": (
+            "All entries from the persisted logs collection, with every loaded "
+            "column included. Messages and exceptions are not truncated so report "
+            "readers can search and inspect the full issue context."
         ),
     },
-    "transcripts": {
-        "transcripts_table": (
-            "Full turn-by-turn event log with player, PC, and NPC columns "
-            "joined from session data. Long entries are truncated — hover to "
-            "read the full text. Cross-reference with Feedback to find the "
-            "dialogue that prompted a specific reaction."
+    "event_log": {
+        "event_log_table": (
+            "Full event log with player, PC, and NPC columns joined from "
+            "session data. Long entries are truncated — hover to read the "
+            "full text. Filter Type to message and Source to user or npc "
+            "for the user-facing transcript."
         ),
     },
 }

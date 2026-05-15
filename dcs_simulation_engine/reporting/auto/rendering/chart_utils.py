@@ -8,6 +8,51 @@ import base64
 import io
 
 
+def short_player_id(value, *, suffix_chars: int = 8) -> str:
+    """Display long player IDs by keeping the distinguishing suffix."""
+    if value is None:
+        return ""
+
+    try:
+        from pandas import isna
+
+        if isna(value):
+            return ""
+    except Exception:
+        pass
+
+    try:
+        if value != value:
+            return ""
+    except Exception:
+        pass
+
+    text = str(value)
+    if len(text) <= suffix_chars + 3:
+        return text
+    return f"...{text[-suffix_chars:]}"
+
+
+def add_short_player_id_column(df, *, source: str = "player_id", target: str = "player_label"):
+    """Return a copy of *df* with a shortened player-ID display column."""
+    if source not in df.columns:
+        return df.copy()
+
+    display = df.copy()
+    display[target] = display[source].map(short_player_id)
+    return display
+
+
+def use_integer_ticks(fig, *, x: bool = False, y: bool = False):
+    """Force whole-number tick labels on numeric Plotly axes."""
+    axis_options = {"dtick": 1, "tickformat": ",d"}
+    if x:
+        fig.update_xaxes(**axis_options)
+    if y:
+        fig.update_yaxes(**axis_options)
+    return fig
+
+
 def plotly_to_html(fig, div_id: str | None = None) -> str:
     """Return an embeddable HTML div for *fig*.
 
