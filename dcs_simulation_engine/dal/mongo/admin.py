@@ -17,6 +17,8 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import CollectionInvalid
 
+SEED_METADATA_FILENAMES = {"__manifest__.json", "release_manifest.json"}
+
 
 class MongoAdmin:
     """Administrative operations over a specific Mongo DB handle."""
@@ -143,7 +145,7 @@ class MongoAdmin:
 
         total_inserted = 0
         for seed_file in seed_files:
-            if seed_file.name == "__manifest__.json" or seed_file.name.endswith(".__indexes__.json"):
+            if seed_file.name in SEED_METADATA_FILENAMES or seed_file.name.endswith(".__indexes__.json"):
                 logger.debug("Skipping metadata seed file {}", seed_file.name)
                 continue
             collection_name = seed_file.stem
