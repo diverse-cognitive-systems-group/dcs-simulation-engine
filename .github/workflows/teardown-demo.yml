@@ -1,0 +1,118 @@
+name: Teardown Demo
+
+"on":
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "How to tear down the demo deployment."
+        required: false
+        default: destroy-only
+        type: choice
+        options:
+          - graceful-save
+          - destroy-only
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-demo
+  cancel-in-progress: false
+
+jobs:
+  teardown-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: fly-demo
+      url: https://dcs-demo-ui.fly.dev
+    env:
+      DEMO_API_URL: https://dcs-demo-api.fly.dev
+      DEMO_UI_URL: https://dcs-demo-ui.fly.dev
+      DEMO_API_APP: dcs-demo-api
+      DEMO_UI_APP: dcs-demo-ui
+      DEMO_DB_APP: dcs-demo-db
+      DCS_ADMIN_KEY: ${{ secrets.DCS_DEMO_ADMIN_KEY }}
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      MODE: ${{ inputs.mode }}
+      SAVE_DB_PATH: demo.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        if: env.MODE == 'graceful-save'
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        if: env.MODE == 'graceful-save'
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        if: env.MODE == 'graceful-save'
+        run: uv sync
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate teardown secrets
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${FLY_API_TOKEN:-}" ] || missing+=(FLY_API_TOKEN)
+          if [ "$MODE" = "graceful-save" ]; then
+            [ -n "${DCS_ADMIN_KEY:-}" ] || missing+=(DCS_DEMO_ADMIN_KEY)
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required secret(s): %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Save database and destroy demo apps
+        if: env.MODE == 'graceful-save'
+        run: |
+          set -euo pipefail
+
+          uv run dcs remote stop \
+            --uri "$DEMO_API_URL" \
+            --save-db-path "$SAVE_DB_PATH" \
+            --api-app "$DEMO_API_APP" \
+            --ui-app "$DEMO_UI_APP" \
+            --db-app "$DEMO_DB_APP"
+
+      - name: Destroy demo apps without saving
+        if: env.MODE == 'destroy-only'
+        run: |
+          set -euo pipefail
+
+          apps=("$DEMO_UI_APP" "$DEMO_API_APP" "$DEMO_DB_APP")
+          for app in "${apps[@]}"; do
+            if flyctl apps list --json | jq -e --arg app "$app" '.[] | select(.name == $app)' >/dev/null; then
+              flyctl apps destroy "$app" --yes
+            else
+              printf 'Fly app %s does not exist; skipping.\n' "$app"
+            fi
+          done
+
+      - name: Upload database export
+        if: env.MODE == 'graceful-save'
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-db-export
+          path: ${{ env.SAVE_DB_PATH }}
+          if-no-files-found: error
+
+      - name: Summarize teardown
+        run: |
+          {
+            echo "## Demo teardown"
+            echo
+            echo "- Mode: \`$MODE\`"
+            echo "- UI app: \`$DEMO_UI_APP\`"
+            echo "- API app: \`$DEMO_API_APP\`"
+            echo "- DB app: \`$DEMO_DB_APP\`"
+            if [ "$MODE" = "graceful-save" ]; then
+              echo "- Database artifact: \`demo-db-export\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
