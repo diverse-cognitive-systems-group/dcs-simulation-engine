@@ -97,7 +97,7 @@ jobs:
               raise SystemExit(f"Missing installed package assets: {missing}")
           PY
           PYTHONPATH="" "$smoke_venv/bin/dcs" report coverage --db dev
-          test -f "$smoke_cwd/results/character_coverage_dev.html"
+          test -f "$smoke_cwd/reports/character_coverage_dev.html"
           PYTHONPATH="" "$smoke_venv/bin/dcs" report results "$repo_root/tests/data/example_results" --only metadata --report-path "$smoke_cwd/report.html"
           test -f "$smoke_cwd/report.html"
           PYTHONPATH="" DCS_ENGINE_ASSETS_DIR="$smoke_cwd/engine-assets" "$smoke_venv/bin/python" - <<'PY'
