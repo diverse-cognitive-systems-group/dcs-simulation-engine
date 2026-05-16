@@ -705,8 +705,10 @@ notebooks = [
 [package.dev-dependencies]
 dev = [
     { name = "matplotlib" },
+    { name = "mongomock" },
     { name = "plotly" },
     { name = "py-spy" },
+    { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "seaborn" },
 ]
@@ -764,8 +766,10 @@ provides-extras = ["dev", "notebooks"]
 [package.metadata.requires-dev]
 dev = [
     { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "mongomock", specifier = ">=4.3.0" },
     { name = "plotly", specifier = ">=6.6.0" },
     { name = "py-spy", specifier = ">=0.4.1" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
 ]

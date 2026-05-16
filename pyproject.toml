@@ -172,8 +172,10 @@ include = ["autoplay*", "dcs_simulation_engine*"]
 [dependency-groups]
 dev = [
   "matplotlib>=3.10.8",
+  "mongomock>=4.3.0",
   "plotly>=6.6.0",
   "py-spy>=0.4.1",
+  "pytest-cov>=7.0.0",
   "pytest-xdist>=3.8.0",
   "seaborn>=0.13.2",
 ]
