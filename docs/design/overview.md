@@ -2,7 +2,7 @@
 
 The system is designed to be extensible and adaptable across research, training, and external system integration use cases.
 
-👉 See the [Codebase Reference](../codebase_reference.md) section for software architecture default, major components and, and data flows.
+👉 See the [Software Architecture](../software_architecture.md) for software-specific design/architecture details.
 
 ## Requirements Checklist
 

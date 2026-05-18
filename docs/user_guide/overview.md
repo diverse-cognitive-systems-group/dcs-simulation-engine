@@ -46,4 +46,7 @@ dcs remote save --uri <remote_api_url> --admin-key <admin_key> --save-db-path ru
 
 # Step 3: save results and stop the remote deployment
 dcs remote stop --uri <remote_api_url> --admin-key <admin_key> --save-db-path runs/<run_results>.tar.gz --api-app <api_app> --ui-app <ui_app> --db-app <db_app>
+
+# Step 4: generate a report from dumped run results
+dcs report results runs/<path_to_dumped_run_results>
 ```

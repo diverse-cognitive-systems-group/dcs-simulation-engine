@@ -2,6 +2,8 @@
 
 The **Diverse Cognitive Systems Simulation Engine (DCS-SE) is an RPG-style gameplay framework for interacting with diverse cognitive systems (DCSs).** This includes neurodivergent humans, AI agents, hybrid systems, and [many other forms of intelligence](faq.md#what-is-diverse-intelligence-di).
 
+![RPG-style DCS-SE gameplay](assets/full-turn.gif)
+
 ## What it enables
 
 The engine supports DCS’s broader research goal of reducing the overhead involved in interacting with forms of intelligence that differ — sometimes radically — from our own.
@@ -16,8 +18,6 @@ That includes identifying:
 ## How it works
 
 It works *like an table-top role-playing game (RPG)* environment where AI is the 'dungeon master' and characters are diverse cognitive systems.
-
-![RPG-style DCS-SE gameplay](assets/rpg-style.gif)
 
 - The player controls the player character (PC)
 - The system simulates another cognitive system (non-player character, NPC)

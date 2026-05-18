@@ -8,11 +8,11 @@ A run configuration specifies how the engine should be run including:
 
 ---
 
-## Detailed Configuration Option Reference
+## Detailed Configuration Options
 
 > Note: Simpler example configurations are provided in `examples/run_configs` and can be used directly or adapted as templates for your own runs.
 
-```yml
+```yaml
 # Human-readable run name. Used as the run identity in stored run metadata.
 name: Example Run
 

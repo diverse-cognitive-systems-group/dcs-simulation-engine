@@ -1,9 +1,12 @@
-# Architecture Overview
+# Software Architecture
+
+## Overview
 
 At a high level, the application is a monorepo with:
 
 - A Python backend that ats a FastAPI server
-- An optional React UI that behaves as a client of that backend
+- An optional React UI that behaves as a client of that backend for human players
+- An optional autoplay CLI that behaves as a client of that backend for AI players
 - A MongoDB-backed persistence layer
 - YAML-driven game and experiment configuration
 - Offline utilities for reporting, evaluation, and infrastructure deployment
@@ -11,20 +14,20 @@ At a high level, the application is a monorepo with:
 The architectural through-line is:
 
 1. The backend owns business logic, orchestration, validation, persistence, and experiment policy.
-2. The frontend is a thin client for the api. It handles registration, setup, live play, and feedback.
-3. Session execution is event-oriented and WebSocket-driven.
+2. The frontend(s) are thin clients for the api. They handle registration, setup, live play, and feedback.
+3. Session execution is **event-oriented** and **WebSocket-driven**.
 4. Durable state lives in MongoDB, while active sessions are cached in memory for low-latency interaction.
 
 ## Current vs. Intended Design
 
 ### Current
 
-- API-first engine: the backend is usable without the bundled UI.
-- UI/API separation: gameplay rules and experiment policy are primarily owned by Python backend code.
-- Config-driven runtime: YAML files select games and experiments without requiring UI changes.
-- Event-oriented session persistence: `sessions` plus ordered `session_events` support replay, feedback, branching, and resume.
-- DAL boundary: storage-specific logic is mostly contained inside `dcs_simulation_engine/dal/`, with Mongo as the only full implementation.
-- Extensible gameplay surface: games, character filters, assignment strategies, and deployment modes are all extension seams in the current code.
+- **API-first engine**: the backend is usable without the bundled UI.
+- **UI/API separation**: gameplay rules and experiment policy are primarily owned by Python backend code.
+- **Config-driven runtime**: YAML files select games and experiments without requiring UI changes.
+- **Event-oriented session persistence**: `sessions` plus ordered `session_events` support replay, feedback, branching, and resume.
+- **DAL boundary**: storage-specific logic is mostly contained inside `dcs_simulation_engine/dal/`, with Mongo as the only full implementation.
+- **Extensible gameplay surface**: games, character filters, assignment strategies, and deployment modes are all extension seams in the current code.
 
 ### Intended / Incomplete
 
@@ -34,47 +37,6 @@ The architectural through-line is:
   The `DataProvider` abstraction exists, but the codebase currently depends on the async Mongo provider in practice.
 - Thinner transport layer.
   The API routers, especially WebSocket play orchestration, still own more coordination logic than the ideal design would place there.
-- More complete architecture/ops documentation.
-  Several docs pages and health/status surfaces still contain TODOs or partial coverage.
-
-## Reference Map
-
-This is the quick “where do I open the code?” table the rest of the document refers to.
-
-| Component | File |
-|---|---|
-| FastAPI app factory | `dcs_simulation_engine/api/app.py` |
-| API auth helpers | `dcs_simulation_engine/api/auth.py` |
-| API request/response + WS models | `dcs_simulation_engine/api/models.py` |
-| Generic play router | `dcs_simulation_engine/api/routers/play.py` |
-| Sessions router | `dcs_simulation_engine/api/routers/sessions.py` |
-| Experiments router | `dcs_simulation_engine/api/routers/experiments.py` |
-| Catalog router | `dcs_simulation_engine/api/routers/catalog.py` |
-| Users router | `dcs_simulation_engine/api/routers/users.py` |
-| Remote-management router | `dcs_simulation_engine/api/routers/remote.py` |
-| In-memory session registry | `dcs_simulation_engine/api/registry.py` |
-| Session orchestrator | `dcs_simulation_engine/core/session_manager.py` |
-| Experiment orchestrator | `dcs_simulation_engine/core/experiment_manager.py` |
-| Base game abstraction | `dcs_simulation_engine/core/game.py` |
-| Game config model | `dcs_simulation_engine/core/game_config.py` |
-| Experiment config model | `dcs_simulation_engine/core/experiment_config.py` |
-| Assignment strategy registry | `dcs_simulation_engine/core/assignment_strategies/__init__.py` |
-| DAL contract | `dcs_simulation_engine/dal/base.py` |
-| Async Mongo provider | `dcs_simulation_engine/dal/mongo/async_provider.py` |
-| Mongo admin / seeding | `dcs_simulation_engine/dal/mongo/admin.py` |
-| Session event recorder | `dcs_simulation_engine/core/session_event_recorder.py` |
-| LLM/runtime client layer | `dcs_simulation_engine/games/ai_client.py` |
-| Game prompt/constants | `dcs_simulation_engine/games/prompts.py`, `dcs_simulation_engine/games/const.py` |
-| Game discovery helpers | `dcs_simulation_engine/helpers/game_helpers.py` |
-| Experiment discovery helpers | `dcs_simulation_engine/helpers/experiment_helpers.py` |
-| CLI root | `dcs_simulation_engine/cli/app.py` |
-| CLI server command | `dcs_simulation_engine/cli/commands/server.py` |
-| UI route tree (hand-assembled route tree in this repo) | `ui/src/routes/routeTree.ts` |
-| UI WebSocket hook | `ui/src/hooks/use-session-websocket.ts` |
-| UI HTTP wrapper | `ui/src/api/http.ts` |
-| UI experiment page | `ui/src/routes/experiments/$experimentName.tsx` |
-| UI play page | `ui/src/routes/play/$sessionId.tsx` |
-| Offline analysis/reporting CLI | `dcs_utils/cli/__main__.py` |
 
 ## System Overview
 
@@ -91,10 +53,10 @@ flowchart TD
     SimClient[SimulatorClient<br/>ai_client.py]
     Scorer[ScorerClient]
     LLM[OpenRouter / model APIs]
-    ExpMgr[ExperimentManager]
+    RunMgr[RunManager]
     Provider[AsyncMongoProvider]
     Mongo[(MongoDB)]
-    Utils[dcs_utils<br/>reports + HITL + publishing]
+    Utils[reports + HITL + publishing]
     Seeds[YAML configs + seed data]
 
     User --> Browser
@@ -104,7 +66,7 @@ flowchart TD
     CLI --> API
     CLI --> Provider
     API --> Registry
-    API --> ExpMgr
+    API --> RunMgr
     Registry --> SessionMgr
     SessionMgr --> Game
     Game --> SimClient
@@ -112,22 +74,12 @@ flowchart TD
     SimClient --> LLM
     Scorer --> LLM
     SessionMgr --> Provider
-    ExpMgr --> Provider
+    RunMgr --> Provider
     Provider --> Mongo
     Provider --> Seeds
     Utils --> Mongo
     Utils --> Seeds
 ```
-
-## Runtime Modes
-
-The same backend can be launched in several mutually exclusive modes.
-
-| Mode | What it enables | What it excludes or changes |
-|---|---|---|
-| `standard` | player registration/auth, experiment endpoints, generic play flows | baseline mode; no remote bootstrap/export endpoints unless `remote_managed` is also configured |
-| `free_play` | anonymous play, game setup without registration, simpler local/demo deployment | disables registration, player auth, and experiment-driven flows |
-| `remote_managed` | hosted bootstrap, remote DB export, public deployment status, optional default experiment hosting | adds operational endpoints and remote-admin behavior on top of the active server mode |
 
 ## UI Architecture
 
@@ -526,57 +478,12 @@ The persistence model is hybrid:
   - operational startup and admin entrypoints
 - `ui/`
   - bundled browser client
-- `dcs_utils/`
+- `hitl/`, `reporting/`
   - offline analysis, coverage reports, HITL scenario workflows, publishing helpers
 - `games/` and `experiments/`
   - YAML-defined runtime catalog
 - `database_seeds/`
   - bootstrapped character/player/PII seed data
-
-## dcs_utils Architecture
-
-`dcs_utils` is not part of the live request path, but it is part of the application architecture because it owns several research and operations workflows that depend on the same data model.
-
-Main internal slices:
-
-- `dcs_utils/cli/`
-  - user-facing `dcs-utils` commands
-- `dcs_utils/auto/`
-  - automated report generation and HTML publishing helpers
-- `dcs_utils/hitl/`
-  - human-in-the-loop scenario generation, response collection, and export
-- `dcs_utils/common/`
-  - shared result-loading helpers
-- `dcs_utils/manual/`
-  - notebooks and one-off analysis scripts
-
-```mermaid
-flowchart TD
-    Utils[dcs_utils]
-    CLI[cli]
-    Auto[auto]
-    HITL[hitl]
-    Common[common]
-    Manual[manual]
-    Mongo[(Mongo / dumped results)]
-    Reports[HTML reports]
-    Scenarios[scenario JSON]
-    Published[published HTML / release artifacts]
-
-    Utils --> CLI
-    Utils --> Auto
-    Utils --> HITL
-    Utils --> Common
-    Utils --> Manual
-
-    Auto --> Mongo
-    Auto --> Reports
-    HITL --> Scenarios
-    HITL --> Mongo
-    Auto --> Published
-```
-
-This area is already cleaner than much of the live UI because it keeps offline workflows out of the request-serving packages, but it is under-documented relative to its importance.
 
 ## Extension Points
 
@@ -584,16 +491,15 @@ The application is already designed around a few strong extension seams.
 
 ### Strong extension seams
 
-- Game classes are pluggable via `game_class` import paths in YAML.
-- Experiment behavior is pluggable via assignment strategy registration.
-- Character visibility and eligibility are pluggable via filter registry objects.
-- The UI is optional; any client that speaks the API and WS protocol can drive sessions.
-- Mongo-specific code is mostly contained inside `dal/mongo/`.
-- Reporting and evaluation tooling are already separated into `dcs_utils/`.
+- **Game classes are pluggable** via `game_class` import paths in YAML.
+- **Run behavior is pluggable** via assignment strategy registration.
+- **Character visibility and eligibility are pluggable** via filter registry objects.
+- **The default clients are optional**; any client that speaks the API and WS protocol can drive sessions.
+- **Mongo-specific code is mostly contained** inside `dal/mongo/`.
+- **Reporting and evaluation tooling are already separated** into `hitl/` and `reporting/`.
 
 ### Current practical extension costs
 
-- New games still require both code and YAML, which is good for clarity but creates two sources to keep aligned.
 - Swapping the DAL is conceptually supported, but the async Mongo provider is currently the only complete implementation.
 - The frontend still hardcodes some game/UI behavior that is not yet exposed by the backend as metadata.
 
@@ -601,7 +507,7 @@ The application is already designed around a few strong extension seams.
 
 The current implementation makes a few deliberate trade-offs:
 
-- It favors Python readability and extension speed over a maximally optimized runtime.
+- **It favors Python readability and extension speed over a maximally optimized runtime.**
   The consequence is that very high-throughput or low-latency deployments will likely need scaling or targeted optimization instead of relying on raw runtime efficiency.
 - It accepts process-local in-memory session caching for responsiveness, then patches durability with snapshots and hydration.
   The consequence is that horizontal scaling is more complex because live session ownership is local to a process unless additional coordination is introduced.
@@ -630,11 +536,8 @@ This merges current cleanup observations with recommended next steps.
 4. Reduce duplicated response shaping across routers.
    The experiment and remote routers both rebuild similar progress/status payloads and would benefit from shared mappers or serializers.
 
-5. Make game discovery less stringly typed.
-   YAML name lookup plus `importlib` is flexible, but file names, YAML names, and class paths must stay aligned and failures are runtime-only.
-
-6. Break up the frontend experiment route.
-   `ui/src/routes/experiments/$experimentName.tsx` currently mixes API calls, assignment flow logic, before-play forms, post-play forms, selection UI, and page layout.
+6. Break up the frontend run route.
+   `ui/src/routes/experiments/$runName.tsx` currently mixes API calls, assignment flow logic, before-play forms, post-play forms, selection UI, and page layout.
 
 7. Continue tightening docs and status surfaces.
    `docs/codebase_reference.md`, `/healthz`, and several user/design docs are still incomplete or TODO-marked.

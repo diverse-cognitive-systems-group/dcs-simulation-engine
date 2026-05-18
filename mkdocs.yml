@@ -43,6 +43,9 @@ plugins:
             show_root_heading: true # Adds a top-level heading for the root object/module on the page
             show_root_toc_entry: true # Adds that root heading to the page's table of contents for navigation
 markdown_extensions:
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.inlinehilite
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -58,10 +61,11 @@ nav:
 
   - Design:
       - Overview: design/overview.md
-      - Usability: design/usability.md
-      - Simulation Quality: design/simulation_quality.md
       - Games: design/games.md
       - Characters: design/characters.md
+      - Usability: design/usability.md
+      - Sim Quality: design/simulation_quality.md
+      - Feasibility: design/feasibility.md
 
   - User Guide:
       - Overview: user_guide/overview.md
@@ -73,8 +77,7 @@ nav:
 
   - Use Case Examples: examples.md
 
-  - Feasibility Assessment: feasibility_assessment.md
-
   - Codebase Reference: codebase_reference.md
-  - API Docs: "https://dcs-demo-api.fly.dev/redoc"
+  - Software Architecture: software_architecture.md
+  - API Docs: api_docs.md
   - FAQ: faq.md

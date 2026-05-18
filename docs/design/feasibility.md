@@ -1,6 +1,10 @@
-# Discovering Strategies for Engaging with Diverse Cognitive Systems using OpenEvolve and DCS-SE
+# DCS-SE Feasibility Assessment
 
-## Research Questions
+Pre-release feasibility assessments evaluated whether DCS-SE can be used as a learning environment for both static and open-ended AI systems.
+
+The report below documents one such assessment using OpenEvolve, which demonstrated a positive learning signal for developing engagement strategies with diverse cognitive systems.
+
+## Discovering Strategies for Engaging with Diverse Cognitive Systems using OpenEvolve and DCS-SE
 
 **Central Question:** Does the diverse cognitive systems simulation engine (DCS-SE) possess the capacity to support the training of open-ended systems (e.g., large language models) for the purpose of developing engagement strategies that promote meaningful interaction with non-normative forms of bodies and intelligence?
 
@@ -11,7 +15,7 @@
 3. Do converged strategies share structural features across different simulated cognitive systems, or is each strategy idiosyncratic to its target?
 4. Do strategies evolved against one simulated system transfer to related ones, and where does transfer break?
 
-## Experimental Design
+## Setup and Design
 
 **OpenEvolve Overview**
 

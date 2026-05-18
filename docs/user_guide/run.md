@@ -1,13 +1,13 @@
 # Run the engine
 
-The engine can be run locally and played just on your local computer or it can be run remotely (on an external server, called a "deployment") so that the access link can be shared any player(s) (human or AI).
+The engine can be run locally and played just on your local computer or it can be run remotely (on an external server, called a "deployment") so that the access link can be shared with any player(s) (human or AI).
 
 ## Run locally
 
 > Prerequisites for local runs include Docker installed and OpenRouter API key set in your environment variables or `.env` file. The `dcs` CLI will prompt you for these if you try to start a run without them.
 
 ```sh
-$ dcs engine start --config path/to/config.yml
+dcs engine start --config path/to/config.yml
 ```
 
 ## Run remotely
@@ -17,7 +17,7 @@ By default the engine supports Fly.io for remote deployment however it is docker
 > Prerequisites for remote deployment include a Fly.io account, `flyctl` installed, and an OpenRouter API key. The `dcs` CLI provides a streamlined interface for deploying to Fly.io, and the generated Fly configs can be adapted for other platforms as needed.
 
 ```sh
-$ dcs remote deploy \
+dcs remote deploy \
   --config path/to/config.yml \
   --mongo-seed-path dev \
 ```

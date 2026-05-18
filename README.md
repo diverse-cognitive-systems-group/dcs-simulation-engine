@@ -11,7 +11,7 @@
 
 A gameplay framework for interacting with diverse cognitive systems, including neurodivergent humans, artificial intelligences, and hybrid systems.
 
-![RPG-style DCS-SE gameplay](docs/assets/rpg-style.gif)
+![RPG-style DCS-SE gameplay](docs/assets/full-turn.gif)
 
 Users configure the engine with games, scenarios, objectives, characters, and environments, then run simulations through various clients (such as a web UI for human players).
 
