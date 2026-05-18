@@ -32,7 +32,7 @@ Examples include:
 
 - And additional forms as needed
 
-👉 See our character coverage reports for characters in [development](../reports/character_coverage_report_dev.html) and [production](../reports/character_coverage_report_prod.html).
+👉 See our character coverage reports for characters in [development](../report_docs/character_coverage_report_dev.html) and [production](../report_docs/character_coverage_report_prod.html).
 
 ### Character Development
 
@@ -62,4 +62,4 @@ For systems without real-world counterparts (e.g., alien or abstract systems), v
 
 Because evaluations are costly, role-playing models and prompts are kept as stable as possible. When changes occur, affected characters are re-evaluated (including internal and, when applicable, external review).
 
-👉 See the [Simulation Quality](../reports/simulation_quality.md) report for details on how role-playing quality is measured and maintained.
+👉 See the [Simulation Quality](../report_docs/simulation_quality.md) report for details on how role-playing quality is measured and maintained.

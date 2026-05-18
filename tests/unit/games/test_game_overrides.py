@@ -290,6 +290,23 @@ def test_teamwork_import_state_accepts_legacy_snapshot_keys(pc: CharacterRecord,
     assert game._engine._history == ["Opening scene: The briefing begins."]
 
 
+def test_visible_npc_details_use_record_short_description(pc: CharacterRecord, npc: CharacterRecord) -> None:
+    """Games with visible NPC details should render the record short description."""
+    game_classes = (InferIntentGame, ForesightGame, GoalHorizonGame, TeamworkGame)
+
+    for game_cls in game_classes:
+        game = game_cls(
+            pc=pc,
+            npc=npc,
+            engine=SimulatorClient(pc=pc, npc=npc),
+            show_npc_details=True,
+            show_final_score=True,
+        )
+
+        assert f"{npc.hid} ({npc.short_description.lower()})" in game.get_help_content()
+        assert npc.short_description in game.get_abilities_content()
+
+
 def test_explore_create_from_context_rejects_unknown_kwargs(pc: CharacterRecord, npc: CharacterRecord) -> None:
     """create_from_context() still validates kwargs through ExploreGame.Overrides."""
     with pytest.raises(ValidationError):
