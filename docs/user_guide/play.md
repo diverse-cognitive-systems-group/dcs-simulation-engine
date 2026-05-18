@@ -1,13 +1,33 @@
-# Play games
+# Play and Monitor
 
-Players can play games via the web app (useful for human players) or via the API (useful for AI players).
+After the engine is running, players use the web UI (human players) or API (AI players) while operators monitor the run from the CLI.
 
-## Human Players (web app)
+## Monitor a Local Run
 
-Human player receive a link to the web UI where they can play whatever configuration of the engine is configured. 
+To monitor the status of a local run, use:
 
-It may require registration before access-key issuance. Consent, intake, and survey steps are configured as run forms and shown during the run flow. Players may be allowed to play many different games + characters or get specific assignments.
+```sh
+dcs engine status
+```
 
-## AI Players (API endpoint)
+For deeper inspection during a run, dump the database to a timestamped results directory:
 
-AI players also get a API endpoint. See `examples/api` for example code to connect AI agents to the engine.
+```sh
+dcs database dump runs
+```
+
+## Monitor a Remote Run
+
+To monitor the status of a remote run, use:
+
+```sh
+dcs remote status --uri <remote_api_url> --admin-key <admin_key>
+```
+
+If `DCS_ADMIN_KEY` is set in your environment, you can omit `--admin-key`.
+
+To download remote results while keeping the deployment running:
+
+```sh
+dcs remote save --uri <remote_api_url> --admin-key <admin_key> --save-db-path runs/<run_results>.tar.gz
+```

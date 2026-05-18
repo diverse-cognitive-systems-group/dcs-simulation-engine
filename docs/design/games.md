@@ -1,6 +1,6 @@
 # Games
 
-*Games* define how a player interacts with simulated characters including rules, objectives, evaluation criteria, and the flow of interaction.
+*Games* define the rules, objectives, evaluation criteria, and interaction flow governing how players engage with simulated characters. DCS maintains a set of core games used extensively for internal research and evaluation.
 
 ## Core Games
 
