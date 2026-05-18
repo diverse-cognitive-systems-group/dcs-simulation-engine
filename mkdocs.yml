@@ -73,9 +73,9 @@ nav:
       - Advanced: user_guide/advanced.md
 
   - Reports:
-      - Usability: reports/usability.md
-      - Sim Quality: reports/simulation_quality.md
-      - Feasibility: reports/feasibility.md
+      - Usability: report_docs/usability.md
+      - Sim Quality: report_docs/simulation_quality.md
+      - Feasibility: report_docs/feasibility.md
 
   - Use Case Examples: examples.md
 
