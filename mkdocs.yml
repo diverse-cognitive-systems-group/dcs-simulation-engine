@@ -63,9 +63,6 @@ nav:
       - Overview: design/overview.md
       - Games: design/games.md
       - Characters: design/characters.md
-      - Usability: design/usability.md
-      - Sim Quality: design/simulation_quality.md
-      - Feasibility: design/feasibility.md
 
   - User Guide:
       - Overview: user_guide/overview.md
@@ -74,6 +71,11 @@ nav:
       - 3. Play/Monitor: user_guide/play.md
       - 4. Analyze Results: user_guide/analyze_results.md
       - Advanced: user_guide/advanced.md
+
+  - Reports:
+      - Usability: reports/usability.md
+      - Sim Quality: reports/simulation_quality.md
+      - Feasibility: reports/feasibility.md
 
   - Use Case Examples: examples.md
 

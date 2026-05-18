@@ -1,6 +1,6 @@
 # FAQ
 
-This page addresses some frequently asked questions about the simulation engine project. If you have additional questions or need further clarification, please feel free to reach out the [maintainers](mailto:mworkman9@gatech.edu).
+This page addresses some frequently asked questions - direct additional questions to [maintainers](mailto:dcs@psych.gatech.edu).
 
 ## **What is *Diverse Intelligence* (DI)?**
 The terms diverse cognitive systems, diverse intelligences, and diverse cognitive agents are used interchangeably throughout to refer to the full landscape of intelligent entities—those with capacity to competently navigating a space to achieve a goal. This includes humans with non-normative or shifting sensory, regulatory, perceptual, or action modalities (e.g., individuals with atypical neurophysiology, temporary disabilities, or non-standard communication methods), as well as bioengineered humans, chimeric beings, synthetic intelligences, and other non-human agents that diverge more significantly. The term is meant to be inclusive of all entities that meet the functional criteria of goal pursuit, irrespective of origin or embodiment.

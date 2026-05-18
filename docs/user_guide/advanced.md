@@ -6,7 +6,7 @@
 
 Assignment strategies control what gameplay scenario (game + characters) is available next for a player. Researchers use this to ensure that player gameplay sessions are distributed across games and characters in a way that meets their research goals. For example, a researcher might want to ensure that each player gets a balanced mix of games and characters, or that certain underrepresented characters are prioritized for assignment.
 
-To customize assignment strategies, check out the code and implement the `AssignmentStrategy` interface in `dcs_simulation_engine/core/assignment_strategies.py`. Then reference your strategy by name in a run configuration.
+To customize assignment strategies, check out the code and implement the `AssignmentStrategy` interface in `dcs_simulation_engine/core/assignment_strategies/`. Then reference your strategy by name in a run configuration.
 
 ## Custom Character Filters
 
@@ -16,7 +16,7 @@ To customize character filters, check out the code and:
 
 ### 1. Add the filter
 
-Implement the `CharacterFilter` interface in `dcs_simulation_engine/core/character_filters/base.py` (use the other filters as examples) and add it to the list of available filters in `dcs_simulation_engine/core/character_filters/__init__.py`
+Implement the `CharacterFilter` interface in `dcs_simulation_engine/dal/character_filters/base.py` (use the other filters as examples) and add it to the list of available filters in `dcs_simulation_engine/dal/character_filters/__init__.py`
 
 ### 2. Add the filter to a game
 
@@ -57,7 +57,7 @@ Character sheets usually include:
 Use the human-in-the-loop (HITL) CLI to generate scenarios and evaluate character behavior:
 
 ```bash
-dcs admin hitl create <character_hid> --db dev
+dcs hitl create <character_hid> --db dev
 ```
 
 This creates a scaffolded test cases file in `evaluations/characters/`. Edit the prompts so they actually pressure-test the character's behavior.
@@ -65,7 +65,7 @@ This creates a scaffolded test cases file in `evaluations/characters/`. Edit the
 Then run HITL updates while the DCS server is running:
 
 ```bash
-dcs admin hitl update <character_hid>
+dcs hitl update <character_hid>
 ```
 
 `hitl update` can:
@@ -83,7 +83,7 @@ In practice, this stage is iterative: adjust the character sheet and/or scenario
 Export the completed HITL scenarios to a results directory:
 
 ```bash
-dcs admin hitl export <character_hid>
+dcs hitl export <character_hid>
 ```
 
 Then generate a simulation quality report:
@@ -101,7 +101,7 @@ If results are insufficient, go back to step 2 and improve the character sheet a
 Publish the character evaluation results:
 
 ```bash
-dcs admin publish characters <path-to-sim-quality-report.html>
+dcs publish characters <path-to-sim-quality-report.html>
 ```
 
 Then open a PR that includes:

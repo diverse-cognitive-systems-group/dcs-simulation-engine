@@ -36,25 +36,19 @@ dcs --help
 
 #### 2. Set up API keys
 
-Run the setup command to add your API keys to a local .env file.
-
-```sh
-dcs setup
-```
-
-_Note: You can also add them manually if you prefer. The engine will look for a `.env` file with your API keys or you can set them as environment variables._
+Add your API keys to a local .env file or set them as environment variables. See `.env.example`.
 
 #### 3. Run the engine
 
 The first time you try and run it you will be prompted for your API keys if you haven't set them up in the `.env` file yet. You will also need to install [Docker](https://docs.docker.com/engine/install/) if you haven't already - the engine uses Docker containers to run the simulations.
 
 ```sh
-dcs engine start --config examples/demo.yml
+dcs engine start --config examples/run_configs/demo.yml
 ```
 
 Users can design, run, and deploy custom engine configurations—including their own games and characters.
 
-[👉 Usage](USAGE.md) for the full user guide.
+[👉 Usage](https://diverse-cognitive-systems-group.github.io/dcs-simulation-engine/user_guide/overview.html) for the full user guide.
 
 ### Features
 
