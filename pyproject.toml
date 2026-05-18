@@ -48,7 +48,7 @@ license-files = ["LICENSE"]
 name = "dcs-simulation-engine"
 readme = "README.md"
 requires-python = ">=3.11"
-version = "0.1.0"
+version = "0.4.0"
 
 # Installs all testing dependencies needed when pytest runs. Do NOT put
 # runtime dependencies here. These libraries will not be included when
