@@ -23,7 +23,7 @@ class ForesightGame(Game):
     GAME_DESCRIPTION = "Players are tasked with predicting the next action of a character."
 
     # This game required players to describe their PC action but also how they expect the NPC to respond for each turn, so we need to remove the validators that enforce that players only describe their own character's actions. Instead, we use a validator that required the PC action and optional NPC prediction.
-    PLAYER_TURN_VALIDATORS = []
+    # PLAYER_TURN_VALIDATORS = []
 
     DEFAULT_PCS_FILTER: CharacterFilter = get_character_filter("human-normative")
 
@@ -57,7 +57,7 @@ class ForesightGame(Game):
         engine = SimulatorClient(
             pc=pc,
             npc=npc,
-            player_turn_validators=cls.PLAYER_TURN_VALIDATORS,
+            # player_turn_validators=cls.PLAYER_TURN_VALIDATORS,
         )
         return cls(
             pc=pc,
@@ -99,7 +99,7 @@ class ForesightGame(Game):
             pc_hid=self._pc.hid,
             pc_short_description=self._pc.short_description.lower(),
             npc_hid=self._npc.hid,
-            npc_short_description=(self._npc.data.get("short_description", "").lower() if self._show_npc_details else "*Details hidden.*"),
+            npc_short_description=(self._npc.short_description.lower() if self._show_npc_details else "*Details hidden.*"),
         )
 
     def get_abilities_content(self) -> str:
@@ -110,7 +110,7 @@ class ForesightGame(Game):
             pc_short_description=self._pc.short_description,
             pc_abilities=format_abilities_markdown(self._pc.data.get("abilities", "")),
             npc_hid=self._npc.hid,
-            npc_short_description=(self._npc.data.get("short_description", "") if self._show_npc_details else "*Details hidden.*"),
+            npc_short_description=(self._npc.short_description if self._show_npc_details else "*Details hidden.*"),
             npc_abilities=npc_abilities,
         )
 
