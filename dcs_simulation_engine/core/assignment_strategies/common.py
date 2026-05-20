@@ -91,6 +91,10 @@ class CandidateAssignmentStrategy:
             provider=provider,
             statuses=["in_progress"],
         )
+        errored_players_by_game = await self._players_by_game(
+            provider=provider,
+            statuses=["interrupted"],
+        )
         counted_players_by_game = await self._players_by_game(
             provider=provider,
             statuses=["in_progress", "completed"],
@@ -103,6 +107,7 @@ class CandidateAssignmentStrategy:
                 "total": quota_count,
                 "completed": len(completed_players_by_game.get(game_name, set())),
                 "in_progress": len(in_progress_players_by_game.get(game_name, set())),
+                "errored": len(errored_players_by_game.get(game_name, set())),
             }
 
         if quota is None:
