@@ -71,6 +71,7 @@ nav:
       - 3. Play/Monitor: user_guide/play.md
       - 4. Analyze Results: user_guide/analyze_results.md
       - Advanced: user_guide/advanced.md
+      - Load Test Failure Modes: load_test_failure_modes.md
 
   - Reports:
       - Usability: report_docs/usability.md
