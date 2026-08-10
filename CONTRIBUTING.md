@@ -55,6 +55,8 @@ bun dev
 
 You can run `make test`, `make lint`, etc. for ease or run specific tests with `uv run pytest tests/test_x.py`.
 
+The UI has its own suite (Vitest). Run it with `make test-ui`, or from `ui/` with `bun run test` (`bun run test:watch` while developing). See `ui/tests/README.md` for what is covered.
+
 ### Submit PR
 Once you are done making changes and testing them, submit a pull request. Suggested PR format is 
 
