@@ -36,7 +36,7 @@ games:
     overrides:
       # Common overrides supported by every game.
       max_turns: 50 # 1-500; hard turn limit for a session.
-      max_playtime: 1800 # 1-3600 seconds; wall-clock session limit.
+      max_playtime: 1800 # 1-604800 seconds; wall-clock session limit.
       player_retry_budget: 10 # 0-10; invalid player actions allowed before exit.
       simulator_recovery_budget: 3 # 1-10; simulator recovery attempts.
       max_input_length: 350 # 1-350 characters per player input.

@@ -141,7 +141,7 @@ def test_explore_parse_overrides_accepts_common_base_fields() -> None:
     overrides = ExploreGame.parse_overrides(
         {
             "max_turns": 10,
-            "max_playtime": 300,
+            "max_playtime": 604800,
             "player_retry_budget": 4,
             "simulator_recovery_budget": 5,
             "max_input_length": 120,
@@ -151,7 +151,7 @@ def test_explore_parse_overrides_accepts_common_base_fields() -> None:
     )
 
     assert overrides.max_turns == 10
-    assert overrides.max_playtime == 300
+    assert overrides.max_playtime == 604800
     assert overrides.player_retry_budget == 4
     assert overrides.simulator_recovery_budget == 5
     assert overrides.max_input_length == 120

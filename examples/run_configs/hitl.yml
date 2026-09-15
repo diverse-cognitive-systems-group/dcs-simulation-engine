@@ -1,0 +1,28 @@
+# METADATA
+name: HITL
+description: |
+  A DCS-SE run configuration for easy character evaluation work.
+
+# USER INTERFACE OPTIONS
+ui:
+  registration_required: false
+
+# GAMES INCLUDED
+games:
+  - name: Explore
+    overrides:
+      max_playtime: 604800 # 1 week
+  - name: Infer Intent
+  - name: Foresight
+  - name: Goal Horizon
+  - name: Teamwork
+
+# NEXT GAME STRATEGY
+next_game_strategy:
+  strategy:
+    id: full_character_access
+    allow_choice_if_multiple: true
+    require_completion: false
+
+# DATA COLLECTION FORMS
+forms: null
