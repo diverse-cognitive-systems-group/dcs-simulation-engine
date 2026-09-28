@@ -252,7 +252,7 @@ def test_engine_status_prints_service_health_and_run_progress(monkeypatch: pytes
             "total": 20,
             "completed": 3,
             "per_game": {
-                "explore": {"total": 10, "completed": 2, "in_progress": 1},
+                "explore": {"total": 10, "completed": 2, "in_progress": 1, "errored": 2},
                 "goal_horizon": {"total": 10, "completed": 1, "in_progress": 0},
             },
         },
@@ -277,7 +277,8 @@ def test_engine_status_prints_service_health_and_run_progress(monkeypatch: pytes
     assert "✓ UI at http://localhost:5173 ready" in result.stdout
     assert "Run: demo" in result.stdout
     assert "Assignments: 3 / 20 completed" in result.stdout
-    assert "explore: 2 / 10 completed, 1 in progress" in result.stdout
+    assert "Assignments: 3 / 20 completed (2 errored)" in result.stdout
+    assert "explore: 2 / 10 completed, 1 in progress, 2 errored" in result.stdout
 
 
 @pytest.mark.unit

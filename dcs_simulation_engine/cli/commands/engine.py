@@ -755,7 +755,9 @@ def _print_status(ctx: typer.Context, payload: dict, *, api_port: int, ui_port: 
     total = run_status.get("total")
     completed = run_status.get("completed")
     if isinstance(total, int) and isinstance(completed, int):
-        echo(ctx, f"Assignments: {completed} / {total} completed")
+        errored_total = sum(game.get("errored", 0) for game in (run_status.get("per_game") or {}).values())
+        error_summary = f" ({errored_total} errored)" if errored_total > 0 else ""
+        echo(ctx, f"Assignments: {completed} / {total} completed{error_summary}")
     if "is_open" in run_status:
         echo(ctx, f"Open: {'yes' if run_status['is_open'] else 'no'}")
 
@@ -764,10 +766,12 @@ def _print_status(ctx: typer.Context, payload: dict, *, api_port: int, ui_port: 
         echo(ctx, "")
         echo(ctx, "Per game:")
         for game_name, counts in sorted(per_game.items()):
+            errored = counts.get("errored", 0)
+            error_msg = f", {errored} errored" if errored > 0 else ""
             echo(
                 ctx,
                 f"  {game_name}: {counts.get('completed', 0)} / {counts.get('total', 0)} completed, "
-                f"{counts.get('in_progress', 0)} in progress",
+                f"{counts.get('in_progress', 0)} in progress{error_msg}",
             )
 
 

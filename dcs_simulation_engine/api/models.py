@@ -168,6 +168,7 @@ class GameStatusResponse(BaseModel):
     total: int
     completed: int
     in_progress: int
+    errored: int = 0
 
 
 class RunStatusResponse(BaseModel):

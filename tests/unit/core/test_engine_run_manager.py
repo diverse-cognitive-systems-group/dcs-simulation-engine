@@ -337,7 +337,7 @@ async def test_status_empty_run_reports_open_quota_totals(async_mongo_provider, 
     assert status_payload["is_open"] is True
     assert status_payload["total"] == quota * len(cached_usability_run.games)
     assert status_payload["completed"] == 0
-    assert status_payload["per_game"]["Explore"] == {"total": quota, "completed": 0, "in_progress": 0}
+    assert status_payload["per_game"]["Explore"] == {"total": quota, "completed": 0, "in_progress": 0, "errored": 0}
 
 
 async def test_status_counts_completed_and_in_progress_per_game(async_mongo_provider, cached_usability_run) -> None:
@@ -396,8 +396,8 @@ async def test_status_counts_completed_and_in_progress_per_game(async_mongo_prov
 
     assert status_payload["is_open"] is True
     assert status_payload["completed"] == 2
-    assert status_payload["per_game"]["Explore"] == {"total": quota, "completed": 1, "in_progress": 1}
-    assert status_payload["per_game"]["Foresight"] == {"total": quota, "completed": 1, "in_progress": 0}
+    assert status_payload["per_game"]["Explore"] == {"total": quota, "completed": 1, "in_progress": 1, "errored": 0}
+    assert status_payload["per_game"]["Foresight"] == {"total": quota, "completed": 1, "in_progress": 0, "errored": 0}
 
 
 async def test_status_deduplicates_completed_players_per_game(async_mongo_provider, cached_usability_run) -> None:
@@ -438,7 +438,7 @@ async def test_status_deduplicates_completed_players_per_game(async_mongo_provid
     )
 
     assert status_payload["completed"] == 1
-    assert status_payload["per_game"]["Explore"] == {"total": quota, "completed": 1, "in_progress": 0}
+    assert status_payload["per_game"]["Explore"] == {"total": quota, "completed": 1, "in_progress": 0, "errored": 0}
 
 
 async def test_stopping_condition_reason_marks_assignment_completed(async_mongo_provider, cached_usability_run) -> None:

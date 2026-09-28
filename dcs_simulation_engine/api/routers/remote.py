@@ -83,6 +83,7 @@ def _status_response(status_payload: dict) -> RunStatusResponse:
                 total=int(counts["total"]),
                 completed=int(counts["completed"]),
                 in_progress=int(counts["in_progress"]),
+                errored=int(counts.get("errored", 0)),
             )
             for game_name, counts in dict(status_payload["per_game"]).items()
         },

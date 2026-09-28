@@ -1288,7 +1288,7 @@ def test_run_status_returns_aggregate_counts(client: TestClient) -> None:
                     "total": 20,
                     "completed": 4,
                     "per_game": {
-                        "Explore": {"total": 5, "completed": 2, "in_progress": 1},
+                        "Explore": {"total": 5, "completed": 2, "in_progress": 1, "errored": 1},
                         "Foresight": {"total": 5, "completed": 1, "in_progress": 0},
                     },
                 }
@@ -1306,8 +1306,8 @@ def test_run_status_returns_aggregate_counts(client: TestClient) -> None:
         "total": 20,
         "completed": 4,
         "per_game": {
-            "Explore": {"total": 5, "completed": 2, "in_progress": 1},
-            "Foresight": {"total": 5, "completed": 1, "in_progress": 0},
+            "Explore": {"total": 5, "completed": 2, "in_progress": 1, "errored": 1},
+            "Foresight": {"total": 5, "completed": 1, "in_progress": 0, "errored": 0},
         },
     }
 
@@ -1433,7 +1433,7 @@ def test_remote_status_is_public_and_reports_run_progress(
         "is_open": True,
         "total": 4,
         "completed": 1,
-        "per_game": {"Explore": {"total": 1, "completed": 1, "in_progress": 0}},
+        "per_game": {"Explore": {"total": 1, "completed": 1, "in_progress": 0, "errored": 0}},
     }
 
 

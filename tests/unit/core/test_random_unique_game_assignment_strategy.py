@@ -109,7 +109,7 @@ async def test_random_unique_game_status_closes_on_counted_quota(async_mongo_pro
     status_payload = await strategy.compute_status_async(provider=async_mongo_provider, config=config)
 
     assert status_payload["is_open"] is False
-    assert status_payload["per_game"]["Explore"] == {"total": 1, "completed": 0, "in_progress": 1}
+    assert status_payload["per_game"]["Explore"] == {"total": 1, "completed": 0, "in_progress": 1, "errored": 0}
 
 
 async def test_random_unique_game_does_not_repeat_games_for_the_same_player(async_mongo_provider, write_yaml) -> None:
@@ -206,6 +206,10 @@ async def test_random_unique_game_interrupted_rows_release_quota(async_mongo_pro
         assignment_id=interrupted.assignment_id,
         status="interrupted",
     )
+
+    status_payload = await strategy.compute_status_async(provider=async_mongo_provider, config=config)
+    assert status_payload["is_open"] is True
+    assert status_payload["per_game"]["Explore"] == {"total": 1, "completed": 0, "in_progress": 0, "errored": 1}
 
     assignment = await strategy.get_or_create_assignment_async(
         provider=async_mongo_provider,
