@@ -677,6 +677,7 @@ def _hitl_update_cmd(
     try:
         with APIClient(url=server_url, api_key=api_key) as client:
             client.health()
+            server_config = client.server_config()
     except Exception as exc:  # noqa: BLE001
         _console.print(
             "ERROR: Could not connect to the DCS server.\n"
@@ -684,6 +685,30 @@ def _hitl_update_cmd(
             "The DCS server needs to be running to use `dcs hitl update`.\n"
             f"Details: {exc}",
             style="error",
+        )
+        raise typer.Exit(1)
+
+    if server_config.authentication_required:
+        _console.print(
+            "WARNING: `dcs hitl update` is intended for servers started with registration disabled.",
+            style="warning",
+            soft_wrap=True,
+        )
+
+    if not api_key.strip():
+        anonymous_url = f"{server_url.rstrip('/')}/api/player/anonymous"
+        anonymous_key_command = (
+            f"curl -s -X POST {anonymous_url} "
+            "| python3 -c 'import sys, json; print(json.load(sys.stdin)[\"api_key\"])'"
+        )
+        _console.print(
+            "ERROR: DCS API key is required for `dcs hitl update`.\n"
+            "Generate an anonymous key:\n"
+            f"  {anonymous_key_command}\n\n"
+            "Save the printed value in your .env file as DCS_API_KEY=<key>, "
+            f"or run `dcs hitl update {hid} --api-key <key>`.",
+            style="error",
+            soft_wrap=True,
         )
         raise typer.Exit(1)
 

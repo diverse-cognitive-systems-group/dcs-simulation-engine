@@ -280,6 +280,9 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
         def health(self):
             return {"status": "ok"}
 
+        def server_config(self):
+            return type("ServerConfig", (), {"authentication_required": True})()
+
         def start_game(self, body):
             assert body.game == "Explore"
             assert body.pc_choice == "NA"
@@ -346,6 +349,7 @@ def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypat
     result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
 
     assert result.exit_code == 0, result.output
+    assert "registration disabled" in result.output
     assert _step_calls == [
         ("root", ""),
         ("branch-1", "I look around"),
@@ -375,7 +379,8 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
 
     class _FakeAPIClient:
         def __init__(self, *, url: str, api_key: str) -> None:
-            _ = (url, api_key)
+            _ = url
+            assert api_key == "test-key"
             self.branch_calls = 0
 
         def __enter__(self):
@@ -387,8 +392,12 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
         def health(self):
             return {"status": "ok"}
 
+        def server_config(self):
+            return type("ServerConfig", (), {"authentication_required": False})()
+
         def _ws_status(self, *, session_id, api_key=None, include_opening=False, expect_replay=False):
-            _ = (session_id, api_key, include_opening, expect_replay)
+            _ = (session_id, include_opening, expect_replay)
+            assert api_key == "test-key"
             session_meta = type("Meta", (), {"session_id": "existing-parent"})()
             status_frame = type(
                 "Status",
@@ -406,7 +415,8 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
             include_opening=False,
             expect_replay=False,
         ):
-            _ = (session_id, api_key, include_opening, expect_replay)
+            _ = (session_id, include_opening, expect_replay)
+            assert api_key == "test-key"
             events = []
             if text == "I call out":
                 events.append(type("Event", (), {"event_type": "ai", "content": "A distant voice answers back."})())
@@ -454,6 +464,7 @@ def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monk
     )
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
     monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
+    monkeypatch.setenv("DCS_API_KEY", "test-key")
 
     result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--only-history"])
 
@@ -512,6 +523,9 @@ def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_pa
 
         def health(self):
             return {"status": "ok"}
+
+        def server_config(self):
+            return type("ServerConfig", (), {"authentication_required": False})()
 
         def _ws_status(self, *, session_id, api_key=None, include_opening=False, expect_replay=False):
             _ = (api_key, include_opening, expect_replay)
@@ -664,6 +678,9 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
         def health(self):
             return {"status": "ok"}
 
+        def server_config(self):
+            return type("ServerConfig", (), {"authentication_required": False})()
+
         def start_game(self, body):
             _ = body
             return _FakeRun(_step_calls, "root", "root-session")
@@ -708,7 +725,7 @@ def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, mo
     monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
     monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
 
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
 
     assert result.exit_code == 0, result.output
     assert "Scenario File Summary" in result.output
@@ -774,6 +791,76 @@ def test_hitl_status_summary_respects_selected_subset(tmp_path):
     assert summary["attempts_without_player_feedback"] == 0
     assert summary["empty_conversation_histories"] == 1
     assert summary["conversation_histories_missing_simulator_reply"] == 0
+
+
+@pytest.mark.functional
+def test_hitl_update_without_key_reports_anonymous_key_command(tmp_path, monkeypatch):
+    """No-key anonymous runs should print a copyable key bootstrap command."""
+
+    class _AnonymousAPIClient:
+        def __init__(self, *, url: str, api_key: str) -> None:
+            _ = (url, api_key)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def health(self):
+            return {"status": "ok"}
+
+        def server_config(self):
+            return type("ServerConfig", (), {"authentication_required": False})()
+
+    test_cases_file = tmp_path / "NA-test-cases.json"
+    scenario_file = ScenarioFile(
+        npc_hid="NA",
+        generated_at="2026-04-23T00:00:00+00:00",
+        scenario_groups=[
+            ScenarioGroup(
+                group_id="test-group",
+                label="Test Group",
+                expected_failure_mode="Test failure mode",
+                pressure_category="test-pressure",
+                scenarios=[
+                    Scenario(
+                        id="NA-test-001",
+                        description="Test scenario",
+                        game="Explore",
+                        pc_hid="NA",
+                        conversation_history=[],
+                        attempts=[Attempt(player_message="I look around")],
+                    )
+                ],
+            )
+        ],
+    )
+    save_scenario_file(test_cases_file, scenario_file)
+
+    monkeypatch.setattr(
+        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
+        lambda hid: tmp_path / f"{hid}-test-cases.json",
+    )
+    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _AnonymousAPIClient)
+
+    called = {"generate": False}
+
+    async def _fake_generate_responses(**kwargs):
+        called["generate"] = True
+        _ = kwargs
+
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
+
+    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
+
+    assert result.exit_code == 1
+    assert "DCS API key is required" in result.output
+    assert "Save the printed value in your .env file as DCS_API_KEY=<key>" in result.output
+    assert "curl -s -X POST" in result.output
+    assert "http://localhost:8000/api/player/anonymous" in result.output
+    assert "dcs hitl update NA --api-key" in result.output
+    assert called["generate"] is False
 
 
 @pytest.mark.functional
