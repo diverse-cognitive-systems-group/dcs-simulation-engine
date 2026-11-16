@@ -48,6 +48,17 @@ jobs:
         run: uv sync --extra dev
       - run: make test
 
+  test-ui:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install UI deps
+        run: cd ui && bun install
+      - run: make test-ui
+
   build-docs:
     needs: test
     runs-on: ubuntu-latest
