@@ -218,6 +218,125 @@ def test_hitl_create(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def feedback_update_file(tmp_path, monkeypatch):
+    """Provide two unrated responses and stub the update's server preparation."""
+    path = tmp_path / "NA-test-cases.json"
+    save_scenario_file(
+        path,
+        ScenarioFile(
+            npc_hid="NA",
+            generated_at="2026-04-23T00:00:00+00:00",
+            scenario_groups=[
+                ScenarioGroup(
+                    group_id="test-group",
+                    label="Test Group",
+                    expected_failure_mode="Test failure mode",
+                    pressure_category="test-pressure",
+                    scenarios=[
+                        Scenario(
+                            id="NA-test-001",
+                            description="Test scenario",
+                            game="Explore",
+                            pc_hid="NA",
+                            conversation_history=[{"role": "assistant", "content": "Shared opening."}],
+                            attempts=[
+                                Attempt(player_message="First action", simulator_response="First response"),
+                                Attempt(player_message="Second action", simulator_response="Second response"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        ),
+    )
+
+    class _FakeAPIClient:
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def health(self):
+            return {"status": "ok"}
+
+        def server_config(self):
+            return type("ServerConfig", (), {"authentication_required": False})()
+
+    async def _fake_generate_responses(**kwargs):
+        pass
+
+    monkeypatch.setattr("dcs_simulation_engine.hitl.generate.scenarios_path_for", lambda hid: path)
+    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
+    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
+    return path
+
+
+@pytest.mark.functional
+def test_hitl_update_skips_one_attempt_and_revisits_next_run(feedback_update_file):
+    """Skipping defers only the displayed attempt while other ratings persist."""
+    command = ["hitl", "update", "NA", "--api-key", "test-key"]
+    result = _RUNNER.invoke(app, command, input="s\nskip\n\nd\ns\nNeeds review\n")
+
+    assert result.exit_code == 0, result.output
+    assert "Enter to skip for now" in result.output
+    assert result.output.count("Enter 'u' for up, 'd' for down, or press Enter to skip.") == 2
+    assert "It remains unrated and will appear again on the next hitl update run." in result.output
+    assert "1 attempt(s) skipped" in result.output
+    assert "All feedback recorded" not in result.output
+    assert "1/2 attempt(s) without player feedback" in result.output
+    assert result.output.count("First response") == 1
+    assert result.output.count("Second response") == 1
+    attempts = json.loads(feedback_update_file.read_text())["scenario_groups"][0]["scenarios"][0]["attempts"]
+    assert attempts[0]["evaluator_feedback"] is None
+    saved_feedback = attempts[1]["evaluator_feedback"]
+    assert saved_feedback["liked"] is False
+    assert saved_feedback["doesnt_make_sense"] is True
+    assert saved_feedback["comment"] == "Needs review"
+
+    result = _RUNNER.invoke(app, command, input="u\n\n")
+
+    assert result.exit_code == 0, result.output
+    assert "First response" in result.output
+    assert "Second response" not in result.output
+    assert "All feedback recorded" in result.output
+    assert "0/2 attempt(s) without player feedback" in result.output
+    attempts = json.loads(feedback_update_file.read_text())["scenario_groups"][0]["scenarios"][0]["attempts"]
+    assert attempts[0]["evaluator_feedback"]["liked"] is True
+    assert attempts[1]["evaluator_feedback"] == saved_feedback
+
+
+@pytest.mark.functional
+@pytest.mark.parametrize("pause", [False, True])
+def test_hitl_update_skips_without_writing_feedback(feedback_update_file, pause):
+    """Skipping all items or pausing leaves responses unrated without looping."""
+    original = feedback_update_file.read_bytes()
+    result = _RUNNER.invoke(
+        app,
+        ["hitl", "update", "NA", "--api-key", "test-key"],
+        input="\n" if pause else "\n\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert feedback_update_file.read_bytes() == original
+    assert "All feedback recorded" not in result.output
+    assert "2/2 attempt(s) without player feedback" in result.output
+    assert result.output.count("First response") == 1
+    assert result.output.count("Second response") == 1
+    assert "Flags" not in result.output
+    assert "Comment" not in result.output
+    if pause:
+        assert "Paused after 0 entries recorded, 1 attempt(s) skipped" in result.output
+        assert "including skipped attempts" in result.output
+    else:
+        assert "0 feedback entries recorded, 2 attempt(s) skipped" in result.output
+        assert "Run hitl update again to revisit skipped attempts" in result.output
+
+
 @pytest.mark.functional
 def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypatch):
     """Dcs hitl update stores shared opening history, then branches per attempt."""

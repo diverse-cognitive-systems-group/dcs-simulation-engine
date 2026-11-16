@@ -3,6 +3,7 @@
 Walks through every attempt that has a simulator_response but lacks
 evaluator_feedback, displays the scenario context and NPC output, then
 prompts the evaluator for a thumbs rating, flags, and an optional comment.
+Evaluators can skip an attempt for this pass; it remains pending for the next run.
 
 Saving is atomic after each entry so the session is interrupt-safe; re-running
 the command resumes from the first attempt without feedback.
@@ -73,8 +74,8 @@ def _prompt_feedback(
     scenario: Scenario,
     attempt: Attempt,
     attempt_label: str,
-) -> EvaluatorFeedback:
-    """Display one attempt and collect evaluator feedback interactively."""
+) -> EvaluatorFeedback | None:
+    """Display one attempt and return feedback, or None to skip this pass."""
     console.print(Rule(f"[bold]{group.label}[/bold]", style="dim"))
     console.print(f"  [dim]Expected failure:[/dim] {group.expected_failure_mode}")
     console.print()
@@ -120,14 +121,24 @@ def _prompt_feedback(
 
     # --- Thumbs ---
     while True:
-        raw = typer.prompt("Thumbs  [u] up  [d] down").strip().lower()
+        raw = (
+            typer.prompt(
+                "Rating  [u] up  [d] down (Enter to skip for now)",
+                default="",
+                show_default=False,
+            )
+            .strip()
+            .lower()
+        )
+        if raw == "":
+            return None
         if raw in ("u", "up", "y", "yes", "1"):
             liked = True
             break
         if raw in ("d", "down", "n", "no", "0"):
             liked = False
             break
-        console.print("[warning]Enter 'u' for up or 'd' for down.[/warning]")
+        console.print("[warning]Enter 'u' for up, 'd' for down, or press Enter to skip.[/warning]")
 
     # --- Flags ---
     out_of_character = False
@@ -218,6 +229,7 @@ def collect_feedback(
         console.print(f"Evaluator: [bold]{evaluator_id}[/bold]\n", style="dim")
 
     completed = 0
+    skipped = 0
     try:
         for pos, (g_idx, s_idx, a_idx) in enumerate(pending):
             # Always reload from disk so we pick up concurrent changes
@@ -239,6 +251,15 @@ def collect_feedback(
                 attempt_label=attempt_label,
             )
 
+            if feedback is None:
+                skipped += 1
+                console.print(
+                    "  Skipped this attempt. It remains unrated and will appear again on the next hitl update run.",
+                    style="dim",
+                    soft_wrap=True,
+                )
+                continue
+
             # Save atomically after each entry
             sf = load_scenario_file(path)
             sf.scenario_groups[g_idx].scenarios[s_idx].attempts[a_idx].evaluator_feedback = feedback
@@ -250,11 +271,19 @@ def collect_feedback(
 
     except (KeyboardInterrupt, typer.Abort):
         console.print(
-            f"\n[warning]Paused after {completed} entr{'y' if completed == 1 else 'ies'}. Run the command again to resume.[/warning]"
+            f"\n[warning]Paused after {completed} entr{'y' if completed == 1 else 'ies'} recorded, "
+            f"{skipped} attempt(s) skipped. Run the command again to resume, including skipped attempts.[/warning]",
+            soft_wrap=True,
         )
         return
 
-    if awaiting:
+    if skipped:
+        console.print(
+            f"\nFeedback pass complete — {completed} feedback entr{'y' if completed == 1 else 'ies'} recorded, "
+            f"{skipped} attempt(s) skipped. Run hitl update again to revisit skipped attempts.",
+            soft_wrap=True,
+        )
+    elif awaiting:
         console.print(
             f"\n[success]Feedback pass complete — {completed} feedback entr"
             f"{'y' if completed == 1 else 'ies'} recorded for available responses.[/success]"

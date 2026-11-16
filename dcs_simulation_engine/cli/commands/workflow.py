@@ -639,6 +639,8 @@ def _hitl_update_cmd(
     Shared conversation history is always synchronized first. By default the
     command then fills missing simulator responses for attempts and collects any
     missing evaluator feedback before printing a final status summary.
+    At the rating prompt, press Enter to skip the displayed attempt
+    for this update run. Skipped attempts remain unrated and return next run.
 
     \b
     Examples:
