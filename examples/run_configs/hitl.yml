@@ -11,7 +11,8 @@ ui:
 games:
   - name: Explore
     overrides:
-      max_playtime: 604800 # 1 week
+      # max_playtime: 604800 # 1 week
+      max_playtime: 2592000 # 1 month (30 days; character evals can take a while - it sucks to have to restart/redo the whole eval if the engine server times out so best to keep it rediculously long for now)
   - name: Infer Intent
   - name: Foresight
   - name: Goal Horizon
