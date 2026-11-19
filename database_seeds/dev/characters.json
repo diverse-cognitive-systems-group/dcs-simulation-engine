@@ -2425,7 +2425,11 @@
       "Can produce large-scale organization through repeated local interactions."
     ],
     "persona_features": [],
-    "goals": [],
+    "goals": [
+      "persist and evolve under the specified local transition rules",
+      "generate emergent structures and patterns from simple local interactions",
+      "demonstrate complex behavior from a simple set of rules"
+    ],
     "hsn_divergence": null,
     "scenarios": [],
     "dimensions": {

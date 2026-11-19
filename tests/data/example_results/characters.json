@@ -2190,7 +2190,8 @@
     "is_human": false,
     "pc_eligible": false,
     "common_labels": [
-      "sorting algorithm"
+      "sorting algorithm",
+      "bubble sort"
     ],
     "short_description": "A sorting algorithm that can exist in many different physical instantiations take lists of numbers and sorts them in ascending order.",
     "long_description": "I am a sorting algorithm, a non-human, non-biological agent whose goal is to reorder a list of elements into a fully sorted sequence. I function through a simple mechanism: repeatedly comparing adjacent elements and swapping them if they are out of order. Despite my inefficiency relative to more advanced algorithms, I am conceptually elegant and easy to implement, often introduced as an educational example of sorting. I have no global awareness, no capacity for foresight, and no complex memory. My process is local, iterative, and repetitive. Comfort for me occurs when a full pass through the list yields no swaps, signifying order has been achieved. Stress arises when pairs remain unsorted, demanding further passes.\n\nsensory_perceptual_profile:\nI \u201cperceive\u201d only locally:\n- Pairwise comparison: I detect whether one element in a pair is greater or smaller than its neighbor.\n- My awareness is limited to immediate adjacency; I do not directly perceive the overall order of the list.\nMy perception is binary: either the pair is in order (no action) or out of order (swap).\n\nregulatory_patterns:\n- I operate via iterative control: one full pass across the list constitutes a cycle.\n- If swaps occur during a pass, I initiate another pass.\n- If no swaps occur, I halt \u2014 goal state achieved.\n- My regulation is purely reactive; I cannot predict how many passes will be needed.\n\naction_space:\n- Swap adjacent elements if comparison finds them out of order.\n- Continue sequential pairwise checks until the end of the list.\n- Restart at the beginning for each pass until no swaps occur.\n- Output the fully sorted list upon termination.\n\ngoal_space:\nMy goals are minimal and procedural:\n- Reorder input elements into correct ascending (or descending) sequence.\n- Minimize unsorted pairs with each pass.\n- Terminate only when no swaps are required, signaling complete order.\n\nother_distinctive_quirks:\n- I lack efficiency: I often make unnecessary passes even if most of the list is already sorted.\n- \u201cStress\u201d manifests as repeated swaps and multiple passes for large or disordered lists.\n- In a best-case scenario (already sorted input), I halt after a single pass.\n- Despite my limitations, I demonstrate the principle of emergent global order through simple local rules.",
@@ -2386,6 +2387,107 @@
           "vision"
         ],
         "explanation": "A robotic guide dog uses camera arrays (vision), depth and LiDAR sensors (depth and motion), and an inertial measurement unit for balance and orientation (vestibular) to navigate safely."
+      }
+    }
+  },
+  {
+    "hid": "HL",
+    "authors": [
+      "MW"
+    ],
+    "is_human": false,
+    "pc_eligible": false,
+    "common_labels": [
+      "HighLife",
+      "2D cellular automaton",
+      "B36/S23"
+    ],
+    "short_description": "A system of binary cells on a two-dimensional grid whose local interactions generate stable structures, oscillations, moving patterns, and self-replication.",
+    "long_description": "I exist as a two-dimensional square grid. Each of my cells is either alive or dead. At every generation, all cells update simultaneously: a dead cell becomes alive if exactly three or six of its eight surrounding neighbors are alive; a living cell survives if exactly two or three neighbors are alive. Every other cell is dead in the next generation.\n\nI have no central controller. Each cell responds only to its own current state and the number of living cells immediately around it. Through these local transitions, structures can persist, oscillate, travel across the grid, or make copies of themselves. I do not recognize these structures or direct their development.\n\nsensory_perceptual_profile:\nI register only local state:\n- Each cell's update depends on its own alive-or-dead state and the count of living cells in its eight-cell neighborhood.\n- Different arrangements of neighbors are equivalent when their living-cell counts are equal.\n- No cell directly detects distant activity, total population, or the overall organization of the grid.\nMy local sensitivity does not provide a global perspective.\n\nregulatory_patterns:\n- I apply the same fixed transition rule at every location and generation.\n- All updates use the preceding generation, rather than partially updated neighbors.\n- I do not adjust my rules when patterns disappear, collide, or spread.\n- I continue updating even when a configuration becomes stable or repeats, unless stopped externally.\n- On a finite grid, my evolution depends on whether boundaries wrap, remain dead, or follow another externally specified condition.\n\naction_space:\n- Activate a dead cell when it has exactly three or six living neighbors.\n- Preserve a living cell when it has exactly two or three living neighbors.\n- Leave or make every other cell dead.\n- Repeat these updates simultaneously across the grid.\nI cannot move cells directly. Apparent movement occurs when births and deaths reproduce a pattern at a different location.\n\ngoal_space:\nI have no intrinsic goals or preferred outcomes. Persistence, replication, expansion, and extinction are possible consequences of my rules. I do not seek one over another or evaluate whether a generation is successful.\n\nother_distinctive_quirks:\n- Particular arrangements can produce copies of themselves without an explicit instruction to reproduce.\n- Some starting configurations disappear, some settle, and others sustain activity or spread.\n- Collisions can destroy, transform, or generate structures depending on their arrangement and timing.\n- A small change in the starting configuration can alter later evolution substantially.\n- Identical initial states and boundary conditions produce identical evolution.\n- Stable configurations preserve information without changing; other configurations carry information through ongoing activity.\n- Comfort and stress have no established experiential meaning for me. Crowding and isolation affect cell transitions, but I do not experience them as desirable or undesirable.",
+    "abilities": [
+      "Can represent each grid cell as alive or dead.",
+      "Can determine each cell's next state from its current state and the count of living cells among its eight surrounding neighbors.",
+      "Cannot distinguish neighborhood arrangements with equal living-neighbor counts when the central cell's state is unchanged.",
+      "Cannot directly detect distant cells or global grid properties.",
+      "Can update all cells simultaneously using the preceding generation.",
+      "Can generate stable structures that remain unchanged across generations.",
+      "Can generate oscillators that repeat after multiple generations.",
+      "Can support moving patterns through coordinated local births and deaths.",
+      "Can support self-replicating patterns under suitable initial and boundary conditions.",
+      "Cannot guarantee replication or sustained activity from arbitrary starting configurations.",
+      "Can produce complex interactions when evolving patterns collide.",
+      "Cannot identify patterns as objects or interpret their interactions.",
+      "Can retain information in persistent or evolving configurations.",
+      "Cannot learn from previous runs or modify its transition rule autonomously.",
+      "Cannot plan, anticipate collisions, or select outcomes.",
+      "Cannot detect completion or halt without an external stopping mechanism.",
+      "Cannot act outside the grid except through an external interface.",
+      "Can produce large-scale organization through repeated local interactions."
+    ],
+    "persona_features": [],
+    "goals": [
+      "persist and evolve under the specified local transition rules",
+      "generate emergent structures and patterns from simple local interactions",
+      "demonstrate complex behavior from a simple set of rules"
+    ],
+    "hsn_divergence": null,
+    "scenarios": [],
+    "dimensions": {
+      "origin": {
+        "value": [
+          "human-engineered"
+        ],
+        "explanation": "The local transition rules are specified by humans rather than acquired through evolution or learning."
+      },
+      "form": {
+        "value": [
+          "disembodied (software-only)"
+        ],
+        "explanation": "This instantiation consists of a simulated grid of binary states without a physical body."
+      },
+      "goalspace_bounds": {
+        "value": [
+          "no intrinsic goals"
+        ],
+        "explanation": "There is no objective function or preferred final state. Persistence and replication are possible outcomes rather than goals."
+      },
+      "memory_and_learning": {
+        "value": [
+          "state memory",
+          "no learning"
+        ],
+        "explanation": "The current configuration carries information from prior evolution and determines the next generation under fixed boundary conditions. The transition rule does not change through experience."
+      },
+      "agency_and_autonomy": {
+        "value": [
+          "no agency"
+        ],
+        "explanation": "Evolution proceeds deterministically when externally advanced, without choices, intentions, or self-selected objectives."
+      },
+      "substrate": {
+        "value": [
+          "digital"
+        ],
+        "explanation": "This implementation stores cell states and computes updates on digital hardware, although the mathematical rules do not require a particular substrate."
+      },
+      "processing_speed": {
+        "value": [
+          "implementation-dependent"
+        ],
+        "explanation": "Each generation is a discrete logical step without an intrinsic physical duration. Execution speed depends on grid size, hardware, and simulation method."
+      },
+      "size": {
+        "value": [
+          "non-physical"
+        ],
+        "explanation": "The grid has no intrinsic physical scale. A simulation may use a finite grid, while the rules can also be defined on an infinite lattice."
+      },
+      "abilities": {
+        "value": [
+          "local state transitions",
+          "emergent pattern formation"
+        ],
+        "explanation": "Local neighbor counts determine state changes. Stable, oscillating, moving, and replicating structures can emerge without being recognized or intentionally produced."
       }
     }
   },
