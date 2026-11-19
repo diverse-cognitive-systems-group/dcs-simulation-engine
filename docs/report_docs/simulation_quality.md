@@ -70,16 +70,11 @@ Character representational quality is how we test and maintain whether a simulat
 For each character, we:
 
 - Build a structured character sheet grounded in research, interviews, or other appropriate source material
-- Generate a HITL scenario scaffold covering multiple pressure categories
-- Edit those scenarios so they actually test the representational bounds of the character
-- Run HITL updates to generate simulator outputs and collect evaluator feedback on whether responses are in character, out of character, or invalid
-- Export the completed test cases and generate a simulation-quality report
+- Create a HITL evaluation and write scenarios that test the representational bounds of the character
+- Run HITL updates to generate simulator responses and rate them, flagging problems such as out-of-character responses
+- Export the evaluation and generate a simulation quality report
 
-Characters are not added to production unless they pass the quality thresholds defined by `character-release-policy.yml`. In practice this means they must clear release gates such as:
-
-- **In-character fidelity (ICF)** — whether the character stays behaviorally consistent across scenarios
-- **Scenario coverage** — whether the evaluation meaningfully covers the pressure-category space intended for that character
-
-Because these evaluations are fingerprinted against the character sheet, prompt, and model configuration, changes to any of those components require re-evaluation.
+The production release policy in `character-release-policy.yml` sets thresholds for evaluation metrics (e.g., In-character fidelity or ICF, Coverage, etc)
+Re-evaluate the character after changes to the character sheet, prompt, or model.
 
 For the end-to-end workflow, see [Custom Characters](../user_guide/advanced.md#custom-characters).

@@ -54,27 +54,30 @@ Character sheets usually include:
 
 ### 2. Iteratively update character sheet(s) to meet quality thresholds
 
-Use the human-in-the-loop (HITL) CLI to generate scenarios and evaluate character behavior:
+Use the human-in-the-loop (HITL) CLI to evaluate character behavior.
 
 ```bash
 dcs hitl create <character_hid>
 ```
 
-This creates a scaffolded evaluation file in `evaluations/characters/`.
+In `evaluations/characters/<character_hid>-evaluation.json`, set your `evaluator_id` and the session `description` (what you are tryihg to test/evaluate in this session). Add player messages to `transcript` using `type: "message"`, `source: "pc"`, and `content`.
 
-Then run HITL update (make sure the DCS server is running first!) to generate simulator responses and collect evaluator feedback:
+Start the local engine.
 
 ```bash
-# first make sure the server is running - use this command in a separate terminal window
 dcs engine start --headless --config examples/run_configs/hitl.yml
-
-# then you can run HITL update and view your evaluation file update
-dcs hitl update <character_hid>
-
-# to view it more nicely, export to common results format and open in a browser (see next step)
 ```
 
-In practice, this stage is iterative: adjust the character sheet and/or scenario prompts, rerun HITL, and keep going until the behavior looks good.
+Create an anonymous player key on that server and reuse it for subsequent updates. `hitl update` generates simulator responses and prompts for feedback.
+
+```bash
+DCS_API_KEY=$(curl -fsS -X POST http://localhost:8000/api/player/anonymous \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin)["api_key"])')
+export DCS_API_KEY
+dcs hitl update <character_hid>
+```
+
+Add turns or branches and rerun `hitl update` to continue. If you edit a recorded player message, use `--replay-invalid-sessions` to replay it. The CLI prompts before replacing affected responses and feedback. Start a fresh session to evaluate changes to the character sheet.
 
 > Optionally running external evaluations using `expert-evaluation.yml` and/or `select-characters.yml` run configs can be useful where you have access to domain experts that can provide feedback on character behavior. 
 
@@ -86,19 +89,13 @@ Export `<character_hid>-evaluation.json` to a results directory at any stage:
 dcs hitl export <character_hid>
 ```
 
-The results bundle contains the main sessions and branches, including work in progress and evaluator descriptions. The Player column uses `evaluator_id` from the evaluation file, and the PC column shows the character they played.
-
-Then generate a simulation quality report:
+Generate a simulation quality report at any point to see your evaluation in nicely readable HTML:
 
 ```bash
 dcs report results results/hitl_<character_hid> --only sim-quality --title "Simulation Quality — <character_hid>"
 ```
 
-The main report and each character report start with a Summary section showing the evaluator ID, written summary, and evaluation status. The Full Event Log includes an Evaluator Description column. Complete evaluations have an evaluator ID, simulator responses for all turns, feedback on every simulator response, and a written `results.summary`.
-
-Review the report and determine whether the coverage and in-character fidelity (ICF) scores are sufficient for publication.
-
-If results are insufficient, go back to step 2 and improve the character sheet and/or scenario prompts. If results are sufficient, move to step 4.
+Use the character report to review in-character fidelity (ICF) and coverage of conversation paths. In the Full Event Log, Player shows the evaluator ID and PC shows the character they played. If the evaluation needs more work, return to step 2.
 
 ### 4. Publish for Review
 
@@ -111,7 +108,7 @@ dcs publish characters <path-to-sim-quality-report.html>
 Then open a PR that includes:
 
 - The character JSON changes
-- The character scenarios JSON file
+- The `<character_hid>-evaluation.json` file
 - Any evaluation artifacts that are appropriate for the current workflow, such as simulation-quality reports
 
 > To propose that DCS-SE add a character to the core character database, open a PR that includes the reasoning and design decisions, code changes, and the quality report with scores.
