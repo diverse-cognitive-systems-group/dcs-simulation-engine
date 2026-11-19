@@ -1,0 +1,78 @@
+<style>
+  .coverage-path { --line: #c9d2da; color: #273847; overflow-wrap: anywhere; }
+  .coverage-root { padding: 1rem; margin-bottom: .75rem; border: 1px solid var(--line); border-radius: .5rem; }
+  .coverage-path header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .65rem; }
+  .coverage-path small { color: #536474; }
+  .coverage-track { margin: .4rem 0 .25rem .35rem; border-left: 2px solid var(--line); padding-left: clamp(.75rem, 2vw, 1.6rem); }
+  .coverage-stop { position: relative; padding: .35rem 0; }
+  .coverage-stop::before { content: ""; position: absolute; top: 1.05rem; right: 100%; width: clamp(.75rem, 2vw, 1.6rem); border-top: 2px solid var(--line); }
+  .coverage-stop summary { cursor: pointer; }
+  .coverage-rating { border-radius: 1rem; padding: .12rem .55rem; font-size: .76rem; font-weight: 600; background: #edf0f3; color: #425466; }
+  .coverage-liked { background: #daf2e6; color: #125637; }
+  .coverage-disliked { background: #fbe4e2; color: #902d28; }
+  .coverage-dialogue { margin: .45rem 0 .25rem; padding: .5rem .8rem; background: #f7f9fa; border-radius: .3rem; }
+  .coverage-dialogue dd { white-space: pre-wrap; }
+</style>
+{% macro reply(prompt, response) %}
+  {% set liked = response.get('feedback.liked') if response else none %}
+  {% set rating = 'Liked' if liked is true else 'Disliked' if liked is false else 'Unrated' if response else 'Awaiting response' %}
+  {% set label = prompt.content if prompt else 'Scene opening' %}
+  {% set fields = [
+    ('PC', prompt.content), ('Simulator', response.content), ('PC note', prompt.evaluator_note),
+    ('Simulator note', response.evaluator_note), ('Feedback', response.get('feedback.comment') if response)
+  ] %}
+  <details class="coverage-stop">
+    <summary title="{% for name, value in fields if value %}{{ name }}: {{ value }}&#10;{% endfor %}">
+      <span class="coverage-rating coverage-{{ rating|lower|replace(' ', '-') }}">{{ rating }}</span>
+      {{ label|truncate(96) }}
+    </summary>
+    <dl class="coverage-dialogue">
+      {% for name, value in fields if value %}<dt>{{ name }}</dt><dd>{{ value }}</dd>{% endfor %}
+      {% if not response %}<dd>Awaiting a simulator response.</dd>{% endif %}
+    </dl>
+  </details>
+{% endmacro %}
+{% macro path(session, number, root=false) %}
+  <div class="{{ 'coverage-root' if root else 'coverage-stop' }}" data-session-id="{{ session.session_id }}">
+    <header><strong>{{ 'Session' if root else 'Branch' }} {{ number }}</strong>
+      {% if session.evaluator_description %}<span>{{ session.evaluator_description }}</span>{% endif %}
+      {% if root %}<small>{{ session.game_name }} · {{ session.pc_hid }} / {{ session.npc_hid }}</small>{% endif %}
+    </header>
+    <div class="coverage-track">
+      {% set counter = namespace(branch=0) %}
+      {% for part in session.parts %}
+        {% if part.type == 'branch' %}
+          {% set counter.branch = counter.branch + 1 %}
+          {{ path(part, number ~ '.' ~ counter.branch) }}
+        {% else %}
+          {% for response in part.output if response.source == 'npc' %}
+            {{ reply(part.prompt, response) }}
+          {% else %}
+            {{ reply(part.prompt, none) }}
+          {% endfor %}
+        {% endif %}
+      {% else %}<div class="coverage-stop text-muted">No turns recorded.</div>{% endfor %}
+    </div>
+  </div>
+{% endmacro %}
+<h3 class="h5">Semantic diversity</h3>
+<p class="mb-2">Each row compares every pair of recorded samples of that type and averages their cosine distances.
+  Values near 0 mean the model sees similar content. Larger values indicate more variety.
+  For a single pair, 1 means the embedding vectors are perpendicular and 2 is the maximum distance.</p>
+<table class="table table-sm mb-2">
+  <thead><tr><th scope="col">Metric</th><th scope="col">Samples</th><th scope="col">Mean cosine distance</th></tr></thead>
+  <tbody>
+    {% for metric in metrics %}
+    <tr><th scope="row">{{ metric.label }}</th><td>{{ metric.count }}</td>
+      <td>{% if metric.count < 2 %}Need 2 to compare{% elif metric.score is none %}Unavailable{% else %}{{ '%.3f'|format(metric.score) }}{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>Read each value alongside its sample count. Two very different conversations can produce a high score
+  while leaving many scenarios unexplored. The score describes variety within this evaluation only.
+  Use the paths below to judge which character behaviors were tested and which scenarios are still missing.</p>
+{% if model_notice %}<p class="text-muted">{{ model_notice }}</p>{% endif %}
+<p class="text-muted mb-2">Follow each path from the scene opening. Hover over or expand a turn to read the exchange and evaluator notes.</p>
+<div class="coverage-path">
+  {% for session in roots %}{{ path(session, loop.index, true) }}{% endfor %}
+</div>

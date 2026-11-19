@@ -686,6 +686,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "sentence-transformers" },
     { name = "types-pyyaml" },
     { name = "yamale" },
 ]
@@ -751,6 +752,7 @@ requires-dist = [
     { name = "scikit-learn", marker = "extra == 'notebooks'", specifier = ">=1.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "seaborn", marker = "extra == 'notebooks'", specifier = ">=0.13.2" },
+    { name = "sentence-transformers", marker = "extra == 'dev'", specifier = ">=5.2.3" },
     { name = "sentence-transformers", marker = "extra == 'notebooks'", specifier = ">=5.2.3" },
     { name = "typer", specifier = ">=0.24.1" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20250822" },

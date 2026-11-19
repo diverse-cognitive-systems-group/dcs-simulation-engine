@@ -10,6 +10,7 @@ import re
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from dcs_simulation_engine.cli.app import app
@@ -350,6 +351,10 @@ def test_hitl_export_reports_incomplete_evaluations(tmp_path, monkeypatch, missi
 def test_hitl_export_preserves_branch_transcripts_and_feedback(tmp_path, monkeypatch):
     """Export complete transcripts once each, with stable IDs and links to their forks."""
     monkeypatch.setattr("dcs_simulation_engine.hitl.create._SCENARIOS_DIR", tmp_path)
+    embedder = Mock()
+    first_topic = {"Opening", "Attempt an action", "The action was blocked."}
+    embedder.encode.side_effect = lambda texts, **kwargs: [[1, 0] if text in first_topic else [0, 1] for text in texts]
+    monkeypatch.setattr("dcs_simulation_engine.reporting.semantic_diversity._model", lambda: embedder)
     evaluation = build_scaffold("NA", "Explore")
     evaluation["evaluator_id"] = "MW"
     evaluation["results"] = {"summary": "The simulator stayed in character.", "complete": False}
@@ -443,6 +448,14 @@ def test_hitl_export_preserves_branch_transcripts_and_feedback(tmp_path, monkeyp
     assert coverage.index("Branch 1.1.1") < coverage.index("Choose a safer action") < coverage.index("Continue the main path")
     assert coverage.count(">Liked</span>") == 3
     assert coverage.count(">Disliked</span>") == 1
+    scores = re.findall(r'<th scope="row">([^<]+)</th><td>(\d+)</td>\s*<td>([^<]+)</td>', coverage)
+    assert scores == [
+        ("Player input diversity", "3", "0.667"),
+        ("Conversation diversity", "3", "0.284"),
+        ("Opening scene diversity", "1", "Need 2 to compare"),
+    ]
+    texts = embedder.encode.call_args.args[0]
+    assert len(texts) == len(set(texts)) == 7
     assert "Expect a block." in coverage and "The action was blocked." in coverage
     assert json.loads(source.read_text(encoding="utf-8")) == evaluation
 

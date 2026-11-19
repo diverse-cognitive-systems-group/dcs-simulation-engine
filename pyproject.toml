@@ -67,6 +67,7 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest>=9.0.3,<10.0.0",
   "ruff>=0.12.10,<0.13.0",
+  "sentence-transformers>=5.2.3",
   "types-pyyaml>=6.0.12.20250822",
   "yamale>=6.0.0,<7.0.0",
 ]
