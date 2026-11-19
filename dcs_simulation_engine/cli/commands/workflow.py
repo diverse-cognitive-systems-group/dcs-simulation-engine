@@ -515,59 +515,45 @@ def _publish_characters_cmd(
 @hitl_app.command("create")
 def _hitl_create_cmd(
     hid: str = typer.Argument(..., help="Character HID (e.g. FW, NA, AC)."),
-    db: str = typer.Option(
-        ...,
-        "--db",
-        help="Character seed database to read from: dev or prod.",
-    ),
     game: str = typer.Option(
         "Explore",
         "--game",
-        help="Game name to use for all generated scenarios.",
+        help="Game name to use for the starting evaluation session.",
     ),
 ) -> None:
-    """Create a scenario scaffold for a character.
+    """Create an evaluation scaffold for a character.
 
-    Writes evaluations/characters/<hid>-test-cases.json with one
-    scenario group per pressure category, seeded with example player messages.
-    All conversation_history fields start empty — run `dcs hitl update`
-    to populate them via the engine.
+    Writes evaluations/characters/<hid>-evaluation.json with one session
+    scaffold and an empty transcript. Fill in evaluator_id and describe the
+    interaction you want to evaluate in the session's description.
+    The server validates the game and characters when the session starts.
     """
     _require_repo_checkout("hitl create")
 
-    from dcs_simulation_engine.hitl.generate import (
+    from dcs_simulation_engine.hitl.create import (
         build_scaffold,
-        load_character,
+        evaluation_path_for,
         save_scaffold,
-        scenarios_path_for,
     )
-    from dcs_simulation_engine.hitl.responses import compute_status_summary, render_status_summary
 
-    if db not in _VALID_DB:
-        _console.print(f"ERROR: --db must be 'dev' or 'prod', got {db!r}.", style="error")
-        raise typer.Exit(1)
-
-    out_path = scenarios_path_for(hid)
-    if out_path.exists():
+    try:
+        out_path = evaluation_path_for(hid)
+        save_scaffold(build_scaffold(hid, game), out_path)
+    except FileExistsError:
         _console.print(
-            f"ERROR: Test cases file already exists:\n  {out_path}\nRename or delete it before recreating.",
+            f"ERROR: Evaluation file already exists:\n  {out_path}\nRename or delete it before recreating.",
             style="error",
         )
         raise typer.Exit(1)
-
-    try:
-        character = load_character(hid, db)
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, OSError) as exc:
         _console.print(f"ERROR: {exc}", style="error")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
-    with _console.status(f"Building scenario scaffold for {hid!r}...", spinner="dots"):
-        scaffold = build_scaffold(character, game)
-
-    save_scaffold(scaffold, out_path)
     _console.print(f"[green]✔[/green] Scaffold written to: {out_path}", style="dim")
-    summary = compute_status_summary(out_path)
-    _console.print("\n" + render_status_summary(summary), style="dim")
+    _console.print(
+        "Created one evaluation session with an empty transcript. Fill in evaluator_id and the session description.",
+        style="dim",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -577,86 +563,63 @@ def _hitl_create_cmd(
 
 @hitl_app.command("update")
 def _hitl_update_cmd(
-    hid: str = typer.Argument(..., help="Character HID whose test cases file to update."),
+    hid: str = typer.Argument(..., help="Character HID whose evaluation to update."),
     only_history: bool = typer.Option(
         False,
         "--only-history",
-        help="Only sync shared conversation history, then report remaining work.",
+        help="Generate the main transcripts without running branches or collecting feedback.",
     ),
     skip_simulator_responses: bool = typer.Option(
         False,
         "--skip-simulator-responses",
-        help="Skip generating simulator responses for attempts after history sync.",
+        help="Use recorded simulator responses for feedback.",
     ),
     skip_player_feedback: bool = typer.Option(
         False,
         "--skip-player-feedback",
-        help="Skip collecting evaluator feedback after history sync.",
+        help="Save progress without prompting for feedback.",
     ),
-    regenerate_parent_session: bool = typer.Option(
+    replay_invalid_sessions: bool = typer.Option(
         False,
-        "--regenerate-parent-session",
-        help="Rebuild a missing parent session from the saved shared history.",
+        "--replay-invalid-sessions",
+        help="Replay invalid root or branch sessions after confirmation and backup.",
     ),
-    # simulator response + history options
-    server_url: str = typer.Option(
-        "http://localhost:8000",
-        "--server-url",
-        envvar="DCS_SERVER_URL",
-        help="(history/simulator) DCS server URL.",
-    ),
-    api_key: str = typer.Option(
-        "",
-        "--api-key",
-        envvar="DCS_API_KEY",
-        help="(history/simulator) DCS API key.",
-    ),
-    concurrency: int = typer.Option(
-        4,
-        "--concurrency",
-        help="(simulator) Maximum number of parallel scenario requests.",
-    ),
-    # feedback options
-    evaluator_id: str = typer.Option(
-        "",
-        "--evaluator-id",
-        help="(feedback) Your evaluator ID — recorded in each feedback entry.",
-    ),
-    # shared scenario-filter options
-    scenario_only: Optional[List[str]] = typer.Option(
+    server_url: str = typer.Option("http://localhost:8000", "--server-url", envvar="DCS_SERVER_URL"),
+    api_key: str = typer.Option("", "--api-key", envvar="DCS_API_KEY"),
+    concurrency: int = typer.Option(4, "--concurrency", min=1, help="Maximum parallel top-level sessions."),
+    session_only: Optional[List[int]] = typer.Option(
         None,
-        "--scenario",
-        help="Limit to these scenario IDs. Repeatable.",
+        "--session",
+        "--case",
+        help="Process this top-level session number (starting at 1). Repeatable.",
     ),
-    scenario_exclude: Optional[List[str]] = typer.Option(
+    session_exclude: Optional[List[int]] = typer.Option(
         None,
-        "--exclude",
-        help="Skip these scenario IDs. Repeatable.",
+        "--exclude-session",
+        "--exclude-case",
+        help="Skip this top-level session number. Repeatable.",
     ),
 ) -> None:
-    r"""Update a character's scenarios with shared history, simulator responses, and/or feedback.
+    """Update session transcripts, collect feedback, and refresh whole-file results.
 
-    Shared conversation history is always synchronized first. By default the
-    command then fills missing simulator responses for attempts and collects any
-    missing evaluator feedback before printing a final status summary.
-    At the rating prompt, press Enter to skip the displayed attempt
-    for this update run. Skipped attempts remain unrated and return next run.
-
-    \b
-    Examples:
-      dcs hitl update AC                                # history + responses + feedback
-      dcs hitl update AC --only-history                 # history only
-      dcs hitl update AC --skip-player-feedback         # history + responses
-      dcs hitl update AC --skip-simulator-responses     # history + feedback
+    Use the generated <hid>-evaluation.json file to supply PC messages and
+    branch conversations. Progress is saved after each turn and rating.
+    Press Enter to skip a rating so it can be revisited on the next run.
     """
     _require_repo_checkout("hitl update")
 
     import asyncio
 
     from dcs_simulation_engine.api.client import APIClient
+    from dcs_simulation_engine.hitl.create import evaluation_path_for
+    from dcs_simulation_engine.hitl.evaluation import (
+        load_evaluation_file,
+        render_evaluation_summary,
+        save_evaluation_file,
+        select_sessions,
+    )
     from dcs_simulation_engine.hitl.feedback import collect_feedback
-    from dcs_simulation_engine.hitl.generate import scenarios_path_for
-    from dcs_simulation_engine.hitl.responses import compute_status_summary, generate_responses, render_status_summary
+    from dcs_simulation_engine.hitl.responses import ReplayDeclined, generate_responses
 
     if only_history and (skip_simulator_responses or skip_player_feedback):
         _console.print(
@@ -665,87 +628,83 @@ def _hitl_update_cmd(
         )
         raise typer.Exit(1)
 
-    scenarios_path = scenarios_path_for(hid)
-    if not scenarios_path.is_file():
-        _console.print(
-            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs hitl create {hid} --db <dev|prod>` first.",
-            style="error",
-        )
-        raise typer.Exit(1)
+    try:
+        path = evaluation_path_for(hid)
+        if not path.is_file():
+            raise ValueError(f"Evaluation file not found: {path}\nRun `dcs hitl create {hid}` first.")
+        evaluation = load_evaluation_file(path)
+        if evaluation["character_hid"] != hid:
+            raise ValueError(f"The evaluation's character_hid must match {hid!r}.")
+        selected = select_sessions(evaluation, only=session_only, exclude=session_exclude)
+    except (ValueError, OSError) as exc:
+        _console.print(f"ERROR: {exc}", style="error")
+        raise typer.Exit(1) from exc
 
-    scenario_ids = list(scenario_only) if scenario_only else None
-    exclude_ids = list(scenario_exclude) if scenario_exclude else None
+    if selected and not skip_simulator_responses:
+        try:
+            with APIClient(url=server_url, api_key=api_key) as client:
+                client.health()
+                server_config = client.server_config()
+        except Exception as exc:
+            _console.print(f"ERROR: Could not connect to the DCS server at {server_url}.\nDetails: {exc}", style="error")
+            raise typer.Exit(1) from exc
+        if server_config.authentication_required:
+            _console.print(
+                "WARNING: `dcs hitl update` is intended for servers started with registration disabled.",
+                style="warning",
+                soft_wrap=True,
+            )
+        if not api_key.strip():
+            anonymous_url = f"{server_url.rstrip('/')}/api/player/anonymous"
+            anonymous_key_command = (
+                f"curl -s -X POST {anonymous_url} | python3 -c 'import sys, json; print(json.load(sys.stdin)[\"api_key\"])'"
+            )
+            _console.print(
+                "ERROR: DCS API key is required to generate simulator responses.\n"
+                f"Generate an anonymous key:\n  {anonymous_key_command}\n\n"
+                "Save the key as DCS_API_KEY or pass it with --api-key.",
+                style="error",
+                soft_wrap=True,
+            )
+            raise typer.Exit(1)
+
+    failed = False
+    try:
+        if selected and not skip_simulator_responses:
+            asyncio.run(
+                generate_responses(
+                    path,
+                    server_url=server_url,
+                    api_key=api_key,
+                    selected=selected,
+                    concurrency=concurrency,
+                    include_branches=not only_history,
+                    replay_invalid=replay_invalid_sessions,
+                    console=_console,
+                )
+            )
+        evaluation = load_evaluation_file(path)
+        save_evaluation_file(path, evaluation)
+        if not selected:
+            _console.print("No matching evaluation sessions selected.")
+        elif not (only_history or skip_player_feedback):
+            collect_feedback(path, selected=selected, console=_console)
+    except ReplayDeclined as exc:
+        _console.print(str(exc), style="warning")
+    except (KeyboardInterrupt, typer.Abort):
+        _console.print("Paused. Saved progress will be resumed on the next update.", style="warning")
+    except Exception as exc:
+        _console.print(f"ERROR: {exc}", style="error")
+        failed = True
 
     try:
-        with APIClient(url=server_url, api_key=api_key) as client:
-            client.health()
-            server_config = client.server_config()
-    except Exception as exc:  # noqa: BLE001
-        _console.print(
-            "ERROR: Could not connect to the DCS server.\n"
-            f"Tried: {server_url}\n"
-            "The DCS server needs to be running to use `dcs hitl update`.\n"
-            f"Details: {exc}",
-            style="error",
-        )
+        evaluation = load_evaluation_file(path)
+        _console.print("\n" + render_evaluation_summary(evaluation, selected), style="dim")
+    except (ValueError, OSError, IndexError) as exc:
+        _console.print(f"ERROR: Could not summarize the evaluation: {exc}", style="error")
+        failed = True
+    if failed:
         raise typer.Exit(1)
-
-    if server_config.authentication_required:
-        _console.print(
-            "WARNING: `dcs hitl update` is intended for servers started with registration disabled.",
-            style="warning",
-            soft_wrap=True,
-        )
-
-    if not api_key.strip():
-        anonymous_url = f"{server_url.rstrip('/')}/api/player/anonymous"
-        anonymous_key_command = (
-            f"curl -s -X POST {anonymous_url} "
-            "| python3 -c 'import sys, json; print(json.load(sys.stdin)[\"api_key\"])'"
-        )
-        _console.print(
-            "ERROR: DCS API key is required for `dcs hitl update`.\n"
-            "Generate an anonymous key:\n"
-            f"  {anonymous_key_command}\n\n"
-            "Save the printed value in your .env file as DCS_API_KEY=<key>, "
-            f"or run `dcs hitl update {hid} --api-key <key>`.",
-            style="error",
-            soft_wrap=True,
-        )
-        raise typer.Exit(1)
-
-    asyncio.run(
-        generate_responses(
-            path=scenarios_path,
-            server_url=server_url,
-            api_key=api_key,
-            only=scenario_ids,
-            include_ids=None,
-            exclude=exclude_ids,
-            concurrency=concurrency,
-            run_attempts=not (only_history or skip_simulator_responses),
-            regenerate_parent_session=regenerate_parent_session,
-            console=_console,
-        )
-    )
-
-    if not only_history and not skip_player_feedback:
-        collect_feedback(
-            scenarios_path,
-            evaluator_id=evaluator_id,
-            only=scenario_ids,
-            include_ids=None,
-            exclude=exclude_ids,
-            console=_console,
-        )
-
-    summary = compute_status_summary(
-        scenarios_path,
-        only=scenario_ids,
-        include_ids=None,
-        exclude=exclude_ids,
-    )
-    _console.print("\n" + render_status_summary(summary), style="dim")
 
 
 # ---------------------------------------------------------------------------
@@ -755,19 +714,14 @@ def _hitl_update_cmd(
 
 @hitl_app.command("export")
 def _hitl_export_cmd(
-    hid: str = typer.Argument(..., help="Character HID whose test cases file to export."),
-    evaluator_id: str = typer.Option(
-        "evaluator",
-        "--evaluator-id",
-        help="Evaluator ID recorded as the synthetic player in the results.",
-    ),
+    hid: str = typer.Argument(..., help="Character HID whose evaluation to export."),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output-dir",
         help="Override output directory (default: results/hitl_<hid>/ in the repo root).",
     ),
 ) -> None:
-    r"""Export a completed test cases file to a standard results directory.
+    r"""Export a character evaluation to a standard results directory.
 
     The output is compatible with `dcs report results`:
 
@@ -777,48 +731,31 @@ def _hitl_export_cmd(
     """
     repo_root = _require_repo_checkout("hitl export")
 
+    from dcs_simulation_engine.hitl.create import evaluation_path_for
     from dcs_simulation_engine.hitl.export import export_results
-    from dcs_simulation_engine.hitl.generate import scenarios_path_for
-    from dcs_simulation_engine.hitl.responses import compute_status_summary, render_status_summary
 
-    scenarios_path = scenarios_path_for(hid)
-    if not scenarios_path.is_file():
-        _console.print(
-            f"ERROR: test cases file not found: {scenarios_path}\nRun `dcs hitl create {hid} --db <dev|prod>` first.",
-            style="error",
-        )
-        raise typer.Exit(1)
-
-    if output_dir is None:
-        output_dir = repo_root / "results" / f"hitl_{hid}"
-
-    with _console.status(f"Exporting {hid} scenarios to results directory...", spinner="dots"):
-        out = export_results(
-            scenarios_path,
-            evaluator_id=evaluator_id,
-            output_dir=output_dir.resolve(),
-        )
+    try:
+        evaluation_path = evaluation_path_for(hid)
+        if not evaluation_path.is_file():
+            raise ValueError(f"Evaluation file not found: {evaluation_path}")
+        if output_dir is None:
+            output_dir = repo_root / "results" / f"hitl_{hid}"
+        with _console.status(f"Exporting {hid} evaluation to results directory...", spinner="dots"):
+            out = export_results(
+                evaluation_path,
+                output_dir=output_dir.resolve(),
+            )
+    except (ValueError, OSError) as exc:
+        _console.print(f"ERROR: {exc}", style="error", markup=False)
+        raise typer.Exit(1) from exc
 
     manifest = json.loads((out / "__manifest__.json").read_text(encoding="utf-8"))
-
-    summary = compute_status_summary(scenarios_path)
-    _console.print("\n" + render_status_summary(summary), style="dim")
-    if any(
-        summary[key] > 0
-        for key in (
-            "attempts_without_simulator_responses",
-            "attempts_without_player_feedback",
-            "empty_conversation_histories",
-            "conversation_histories_missing_simulator_reply",
-        )
-    ):
-        _console.print("Export is proceeding with the current scenario file state.", style="dim")
+    status = "complete" if manifest["evaluation_status"]["complete"] else "incomplete"
     _console.print(
         "\nExported results\n"
-        f"  {manifest['total_scenarios']}/{manifest['source_total_scenarios']} scenario(s) exported\n"
-        f"  {manifest['total_attempts']}/{manifest['source_total_attempts']} attempt(s) exported\n"
-        f"  {manifest['skipped_attempts']} incomplete attempt(s) skipped\n"
-        f"  {manifest['skipped_scenarios']} scenario(s) with zero completed attempts skipped",
+        f"  {manifest['total_sessions']} session(s) exported, including branches\n"
+        f"  {manifest['total_turns']} PC turn(s) exported\n"
+        f"  Evaluation status: {status}",
         style="dim",
     )
     _console.print(f"[green]✔[/green] Results written to: {out}", style="dim")

@@ -9,7 +9,7 @@ Renders:
 import pandas as pd
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
 from dcs_simulation_engine.reporting.auto.rendering.chart_utils import plotly_to_html, short_player_id, use_integer_ticks
-from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
+from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable, hitl_player_label
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
 _EVENT_COLUMNS = [
@@ -445,6 +445,7 @@ def render(data: AnalysisData) -> str:
                 rename=rename,
                 truncate_cols=["comment", "context"],
                 truncate_at=300,
+                player_label=hitl_player_label(data.manifest),
             )
         )
         parts.append(chart_caption("player_feedback", "inplay_feedback_table"))

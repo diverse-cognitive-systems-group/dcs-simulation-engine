@@ -183,6 +183,8 @@ def run_analysis(
     if sections is None:
         sections = SECTIONS
     rendered: list[tuple[str | None, str, str, str]] = []
+    if summary_fragment := simulation_quality.render_evaluation_summary(data):
+        rendered.append(("evaluation-summary", "Summary", summary_fragment, "top"))
     for anchor, section_title, module, kind in sections:
         if kind == "group":
             rendered.append((None, section_title, "", "group"))

@@ -14,6 +14,14 @@ from dcs_simulation_engine.reporting.auto.rendering.chart_utils import short_pla
 _PLAYER_ID_COLUMNS = {"player_id", "access_key"}
 
 
+def hitl_player_label(manifest: dict) -> str | None:
+    """Return the evaluator's display ID for HITL logs."""
+    if "evaluation_status" in manifest and "evaluator_id" in manifest:
+        evaluator_id = manifest["evaluator_id"]
+        return evaluator_id.strip() if isinstance(evaluator_id, str) and evaluator_id.strip() else "ID missing"
+    return None
+
+
 def df_to_datatable(
     df: pd.DataFrame,
     table_id: str,
@@ -25,6 +33,7 @@ def df_to_datatable(
     truncate_cols: list[str] | None = None,
     truncate_at: int = 400,
     column_filters: bool = True,
+    player_label: str | None = None,
 ) -> str:
     """Render *df* as a Bootstrap 5 DataTable HTML string.
 
@@ -52,6 +61,8 @@ def df_to_datatable(
         Character limit for truncated columns (default 400).
     column_filters:
         Add per-column search inputs in a second header row (default True).
+    player_label:
+        Display label for the player when every row belongs to one evaluator.
     """
     source_columns = list(columns) if columns else list(df.columns)
     display = df[columns].copy() if columns else df.copy()
@@ -62,7 +73,9 @@ def df_to_datatable(
         if source_col not in _PLAYER_ID_COLUMNS:
             continue
         display_col = rename.get(source_col, source_col) if rename else source_col
-        if display_col in display.columns:
+        if source_col == "player_id" and player_label is not None:
+            display[display_col] = _html.escape(player_label) if truncate_cols else player_label
+        elif display_col in display.columns:
             display[display_col] = display[display_col].map(short_player_id)
 
     # Convert timestamps to ISO strings for readability

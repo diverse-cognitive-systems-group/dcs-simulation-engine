@@ -20,7 +20,7 @@ def test_repo_only_guard_returns_repo_root(monkeypatch: pytest.MonkeyPatch, tmp_
 @pytest.mark.parametrize(
     "command",
     [
-        ["hitl", "create", "NA", "--db", "dev"],
+        ["hitl", "create", "NA"],
         ["hitl", "update", "NA"],
         ["hitl", "export", "NA"],
         ["publish", "characters", "missing-report.html"],

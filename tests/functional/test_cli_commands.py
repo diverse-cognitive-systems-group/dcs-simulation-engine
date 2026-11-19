@@ -9,8 +9,7 @@ import pytest
 from dcs_simulation_engine.cli.app import app
 from dcs_simulation_engine.cli.commands import engine as engine_command
 from dcs_simulation_engine.cli.commands import remote as remote_command
-from dcs_simulation_engine.hitl import Attempt, EvaluatorFeedback, Scenario, ScenarioFile, ScenarioGroup
-from dcs_simulation_engine.hitl.generate import save_scenario_file
+from dcs_simulation_engine.hitl.create import build_scaffold
 from dcs_simulation_engine.infra.remote import RemoteDeploymentResult, RemoteStatusResult
 from typer.testing import CliRunner
 
@@ -99,59 +98,67 @@ def test_cli_reporting_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_cli_hitl_evaluation_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Export a completed HITL scenario and generate a report from the exported results."""
-    scenarios_path = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[{"role": "assistant", "content": "You are in a quiet room."}],
-                        attempts=[
-                            Attempt(
-                                player_message="I inspect the table.",
-                                simulator_response="The table is plain and sturdy.",
-                                simulator_response_type="ai",
-                                evaluator_feedback=EvaluatorFeedback(
-                                    liked=True,
-                                    comment="Grounded.",
-                                    submitted_at="2026-04-23T00:05:00+00:00",
-                                ),
-                            )
-                        ],
-                    )
+    """Export a complete evaluation and include session descriptions in the character report."""
+    monkeypatch.setattr("dcs_simulation_engine.hitl.create._SCENARIOS_DIR", tmp_path)
+    source = tmp_path / "NA-evaluation.json"
+    evaluation = build_scaffold("NA", "Explore")
+    evaluation["evaluator_id"] = "reviewer & evaluator"
+    evaluation["results"] = {"summary": "Consistent with the character.\nSeveral replies stayed grounded & clear."}
+    rating = {"liked": True, "comment": "Grounded.", "doesnt_make_sense": False, "out_of_character": False, "other": False}
+    evaluation["sessions"][0].update(
+        session_id="root-id",
+        description="Establish the scene & mood.",
+        transcript=[
+            {"type": "message", "source": "npc", "content": "You are in a quiet room.", "evaluator_feedback": rating},
+            {
+                "type": "branch",
+                "session_id": "branch-id",
+                "description": "Check the response to an ambiguous request.",
+                "transcript": [
+                    {"type": "message", "source": "pc", "content": "I inspect the table."},
+                    {"type": "message", "source": "npc", "content": "The table is sturdy.", "evaluator_feedback": rating},
                 ],
-            )
+            },
         ],
     )
-    save_scenario_file(scenarios_path, scenario_file)
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
+    source.write_text(json.dumps(evaluation), encoding="utf-8")
 
     export_dir = tmp_path / "hitl_results"
     report_path = tmp_path / "hitl_report.html"
     export_result = _RUNNER.invoke(app, ["hitl", "export", "NA", "--output-dir", str(export_dir)])
+    assert export_result.exit_code == 0, export_result.output
+
     report_result = _RUNNER.invoke(
         app,
-        ["report", "results", str(export_dir), "--only", "metadata", "--report-path", str(report_path)],
+        ["report", "results", str(export_dir), "--only", "sim-quality", "--report-path", str(report_path)],
     )
-
-    assert export_result.exit_code == 0, export_result.output
     assert report_result.exit_code == 0, report_result.output
     assert (export_dir / "__manifest__.json").is_file()
-    assert "<html" in report_path.read_text(encoding="utf-8")
+    report_html = report_path.read_text(encoding="utf-8")
+    assert "<html" in report_html
+    character_report = (tmp_path / "per_character_quality" / "NA_quality_report.html").read_text(encoding="utf-8")
+    for report in (report_html, character_report):
+        first_section = report.split('<section id="section-', 1)[1].split("</section>", 1)[0]
+        assert first_section.startswith('evaluation-summary"')
+        assert "<h2>Summary</h2>" in first_section
+        assert "Evaluation status: <strong>Complete</strong>" in first_section
+        assert "Evaluator ID" in first_section and "reviewer &amp; evaluator" in first_section
+        assert "Consistent with the character.\nSeveral replies stayed grounded &amp; clear." in first_section
+        assert "Sessions (including branches)" in first_section and "PC turns" in first_section
+    for fragment in (
+        "Scenario Coverage",
+        "Scores Summary",
+        "In-Play Feedback",
+        "Full Event Log",
+        "Evaluator Description",
+        "Establish the scene &amp; mood.",
+        "Check the response to an ambiguous request.",
+        "The table is sturdy.",
+    ):
+        assert fragment in character_report
+    for table_id in ("event-feedback-table", "event-log-table"):
+        table = character_report.split(f'id="{table_id}"', 1)[1].split("</table>", 1)[0]
+        assert "<td>reviewer &amp; evaluator</td>" in table
 
 
 def test_cli_remote_lifecycle_cycle(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

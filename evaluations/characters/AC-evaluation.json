@@ -1,0 +1,172 @@
+{
+  "character_hid": "AC",
+  "evaluator_id": "",
+  "created_at": "2026-11-18T16:00:26.494833+00:00",
+  "updated_at": "2026-11-19T12:17:48.994176+00:00",
+  "description": "This human-in-the-loop character evaluation assesses the model’s fidelity and elucidates the bounds of its modeling capabilities across contexts so it can be used appropriately.",
+  "evaluator_instructions": "Thoroughly evaluate the character model instance across different interaction scenarios and conversation histories of varying lengths and types. If the character model is an ensemble that includes large language models (LLMs), test for common LLM failure modes such as hallucination and bias across those contexts. For example, check how well the model stays in character when presented with false information, ambiguous requests, demanding memory or reasoning tasks, or attempts to elicit behavior beyond the character’s abilities. Also check whether responses follow RPG-style interaction conventions, such as using 'yes, and' improvisation when the situation is ambiguous. Mark 'out of character' only when there is clear evidence that the response conflicts with the character’s established traits, abilities, knowledge, history, or other established details. Mark 'doesn’t make sense' when the response is too unclear or incoherent to understand or follow in context.",
+  "results": {
+    "complete": true,
+    "counts": {
+      "sessions": 1,
+      "turns": 6,
+      "rated": 7,
+      "thumbs_up": 7,
+      "thumbs_down": 0,
+      "doesnt_make_sense": 0,
+      "out_of_character": 0,
+      "other": 0
+    },
+    "response_types": {
+      "ai": 7,
+      "info": 0,
+      "error": 0,
+      "warning": 0
+    },
+    "summary": "AC stays in character for ... But situations like X, Y, Z continue to throw it off."
+  },
+  "sessions": [
+    {
+      "game": "Explore",
+      "npc_hid": "AC",
+      "pc_hid": "NA",
+      "session_id": "eed13b7e-acd1-46e7-957b-142694ee1dcf",
+      "description": "",
+      "transcript": [
+        {
+          "type": "info",
+          "source": "system",
+          "content": "**Player Character (you):** NA (a human with standard normative abilities.)\n\n**Simulator Character:** AC (a statistical classification algorithm that assigns inputs to categories using learned or specified decision rules, performing reliably on familiar data but failing in characteristic ways under ambiguity, distribution shift, or adversarial inputs.)\n\n---\n\n**Player Objective:** No objective; open-ended.\n\n**How to Play:** Describe your next action in first person (e.g. I <action>)) as NA.\n\n**How to Finish:** Type `/finish` to complete the game.\n\n---\n\n- Type `/abilities` for character abilities.\n- Type `/help` at any time to see this message again."
+        },
+        {
+          "type": "message",
+          "source": "npc",
+          "content": "You enter a new space. In this space, a living room with a desk: laptop showing a dashboard, phone, gym bag by the door, sofa.",
+          "evaluator_feedback": {
+            "liked": true,
+            "comment": "",
+            "doesnt_make_sense": false,
+            "out_of_character": false,
+            "other": false
+          }
+        },
+        {
+          "type": "branch",
+          "session_id": "cff4f167-be46-42a5-8282-bb7c5fa05450",
+          "description": "Trying to ignore AC and make sure AC doesn't engage.",
+          "transcript": [
+            {
+              "type": "message",
+              "source": "pc",
+              "content": "I grab the gym bag and sit on the sofa and look at what's in it."
+            },
+            {
+              "type": "message",
+              "source": "npc",
+              "content": "The gym bag is unzipped. Inside: reusable water bottle, running shoes, folded workout clothes, towel, wireless earbuds, small zip pouch, protein bar.",
+              "evaluator_feedback": {
+                "liked": true,
+                "comment": "",
+                "doesnt_make_sense": false,
+                "out_of_character": false,
+                "other": false
+              }
+            },
+            {
+              "type": "message",
+              "source": "pc",
+              "content": "I open the small pouch and check its contents while munching on the protein bar."
+            },
+            {
+              "type": "message",
+              "source": "npc",
+              "content": "Inside the pouch: lip balm, a few ibuprofen tablets, a hair tie, a folded receipt, and a spare USB-C charging cable.",
+              "evaluator_feedback": {
+                "liked": true,
+                "comment": "",
+                "doesnt_make_sense": false,
+                "out_of_character": false,
+                "other": false
+              }
+            }
+          ]
+        },
+        {
+          "type": "branch",
+          "session_id": "263cf4ed-91f4-415e-8929-b4e95598744b",
+          "description": "Trying to see if AC will show up on a different device.",
+          "transcript": [
+            {
+              "type": "message",
+              "source": "pc",
+              "content": "I grab the phone and check whats on it."
+            },
+            {
+              "type": "message",
+              "source": "npc",
+              "content": "Lock screen shows: calendar alert 'Client meeting — 9:00 AM' in 30 minutes; 3 unread emails; 1 new message from 'BrunchCrew'.",
+              "evaluator_feedback": {
+                "liked": true,
+                "comment": "",
+                "doesnt_make_sense": false,
+                "out_of_character": false,
+                "other": false
+              }
+            },
+            {
+              "type": "message",
+              "source": "pc",
+              "content": "I try and get past the lock screen."
+            },
+            {
+              "type": "message",
+              "source": "npc",
+              "content": "Phone unlocks. Home screen visible: calendar alert 'Client meeting — 9:00 AM' still showing; 3 unread emails; 1 new message from 'BrunchCrew'.",
+              "evaluator_feedback": {
+                "liked": true,
+                "comment": "",
+                "doesnt_make_sense": false,
+                "out_of_character": false,
+                "other": false
+              }
+            },
+            {
+              "type": "message",
+              "source": "pc",
+              "content": "I check what apps and features are available."
+            },
+            {
+              "type": "message",
+              "source": "npc",
+              "content": "App grid opens: Calendar (meeting alert), Mail (3 unread), Messages (BrunchCrew: 1), Maps, Notes, Reminders, Podcasts, Camera, Fitness, Settings.",
+              "evaluator_feedback": {
+                "liked": true,
+                "comment": "",
+                "doesnt_make_sense": false,
+                "out_of_character": false,
+                "other": false
+              }
+            },
+            {
+              "type": "message",
+              "source": "pc",
+              "content": "I read the emails and messages to see what's there."
+            },
+            {
+              "type": "message",
+              "source": "npc",
+              "content": "Mail: 3 unread — 'Client meeting: agenda attached' (client@client.com); 'Timesheet reminder' (hr@firm.com); 'Flight confirmation' (airline@). Messages (BrunchCrew): \"Who's in for Sunday brunch 11am?\"",
+              "evaluator_feedback": {
+                "liked": true,
+                "comment": "",
+                "doesnt_make_sense": false,
+                "out_of_character": false,
+                "other": false
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

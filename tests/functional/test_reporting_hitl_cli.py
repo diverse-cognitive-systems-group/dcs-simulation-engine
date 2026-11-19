@@ -6,13 +6,14 @@ Runs every dcs command and asserts:
 """
 
 import json
+import re
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
 from dcs_simulation_engine.cli.app import app
-from dcs_simulation_engine.hitl import Attempt, EvaluatorFeedback, Scenario, ScenarioFile, ScenarioGroup
-from dcs_simulation_engine.hitl.generate import save_scenario_file
+from dcs_simulation_engine.hitl.create import build_scaffold
 from typer.testing import CliRunner
 
 # ---------------------------------------------------------------------------
@@ -184,866 +185,75 @@ def test_report_results_each_section(tmp_path, slug):
 
 
 @pytest.mark.functional
-def test_hitl_create(tmp_path, monkeypatch):
-    """Dcs hitl create NA --db dev creates a valid test cases scaffold file."""
-    test_cases_file = tmp_path / "NA-test-cases.json"
+@pytest.mark.parametrize("hid, game", [("NA", "Explore"), ("unseeded-character", "Custom Game")])
+def test_hitl_create(tmp_path, monkeypatch, hid, game):
+    """Create an evaluation with one session scaffold and an empty transcript."""
+    evaluation_file = tmp_path / f"{hid}-evaluation.json"
+    manual_test_cases_file = tmp_path / f"{hid}-evaluation-cases.json"
+    manual_contents = '{"manually_edited": true}\n'
+    manual_test_cases_file.write_text(manual_contents, encoding="utf-8")
+    monkeypatch.setattr("dcs_simulation_engine.hitl.create._SCENARIOS_DIR", tmp_path)
 
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-
-    result = _RUNNER.invoke(app, ["hitl", "create", "NA", "--db", "dev"])
-
-    assert result.exit_code == 0, result.output
-    assert test_cases_file.exists(), f"Expected test cases file at {test_cases_file}"
-    assert "Scenario File Summary" in result.output
-    assert "scenario group(s)" in result.output
-    assert "attempt(s) without simulator responses" in result.output
-    assert "attempt(s) without player feedback" in result.output
-    assert "Next steps:" not in result.output
-
-    data = json.loads(test_cases_file.read_text())
-    assert data["npc_hid"] == "NA"
-    assert len(data["scenario_groups"]) >= 12
-    # All attempts start empty (no engine responses yet)
-    for group in data["scenario_groups"]:
-        for scenario in group["scenarios"]:
-            for attempt in scenario["attempts"]:
-                assert attempt["simulator_response"] is None
-
-
-# ---------------------------------------------------------------------------
-# hitl update
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def feedback_update_file(tmp_path, monkeypatch):
-    """Provide two unrated responses and stub the update's server preparation."""
-    path = tmp_path / "NA-test-cases.json"
-    save_scenario_file(
-        path,
-        ScenarioFile(
-            npc_hid="NA",
-            generated_at="2026-04-23T00:00:00+00:00",
-            scenario_groups=[
-                ScenarioGroup(
-                    group_id="test-group",
-                    label="Test Group",
-                    expected_failure_mode="Test failure mode",
-                    pressure_category="test-pressure",
-                    scenarios=[
-                        Scenario(
-                            id="NA-test-001",
-                            description="Test scenario",
-                            game="Explore",
-                            pc_hid="NA",
-                            conversation_history=[{"role": "assistant", "content": "Shared opening."}],
-                            attempts=[
-                                Attempt(player_message="First action", simulator_response="First response"),
-                                Attempt(player_message="Second action", simulator_response="Second response"),
-                            ],
-                        )
-                    ],
-                )
-            ],
-        ),
-    )
-
-    class _FakeAPIClient:
-        def __init__(self, **kwargs):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-        def health(self):
-            return {"status": "ok"}
-
-        def server_config(self):
-            return type("ServerConfig", (), {"authentication_required": False})()
-
-    async def _fake_generate_responses(**kwargs):
-        pass
-
-    monkeypatch.setattr("dcs_simulation_engine.hitl.generate.scenarios_path_for", lambda hid: path)
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
-    return path
-
-
-@pytest.mark.functional
-def test_hitl_update_skips_one_attempt_and_revisits_next_run(feedback_update_file):
-    """Skipping defers only the displayed attempt while other ratings persist."""
-    command = ["hitl", "update", "NA", "--api-key", "test-key"]
-    result = _RUNNER.invoke(app, command, input="s\nskip\n\nd\ns\nNeeds review\n")
+    command = ["hitl", "create", hid]
+    if game != "Explore":
+        command.extend(["--game", game])
+    started_at = datetime.now(timezone.utc)
+    result = _RUNNER.invoke(app, command)
 
     assert result.exit_code == 0, result.output
-    assert "Enter to skip for now" in result.output
-    assert result.output.count("Enter 'u' for up, 'd' for down, or press Enter to skip.") == 2
-    assert "It remains unrated and will appear again on the next hitl update run." in result.output
-    assert "1 attempt(s) skipped" in result.output
-    assert "All feedback recorded" not in result.output
-    assert "1/2 attempt(s) without player feedback" in result.output
-    assert result.output.count("First response") == 1
-    assert result.output.count("Second response") == 1
-    attempts = json.loads(feedback_update_file.read_text())["scenario_groups"][0]["scenarios"][0]["attempts"]
-    assert attempts[0]["evaluator_feedback"] is None
-    saved_feedback = attempts[1]["evaluator_feedback"]
-    assert saved_feedback["liked"] is False
-    assert saved_feedback["doesnt_make_sense"] is True
-    assert saved_feedback["comment"] == "Needs review"
+    assert evaluation_file.is_file()
+    assert "one evaluation session with an empty transcript" in " ".join(result.output.split())
+    assert "evaluator_id" in result.output
 
-    result = _RUNNER.invoke(app, command, input="u\n\n")
-
-    assert result.exit_code == 0, result.output
-    assert "First response" in result.output
-    assert "Second response" not in result.output
-    assert "All feedback recorded" in result.output
-    assert "0/2 attempt(s) without player feedback" in result.output
-    attempts = json.loads(feedback_update_file.read_text())["scenario_groups"][0]["scenarios"][0]["attempts"]
-    assert attempts[0]["evaluator_feedback"]["liked"] is True
-    assert attempts[1]["evaluator_feedback"] == saved_feedback
-
-
-@pytest.mark.functional
-@pytest.mark.parametrize("pause", [False, True])
-def test_hitl_update_skips_without_writing_feedback(feedback_update_file, pause):
-    """Skipping all items or pausing leaves responses unrated without looping."""
-    original = feedback_update_file.read_bytes()
-    result = _RUNNER.invoke(
-        app,
-        ["hitl", "update", "NA", "--api-key", "test-key"],
-        input="\n" if pause else "\n\n",
-    )
-
-    assert result.exit_code == 0, result.output
-    assert feedback_update_file.read_bytes() == original
-    assert "All feedback recorded" not in result.output
-    assert "2/2 attempt(s) without player feedback" in result.output
-    assert result.output.count("First response") == 1
-    assert result.output.count("Second response") == 1
-    assert "Flags" not in result.output
-    assert "Comment" not in result.output
-    if pause:
-        assert "Paused after 0 entries recorded, 1 attempt(s) skipped" in result.output
-        assert "including skipped attempts" in result.output
-    else:
-        assert "0 feedback entries recorded, 2 attempt(s) skipped" in result.output
-        assert "Run hitl update again to revisit skipped attempts" in result.output
-
-
-@pytest.mark.functional
-def test_hitl_update_generates_opening_scene_before_attempts(tmp_path, monkeypatch):
-    """Dcs hitl update stores shared opening history, then branches per attempt."""
-
-    class _FakeRun:
-        def __init__(
-            self,
-            responses_by_message: dict[str, str],
-            step_calls: list[tuple[str, str]],
-            branch_name: str,
-            session_id: str,
-        ) -> None:
-            self._responses_by_message = responses_by_message
-            self._step_calls = step_calls
-            self._branch_name = branch_name
-            self.session_id = session_id
-            self._simulator_output = ""
-            self._events = []
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def step(self, user_input: str = ""):
-            self._step_calls.append((self._branch_name, user_input))
-            if user_input == "":
-                self._simulator_output = "You enter a new space. In this space, a quiet machine waits."
-            else:
-                self._simulator_output = self._responses_by_message[user_input]
-            self._events.append(
-                type(
-                    "Event",
-                    (),
-                    {"event_type": "ai", "content": self._simulator_output},
-                )()
-            )
-            return self
-
-        @property
-        def simulator_output(self) -> str:
-            return self._simulator_output
-
-        @property
-        def history(self):
-            return list(self._events)
-
-    class _FakeAPIClient:
-        def __init__(self, *, url: str, api_key: str) -> None:
-            _ = (url, api_key)
-            self._branch_count = 0
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def health(self):
-            return {"status": "ok"}
-
-        def server_config(self):
-            return type("ServerConfig", (), {"authentication_required": True})()
-
-        def start_game(self, body):
-            assert body.game == "Explore"
-            assert body.pc_choice == "NA"
-            assert body.npc_choice == "NA"
-            assert body.source == "hitl"
-            return _FakeRun(_responses_by_message, _step_calls, "root", "root-session")
-
-        def branch_session(self, session_id, *, api_key=None):
-            assert session_id == "root-session"
-            assert api_key == "test-key"
-            self._branch_count += 1
-            return _FakeRun(
-                _responses_by_message,
-                _step_calls,
-                f"branch-{self._branch_count}",
-                f"branch-session-{self._branch_count}",
-            )
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-22T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[],
-                        attempts=[
-                            Attempt(player_message="I look around"),
-                            Attempt(player_message="I touch the wall"),
-                        ],
-                    )
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    _responses_by_message = {
-        "I look around": "The machine gives a low mechanical hum.",
-        "I touch the wall": "A cold vibration travels through the wall.",
+    data = json.loads(evaluation_file.read_text(encoding="utf-8"))
+    assert set(data) == {
+        "character_hid", "evaluator_id", "created_at", "updated_at", "description",
+        "evaluator_instructions", "results", "sessions",
     }
-    _step_calls: list[str] = []
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
+    assert data["character_hid"] == hid
+    assert data["evaluator_id"] == ""
+    assert started_at <= datetime.fromisoformat(data["created_at"]) <= datetime.now(timezone.utc)
+    assert data["updated_at"] == data["created_at"]
+    assert data["description"] == (
+        "This human-in-the-loop character evaluation assesses the model’s fidelity and elucidates the bounds "
+        "of its modeling capabilities across contexts so it can be used appropriately."
     )
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
-
-    help_result = _RUNNER.invoke(app, ["hitl", "update", "--help"])
-    assert help_result.exit_code == 0, help_result.output
-    assert "--include-empty" not in help_result.output
-
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
-
-    assert result.exit_code == 0, result.output
-    assert "registration disabled" in result.output
-    assert _step_calls == [
-        ("root", ""),
-        ("branch-1", "I look around"),
-        ("branch-2", "I touch the wall"),
-    ]
-
-    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
-    scenario = data["scenario_groups"][0]["scenarios"][0]
-
-    assert scenario["conversation_history"] == [
+    assert "common LLM failure modes" in data["evaluator_instructions"]
+    assert data["results"] is None
+    assert data["sessions"] == [
         {
-            "role": "assistant",
-            "content": "You enter a new space. In this space, a quiet machine waits.",
-        },
+            "game": game,
+            "npc_hid": hid,
+            "pc_hid": "NA",
+            "session_id": None,
+            "description": "",
+            "transcript": [],
+        }
     ]
-    assert scenario["parent_session_id"] == "root-session"
-    assert "Scenario File Summary" in result.output
-    assert "0/2 attempt(s) without simulator responses" in result.output
-    assert "2/2 attempt(s) without player feedback" in result.output
-    assert scenario["attempts"][0]["simulator_response"] == "The machine gives a low mechanical hum."
-    assert scenario["attempts"][1]["simulator_response"] == "A cold vibration travels through the wall."
-
-
-@pytest.mark.functional
-def test_hitl_update_only_history_appends_missing_simulator_reply(tmp_path, monkeypatch):
-    """Dcs hitl update --only-history repairs a trailing player turn without branching attempts."""
-
-    class _FakeAPIClient:
-        def __init__(self, *, url: str, api_key: str) -> None:
-            _ = url
-            assert api_key == "test-key"
-            self.branch_calls = 0
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def health(self):
-            return {"status": "ok"}
-
-        def server_config(self):
-            return type("ServerConfig", (), {"authentication_required": False})()
-
-        def _ws_status(self, *, session_id, api_key=None, include_opening=False, expect_replay=False):
-            _ = (session_id, include_opening, expect_replay)
-            assert api_key == "test-key"
-            session_meta = type("Meta", (), {"session_id": "existing-parent"})()
-            status_frame = type(
-                "Status",
-                (),
-                {"session_id": "existing-parent", "turns": 1, "exited": False, "exit_reason": None},
-            )()
-            return session_meta, status_frame
-
-        def _ws_open_and_advance(
-            self,
-            *,
-            session_id,
-            api_key=None,
-            text=None,
-            include_opening=False,
-            expect_replay=False,
-        ):
-            _ = (session_id, include_opening, expect_replay)
-            assert api_key == "test-key"
-            events = []
-            if text == "I call out":
-                events.append(type("Event", (), {"event_type": "ai", "content": "A distant voice answers back."})())
-            turn_end = type("TurnEnd", (), {"session_id": "existing-parent", "turns": 2, "exited": False})()
-            session_meta = type("Meta", (), {"session_id": "existing-parent"})()
-            return session_meta, events, turn_end
-
-        def branch_session(self, session_id, *, api_key=None):
-            _ = (session_id, api_key)
-            self.branch_calls += 1
-            raise AssertionError("branch_session should not be called for --only-history")
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        parent_session_id="existing-parent",
-                        conversation_history=[
-                            {"role": "assistant", "content": "A machine waits in the room."},
-                            {"role": "user", "content": "I call out"},
-                        ],
-                        attempts=[Attempt(player_message="I look around")],
-                    )
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
-    monkeypatch.setenv("DCS_API_KEY", "test-key")
-
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--only-history"])
-
-    assert result.exit_code == 0, result.output
-    assert "Scenario File Summary" in result.output
-    assert "1/1 attempt(s) without simulator responses" in result.output
-    assert "0/1 conversation history/histories missing a simulator reply" in result.output
-
-    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
-    scenario = data["scenario_groups"][0]["scenarios"][0]
-    assert scenario["conversation_history"][-1] == {
-        "role": "assistant",
-        "content": "A distant voice answers back.",
-    }
-    assert scenario["attempts"][0]["simulator_response"] is None
-
-
-@pytest.mark.functional
-def test_hitl_update_regenerates_missing_parent_and_writes_new_field_name(tmp_path, monkeypatch):
-    """Dcs hitl update can rebuild a missing parent session from saved history."""
-
-    class _FakeRun:
-        def __init__(
-            self,
-            responses_by_message: dict[str, str],
-            step_calls: list[tuple[str, str]],
-            branch_name: str,
-            session_id: str,
-        ) -> None:
-            self._responses_by_message = responses_by_message
-            self._step_calls = step_calls
-            self._branch_name = branch_name
-            self.session_id = session_id
-            self._events = []
-
-        def step(self, user_input: str = ""):
-            self._step_calls.append((self._branch_name, user_input))
-            content = self._responses_by_message[user_input]
-            self._events.append(type("Event", (), {"event_type": "ai", "content": content})())
-            return self
-
-        @property
-        def history(self):
-            return list(self._events)
-
-    class _FakeAPIClient:
-        def __init__(self, *, url: str, api_key: str) -> None:
-            _ = (url, api_key)
-            self._branch_count = 0
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def health(self):
-            return {"status": "ok"}
-
-        def server_config(self):
-            return type("ServerConfig", (), {"authentication_required": False})()
-
-        def _ws_status(self, *, session_id, api_key=None, include_opening=False, expect_replay=False):
-            _ = (api_key, include_opening, expect_replay)
-            if session_id == "missing-parent":
-                raise RuntimeError("Session not found")
-            session_meta = type("Meta", (), {"session_id": session_id})()
-            status_frame = type("Status", (), {"session_id": session_id, "turns": 1, "exited": False, "exit_reason": None})()
-            return session_meta, status_frame
-
-        def start_game(self, body):
-            assert body.source == "hitl"
-            return _FakeRun(_responses_by_message, _step_calls, "root", "rebuilt-parent")
-
-        def branch_session(self, session_id, *, api_key=None):
-            assert session_id == "rebuilt-parent"
-            assert api_key == "test-key"
-            self._branch_count += 1
-            return _FakeRun(
-                _responses_by_message,
-                _step_calls,
-                f"branch-{self._branch_count}",
-                f"branch-session-{self._branch_count}",
-            )
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    test_cases_file.write_text(
-        json.dumps(
-            {
-                "npc_hid": "NA",
-                "generated_at": "2026-04-23T00:00:00+00:00",
-                "scenario_groups": [
-                    {
-                        "group_id": "test-group",
-                        "label": "Test Group",
-                        "expected_failure_mode": "Test failure mode",
-                        "pressure_category": "test-pressure",
-                        "scenarios": [
-                            {
-                                "id": "NA-test-001",
-                                "description": "Test scenario",
-                                "game": "Explore",
-                                "pc_hid": "NA",
-                                "context_session_id": "missing-parent",
-                                "conversation_history": [{"role": "assistant", "content": "A quiet machine waits."}],
-                                "attempts": [
-                                    {
-                                        "player_message": "I inspect the machine",
-                                        "simulator_response": None,
-                                        "evaluator_feedback": None,
-                                    }
-                                ],
-                            }
-                        ],
-                    }
-                ],
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-    _responses_by_message = {
-        "": "A quiet machine waits.",
-        "I inspect the machine": "The machine hums and turns toward you.",
-    }
-    _step_calls: list[tuple[str, str]] = []
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
-
-    result = _RUNNER.invoke(
-        app,
-        [
-            "hitl",
-            "update",
-            "NA",
-            "--skip-player-feedback",
-            "--regenerate-parent-session",
-            "--api-key",
-            "test-key",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert _step_calls == [
-        ("root", ""),
-        ("branch-1", "I inspect the machine"),
-    ]
-
-    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
-    scenario = data["scenario_groups"][0]["scenarios"][0]
-    assert "context_session_id" not in scenario
-    assert scenario["parent_session_id"] == "rebuilt-parent"
-    assert scenario["attempts"][0]["simulator_response"] == "The machine hums and turns toward you."
-
-
-@pytest.mark.functional
-def test_hitl_update_records_validation_error_as_simulator_response(tmp_path, monkeypatch):
-    """Non-AI branch events are stored as simulator responses with metadata."""
-
-    class _FakeRun:
-        def __init__(self, step_calls: list[tuple[str, str]], branch_name: str, session_id: str) -> None:
-            self._step_calls = step_calls
-            self._branch_name = branch_name
-            self.session_id = session_id
-            self._events = []
-
-        def step(self, user_input: str = ""):
-            self._step_calls.append((self._branch_name, user_input))
-            if user_input == "":
-                payloads = [{"event_type": "ai", "content": "A quiet room waits around you."}]
-            elif user_input == "Try blocked action":
-                payloads = [
-                    {"event_type": "error", "content": "Validation blocked that action."},
-                    {"event_type": "info", "content": "Try a grounded physical action instead."},
-                ]
-            else:
-                payloads = [{"event_type": "ai", "content": "The room remains still."}]
-            for payload in payloads:
-                self._events.append(type("Event", (), payload)())
-            return self
-
-        @property
-        def history(self):
-            return list(self._events)
-
-        @property
-        def turns(self):
-            return 1
-
-        @property
-        def is_complete(self):
-            return False
-
-    class _FakeAPIClient:
-        def __init__(self, *, url: str, api_key: str) -> None:
-            _ = (url, api_key)
-            self._branch_count = 0
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def health(self):
-            return {"status": "ok"}
-
-        def server_config(self):
-            return type("ServerConfig", (), {"authentication_required": False})()
-
-        def start_game(self, body):
-            _ = body
-            return _FakeRun(_step_calls, "root", "root-session")
-
-        def branch_session(self, session_id, *, api_key=None):
-            assert session_id == "root-session"
-            _ = api_key
-            self._branch_count += 1
-            return _FakeRun(_step_calls, f"branch-{self._branch_count}", f"branch-session-{self._branch_count}")
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[],
-                        attempts=[Attempt(player_message="Try blocked action")],
-                    )
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    _step_calls: list[tuple[str, str]] = []
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _FakeAPIClient)
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.APIClient", _FakeAPIClient)
-
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback", "--api-key", "test-key"])
-
-    assert result.exit_code == 0, result.output
-    assert "Scenario File Summary" in result.output
-    assert "0/1 attempt(s) without simulator responses" in result.output
-
-    data = json.loads(test_cases_file.read_text(encoding="utf-8"))
-    attempt = data["scenario_groups"][0]["scenarios"][0]["attempts"][0]
-    assert attempt["simulator_response"] == "Validation blocked that action."
-    assert attempt["simulator_response_type"] == "error"
-    assert attempt["simulator_extra_events"] == [{"event_type": "info", "content": "Try a grounded physical action instead."}]
-
-
-@pytest.mark.functional
-def test_hitl_status_summary_respects_selected_subset(tmp_path):
-    """Shared HITL summary counts only the selected scenarios when filtered."""
-    from dcs_simulation_engine.hitl.responses import compute_status_summary
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Selected scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[],
-                        attempts=[Attempt(player_message="One"), Attempt(player_message="Two")],
-                    ),
-                    Scenario(
-                        id="NA-test-002",
-                        description="Excluded scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[{"role": "assistant", "content": "Ready."}],
-                        attempts=[
-                            Attempt(
-                                player_message="Done",
-                                simulator_response="Complete",
-                                simulator_response_type="ai",
-                            )
-                        ],
-                    ),
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    summary = compute_status_summary(test_cases_file, only=["NA-test-001"])
-
-    assert summary["scenario_groups_total"] == 1
-    assert summary["scenarios_total"] == 1
-    assert summary["attempts_total"] == 2
-    assert summary["attempts_without_simulator_responses"] == 2
-    assert summary["attempts_without_player_feedback"] == 0
-    assert summary["empty_conversation_histories"] == 1
-    assert summary["conversation_histories_missing_simulator_reply"] == 0
-
-
-@pytest.mark.functional
-def test_hitl_update_without_key_reports_anonymous_key_command(tmp_path, monkeypatch):
-    """No-key anonymous runs should print a copyable key bootstrap command."""
-
-    class _AnonymousAPIClient:
-        def __init__(self, *, url: str, api_key: str) -> None:
-            _ = (url, api_key)
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def health(self):
-            return {"status": "ok"}
-
-        def server_config(self):
-            return type("ServerConfig", (), {"authentication_required": False})()
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[],
-                        attempts=[Attempt(player_message="I look around")],
-                    )
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _AnonymousAPIClient)
-
-    called = {"generate": False}
-
-    async def _fake_generate_responses(**kwargs):
-        called["generate"] = True
-        _ = kwargs
-
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
-
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
-
+    assert manual_test_cases_file.read_text(encoding="utf-8") == manual_contents
+
+    # An evaluator's edits must survive an accidental second create command.
+    data["sessions"][0]["description"] = "My handwritten setup."
+    data["results"] = {"summary": "My handwritten results."}
+    evaluation_file.write_text(json.dumps(data), encoding="utf-8")
+    result = _RUNNER.invoke(app, command)
     assert result.exit_code == 1
-    assert "DCS API key is required" in result.output
-    assert "Save the printed value in your .env file as DCS_API_KEY=<key>" in result.output
-    assert "curl -s -X POST" in result.output
-    assert "http://localhost:8000/api/player/anonymous" in result.output
-    assert "dcs hitl update NA --api-key" in result.output
-    assert called["generate"] is False
+    assert "already exists" in result.output
+    assert json.loads(evaluation_file.read_text(encoding="utf-8")) == data
+    assert manual_test_cases_file.read_text(encoding="utf-8") == manual_contents
 
 
 @pytest.mark.functional
-def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
-    """Dcs hitl update should fail fast with a clear server-running message."""
+@pytest.mark.parametrize("hid", ["../outside", "nested\\character"])
+def test_hitl_create_rejects_paths_as_hids(tmp_path, monkeypatch, hid):
+    """An HID cannot select a different output path."""
+    output_dir = tmp_path / "evaluations"
+    monkeypatch.setattr("dcs_simulation_engine.hitl.create._SCENARIOS_DIR", output_dir)
 
-    class _UnavailableAPIClient:
-        def __init__(self, *, url: str, api_key: str) -> None:
-            _ = (url, api_key)
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def health(self):
-            raise RuntimeError("connection refused")
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        conversation_history=[],
-                        attempts=[Attempt(player_message="I look around")],
-                    )
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-    monkeypatch.setattr("dcs_simulation_engine.api.client.APIClient", _UnavailableAPIClient)
-
-    called = {"generate": False}
-
-    async def _fake_generate_responses(**kwargs):
-        called["generate"] = True
-        _ = kwargs
-
-    monkeypatch.setattr("dcs_simulation_engine.hitl.responses.generate_responses", _fake_generate_responses)
-
-    result = _RUNNER.invoke(app, ["hitl", "update", "NA", "--skip-player-feedback"])
-
+    result = _RUNNER.invoke(app, ["hitl", "create", hid])
     assert result.exit_code == 1
-    assert "Could not connect to the DCS server" in result.output
-    assert "needs to be running" in result.output
-    assert called["generate"] is False
+    assert "character HID without path components" in result.output
+    assert not list(tmp_path.iterdir())
 
 
 # ---------------------------------------------------------------------------
@@ -1051,190 +261,181 @@ def test_hitl_update_reports_when_server_is_not_running(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+_RATING = {
+    "liked": True,
+    "comment": "Grounded.",
+    "doesnt_make_sense": False,
+    "out_of_character": False,
+    "other": False,
+}
+
+
 @pytest.mark.functional
-def test_hitl_export(tmp_path, monkeypatch):
-    """Dcs hitl export NA writes a standard results directory."""
-    from dcs_simulation_engine.hitl.generate import build_scaffold, load_character, save_scaffold
+@pytest.mark.parametrize(
+    "missing, diagnostic",
+    [
+        ("evaluator_id", "Missing evaluator_id"),
+        ("response", "missing a simulator response"),
+        ("feedback", "missing evaluator feedback"),
+        ("summary", "Missing evaluator summary"),
+    ],
+)
+def test_hitl_export_reports_incomplete_evaluations(tmp_path, monkeypatch, missing, diagnostic):
+    """Export work in progress and show which conditions still prevent completion."""
+    monkeypatch.setattr("dcs_simulation_engine.hitl.create._SCENARIOS_DIR", tmp_path)
+    evaluation = build_scaffold("NA", "Explore")
+    evaluation["evaluator_id"] = "MW"
+    evaluation["results"] = {"summary": "The simulator stayed in character.", "complete": True}
+    session = evaluation["sessions"][0]
+    session["transcript"] = [{"type": "message", "source": "npc", "content": "Opening", "evaluator_feedback": _RATING}]
+    if missing == "evaluator_id":
+        del evaluation["evaluator_id"]
+    elif missing == "response":
+        session["transcript"].append({"type": "message", "source": "pc", "content": "What happened?"})
+    elif missing == "feedback":
+        session["transcript"][0]["evaluator_feedback"] = None
+    else:
+        evaluation["results"]["summary"] = " "
 
-    # Build a scaffold directly so we have a test cases file to export from.
-    character = load_character("NA", "dev")
-    scaffold = build_scaffold(character, "Explore")
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    save_scaffold(scaffold, test_cases_file)
-
-    monkeypatch.setattr(
-        "dcs_simulation_engine.hitl.generate.scenarios_path_for",
-        lambda hid: tmp_path / f"{hid}-test-cases.json",
-    )
-
+    source = tmp_path / "NA-evaluation.json"
+    source.write_text(json.dumps(evaluation), encoding="utf-8")
     out_dir = tmp_path / "hitl_export"
-    result = _RUNNER.invoke(
-        app,
-        ["hitl", "export", "NA", "--output-dir", str(out_dir)],
-    )
+    result = _RUNNER.invoke(app, ["hitl", "export", "NA", "--output-dir", str(out_dir)])
 
     assert result.exit_code == 0, result.output
-    assert "Scenario File Summary" in result.output
-    assert "Export is proceeding with the current scenario file state." in result.output
-    assert "Exported results" in result.output
-    assert "0/" in result.output
-    assert out_dir.exists(), f"Expected output directory at {out_dir}"
-    assert (out_dir / "__manifest__.json").exists()
-    assert (out_dir / "sessions.json").exists()
-    assert (out_dir / "session_events.json").exists()
-
+    assert "Evaluation status: incomplete" in result.output
     manifest = json.loads((out_dir / "__manifest__.json").read_text(encoding="utf-8"))
-    sessions = json.loads((out_dir / "sessions.json").read_text(encoding="utf-8"))
-    assert manifest["total_scenarios"] == 0
-    assert manifest["total_attempts"] == 0
-    assert manifest["source_total_scenarios"] > 0
-    assert manifest["source_total_attempts"] > 0
-    assert manifest["skipped_scenarios"] == manifest["source_total_scenarios"]
-    assert manifest["skipped_attempts"] == manifest["source_total_attempts"]
-    assert sessions == []
+    assert manifest["evaluation_status"]["complete"] is False
+    assert any(diagnostic in issue for issue in manifest["evaluation_status"]["issues"])
+    events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
+    assert events[0]["content"] == "Opening"
+    if missing == "response":
+        assert events[-1]["content"] == "What happened?"
+    if missing == "feedback":
+        assert "feedback" not in events[0]
+    if missing in {"evaluator_id", "feedback", "summary"}:
+        report_path = tmp_path / "incomplete.html"
+        result = _RUNNER.invoke(
+            app,
+            ["report", "results", str(out_dir), "--only", "sim-quality", "--report-path", str(report_path)],
+        )
+        assert result.exit_code == 0, result.output
+        character_report = tmp_path / "per_character_quality" / "NA_quality_report.html"
+        for path in (report_path, character_report):
+            report = path.read_text(encoding="utf-8")
+            first_section = report.split('<section id="section-', 1)[1].split("</section>", 1)[0]
+            assert first_section.startswith('evaluation-summary"')
+            assert "<h2>Summary</h2>" in first_section
+            assert "Evaluation status: <strong>Incomplete</strong>" in first_section
+            assert diagnostic in first_section
+            assert "Finish the evaluation before publishing." in first_section
+            if missing == "summary":
+                assert "No written summary provided." in first_section
+        if missing == "evaluator_id":
+            sessions = json.loads((out_dir / "sessions.json").read_text(encoding="utf-8"))
+            assert sessions[0]["player_id"] is None
+            players = json.loads((out_dir / "players.json").read_text(encoding="utf-8"))
+            assert players == []
+            report = character_report.read_text(encoding="utf-8")
+            for table_id in ("event-feedback-table", "event-log-table"):
+                table = report.split(f'id="{table_id}"', 1)[1].split("</table>", 1)[0]
+                head, body = table.split("<tbody>", 1)
+                player_column = re.findall(r"<th>(.*?)</th>", head).index("Player")
+                cells = re.findall(r"<td>(.*?)</td>", body, re.DOTALL)
+                assert cells[player_column] == "ID missing"
+    assert json.loads(source.read_text(encoding="utf-8")) == evaluation
 
 
 @pytest.mark.functional
-def test_hitl_export_preserves_non_ai_attempt_response_types(tmp_path):
-    """Validation/system attempt responses export with their original event types."""
-    from dcs_simulation_engine.hitl.export import export_results
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-test-001",
-                        description="Test scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        attempts=[
-                            Attempt(
-                                player_message="Try blocked action",
-                                simulator_response="Validation blocked that action.",
-                                simulator_response_type="error",
-                                simulator_extra_events=[{"event_type": "info", "content": "Try a grounded physical action instead."}],
-                                evaluator_feedback=EvaluatorFeedback(
-                                    liked=False,
-                                    comment="Validator caught it correctly.",
-                                    doesnt_make_sense=False,
-                                    out_of_character=False,
-                                    other=True,
-                                    submitted_at="2026-04-23T00:05:00+00:00",
-                                ),
-                            )
+def test_hitl_export_preserves_branch_transcripts_and_feedback(tmp_path, monkeypatch):
+    """Export complete transcripts once each, with stable IDs and links to their forks."""
+    monkeypatch.setattr("dcs_simulation_engine.hitl.create._SCENARIOS_DIR", tmp_path)
+    evaluation = build_scaffold("NA", "Explore")
+    evaluation["evaluator_id"] = "MW"
+    evaluation["results"] = {"summary": "The simulator stayed in character.", "complete": False}
+    root = evaluation["sessions"][0]
+    root.update(
+        session_id="root-id",
+        description="Establish the opening context.",
+        transcript=[
+            {"type": "info", "source": "system", "content": "Setup info"},
+            {"type": "message", "source": "npc", "content": "Opening", "evaluator_feedback": _RATING},
+            {
+                "type": "branch",
+                "session_id": "first-branch",
+                "description": "Probe the validator.",
+                "transcript": [
+                    {"type": "message", "source": "pc", "content": "Attempt an action", "evaluator_note": "Expect a block."},
+                    {
+                        "type": "error",
+                        "source": "npc",
+                        "content": "The action was blocked.",
+                        "evaluator_feedback": {**_RATING, "liked": False, "other": True},
+                    },
+                    {
+                        "type": "branch",
+                        "session_id": None,
+                        "description": "Retry a grounded action.",
+                        "transcript": [
+                            {"type": "message", "source": "pc", "content": "Choose a safer action"},
+                            {"type": "message", "source": "npc", "content": "The action succeeds.", "evaluator_feedback": _RATING},
                         ],
-                    )
+                    },
                 ],
-            )
+            },
+            {"type": "message", "source": "pc", "content": "Continue the main path"},
+            {"type": "warning", "source": "npc", "content": "Proceed cautiously.", "evaluator_feedback": _RATING},
         ],
     )
-    save_scenario_file(test_cases_file, scenario_file)
+    source = tmp_path / "NA-evaluation.json"
+    source.write_text(json.dumps(evaluation), encoding="utf-8")
+    out_dir = tmp_path / "hitl_export"
+    result = _RUNNER.invoke(app, ["hitl", "export", "NA", "--output-dir", str(out_dir)])
+    assert result.exit_code == 0, result.output
+    assert "3 session(s) exported, including branches" in result.output
+    assert "Evaluation status: complete" in result.output
+    assert {path.name for path in out_dir.iterdir()} == {
+        "__manifest__.json",
+        "sessions.json",
+        "session_events.json",
+        "characters.json",
+        "players.json",
+        "runs.json",
+        "assignments.json",
+    }
 
-    out_dir = export_results(test_cases_file, output_dir=tmp_path / "hitl_export")
-    session_events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
-
-    outbound = [event for event in session_events if event["direction"] == "outbound"]
-    assert len(outbound) == 2
-    assert outbound[0]["event_type"] == "error"
-    assert outbound[0]["event_source"] == "system"
-    assert outbound[0]["content"] == "Validation blocked that action."
-    assert outbound[0]["feedback"]["liked"] is False
-    assert outbound[1]["event_type"] == "info"
-    assert outbound[1]["event_source"] == "system"
-    assert outbound[1]["content"] == "Try a grounded physical action instead."
-
-
-@pytest.mark.functional
-def test_hitl_export_skips_incomplete_attempts_and_zero_complete_scenarios(tmp_path):
-    """Only attempts with both response and feedback are exported."""
-    from dcs_simulation_engine.hitl.export import export_results
-
-    test_cases_file = tmp_path / "NA-test-cases.json"
-    scenario_file = ScenarioFile(
-        npc_hid="NA",
-        generated_at="2026-04-23T00:00:00+00:00",
-        scenario_groups=[
-            ScenarioGroup(
-                group_id="test-group",
-                label="Test Group",
-                expected_failure_mode="Test failure mode",
-                pressure_category="test-pressure",
-                scenarios=[
-                    Scenario(
-                        id="NA-mixed-001",
-                        description="Mixed completion scenario",
-                        game="Explore",
-                        pc_hid="NA",
-                        attempts=[
-                            Attempt(player_message="Missing response"),
-                            Attempt(
-                                player_message="Missing feedback",
-                                simulator_response="She looks up briefly.",
-                                simulator_response_type="ai",
-                            ),
-                            Attempt(
-                                player_message="Completed attempt",
-                                simulator_response="She nods and says hello.",
-                                simulator_response_type="ai",
-                                evaluator_feedback=EvaluatorFeedback(
-                                    liked=True,
-                                    comment="Works.",
-                                    submitted_at="2026-04-23T00:10:00+00:00",
-                                ),
-                            ),
-                        ],
-                    ),
-                    Scenario(
-                        id="NA-incomplete-001",
-                        description="No completed attempts",
-                        game="Explore",
-                        pc_hid="NA",
-                        attempts=[
-                            Attempt(player_message="No response"),
-                            Attempt(
-                                player_message="Response only",
-                                simulator_response="Blocked.",
-                                simulator_response_type="error",
-                            ),
-                        ],
-                    ),
-                ],
-            )
-        ],
-    )
-    save_scenario_file(test_cases_file, scenario_file)
-
-    out_dir = export_results(test_cases_file, output_dir=tmp_path / "hitl_export")
     manifest = json.loads((out_dir / "__manifest__.json").read_text(encoding="utf-8"))
     sessions = json.loads((out_dir / "sessions.json").read_text(encoding="utf-8"))
-    session_events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
+    events = json.loads((out_dir / "session_events.json").read_text(encoding="utf-8"))
+    assert manifest["evaluation_status"] == {"complete": True, "issues": []}
+    assert (manifest["total_sessions"], manifest["total_turns"]) == (3, 3)
+    assert [session["session_id"] for session in sessions[:2]] == ["root-id", "first-branch"]
+    assert sessions[1]["branch_from_session_id"] == "root-id"
+    assert sessions[1]["branch_from_seq"] == 2
+    assert sessions[2]["branch_from_session_id"] == "first-branch"
+    assert sessions[2]["branch_from_seq"] == 2
+    assert sessions[2]["session_id"] not in ("root-id", "first-branch", None)
+    assert [session["evaluator_description"] for session in sessions] == [
+        "Establish the opening context.",
+        "Probe the validator.",
+        "Retry a grounded action.",
+    ]
+    assert manifest["evaluator_id"] == "MW"
+    assert all(session["player_id"] == "MW" for session in sessions)
+    for session in sessions:
+        seqs = [event["seq"] for event in events if event["session_id"] == session["session_id"]]
+        assert seqs == list(range(1, session["last_seq"] + 1))
 
-    assert manifest["total_scenarios"] == 1
-    assert manifest["total_attempts"] == 1
-    assert manifest["source_total_scenarios"] == 2
-    assert manifest["source_total_attempts"] == 5
-    assert manifest["skipped_scenarios"] == 1
-    assert manifest["skipped_attempts"] == 4
-
-    assert len(sessions) == 1
-    assert sessions[0]["name"] == "hitl-NA-NA-mixed-001"
-    assert sessions[0]["turns_completed"] == 1
-    assert sessions[0]["last_seq"] == 2
-
-    assert len(session_events) == 2
-    assert session_events[0]["direction"] == "inbound"
-    assert session_events[0]["content"] == "Completed attempt"
-    assert session_events[1]["direction"] == "outbound"
-    assert session_events[1]["content"] == "She nods and says hello."
-    assert session_events[1]["feedback"]["liked"] is True
+    assert sum(event["content"] == "Opening" for event in events) == 1
+    assert events[0]["event_source"] == "system"
+    assert events[2]["direction"] == "inbound" and events[2]["event_source"] == "user"
+    warning, error = [event for event in events if event["event_type"] in ("warning", "error")]
+    assert warning["event_source"] == error["event_source"] == "npc"
+    assert error["feedback"]["liked"] is False
+    assert error["feedback"]["other"] is True
+    assert error["feedback"]["submitted_at"] == evaluation["updated_at"]
+    assert any(event.get("evaluator_note") == "Expect a block." for event in events)
+    assert json.loads(source.read_text(encoding="utf-8")) == evaluation
 
 
 # ---------------------------------------------------------------------------

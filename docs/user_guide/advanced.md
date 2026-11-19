@@ -57,12 +57,12 @@ Character sheets usually include:
 Use the human-in-the-loop (HITL) CLI to generate scenarios and evaluate character behavior:
 
 ```bash
-dcs hitl create <character_hid> --db dev
+dcs hitl create <character_hid>
 ```
 
-This creates a scaffolded test cases file in `evaluations/characters/`. Edit the prompts so they actually pressure-test the character's behavior.
+This creates a scaffolded evaluation cases file in `evaluations/characters/`. Edit the prompts so they actually pressure-test the character's behavior.
 
-Then run HITL updates while the DCS server is running:
+Then run HITL update (with the DCS server is running - e.g., `dcs engine start --headless --config examples/run_configs/hitl.yml`) to generate simulator responses and collect evaluator feedback:
 
 ```bash
 dcs hitl update <character_hid>
@@ -80,17 +80,21 @@ In practice, this stage is iterative: adjust the character sheet and/or scenario
 
 ### 3. Generate a Simulation Quality Report
 
-Export the completed HITL scenarios to a results directory:
+Export `<character_hid>-evaluation.json` to a results directory at any stage:
 
 ```bash
 dcs hitl export <character_hid>
 ```
+
+The results bundle contains the main sessions and branches, including work in progress and evaluator descriptions. The Player column uses `evaluator_id` from the evaluation file, and the PC column shows the character they played.
 
 Then generate a simulation quality report:
 
 ```bash
 dcs report results results/hitl_<character_hid> --only sim-quality --title "Simulation Quality — <character_hid>"
 ```
+
+The main report and each character report start with a Summary section showing the evaluator ID, written summary, and evaluation status. The Full Event Log includes an Evaluator Description column. Complete evaluations have an evaluator ID, simulator responses for all turns, feedback on every simulator response, and a written `results.summary`.
 
 Review the report and determine whether the coverage and in-character fidelity (ICF) scores are sufficient for publication.
 

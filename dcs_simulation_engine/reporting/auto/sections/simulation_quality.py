@@ -6,15 +6,15 @@ Renders:
 """
 
 import html as html_lib
-import json
 from pathlib import Path
 
 import pandas as pd
+import yaml
 from dcs_simulation_engine.reporting.auto.constants import chart_caption, section_intro
 from dcs_simulation_engine.reporting.auto.rendering.table_utils import df_to_datatable
 from dcs_simulation_engine.reporting.loader import AnalysisData
 
-_PRESSURE_CATEGORIES_PATH = Path(__file__).resolve().parents[3] / "hitl" / "character-evaluation-template.json"
+_PRESSURE_CATEGORIES_PATH = Path(__file__).resolve().parents[3] / "hitl" / "character-evaluation-template.yml"
 
 
 def _fmt_pct(numerator: int, denominator: int) -> str:
@@ -32,7 +32,7 @@ def _flag_count(transcripts_df: pd.DataFrame, col: str) -> int:
 def _load_pressure_categories() -> list[dict]:
     """Load evaluation category definitions from the HITL template."""
     try:
-        raw = json.loads(_PRESSURE_CATEGORIES_PATH.read_text(encoding="utf-8"))
+        raw = yaml.safe_load(_PRESSURE_CATEGORIES_PATH.read_text(encoding="utf-8"))
         return raw.get("evaluation_categories", [])
     except Exception:
         return []
@@ -40,11 +40,12 @@ def _load_pressure_categories() -> list[dict]:
 
 def _compute_covered_categories(npc_hid: str, runs_df: pd.DataFrame) -> set[str]:
     """Return the set of pressure category IDs covered by this NPC's sessions."""
-    col = "game_config_snapshot.pressure_category"
+    col = "game_config_snapshot.group_id"
     if runs_df.empty or "npc_hid" not in runs_df.columns or col not in runs_df.columns:
         return set()
     char_runs = runs_df[runs_df["npc_hid"] == npc_hid]
-    return set(char_runs[col].dropna().astype(str).unique()) - {""}
+    category_ids = {cat["id"] for cat in _load_pressure_categories()}
+    return set(char_runs[col].dropna().astype(str).unique()) & category_ids
 
 
 def _scenario_coverage_section(npc_hid: str, runs_df: pd.DataFrame) -> str:
@@ -211,6 +212,44 @@ def _per_npc_scores_table(
     )
 
 
+def render_evaluation_summary(data: AnalysisData) -> str:
+    """Show the evaluator's summary and publication readiness for HITL results."""
+    manifest = data.manifest
+    status = manifest.get("evaluation_status")
+    if not isinstance(status, dict) or not isinstance(complete := status.get("complete"), bool):
+        return ""
+    if complete:
+        status_html = '<div class="alert alert-success">Evaluation status: <strong>Complete</strong></div>'
+    else:
+        issues = status.get("issues")
+        details = ""
+        if isinstance(issues, list) and issues:
+            details = '<ul class="mb-0 mt-2">' + "".join(f"<li>{html_lib.escape(str(issue))}</li>" for issue in issues) + "</ul>"
+        status_html = (
+            '<div class="alert alert-warning" role="alert">Evaluation status: <strong>Incomplete</strong>. '
+            f"Finish the evaluation before publishing.{details}</div>"
+        )
+
+    fields = [
+        ("Evaluator ID", manifest.get("evaluator_id") or "ID missing"),
+        ("Sessions (including branches)", manifest.get("total_sessions")),
+        ("PC turns", manifest.get("total_turns")),
+    ]
+    metadata = "".join(
+        f'<dt class="col-sm-4">{label}</dt><dd class="col-sm-8">{html_lib.escape(str(value))}</dd>'
+        for label, value in fields
+        if value is not None
+    )
+    summary = manifest.get("evaluation_summary")
+    summary_html = html_lib.escape(summary) if isinstance(summary, str) and summary.strip() else "No written summary provided."
+    return (
+        f'{status_html}<div class="card"><div class="card-body">'
+        f'<dl class="row dl-meta">{metadata}</dl>'
+        '<h3 class="h6">Evaluator summary</h3>'
+        f'<p class="mb-0" style="white-space: pre-wrap;">{summary_html}</p></div></div>'
+    )
+
+
 def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     """Build a standalone per-character quality HTML report for the given NPC HID."""
     from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_html
@@ -292,6 +331,8 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
         ("feedback", "Feedback", feedback_fragment, "top"),
         ("event-log", "Full Event Log", event_log_fragment, "top"),
     ]
+    if summary_fragment := render_evaluation_summary(data):
+        sections.insert(0, ("evaluation-summary", "Summary", summary_fragment, "top"))
 
     char_name = char_meta.get("name") or hid
     return build_html(sections, title=f"{char_name} — Quality Report", download_items=[])

@@ -51,9 +51,7 @@ class ScenarioGroup(BaseModel):
     """Scenarios grouped by the expected failure mode they probe."""
 
     group_id: str
-    label: str
     expected_failure_mode: str
-    pressure_category: str
     scenarios: list[Scenario] = Field(default_factory=list)
 
 
