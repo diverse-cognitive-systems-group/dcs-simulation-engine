@@ -444,10 +444,24 @@ def test_hitl_export_preserves_branch_transcripts_and_feedback(tmp_path, monkeyp
     assert report.exit_code == 0, report.output
     html = (tmp_path / "per_character_quality" / "NA_quality_report.html").read_text()
     coverage = html.split('<section id="section-coverage"', 1)[1].split("</section>", 1)[0]
-    assert coverage.index("Scene opening") < coverage.index("Branch 1.1") < coverage.index("Attempt an action")
-    assert coverage.index("Branch 1.1.1") < coverage.index("Choose a safer action") < coverage.index("Continue the main path")
-    assert coverage.count(">Liked</span>") == 3
-    assert coverage.count(">Disliked</span>") == 1
+    tree = coverage.split('<div class="coverage-path">', 1)[1]
+    assert tree.index("Scene opening") < tree.index('id="coverage-path-1.1"') < tree.index("Attempt an action")
+    assert tree.index('id="coverage-path-1.1.1"') < tree.index("Choose a safer action") < tree.index("Continue the main path")
+    assert coverage.count('aria-label="Same path"') == 3
+    matrix = coverage.split('aria-label="Pairwise conversation distances">', 1)[1].split("</table>", 1)[0]
+    header, body = matrix.split("</thead>", 1)
+    assert re.findall(r'<a [^>]*>([^<]+)</a>', header) == ["Session 1", "Branch 1.1.1", "Branch 1.1"]
+    assert re.findall(r'<th scope="row"><a [^>]*>([^<]+)</a>', body) == ["Session 1", "Branch 1.1.1", "Branch 1.1"]
+    assert re.findall(r'aria-label="[^"]+, distance ([0-9.]+)"', body) == ["0.132", "0.553", "0.132", "0.168", "0.553", "0.168"]
+    assert tree.count("Closest path") == 3
+    assert 'href="#coverage-path-1.1.1">Branch 1.1.1</a> · 0.132' in tree
+    assert tree.count('class="coverage-rating coverage-liked">Liked</span>') == 3
+    assert tree.count('class="coverage-rating coverage-disliked">Disliked</span>') == 1
+    assert "1 independent opening scene." in coverage
+    assert "Low 1 · Medium 0 · High 2 pairs" in coverage
+    assert "Low 2 · Medium 1 · High 0 pairs" in coverage
+    assert re.search(r'diversity-high" aria-hidden="true"></span> High</td>\s*<td>1</td><td>1</td>', coverage)
+    assert re.search(r'diversity-low" aria-hidden="true"></span> Low</td>\s*<td>0</td><td>1</td>', coverage)
     scores = re.findall(r'<th scope="row">([^<]+)</th><td>(\d+)</td>\s*<td>([^<]+)</td>', coverage)
     assert scores == [
         ("Player input diversity", "3", "0.667"),

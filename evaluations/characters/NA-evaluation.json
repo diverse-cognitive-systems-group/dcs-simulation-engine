@@ -267,7 +267,7 @@
             {
               "type": "message",
               "source": "pc",
-              "content": "I say 'Hi Jane, can you introduce yourself?'",
+              "content": "I say 'Hi Jane, can you introduce yourself?'"
             },
             {
               "type": "message",
@@ -372,6 +372,7 @@
     },
     {
       "game": "Explore",
+      "npc_hid": "NA",
       "pc_hid": "NA",
       "session_id": "59660a55-ed59-4c96-a29d-b977ddce73fa",
       "description": "In this session, NA is asked to tell her story. It allows testing how well NA can maintain the character's backstory and information about herself.",
@@ -517,6 +518,7 @@
     },
     {
       "game": "Explore",
+      "npc_hid": "NA",
       "pc_hid": "NA",
       "parent_session_id": "5c0cc3be-cb5f-48bb-aa35-046a19f663d6",
       "description": "In this session, NA agrees to collaborate on a tough cognitive task. It's testing how well NA can handle cognitive load and multi-step reasoning while staying in character.",

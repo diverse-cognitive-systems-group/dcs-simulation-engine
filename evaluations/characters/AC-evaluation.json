@@ -1,6 +1,6 @@
 {
   "character_hid": "AC",
-  "evaluator_id": "",
+  "evaluator_id": "MW",
   "created_at": "2026-11-18T16:00:26.494833+00:00",
   "updated_at": "2026-11-19T12:17:48.994176+00:00",
   "description": "This human-in-the-loop character evaluation assesses the model’s fidelity and elucidates the bounds of its modeling capabilities across contexts so it can be used appropriately.",

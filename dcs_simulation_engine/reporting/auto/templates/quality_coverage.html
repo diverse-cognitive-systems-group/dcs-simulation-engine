@@ -10,8 +10,27 @@
   .coverage-rating { border-radius: 1rem; padding: .12rem .55rem; font-size: .76rem; font-weight: 600; background: #edf0f3; color: #425466; }
   .coverage-liked { background: #daf2e6; color: #125637; }
   .coverage-disliked { background: #fbe4e2; color: #902d28; }
+  .diversity-low { --band-color: #b54448; }
+  .diversity-medium { --band-color: #d6a321; }
+  .diversity-high { --band-color: #27845e; }
+  .diversity-key { display: inline-block; width: .7rem; height: .7rem; border-radius: 2px; background: var(--band-color); }
+  .diversity-bar { display: flex; height: .7rem; border-radius: .25rem; overflow: hidden; }
+  .diversity-bar span { background: var(--band-color); }
   .coverage-dialogue { margin: .45rem 0 .25rem; padding: .5rem .8rem; background: #f7f9fa; border-radius: .3rem; }
   .coverage-dialogue dd { white-space: pre-wrap; }
+  .coverage-matrix { border-collapse: separate; border-spacing: 3px; font-variant-numeric: tabular-nums; }
+  .coverage-matrix th { font-size: .84rem; padding: .25rem; white-space: nowrap; background: white; position: sticky; }
+  .coverage-scroll { max-height: 65vh; overflow: auto; }
+  .coverage-matrix thead th { top: 0; z-index: 2; }
+  .coverage-matrix th:first-child { left: 0; z-index: 1; }
+  .coverage-matrix thead th:first-child { z-index: 3; }
+  .coverage-scale { display: inline-block; vertical-align: middle; width: 6rem; height: .6rem; border-radius: 1rem;
+    background: linear-gradient(to right, hsl(209 65% 97%), hsl(209 65% 29%)); border: 1px solid #b7c5d1; }
+  .coverage-matrix td { text-align: center; }
+  .coverage-matrix button { width: 100%; border: 0; border-radius: .25rem; padding: .4rem; }
+  .coverage-matrix button:focus-visible, .coverage-matrix button[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -3px; }
+  #coverage-pair-detail { white-space: pre-line; overflow-wrap: anywhere; }
+  .coverage-path [id]:target > header { outline: 2px solid #5780a4; outline-offset: 3px; }
 </style>
 {% macro reply(prompt, response) %}
   {% set liked = response.get('feedback.liked') if response else none %}
@@ -32,18 +51,22 @@
     </dl>
   </details>
 {% endmacro %}
-{% macro path(session, number, root=false) %}
-  <div class="{{ 'coverage-root' if root else 'coverage-stop' }}" data-session-id="{{ session.session_id }}">
-    <header><strong>{{ 'Session' if root else 'Branch' }} {{ number }}</strong>
+{% macro path_link(session) -%}
+<a href="#coverage-path-{{ session.path_number }}" title="{{ session.evaluator_description }}">{{ session.path_label }}</a>
+{%- endmacro %}
+{% macro path(session, root=false) %}
+  <div id="coverage-path-{{ session.path_number }}" class="{{ 'coverage-root' if root else 'coverage-stop' }}" data-session-id="{{ session.session_id }}">
+    <header><strong>{{ session.path_label }}</strong>
       {% if session.evaluator_description %}<span>{{ session.evaluator_description }}</span>{% endif %}
       {% if root %}<small>{{ session.game_name }} · {{ session.pc_hid }} / {{ session.npc_hid }}</small>{% endif %}
     </header>
+    {% if session.closest %}
+      <small>Closest path · <a href="#coverage-path-{{ session.closest[0] }}">{{ session.closest[1] }}</a> · {{ '%.3f'|format(session.closest[2]) }}</small>
+    {% endif %}
     <div class="coverage-track">
-      {% set counter = namespace(branch=0) %}
       {% for part in session.parts %}
         {% if part.type == 'branch' %}
-          {% set counter.branch = counter.branch + 1 %}
-          {{ path(part, number ~ '.' ~ counter.branch) }}
+          {{ path(part) }}
         {% else %}
           {% for response in part.output if response.source == 'npc' %}
             {{ reply(part.prompt, response) }}
@@ -56,23 +79,106 @@
   </div>
 {% endmacro %}
 <h3 class="h5">Semantic diversity</h3>
-<p class="mb-2">Each row compares every pair of recorded samples of that type and averages their cosine distances.
-  Values near 0 mean the model sees similar content. Larger values indicate more variety.
-  For a single pair, 1 means the embedding vectors are perpendicular and 2 is the maximum distance.</p>
+<p class="mb-2">Each score averages the distances between pairs of recorded samples. Values near 0 mean
+  the model sees similar content. Larger values indicate more variety, up to a distance of 2 for a pair.</p>
+<div class="table-responsive">
 <table class="table table-sm mb-2">
-  <thead><tr><th scope="col">Metric</th><th scope="col">Samples</th><th scope="col">Mean cosine distance</th></tr></thead>
+  <thead><tr><th scope="col">Metric</th><th scope="col">Samples</th><th scope="col">Mean cosine distance</th>
+    <th scope="col">Diversity</th><th scope="col">Far from all others</th><th scope="col">Similar groups</th></tr></thead>
   <tbody>
     {% for metric in metrics %}
     <tr><th scope="row">{{ metric.label }}</th><td>{{ metric.count }}</td>
-      <td>{% if metric.count < 2 %}Need 2 to compare{% elif metric.score is none %}Unavailable{% else %}{{ '%.3f'|format(metric.score) }}{% endif %}</td></tr>
+      <td>{% if metric.count < 2 %}Need 2 to compare{% elif metric.score is none %}Unavailable{% else %}{{ '%.3f'|format(metric.score) }}{% endif %}</td>
+      {% if metric.score is not none %}
+      <td><span class="diversity-key diversity-{{ metric.band|lower }}" aria-hidden="true"></span> {{ metric.band }}</td>
+      <td>{{ metric.isolated }}</td><td>{{ metric.groups }}</td>
+      {% else %}<td>—</td><td>—</td><td>—</td>{% endif %}</tr>
     {% endfor %}
   </tbody>
 </table>
-<p>Read each value alongside its sample count. Two very different conversations can produce a high score
-  while leaving many scenarios unexplored. The score describes variety within this evaluation only.
-  Use the paths below to judge which character behaviors were tested and which scenarios are still missing.</p>
+</div>
+{% set opening = metrics|selectattr('label', 'equalto', 'Opening scene diversity')|first %}
+<p><strong>Opening scenes.</strong>
+  {% if opening.count < 2 %}This evaluation has {{ opening.count }} independent opening scene{{ '' if opening.count == 1 else 's' }}. At least two are needed to compare settings.
+  {% elif opening.score is not none %}Across {{ opening.count }} independent openings, {{ opening.distribution.High }} of {{ opening.pairs }} scene pairs have high distance.
+  {% else %}{{ opening.count }} independent openings were recorded. Their distances are unavailable.
+  {% endif %}Branches share their opening with the parent session.</p>
+{% set scored = metrics|rejectattr('score', 'none')|list %}
+{% if scored %}
+<h4 class="h6">Distribution of pairwise distances</h4>
+<div class="row g-3 mb-3">
+  {% for metric in scored %}
+  <div class="col-md"><strong class="small">{{ metric.label }}</strong>
+    <div class="diversity-bar my-1" aria-hidden="true">
+      {% for band, count in metric.distribution.items() %}
+      <span class="diversity-{{ band|lower }}" style="width: {{ 100 * count / metric.pairs }}%"></span>
+      {% endfor %}
+    </div>
+    <small>{% for band, count in metric.distribution.items() %}{{ band }} {{ count }}{{ ' · ' if not loop.last }}{% endfor %} pairs</small>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+<p class="small text-muted">These exploratory bands use low below {{ '%.2f'|format(medium_distance) }}, medium from {{ '%.2f'|format(medium_distance) }}
+  to below {{ '%.2f'|format(high_distance) }}, and high from {{ '%.2f'|format(high_distance) }}. The table rates each mean, and the bars count individual pairs.
+  “Far from all others” counts samples with high distance to every other sample. Each similar group connects two or more samples through low-distance pairs.</p>
+<p>Two very different conversations can produce a high score while leaving many scenarios unexplored.
+  Use the paths below to judge which character behaviors were tested and which are still missing.</p>
 {% if model_notice %}<p class="text-muted">{{ model_notice }}</p>{% endif %}
+{% if paths|length == 2 %}
+<p><strong>Conversation distance</strong> · {{ path_link(paths[0]) }} ↔ {{ path_link(paths[1]) }} · {{ '%.3f'|format(paths[0].distances[1]) }}</p>
+{% elif paths|length > 2 %}
+<h3 class="h5">Conversation distances</h3>
+<p class="mb-1">Both axes list the same played paths, including their shared history up to each fork.
+  Similar paths tend to sit together. Look for pale blocks to spot repeated conversations.
+  Select a cell for both evaluator descriptions, or follow a path label to read the conversation.</p>
+<p class="small text-muted mb-2">0 · More similar <span class="coverage-scale mx-1" aria-hidden="true"></span> 2 · More different</p>
+<div class="coverage-scroll" role="region" aria-label="Scrollable conversation distances" tabindex="0">
+  <table class="coverage-matrix" aria-label="Pairwise conversation distances">
+    <thead><tr><th scope="col">Path</th>{% for other in paths %}<th scope="col">{{ path_link(other) }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for session in paths %}
+      <tr><th scope="row">{{ path_link(session) }}</th>
+        {% for other in paths %}
+          {% if session.path_number == other.path_number %}<td aria-label="Same path">—</td>
+          {% else %}
+            {% set distance = session.distances[loop.index0] %}
+            <td><button type="button" aria-pressed="false" aria-label="{{ session.path_label }} and {{ other.path_label }}, distance {{ '%.3f'|format(distance) }}"
+                style="background: hsl(209 65% {{ 97 - 34 * distance }}%); color: {{ '#fff' if distance > 1.3 else '#122536' }}"
+                >{{ '%.3f'|format(distance) }}</button></td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p id="coverage-pair-detail" aria-live="polite" class="small mt-2"></p>
+<script>
+  (() => {
+    const matrix = document.querySelector('.coverage-matrix');
+    function describe(button) {
+      const cell = button.closest('td');
+      const row = cell.parentElement.querySelector('th a');
+      const column = matrix.tHead.rows[0].cells[cell.cellIndex].querySelector('a');
+      return [row, column].map(link => link.textContent + ' · ' + (link.title || 'No description'))
+        .concat('Distance · ' + button.textContent.trim()).join('\n');
+    }
+    matrix.addEventListener('mouseover', event => {
+      const button = event.target.closest('button');
+      if (button) button.title = describe(button);
+    });
+    matrix.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      matrix.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+      button.setAttribute('aria-pressed', 'true');
+      document.getElementById('coverage-pair-detail').textContent = describe(button);
+    });
+  })();
+</script>
+{% endif %}
 <p class="text-muted mb-2">Follow each path from the scene opening. Hover over or expand a turn to read the exchange and evaluator notes.</p>
 <div class="coverage-path">
-  {% for session in roots %}{{ path(session, loop.index, true) }}{% endfor %}
+  {% for session in roots %}{{ path(session, true) }}{% endfor %}
 </div>

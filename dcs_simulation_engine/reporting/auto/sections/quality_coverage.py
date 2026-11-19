@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dcs_simulation_engine.hitl.evaluation import transcript_parts
 from dcs_simulation_engine.reporting.loader import AnalysisData
-from dcs_simulation_engine.reporting.semantic_diversity import semantic_diversity
+from dcs_simulation_engine.reporting.semantic_diversity import HIGH_DISTANCE, MEDIUM_DISTANCE, semantic_diversity
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -47,5 +47,8 @@ def render(data: AnalysisData) -> str:
         trim_blocks=True,
         lstrip_blocks=True,
     ).get_template("quality_coverage.html")
-    metrics, model_notice = semantic_diversity(roots)
-    return template.render(roots=roots, metrics=metrics, model_notice=model_notice)
+    metrics, paths, model_notice = semantic_diversity(roots)
+    return template.render(
+        roots=roots, metrics=metrics, paths=paths, model_notice=model_notice,
+        medium_distance=MEDIUM_DISTANCE, high_distance=HIGH_DISTANCE,
+    )
