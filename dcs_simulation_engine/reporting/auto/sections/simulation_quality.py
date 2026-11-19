@@ -48,47 +48,6 @@ def _compute_covered_categories(npc_hid: str, runs_df: pd.DataFrame) -> set[str]
     return set(char_runs[col].dropna().astype(str).unique()) & category_ids
 
 
-def _scenario_coverage_section(npc_hid: str, runs_df: pd.DataFrame) -> str:
-    """Render a Bootstrap checklist of all pressure categories with coverage marks."""
-    categories = _load_pressure_categories()
-    if not categories:
-        return '<p class="text-muted">Pressure category definitions not found.</p>'
-
-    covered = _compute_covered_categories(npc_hid, runs_df)
-    total = len(categories)
-    n_covered = sum(1 for cat in categories if cat["id"] in covered)
-
-    if total > 0:
-        score_pct = f"{n_covered / total:.1%}"
-        header_text = f"{n_covered} of {total} pressure categories covered ({score_pct})"
-    else:
-        header_text = "No pressure categories defined."
-
-    items = []
-    for cat in categories:
-        cat_id = cat.get("id", "")
-        description = html_lib.escape(cat.get("description", ""))
-        label = cat_id.replace("_", " ").title()
-        is_covered = cat_id in covered
-        if is_covered:
-            icon = '<span class="text-success fw-bold" style="min-width:1.2em;">✓</span>'
-        else:
-            icon = '<span class="text-danger fw-bold" style="min-width:1.2em;">✗</span>'
-        items.append(
-            f'<li class="list-group-item d-flex align-items-start gap-2 py-2">'
-            f"{icon}"
-            f"<div>"
-            f'<span class="fw-semibold">{html_lib.escape(label)}</span>'
-            f'<span class="text-muted ms-2" style="font-size:0.88rem;">{description}</span>'
-            f"</div>"
-            f"</li>"
-        )
-
-    list_html = '<ul class="list-group list-group-flush">' + "".join(items) + "</ul>"
-
-    return f'<p class="mb-2">{html_lib.escape(header_text)}</p><div class="card"><div class="card-body p-0">{list_html}</div></div>'
-
-
 def _scores_summary_card(
     transcripts_df: pd.DataFrame,
     coverage_text: str | None = None,
@@ -253,7 +212,7 @@ def render_evaluation_summary(data: AnalysisData) -> str:
 def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     """Build a standalone per-character quality HTML report for the given NPC HID."""
     from dcs_simulation_engine.reporting.auto.rendering.html_builder import build_html
-    from dcs_simulation_engine.reporting.auto.sections import event_log, player_feedback
+    from dcs_simulation_engine.reporting.auto.sections import event_log, player_feedback, quality_coverage
 
     # --- Character metadata ---
     char_meta: dict = {"hid": hid}
@@ -314,9 +273,6 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     # 2. Overview (scores summary filtered to this character)
     overview_fragment = _scores_summary_card(char_data.transcripts_df, coverage_text=coverage_text)
 
-    # 3. Scenario Coverage
-    scenario_fragment = _scenario_coverage_section(hid, data.runs_df)
-
     # 4. Feedback
     feedback_fragment = player_feedback.render(char_data)
 
@@ -327,7 +283,7 @@ def build_character_quality_report(hid: str, data: AnalysisData) -> str:
     sections = [
         ("metadata", "Metadata", metadata_fragment, "top"),
         ("overview", "Overview", overview_fragment, "top"),
-        ("scenario-coverage", "Scenario Coverage", scenario_fragment, "top"),
+        ("coverage", "Coverage", quality_coverage.render(char_data), "top"),
         ("feedback", "Feedback", feedback_fragment, "top"),
         ("event-log", "Full Event Log", event_log_fragment, "top"),
     ]

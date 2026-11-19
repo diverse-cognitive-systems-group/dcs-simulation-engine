@@ -435,6 +435,15 @@ def test_hitl_export_preserves_branch_transcripts_and_feedback(tmp_path, monkeyp
     assert error["feedback"]["other"] is True
     assert error["feedback"]["submitted_at"] == evaluation["updated_at"]
     assert any(event.get("evaluator_note") == "Expect a block." for event in events)
+    report = _RUNNER.invoke(app, ["report", "results", str(out_dir), "--only", "sim-quality", "--report-path", str(tmp_path / "report.html")])
+    assert report.exit_code == 0, report.output
+    html = (tmp_path / "per_character_quality" / "NA_quality_report.html").read_text()
+    coverage = html.split('<section id="section-coverage"', 1)[1].split("</section>", 1)[0]
+    assert coverage.index("Scene opening") < coverage.index("Branch 1.1") < coverage.index("Attempt an action")
+    assert coverage.index("Branch 1.1.1") < coverage.index("Choose a safer action") < coverage.index("Continue the main path")
+    assert coverage.count(">Liked</span>") == 3
+    assert coverage.count(">Disliked</span>") == 1
+    assert "Expect a block." in coverage and "The action was blocked." in coverage
     assert json.loads(source.read_text(encoding="utf-8")) == evaluation
 
 

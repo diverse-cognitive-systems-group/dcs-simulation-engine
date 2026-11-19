@@ -146,7 +146,8 @@ def test_cli_hitl_evaluation_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         assert "Consistent with the character.\nSeveral replies stayed grounded &amp; clear." in first_section
         assert "Sessions (including branches)" in first_section and "PC turns" in first_section
     for fragment in (
-        "Scenario Coverage",
+        '<a class="nav-link" href="#section-coverage">Coverage</a>',
+        "<h2>Coverage</h2>",
         "Scores Summary",
         "In-Play Feedback",
         "Full Event Log",
