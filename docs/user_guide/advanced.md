@@ -60,19 +60,19 @@ Use the human-in-the-loop (HITL) CLI to generate scenarios and evaluate characte
 dcs hitl create <character_hid>
 ```
 
-This creates a scaffolded evaluation cases file in `evaluations/characters/`. Edit the prompts so they actually pressure-test the character's behavior.
+This creates a scaffolded evaluation file in `evaluations/characters/`.
 
-Then run HITL update (with the DCS server is running - e.g., `dcs engine start --headless --config examples/run_configs/hitl.yml`) to generate simulator responses and collect evaluator feedback:
+Then run HITL update (make sure the DCS server is running first!) to generate simulator responses and collect evaluator feedback:
 
 ```bash
+# first make sure the server is running - use this command in a separate terminal window
+dcs engine start --headless --config examples/run_configs/hitl.yml
+
+# then you can run HITL update and view your evaluation file update
 dcs hitl update <character_hid>
+
+# to view it more nicely, export to common results format and open in a browser (see next step)
 ```
-
-`hitl update` can:
-
-- Build or rebuild scenario history
-- Generate simulator responses
-- Collect evaluator feedback on whether outputs are in character, out of character, or invalid
 
 In practice, this stage is iterative: adjust the character sheet and/or scenario prompts, rerun HITL, and keep going until the behavior looks good.
 
